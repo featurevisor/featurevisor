@@ -1,80 +1,72 @@
-# Glossary — Featurevisor terms
+# Glossary
 
-Full docs: <https://featurevisor.com/docs/glossary>
+Full docs: <https://featurevisor.com/docs/glossary/>
 
-Short reference of terms used throughout Featurevisor. When in doubt, ground the user in these before going deep — many "weird behaviour" reports come from mis-mapped vocabulary.
+Many "weird behaviour" reports come from mismatched vocabulary. Ground the user in these terms before going deep.
 
-## Building blocks
+## Definitions
 
-| Term          | Meaning                                                                                                                                          |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Project**   | A Git repository containing `featurevisor.config.js`, `attributes/`, `segments/`, `features/`, and optionally `variables/`, `groups/`, `schemas/`, `targets/`, and `tests/`. |
-| **Attribute** | A named, typed key the SDK receives at evaluation (e.g. `userId`, `country`). Defined in `attributes/<key>.yml`.                                 |
-| **Segment**   | A reusable named condition over attributes. Defined in `segments/<key>.yml`. References attributes by name.                                      |
-| **Feature**   | A flag/variation/variable bundle with rollout rules. Defined in `features/<key>.yml`. References segments by name.                               |
-| **Global variable** | An independently evaluated typed value under `variables/<key>.yml`, with optional requirements and ordered overrides.                    |
-| **Group**     | Mutual-exclusion container that constrains percentage caps for member features. `groups/<name>.yml`.                                             |
-| **Schema**    | Reusable variable shape, referenced by name from `variablesSchema` entries. `schemas/<name>.yml`.                                                |
-| **Test spec** | Declarative `.spec.yml` asserting expected outcomes under `tests/features/`, `tests/segments/`, or `tests/variables/`.                         |
-| **Set**       | Independent project tree under `sets/<set>/` with its own attributes, segments, features, global variables, targets, and tests. See [sets-promotions.md](sets-promotions.md). |
-| **Promotion** | Copying definitions (plus dependency closure) from one set to another via `promote`. Preview by default; `--apply` writes.                       |
+| Term                | Meaning                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Project**         | A Git repository with `featurevisor.config.js` and definition directories.                                                     |
+| **Attribute**       | A declared, typed context key, such as `userId` or `country`. `attributes/<key>.yml`. Not in datafiles.                        |
+| **Segment**         | A named audience defined by `conditions`. `segments/<key>.yml`.                                                                |
+| **Feature**         | A flag, optional variations and feature variables, with rollout rules. `features/<key>.yml`.                                   |
+| **Global variable** | A typed value with ordered overrides, not owned by a feature and never bucketed. `variables/<key>.yml`.                        |
+| **Composition**     | A global variable built with `compose` from other evaluated values: an alias, or an object of flags, variations and variables. |
+| **Schema**          | A reusable variable shape. `schemas/<key>.yml`.                                                                                |
+| **Target**          | A datafile definition: which features and global variables it includes, and optional known context. `targets/<key>.yml`.       |
+| **Tag**             | Metadata on features and global variables that targets select.                                                                 |
+| **Namespace**       | A key prefix from a subdirectory, such as `checkout.promo`. Organization only.                                                 |
+| **Spec**            | A `.spec.yml` file of assertions for a feature, segment or global variable.                                                    |
+| **Scenario**        | A spec with root `checks` and no owner, checking several definitions together.                                                 |
+| **Set**             | An independent definition tree under `sets/<set>/`, such as a release lane or a separate surface.                              |
+| **Promotion**       | Copying definitions and their dependencies from one set to another with `promote`.                                             |
 
-## Evaluations
+## Targeting and rollout
 
-| Term                  | Meaning                                                                                                                                          |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Flag**              | The boolean enabled/disabled outcome for a feature.                                                                                              |
-| **Variation**         | The string outcome for a feature with `variations:` — e.g. `control`, `treatment`.                                                               |
-| **Feature variable**  | A typed value attached to a feature through `variablesSchema`.                                                                                  |
-| **Context**           | The object of attribute values supplied at evaluation time.                                                                                      |
-| **Bucketing**         | Deterministic hash of `(featureKey, bucketBy attribute values)` into the inclusive internal range 0 to 100,000, representing 0% to 100%.        |
-| **Sticky**            | SDK instance state that can override feature evaluations or global variable values before normal datafile evaluation.                           |
-| **Activation**        | The event of a user being assigned a variation; commonly piped to analytics.                                                                     |
-| **Evaluation reason** | One of `sticky`, `disabled`, `required`, `required_features_unmet`, `forced`, `rule`, `allocated`, `out_of_range`, `no_match`, `feature_not_found`, `error`, etc. — surfaced by `featurevisor evaluate --verbose`. |
+| Term                | Meaning                                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Conditions**      | The one grammar for selecting and gating: attribute, segment, feature and variable leaves, with `and`, `or` and `not`. |
+| **Root conditions** | Optional `conditions` at the top of a feature or global variable, gating all of it. Unmet: `conditions_unmet`.         |
+| **Rule**            | A `conditions` and `percentage` entry in `rules`. The first match decides.                                             |
+| **Rule key**        | A rule's stable identifier. Saved variation ranges are stored per key, so renaming reallocates them.                   |
+| **Percentage**      | The share of matching users the rule enables, 0 to 100 with two decimals.                                              |
+| **Force**           | Entries that set a result for matching contexts before root conditions and rules, typically for QA.                    |
+| **Override**        | A conditional value: `variableOverrides` for feature variables, `overrides` for global variables.                      |
+| **Mutation**        | A partial change to an object or array value through `mutate` or a dotted variable key.                                |
+| **Expose**          | Controls whether a feature is included in datafiles. A temporary migration tool.                                       |
+| **Deprecated**      | Still evaluated, with SDK warnings.                                                                                    |
+| **Archived**        | Left out of every datafile.                                                                                            |
 
-## Rollout terms
+## Evaluation
 
-| Term           | Meaning                                                                                                                           |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule**       | A targeting + percentage entry under `rules.<env>[]`. First match wins.                                                           |
-| **Rule key**   | Unique-per-env stable identifier on a rule. Renaming re-buckets users — don't.                                                    |
-| **Percentage** | 0–100 (2 decimal places) — share of bucketed users in a rule that get the feature.                                                |
-| **Force**      | Per-env override that bypasses rules for matching context — used for QA, specific users.                                          |
-| **Required**   | Dependency declaration: this feature only evaluates if listed features evaluate as enabled (and optionally a specific variation). |
-| **Expose**     | Per-env (and optionally per-tag) inclusion control for whether a feature ships in a datafile. Short-term migration tool.          |
-| **Deprecated** | Feature/variable is on the way out; SDK logs a warning when used. Still works.                                                    |
-| **Archived**   | Feature/segment/attribute excluded from datafiles entirely.                                                                       |
+| Term                  | Meaning                                                                                                                                                                                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Context**           | The attribute values an application passes at evaluation time.                                                                                                                                                                                          |
+| **Flag**              | A feature's enabled or disabled result.                                                                                                                                                                                                                 |
+| **Variation**         | A feature's string result for experiments, such as `control` or `treatment`.                                                                                                                                                                            |
+| **Feature variable**  | A typed value declared in a feature's `variablesSchema`.                                                                                                                                                                                                |
+| **Bucketing**         | Hashing the `bucketBy` values and feature key to 0 to 100,000, the same in every SDK.                                                                                                                                                                   |
+| **Sticky**            | Results the application supplies before the datafile is evaluated.                                                                                                                                                                                      |
+| **Evaluation reason** | Why a result was returned: `sticky`, `forced`, `conditions_unmet`, `rule`, `allocated`, `no_match`, `disabled`, `feature_not_found`, `variable_override_rule`, `variable_composed`, `error` and others. Shown by `npx featurevisor evaluate --explain`. |
+| **Exposure**          | A user seeing an experiment's variation, usually sent to analytics from a module.                                                                                                                                                                       |
 
-## Concepts around datafiles
+## Datafiles
 
-| Term            | Meaning                                                                                                                 |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **Datafile**    | Static JSON output the SDK loads. One per target and optional environment. Carries a `schemaVersion` string (currently `"2"`) that is informational — SDKs don't branch on it. |
-| **OpenFeature** | Vendor-neutral flag API. Featurevisor ships optional providers per platform — see [openfeature.md](openfeature.md).    |
-| **Conformance** | Cross-SDK contract (`conformance/sdk-v3.json`) every v3 SDK is verified against: bucketing, portable conditions, child context model, presence-based defaults. |
-| **Tag**         | Feature and global variable metadata used by targets and other CLI filters.                                              |
-| **Target**      | A generated datafile definition with optional tag filters, feature and variable key filters, and build-time context.    |
-| **Namespace**   | Directory-based prefix on feature/segment keys (`features/checkout/promo.yml` → `checkout.promo` with the default `.` separator). Organizational only. |
-| **Revision**    | Integer incremented per successful build; stamped into every datafile.                                                  |
-| **State files** | `.featurevisor/existing-state-*.json` snapshots used to preserve bucketing across builds.                               |
+| Term            | Meaning                                                                                                                |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Datafile**    | The static JSON an SDK loads, one per target and environment. v4 datafiles have `schemaVersion: "4"` and need v4 SDKs. |
+| **Revision**    | A number each CI build increments and writes into datafiles.                                                           |
+| **State files** | `.featurevisor/` files recording saved variation ranges between builds. Only CI commits them.                          |
+| **Environment** | An optional stage name, such as `production`, keying rules within one definition.                                      |
 
-## Patterns / use cases
+## Patterns
 
-| Term                               | Where it shows up in this skill                                                                   |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------- |
-| **Feature flag / toggle**          | Boolean rollout — see [features.md](features.md) and recipes "progressive delivery".              |
-| **A/B test**                       | Feature with two `variations`. See recipes "experiments".                                         |
-| **Multivariate test**              | Feature with more than two `variations`, often with variable overrides.                           |
-| **Canary release / dark launch**   | Force-enabled for a QA segment in production while flag is 0% to real users.                      |
-| **Remote configuration**           | Feature whose primary outputs are `variables`, not the flag itself.                               |
-| **Entitlements**                   | Variables holding lists of capabilities, often pinned via sticky from a profile service.          |
-| **Mutually exclusive experiments** | Multiple features sharing a [group](groups.md) so no user sees both.                              |
-| **Trunk-based development**        | Merging incomplete features behind a 0%-rolled-out flag.                                          |
-| **Kill switch / ops flag**         | Always-on flag around a risky surface; flipped to 0% during incidents. See recipes.               |
-| **Scheduled release**              | Segment with date `before`/`after` conditions; app passes current date in context. See recipes.   |
-| **Staged rollout**                 | Ordered rules: employees → beta users → everyone. See recipes.                                    |
-| **Decouple deploy from release**   | The whole point of the tool: ship code at any time, expose it via Featurevisor whenever you want. |
-
-## Operators (quick recall)
-
-See [operators.md](operators.md) for the full table. Equality, ordering, string ops (contains/startsWith/endsWith/in/matches), array ops (includes/notIncludes), semver, date (before/after), existence (exists/notExists).
+| Term                                                                                   | Where                                                                                    |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Gradual rollout, kill switch, staged rollout, scheduled release, version gate, cleanup | [recipes.md](recipes.md)                                                                 |
+| A/B and multivariate tests                                                             | [features.md](features.md#variations), [recipes.md](recipes.md)                          |
+| Mutually exclusive experiments                                                         | [mutual-exclusion.md](mutual-exclusion.md)                                               |
+| Remote configuration                                                                   | [global-variables.md](global-variables.md), [variables-schemas.md](variables-schemas.md) |
+| Entitlements                                                                           | [recipes.md](recipes.md#entitlements)                                                    |

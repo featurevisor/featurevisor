@@ -1,6 +1,18 @@
 import { jsonParser } from "./json";
 
 describe("core :: parser :: jsonParser", () => {
+  it.each(["compose", "properties", "variablesSchema", "variables", "mutate", "context"])(
+    "preserves an authored __proto__ own key under %s without prototype assignment",
+    (field) => {
+      const parsed = jsonParser.parse<Record<string, Record<string, unknown>>>(
+        `{"${field}":{"__proto__":{"polluted":true}}}`,
+      );
+      expect(Object.keys(parsed[field])).toEqual(["__proto__"]);
+      expect(Object.prototype.hasOwnProperty.call(parsed[field], "__proto__")).toBe(true);
+      expect(Object.getPrototypeOf(parsed[field])).toBe(Object.prototype);
+      expect(({} as any).polluted).toBeUndefined();
+    },
+  );
   it("should parse JSON string into object", () => {
     const jsonString = '{"foo":1,"bar":"baz","arr":[1,2]}';
     const result = jsonParser.parse<{ foo: number; bar: string; arr: number[] }>(jsonString);

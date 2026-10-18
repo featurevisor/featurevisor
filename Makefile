@@ -1,4 +1,4 @@
-.PHONY: install build test test-cli-integration test-global-variables-performance test-datafile-build-performance benchmark-sdk-dependencies audit-production typecheck bundle-sizes lint format check
+.PHONY: install build test test-extended test-cli-integration test-catalog-browser test-runner-conformance test-mutation-conformance check-conformance-fixtures test-global-variables-performance test-datafile-build-performance benchmark-sdk-dependencies benchmark-catalog audit-production typecheck bundle-sizes lint format check
 
 ##
 # Packages
@@ -12,11 +12,47 @@ build:
 test:
 	npm test
 
+# Slower checks kept out of CI so it stays fast: compiled package consumers,
+# browsers, the CLI end to end, JavaScript conformance, editor schemas, release
+# configuration and bundle size budgets. `make check` runs them after a build.
+# The browser checks need a local Chromium compatible browser.
+test-extended:
+	node scripts/test-editor-schemas.mjs
+	node scripts/test-release-config.mjs
+	npm run test:package-exports
+	npm run test:packed-packages
+	npm run test:react-minimum
+	npm run test:browser
+	npm run test:catalog-browser
+	node scripts/test-cli-integration.mjs
+	node scripts/test-runner-conformance.mjs javascript
+	node scripts/test-mutation-conformance.mjs javascript
+	make bundle-sizes
+
 # Local end to end confidence check for the current CLI checkout.
-# This intentionally stays outside `check` and CI.
+# `make check` runs the script after its build. This target builds the CLI first.
 test-cli-integration:
 	npx lerna run build --scope @featurevisor/cli --include-dependencies
 	node scripts/test-cli-integration.mjs
+
+# Isolated browser check, also part of `make check`. Requires a local Chromium compatible browser.
+test-catalog-browser:
+	npx lerna run build --scope @featurevisor/cli --scope @featurevisor/catalog --include-dependencies
+	npm run test:catalog-browser
+
+# Optional local parity check. Build native CLI runners before invoking it.
+test-runner-conformance:
+	node scripts/test-runner-conformance.mjs $(RUNNERS)
+
+# Optional two mode parity check for portable Example 1 map and list mutations.
+# Build native CLI runners before invoking it. The JavaScript runner is always included.
+test-mutation-conformance:
+	node scripts/test-mutation-conformance.mjs $(RUNNERS)
+
+# Optional local guard for canonical fixtures copied into the ten native SDK repositories.
+# This is read only and intentionally stays outside `check` and CI.
+check-conformance-fixtures:
+	node scripts/check-conformance-fixtures.mjs
 
 # Local large-datafile confidence check for aggregate feature and global variable evaluation.
 # This intentionally stays outside `check` and CI.
@@ -35,6 +71,11 @@ test-datafile-build-performance:
 benchmark-sdk-dependencies:
 	npx lerna run build --scope @featurevisor/sdk --include-dependencies
 	npm run benchmark:sdk-dependencies
+
+# Local Catalog export benchmark. Set CATALOG_BENCH_LARGE=1 for 5,500 definitions.
+benchmark-catalog:
+	npx lerna run build --scope @featurevisor/core --scope @featurevisor/catalog --include-dependencies
+	node scripts/benchmark-catalog.mjs $(OUTPUT)
 
 # Network enabled release check for dependencies shipped to consumers.
 # Development-only advisories are reviewed separately from release blockers.
@@ -55,9 +96,11 @@ lint:
 format:
 	npx prettier examples/ packages/ --write
 
+# CI runs install, build, lint, typecheck and test. Run this locally before publishing.
 check:
 	make install
 	make build
-	make test
 	make lint
 	make typecheck
+	make test
+	make test-extended

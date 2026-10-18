@@ -12,4 +12,4 @@ assertions:
       device: tablet
     expectedValue: Header fallback
     expectedEvaluation:
-      reason: required_features_unmet
+      reason: conditions_unmet

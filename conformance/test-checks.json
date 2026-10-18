@@ -1,0 +1,3495 @@
+{
+  "version": 3,
+  "description": "CLI only. Resolve references with native SDK getters against datafile. Each case uses a fresh instance. error means invalid check or resolution/comparison error, not an ordinary failed predicate.",
+  "datafile": {
+    "schemaVersion": "2",
+    "revision": "cli-checks-v2",
+    "segments": {},
+    "features": {
+      "membershipFeature": {
+        "bucketBy": ["userId"],
+        "variablesSchema": { "roles": { "type": "array", "defaultValue": ["member", "owner"] } },
+        "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+      },
+      "disabledCheckout": {
+        "bucketBy": ["userId"],
+        "disabledVariationValue": "control",
+        "traffic": []
+      },
+      "disabledNoVariation": {
+        "bucketBy": ["userId"],
+        "traffic": []
+      },
+      "experiment": {
+        "bucketBy": ["userId"],
+        "variations": [{ "value": "treatment" }],
+        "traffic": [
+          {
+            "key": "all",
+            "segments": "*",
+            "percentage": 100000,
+            "allocation": [{ "variation": "treatment", "range": [0, 100000] }]
+          }
+        ]
+      },
+      "checkout": {
+        "bucketBy": ["userId"],
+        "variablesSchema": {
+          "limit": {
+            "type": "integer",
+            "defaultValue": 5
+          },
+          "label": {
+            "type": "string",
+            "defaultValue": "standard"
+          }
+        },
+        "traffic": [
+          {
+            "key": "everyone",
+            "segments": "*",
+            "percentage": 100000
+          }
+        ]
+      }
+    },
+    "variables": {
+      "membershipFixture": {
+        "type": "object",
+        "defaultValue": {
+          "roles": ["member", "owner"],
+          "empty": [],
+          "booleans": [true, false],
+          "nulls": [null],
+          "structured": [{ "role": "owner" }],
+          "scalar": "owner",
+          "candidates": ["absent", "owner"],
+          "badCandidates": [{}, "owner"]
+        }
+      },
+      "unicodeTimestamps": {
+        "type": "object",
+        "defaultValue": {
+          "arabic": "٢٠٢٦-٠١-٠١T00:00:00Z",
+          "fullwidth": "２０２６-01-01T00:00:00Z",
+          "fraction": "2026-01-01T00:00:00.١٢٣Z",
+          "offset": "2026-01-01T00:00:00+٠١:00"
+        }
+      },
+      "emptiness": {
+        "type": "object",
+        "defaultValue": {
+          "empty string": "",
+          "whitespace": " \t",
+          "text": "hello",
+          "empty array": [],
+          "array containing null": [null],
+          "array containing empty array": [[]],
+          "empty object": {},
+          "object containing null": {
+            "value": null
+          },
+          "object containing empty object": {
+            "nested": {}
+          },
+          "null": null,
+          "zero": 0,
+          "false": false
+        }
+      },
+      "settings": {
+        "type": "object",
+        "defaultValue": {
+          "min": 2,
+          "max": 10,
+          "regions": ["nl", "gb"],
+          "nested": {
+            "nullable": null,
+            "dot.key": 7
+          },
+          "items": [
+            {
+              "limit": 4
+            }
+          ],
+          "active": true
+        }
+      },
+      "limit": {
+        "type": "integer",
+        "defaultValue": 12
+      },
+      "label": {
+        "type": "string",
+        "defaultValue": "Hello world"
+      },
+      "version": {
+        "type": "string",
+        "defaultValue": "2.3.1"
+      },
+      "timestamp": {
+        "type": "string",
+        "defaultValue": "2026-09-13T12:00:00Z"
+      },
+      "leapTimestamp": {
+        "type": "string",
+        "defaultValue": "2024-02-29T12:34:56Z"
+      },
+      "equivalentTimestamp": {
+        "type": "string",
+        "defaultValue": "2026-09-13T14:00:00+02:00"
+      },
+      "millisecondTimestamp": {
+        "type": "string",
+        "defaultValue": "2026-09-13T12:00:00.123Z"
+      },
+      "invalidCalendarTimestamp": {
+        "type": "string",
+        "defaultValue": "2026-02-30T12:00:00Z"
+      },
+      "invalidFractionTimestamp": {
+        "type": "string",
+        "defaultValue": "2026-09-13T12:00:00.1234567890Z"
+      },
+      "preciseTimestamp": {
+        "type": "string",
+        "defaultValue": "2026-09-13T12:00:00.123999999Z"
+      },
+      "invalidOffsetTimestamp": {
+        "type": "string",
+        "defaultValue": "2026-09-13T12:00:00+14:01"
+      },
+      "nil": {
+        "type": "object",
+        "defaultValue": null
+      },
+      "regions": {
+        "type": "array",
+        "defaultValue": ["nl", "gb"]
+      },
+      "pattern": {
+        "type": "string",
+        "defaultValue": "^Hello"
+      },
+      "badPattern": {
+        "type": "string",
+        "defaultValue": "["
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "includesAny: hit",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "includesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "includesAny: miss",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "includesAny",
+          "value": ["admin"]
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "includesAny: empty actual",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "empty",
+          "operator": "includesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "includesAny: empty candidates",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "includesAny",
+          "value": []
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "includesAny: boolean is not zero",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "booleans",
+          "operator": "includesAny",
+          "value": [0]
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "includesAny: null element",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "nulls",
+          "operator": "includesAny",
+          "value": [null]
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "includesAny: object element ignored",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "structured",
+          "operator": "includesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "includesAny: malformed candidate",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "includesAny",
+          "value": [{}]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "includesAny: malformed after a match",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "includesAny",
+          "value": ["owner", {}]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "includesAny: nonarray candidates",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "includesAny",
+          "value": "owner"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "includesAny: nonarray actual",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "scalar",
+          "operator": "includesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "includesAny: null actual is a check error",
+      "checks": [
+        {
+          "variable": "nil",
+          "operator": "includesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "includesAny: missing path remains false",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "missing",
+          "operator": "includesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "includesAny: resolved array candidates",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "includesAny",
+          "compareTo": {
+            "variable": "membershipFixture",
+            "path": "candidates"
+          }
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "includesAny: resolved invalid candidates",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "includesAny",
+          "compareTo": {
+            "variable": "membershipFixture",
+            "path": "badCandidates"
+          }
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "includesAny: feature variable",
+      "checks": [
+        {
+          "feature": "membershipFeature",
+          "variable": "roles",
+          "operator": "includesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "includesAny: comparison errors are not inverted",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "membershipFixture",
+              "path": "roles",
+              "operator": "includesAny",
+              "value": [{}]
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "includesAny: short circuit skips a bad operand",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "membershipFixture",
+              "path": "roles",
+              "operator": "includesAny",
+              "value": ["owner"]
+            },
+            {
+              "variable": "membershipFixture",
+              "path": "scalar",
+              "operator": "includesAny",
+              "value": ["owner"]
+            }
+          ]
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: hit",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "notIncludesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: miss",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "notIncludesAny",
+          "value": ["admin"]
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: empty actual",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "empty",
+          "operator": "notIncludesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: empty candidates",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "notIncludesAny",
+          "value": []
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: boolean is not zero",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "booleans",
+          "operator": "notIncludesAny",
+          "value": [0]
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: null element",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "nulls",
+          "operator": "notIncludesAny",
+          "value": [null]
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: object element ignored",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "structured",
+          "operator": "notIncludesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: malformed candidate",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "notIncludesAny",
+          "value": [{}]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notIncludesAny: malformed after a match",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "notIncludesAny",
+          "value": ["owner", {}]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notIncludesAny: nonarray candidates",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "notIncludesAny",
+          "value": "owner"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notIncludesAny: nonarray actual",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "scalar",
+          "operator": "notIncludesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notIncludesAny: null actual is a check error",
+      "checks": [
+        {
+          "variable": "nil",
+          "operator": "notIncludesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notIncludesAny: missing path remains false",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "missing",
+          "operator": "notIncludesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: resolved array candidates",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "notIncludesAny",
+          "compareTo": {
+            "variable": "membershipFixture",
+            "path": "candidates"
+          }
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: resolved invalid candidates",
+      "checks": [
+        {
+          "variable": "membershipFixture",
+          "path": "roles",
+          "operator": "notIncludesAny",
+          "compareTo": {
+            "variable": "membershipFixture",
+            "path": "badCandidates"
+          }
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notIncludesAny: feature variable",
+      "checks": [
+        {
+          "feature": "membershipFeature",
+          "variable": "roles",
+          "operator": "notIncludesAny",
+          "value": ["owner"]
+        }
+      ],
+      "passed": false,
+      "error": false
+    },
+    {
+      "name": "notIncludesAny: comparison errors are not inverted",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "membershipFixture",
+              "path": "roles",
+              "operator": "notIncludesAny",
+              "value": [{}]
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notIncludesAny: short circuit skips a bad operand",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "membershipFixture",
+              "path": "roles",
+              "operator": "notIncludesAny",
+              "value": ["admin"]
+            },
+            {
+              "variable": "membershipFixture",
+              "path": "scalar",
+              "operator": "notIncludesAny",
+              "value": ["owner"]
+            }
+          ]
+        }
+      ],
+      "passed": true,
+      "error": false
+    },
+    {
+      "name": "resolved Unicode timestamp arabic is rejected",
+      "checks": [
+        {
+          "variable": "unicodeTimestamps",
+          "path": "arabic",
+          "operator": "before",
+          "value": "2027-01-01T00:00:00Z"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "resolved Unicode timestamp fullwidth is rejected",
+      "checks": [
+        {
+          "variable": "unicodeTimestamps",
+          "path": "fullwidth",
+          "operator": "before",
+          "value": "2027-01-01T00:00:00Z"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "resolved Unicode timestamp fraction is rejected",
+      "checks": [
+        {
+          "variable": "unicodeTimestamps",
+          "path": "fraction",
+          "operator": "before",
+          "value": "2027-01-01T00:00:00Z"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "resolved Unicode timestamp offset is rejected",
+      "checks": [
+        {
+          "variable": "unicodeTimestamps",
+          "path": "offset",
+          "operator": "before",
+          "value": "2027-01-01T00:00:00Z"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "resolved Unicode timestamp comparison operand is rejected",
+      "checks": [
+        {
+          "variable": "timestamp",
+          "operator": "before",
+          "compareTo": {
+            "variable": "unicodeTimestamps",
+            "path": "arabic"
+          }
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "Unicode timestamp error propagates through not",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "unicodeTimestamps",
+              "path": "arabic",
+              "operator": "before",
+              "value": "2027-01-01T00:00:00Z"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "Unicode timestamp error propagates through and",
+      "checks": [
+        {
+          "and": [
+            {
+              "variable": "unicodeTimestamps",
+              "path": "arabic",
+              "operator": "before",
+              "value": "2027-01-01T00:00:00Z"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "Unicode timestamp error propagates through or",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "unicodeTimestamps",
+              "path": "arabic",
+              "operator": "before",
+              "value": "2027-01-01T00:00:00Z"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty rejects empty regex flags",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "empty",
+          "regexFlags": ""
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty rejects null regex flags",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "empty",
+          "regexFlags": null
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty rejects null value",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "empty",
+          "value": null
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty rejects false value",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "empty",
+          "value": false
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty rejects null comparison",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "empty",
+          "compareTo": null
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty rejects empty regex flags",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "notEmpty",
+          "regexFlags": ""
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty rejects null regex flags",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "notEmpty",
+          "regexFlags": null
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty rejects null value",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "notEmpty",
+          "value": null
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty rejects false value",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "notEmpty",
+          "value": false
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty rejects null comparison",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "notEmpty",
+          "compareTo": null
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty: empty string",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["empty string"],
+          "operator": "empty"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "notEmpty: empty string",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["empty string"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "empty: whitespace",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["whitespace"],
+          "operator": "empty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "notEmpty: whitespace",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["whitespace"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "empty: text",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["text"],
+          "operator": "empty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "notEmpty: text",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["text"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "empty: empty array",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["empty array"],
+          "operator": "empty"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "notEmpty: empty array",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["empty array"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "empty: array containing null",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["array containing null"],
+          "operator": "empty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "notEmpty: array containing null",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["array containing null"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "empty: array containing empty array",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["array containing empty array"],
+          "operator": "empty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "notEmpty: array containing empty array",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["array containing empty array"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "empty: empty object",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["empty object"],
+          "operator": "empty"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "notEmpty: empty object",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["empty object"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "empty: object containing null",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["object containing null"],
+          "operator": "empty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "notEmpty: object containing null",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["object containing null"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "empty: object containing empty object",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["object containing empty object"],
+          "operator": "empty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "notEmpty: object containing empty object",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["object containing empty object"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "empty: null",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["null"],
+          "operator": "empty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "notEmpty: null",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["null"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "empty: zero",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["zero"],
+          "operator": "empty"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty: zero",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["zero"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty: false",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["false"],
+          "operator": "empty"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty: false",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["false"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty: missing",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["missing"],
+          "operator": "empty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "notEmpty: missing",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "path": ["missing"],
+          "operator": "notEmpty"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "empty rejects value",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "empty",
+          "value": ""
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty rejects compareTo",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "empty",
+          "compareTo": {
+            "variable": "emptiness"
+          }
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty rejects regexFlags",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "empty",
+          "regexFlags": "i"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty validates skipped operand",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "emptiness",
+              "operator": "exists"
+            },
+            {
+              "variable": "emptiness",
+              "operator": "empty",
+              "value": []
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty error cannot be inverted",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "emptiness",
+              "path": ["zero"],
+              "operator": "empty"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty rejects value",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "notEmpty",
+          "value": ""
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty rejects compareTo",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "notEmpty",
+          "compareTo": {
+            "variable": "emptiness"
+          }
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty rejects regexFlags",
+      "checks": [
+        {
+          "variable": "emptiness",
+          "operator": "notEmpty",
+          "regexFlags": "i"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty validates skipped operand",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "emptiness",
+              "operator": "exists"
+            },
+            {
+              "variable": "emptiness",
+              "operator": "notEmpty",
+              "value": []
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "notEmpty error cannot be inverted",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "emptiness",
+              "path": ["zero"],
+              "operator": "notEmpty"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature flag enabled",
+      "checks": [{ "feature": "checkout", "enabled": true }],
+      "passed": true
+    },
+    {
+      "name": "feature flag disabled",
+      "checks": [{ "feature": "disabledCheckout", "enabled": false }],
+      "passed": true
+    },
+    {
+      "name": "flag mismatch is ordinary failure",
+      "checks": [{ "feature": "checkout", "enabled": false }],
+      "passed": false
+    },
+    {
+      "name": "variation only enabled",
+      "checks": [{ "feature": "experiment", "variation": "treatment" }],
+      "passed": true
+    },
+    {
+      "name": "variation only does not imply enabled",
+      "checks": [{ "feature": "disabledCheckout", "variation": "control" }],
+      "passed": true
+    },
+    {
+      "name": "enabled and variation both match",
+      "checks": [{ "feature": "experiment", "enabled": true, "variation": "treatment" }],
+      "passed": true
+    },
+    {
+      "name": "disabled and disabled variation both match",
+      "checks": [{ "feature": "disabledCheckout", "enabled": false, "variation": "control" }],
+      "passed": true
+    },
+    {
+      "name": "enabled mismatch is not rescued by matching variation",
+      "checks": [{ "feature": "disabledCheckout", "enabled": true, "variation": "control" }],
+      "passed": false
+    },
+    {
+      "name": "variation mismatch is not rescued by matching enabled",
+      "checks": [{ "feature": "experiment", "enabled": true, "variation": "control" }],
+      "passed": false
+    },
+    {
+      "name": "null variation on enabled feature",
+      "checks": [{ "feature": "checkout", "variation": null }],
+      "passed": true
+    },
+    {
+      "name": "null variation on disabled feature",
+      "checks": [{ "feature": "disabledNoVariation", "enabled": false, "variation": null }],
+      "passed": true
+    },
+    {
+      "name": "null variation mismatch",
+      "checks": [{ "feature": "experiment", "variation": null }],
+      "passed": false
+    },
+    {
+      "name": "empty variation string is valid expectation",
+      "checks": [{ "feature": "experiment", "variation": "" }],
+      "passed": false
+    },
+    {
+      "name": "missing feature cannot satisfy disabled",
+      "checks": [{ "feature": "absent", "enabled": false }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "missing feature cannot satisfy null variation",
+      "checks": [{ "feature": "absent", "variation": null }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "not cannot hide missing feature",
+      "checks": [{ "not": [{ "feature": "absent", "enabled": true }] }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "or cannot hide reached missing feature",
+      "checks": [
+        {
+          "or": [
+            { "feature": "absent", "enabled": true },
+            { "feature": "checkout", "enabled": true }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "or skips unreached missing feature",
+      "checks": [
+        {
+          "or": [
+            { "feature": "checkout", "enabled": true },
+            { "feature": "absent", "enabled": true }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "and skips unreached missing feature",
+      "checks": [
+        {
+          "and": [
+            { "feature": "checkout", "enabled": false },
+            { "feature": "absent", "enabled": true }
+          ]
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "not negates feature implicit and",
+      "checks": [
+        {
+          "not": [
+            { "feature": "checkout", "enabled": true },
+            { "feature": "disabledCheckout", "enabled": true }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "mixed feature and variable checks",
+      "checks": [
+        {
+          "and": [
+            { "feature": "checkout", "enabled": true },
+            { "feature": "checkout", "variable": "limit", "operator": "equals", "value": 5 },
+            { "variable": "limit", "operator": "equals", "value": 12 }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "owner does not turn flag into feature variable",
+      "owner": "settings",
+      "checks": [
+        { "feature": "checkout", "enabled": true },
+        { "path": "min", "operator": "equals", "value": 2 }
+      ],
+      "passed": true
+    },
+    {
+      "name": "bare feature check is invalid",
+      "checks": [{ "feature": "checkout" }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check requires feature key",
+      "owner": "settings",
+      "checks": [{ "enabled": true }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects empty feature key",
+      "checks": [{ "feature": "", "enabled": true }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects numeric feature key",
+      "checks": [{ "feature": 7, "enabled": true }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects string enabled",
+      "checks": [{ "feature": "checkout", "enabled": "true" }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects null enabled",
+      "checks": [{ "feature": "checkout", "enabled": null }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects numeric variation",
+      "checks": [{ "feature": "checkout", "variation": 1 }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects boolean variation",
+      "checks": [{ "feature": "checkout", "variation": false }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects array variation",
+      "checks": [{ "feature": "checkout", "variation": ["control"] }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects variable even with owner",
+      "owner": "settings",
+      "checks": [{ "feature": "checkout", "variable": "limit", "enabled": true }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects operator",
+      "checks": [{ "feature": "checkout", "enabled": true, "operator": "equals", "value": true }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects path",
+      "checks": [{ "feature": "checkout", "variation": null, "path": [] }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects compareTo",
+      "checks": [{ "feature": "checkout", "enabled": true, "compareTo": { "variable": "limit" } }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature check rejects unknown field",
+      "checks": [{ "feature": "checkout", "enabled": true, "extra": true }],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "invalid skipped feature leaf still errors",
+      "checks": [
+        {
+          "or": [
+            { "feature": "checkout", "enabled": true },
+            { "feature": "checkout", "enabled": "true" }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "compareTo cannot resolve a flag",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "equals",
+          "compareTo": { "feature": "checkout", "enabled": true }
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "mixed feature and group properties are invalid",
+      "checks": [
+        {
+          "feature": "checkout",
+          "enabled": true,
+          "and": [{ "feature": "checkout", "enabled": true }]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "explicit null regex flags",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "label",
+              "operator": "matches",
+              "value": "Hello",
+              "regexFlags": null
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "structured membership literal",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "limit",
+              "operator": "in",
+              "value": [{}]
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "null path component",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "settings",
+              "path": ["items", null],
+              "operator": "exists"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "unsafe integer string path",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "settings",
+              "path": "items.9007199254740992",
+              "operator": "exists"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "nonstring operator",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "limit",
+              "operator": true,
+              "value": 12
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "noncapturing regex is outside portable subset",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "label",
+              "operator": "matches",
+              "value": "(?:Hello)"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "regex backreference is outside portable subset",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "label",
+              "operator": "matches",
+              "value": "(Hello)\\1"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "possessive regex is outside portable subset",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "label",
+              "operator": "matches",
+              "value": "Hello++"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "inline regex flags are outside portable subset",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "label",
+              "operator": "matches",
+              "value": "(?i)Hello"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "large safe array index is missing rather than invalid",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": ["items", 4294967296],
+          "operator": "notExists"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "explicit null variable",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": null,
+              "operator": "exists"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "explicit null feature",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "limit",
+              "feature": null,
+              "operator": "exists"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "explicit null path",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "limit",
+              "path": null,
+              "operator": "exists"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "numeric variable name",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": 12,
+              "operator": "exists"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty feature name",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "feature": "",
+              "variable": "limit",
+              "operator": "exists"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "numeric compareTo name",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "compareTo": {
+                "variable": 12
+              }
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "invalid numeric literal in skipped OR",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "limit",
+              "operator": "greaterThan",
+              "value": "12"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "bad regex in skipped OR",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "label",
+              "operator": "matches",
+              "value": "["
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "invalid flags in skipped OR",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "label",
+              "operator": "matches",
+              "value": "Hello",
+              "regexFlags": false
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "duplicate flags in skipped OR",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "label",
+              "operator": "matches",
+              "value": "Hello",
+              "regexFlags": "ii"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "structured literal in skipped OR",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": {}
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "malformed membership literal in skipped OR",
+      "owner": "settings",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "limit",
+              "operator": "in",
+              "value": "12"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "boolean in is invalid",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "active",
+          "operator": "in",
+          "value": [true]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "objects in array do not match primitive needle",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "items",
+          "operator": "notIncludes",
+          "value": 4
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "mixed primitive types use strict equality",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "active",
+          "operator": "notEquals",
+          "value": 1
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "literal integer equality",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "equals",
+          "value": 12
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "failed literal comparison",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "lessThan",
+          "value": 10
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "notEquals",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "notEquals",
+          "value": 13
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "greaterThan",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "greaterThan",
+          "value": 11
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "greaterThanOrEquals",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "greaterThanOrEquals",
+          "value": 12
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "lessThan",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "lessThan",
+          "value": 13
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "lessThanOrEquals",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "lessThanOrEquals",
+          "value": 12
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "in",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "in",
+          "value": [10, 12]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "notIn",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "notIn",
+          "value": [9]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "global reference",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "greaterThan",
+          "compareTo": {
+            "variable": "settings",
+            "path": "max"
+          }
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "feature reference",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "greaterThan",
+          "compareTo": {
+            "feature": "checkout",
+            "variable": "limit"
+          }
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "feature left operand",
+      "checks": [
+        {
+          "feature": "checkout",
+          "variable": "limit",
+          "operator": "equals",
+          "value": 5
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "owner reference",
+      "owner": "settings",
+      "checks": [
+        {
+          "path": "min",
+          "operator": "lessThan",
+          "compareTo": {
+            "path": "max"
+          }
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "compareTo inherits owner not left operand",
+      "owner": "settings",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "greaterThan",
+          "compareTo": {
+            "path": "max"
+          }
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "dot numeric index",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "items.0.limit",
+          "operator": "equals",
+          "value": 4
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "array path numeric index",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": ["items", 0, "limit"],
+          "operator": "equals",
+          "value": 4
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "literal dot key",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": ["nested", "dot.key"],
+          "operator": "equals",
+          "value": 7
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "array string index matches requiredVariables",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": ["items", "0", "limit"],
+          "operator": "equals",
+          "value": 4
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "array length matches requiredVariables",
+      "checks": [
+        { "variable": "settings", "path": ["items", "length"], "operator": "equals", "value": 1 }
+      ],
+      "passed": true
+    },
+    {
+      "name": "padded array string index stays missing",
+      "checks": [{ "variable": "settings", "path": ["items", "00"], "operator": "notExists" }],
+      "passed": true
+    },
+    {
+      "name": "empty array path is whole value",
+      "checks": [
+        {
+          "variable": "limit",
+          "path": [],
+          "operator": "equals",
+          "value": 12
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "null path",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "nested.nullable",
+          "operator": "isNull"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "null getter",
+      "checks": [
+        {
+          "variable": "nil",
+          "operator": "isNull"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "null exists",
+      "checks": [
+        {
+          "variable": "nil",
+          "operator": "exists"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "missing nested path",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "noSuch",
+          "operator": "notExists"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "missing is not null",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "noSuch",
+          "operator": "isNull"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "missing notNull is false",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "noSuch",
+          "operator": "notNull"
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "missing notEquals is false",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "noSuch",
+          "operator": "notEquals",
+          "value": 3
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "missing right operand false",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "notEquals",
+          "compareTo": {
+            "variable": "settings",
+            "path": "noSuch"
+          }
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "boolean literal",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "active",
+          "operator": "equals",
+          "value": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "contains",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "contains",
+          "value": "world"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "notContains",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "notContains",
+          "value": "absent"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "startsWith",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "startsWith",
+          "value": "Hello"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "endsWith",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "endsWith",
+          "value": "world"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "matches",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "matches",
+          "value": "^Hello"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "notMatches",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "notMatches",
+          "value": "^Goodbye"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "regex flags",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "matches",
+          "value": "^hello",
+          "regexFlags": "i"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "regex from variable",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "matches",
+          "compareTo": {
+            "variable": "pattern"
+          }
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "semverEquals",
+      "checks": [
+        {
+          "variable": "version",
+          "operator": "semverEquals",
+          "value": "2.3.1"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "semverNotEquals",
+      "checks": [
+        {
+          "variable": "version",
+          "operator": "semverNotEquals",
+          "value": "2.3.2"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "semverGreaterThan",
+      "checks": [
+        {
+          "variable": "version",
+          "operator": "semverGreaterThan",
+          "value": "2.3.0"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "semverGreaterThanOrEquals",
+      "checks": [
+        {
+          "variable": "version",
+          "operator": "semverGreaterThanOrEquals",
+          "value": "2.3.1"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "semverLessThan",
+      "checks": [
+        {
+          "variable": "version",
+          "operator": "semverLessThan",
+          "value": "3.0.0"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "semverLessThanOrEquals",
+      "checks": [
+        {
+          "variable": "version",
+          "operator": "semverLessThanOrEquals",
+          "value": "2.3.1"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "before",
+      "checks": [
+        {
+          "variable": "timestamp",
+          "operator": "before",
+          "value": "2026-09-14T00:00:00Z"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "after",
+      "checks": [
+        {
+          "variable": "timestamp",
+          "operator": "after",
+          "value": "2026-09-12T00:00:00Z"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "includes",
+      "checks": [
+        {
+          "variable": "regions",
+          "operator": "includes",
+          "value": "nl"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "notIncludes",
+      "checks": [
+        {
+          "variable": "regions",
+          "operator": "notIncludes",
+          "value": "fr"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "array reference membership",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": ["regions", 0],
+          "operator": "in",
+          "compareTo": {
+            "variable": "regions"
+          }
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "and group",
+      "checks": [
+        {
+          "and": [
+            {
+              "variable": "limit",
+              "operator": "greaterThan",
+              "value": 5
+            },
+            {
+              "variable": "limit",
+              "operator": "lessThan",
+              "value": 20
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "or group",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "lessThan",
+              "value": 5
+            },
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "not negates AND",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "limit",
+              "operator": "greaterThan",
+              "value": 5
+            },
+            {
+              "variable": "limit",
+              "operator": "lessThan",
+              "value": 10
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "not all true fails",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "limit",
+              "operator": "greaterThan",
+              "value": 5
+            },
+            {
+              "variable": "limit",
+              "operator": "lessThan",
+              "value": 20
+            }
+          ]
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "not of or none match",
+      "checks": [
+        {
+          "not": [
+            {
+              "or": [
+                {
+                  "variable": "limit",
+                  "operator": "lessThan",
+                  "value": 5
+                },
+                {
+                  "variable": "limit",
+                  "operator": "greaterThan",
+                  "value": 20
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "outer array AND",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "equals",
+          "value": 12
+        },
+        {
+          "variable": "limit",
+          "operator": "lessThan",
+          "value": 10
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "short circuit skips unresolved ref",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "absent",
+              "operator": "isNull"
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "AND short circuit",
+      "checks": [
+        {
+          "and": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 13
+            },
+            {
+              "variable": "absent",
+              "operator": "isNull"
+            }
+          ]
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "missing global is error",
+      "checks": [
+        {
+          "variable": "absent",
+          "operator": "isNull"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "missing feature variable is error",
+      "checks": [
+        {
+          "feature": "checkout",
+          "variable": "absent",
+          "operator": "isNull"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "unresolved ref cannot invert",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "absent",
+              "operator": "isNull"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "numeric type error cannot invert",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "limit",
+              "operator": "greaterThan",
+              "compareTo": {
+                "variable": "label"
+              }
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "OR cannot hide error",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "greaterThan",
+              "compareTo": {
+                "variable": "label"
+              }
+            },
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "null numeric error",
+      "checks": [
+        {
+          "variable": "nil",
+          "operator": "greaterThan",
+          "value": 1
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "structured equality error",
+      "checks": [
+        {
+          "variable": "settings",
+          "operator": "equals",
+          "compareTo": {
+            "variable": "settings"
+          }
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "regex reference error",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "matches",
+          "compareTo": {
+            "variable": "badPattern"
+          }
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty checks",
+      "checks": [],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "empty group",
+      "checks": [
+        {
+          "not": []
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "mixed group",
+      "checks": [
+        {
+          "and": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            }
+          ],
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "scenario needs variable",
+      "checks": [
+        {
+          "operator": "equals",
+          "value": 12
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "feature reference needs variable",
+      "checks": [
+        {
+          "feature": "checkout",
+          "operator": "equals",
+          "value": 12
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "unsafe path",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "__proto__.x",
+          "operator": "exists"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "wildcard path",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": "items.*.limit",
+          "operator": "exists"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "negative path",
+      "checks": [
+        {
+          "variable": "settings",
+          "path": ["items", -1],
+          "operator": "exists"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "both operands",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "equals",
+          "value": 12,
+          "compareTo": {
+            "variable": "limit"
+          }
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "neither operand",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "equals"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "unary operand",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "exists",
+          "value": 12
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "invalid operator",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "futureOperator",
+          "value": 12
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "unknown property",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "equals",
+          "value": 12,
+          "wat": true
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "bad literal regex",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "matches",
+          "value": "["
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "lookahead not portable",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "matches",
+          "value": "(?=Hello)"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "invalid flags",
+      "checks": [
+        {
+          "variable": "label",
+          "operator": "matches",
+          "value": "Hello",
+          "regexFlags": "u"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "flags nonregex",
+      "checks": [
+        {
+          "variable": "limit",
+          "operator": "equals",
+          "value": 12,
+          "regexFlags": "i"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "date check truncates 4 digits",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "millisecondTimestamp",
+              "operator": "before",
+              "value": "2026-09-13T12:00:00.1234Z"
+            }
+          ]
+        },
+        {
+          "not": [
+            {
+              "variable": "millisecondTimestamp",
+              "operator": "after",
+              "value": "2026-09-13T12:00:00.1234Z"
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "date check truncates 6 digits",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "millisecondTimestamp",
+              "operator": "before",
+              "value": "2026-09-13T12:00:00.123456Z"
+            }
+          ]
+        },
+        {
+          "not": [
+            {
+              "variable": "millisecondTimestamp",
+              "operator": "after",
+              "value": "2026-09-13T12:00:00.123456Z"
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "date check truncates 7 digits",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "millisecondTimestamp",
+              "operator": "before",
+              "value": "2026-09-13T12:00:00.1234567Z"
+            }
+          ]
+        },
+        {
+          "not": [
+            {
+              "variable": "millisecondTimestamp",
+              "operator": "after",
+              "value": "2026-09-13T12:00:00.1234567Z"
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "date check truncates 9 digits",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "millisecondTimestamp",
+              "operator": "before",
+              "value": "2026-09-13T12:00:00.123456789Z"
+            }
+          ]
+        },
+        {
+          "not": [
+            {
+              "variable": "millisecondTimestamp",
+              "operator": "after",
+              "value": "2026-09-13T12:00:00.123456789Z"
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "date check truncates resolved nanoseconds",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "preciseTimestamp",
+              "operator": "after",
+              "compareTo": {
+                "variable": "millisecondTimestamp"
+              }
+            }
+          ]
+        },
+        {
+          "variable": "preciseTimestamp",
+          "operator": "before",
+          "value": "2026-09-13T12:00:00.124Z"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "portable leap day",
+      "checks": [
+        {
+          "variable": "leapTimestamp",
+          "operator": "before",
+          "value": "2024-03-01T00:00:00Z"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "timezone equivalent instants",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "timestamp",
+              "operator": "before",
+              "compareTo": {
+                "variable": "equivalentTimestamp"
+              }
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "portable milliseconds",
+      "checks": [
+        {
+          "variable": "millisecondTimestamp",
+          "operator": "after",
+          "value": "2026-09-13T12:00:00.122Z"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "minimum portable UTC instant",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "timestamp",
+              "operator": "before",
+              "value": "0001-01-01T00:00:00Z"
+            }
+          ]
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "maximum portable UTC instant",
+      "checks": [
+        {
+          "variable": "timestamp",
+          "operator": "before",
+          "value": "9999-12-31T23:59:59.999Z"
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "invalid calendar literal in skipped OR",
+      "checks": [
+        {
+          "or": [
+            {
+              "variable": "limit",
+              "operator": "equals",
+              "value": 12
+            },
+            {
+              "variable": "timestamp",
+              "operator": "before",
+              "value": "2026-02-30T12:00:00Z"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "invalid resolved calendar cannot invert",
+      "checks": [
+        {
+          "not": [
+            {
+              "variable": "invalidCalendarTimestamp",
+              "operator": "before",
+              "value": "2026-03-01T00:00:00Z"
+            }
+          ]
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "24 hour timestamp is invalid",
+      "checks": [
+        {
+          "variable": "timestamp",
+          "operator": "before",
+          "value": "2026-09-13T24:00:00Z"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "leap second timestamp is invalid",
+      "checks": [
+        {
+          "variable": "timestamp",
+          "operator": "before",
+          "value": "2026-09-13T23:59:60Z"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "year zero timestamp is invalid",
+      "checks": [
+        {
+          "variable": "timestamp",
+          "operator": "after",
+          "value": "0000-12-31T23:59:59Z"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "resolved excessive fractional precision is invalid",
+      "checks": [
+        {
+          "variable": "timestamp",
+          "operator": "before",
+          "compareTo": {
+            "variable": "invalidFractionTimestamp"
+          }
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "resolved excessive offset is invalid",
+      "checks": [
+        {
+          "variable": "invalidOffsetTimestamp",
+          "operator": "before",
+          "value": "2026-09-14T00:00:00Z"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "UTC instant below year one is invalid",
+      "checks": [
+        {
+          "variable": "timestamp",
+          "operator": "after",
+          "value": "0001-01-01T00:00:00+00:01"
+        }
+      ],
+      "passed": false,
+      "error": true
+    },
+    {
+      "name": "UTC instant above year 9999 is invalid",
+      "checks": [
+        {
+          "variable": "timestamp",
+          "operator": "before",
+          "value": "9999-12-31T23:59:59.999-00:01"
+        }
+      ],
+      "passed": false,
+      "error": true
+    }
+  ]
+}

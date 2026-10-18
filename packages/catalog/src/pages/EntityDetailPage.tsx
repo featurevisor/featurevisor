@@ -1,42 +1,35 @@
 import * as React from "react";
-import { Link, Navigate, Outlet, useOutletContext, useParams } from "react-router-dom";
+import { Link, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 
-import { fetchEntityDetail, fetchHistoryPage } from "../api";
-import { decodeRouteSegment, entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
-import type {
-  CatalogEntityType,
-  DevEditor,
-  EntityDetail,
-  EntityPath,
-  HistoryPage as HistoryPageData,
-} from "../types";
-import { useCatalog } from "../context/CatalogContext";
+import { CatalogNotFoundError, fetchEntityDetail, fetchIndex, peekEntityDetail } from "../api";
 import {
-  Badge,
-  EmptyState,
-  EntityKey,
-  DescriptionField,
-  OverviewChip,
-  OverviewChipLink,
-  OverviewMetaPanel,
-  OverviewMetaRow,
-  OverviewSection,
-  MarkdownContent,
-  PageHeader,
-  Tabs,
-} from "../components/ui";
-import { ConditionTree, GroupSegmentTree } from "../components/trees";
-import {
-  FeatureVariablesList,
-  SchemaPropertiesOverview,
-  SchemaTable,
-  VariableValueView,
-  hasSchemaTableRows,
-  usesSchemaStructureTable,
-  type SchemaLike,
-} from "../components/variables";
-import { FeatureVariationsList } from "../components/variations";
-import { EntityTests } from "../components/tests";
+  decodeRouteSegment,
+  entityTypeToPath,
+  entityLabels,
+  entityPathToType,
+  getEntityListRoute,
+  getEntityRoute,
+} from "../entityTypes";
+import type { CatalogEntityType, EntityDetail, EntityPath } from "../types";
+import { EmptyState, OverviewChipLink, PageHeader, PageSkeleton, Tabs } from "../components/ui";
+import { DeprecatedDependencies, LifecycleBanner } from "../components/insights";
+import { useEntityDependencies } from "../components/dependencies";
+import { useDocumentTitle } from "../useDocumentTitle";
+import { recordRecentEntity } from "../recentEntities";
+import { EditLink } from "../components/editLink";
+import { countItems } from "./entityDetail/shared";
+import { countUsage } from "./entityDetail/UsageTab";
+
+// Tabs live in entityDetail/. The router and tests import them from this page.
+export { useEntityDetail } from "./entityDetail/shared";
+export { OverviewTab } from "./entityDetail/OverviewTab";
+export { FeatureRulesTab, FeatureForceTab } from "./entityDetail/RulesTab";
+export { VariableOverridesTab } from "./entityDetail/OverridesTab";
+export { FeatureVariationsTab } from "./entityDetail/VariationsTab";
+export { getVariableSetters, FeatureVariablesTab } from "./entityDetail/VariablesTab";
+export { UsageTab } from "./entityDetail/UsageTab";
+export { TestsTab } from "./entityDetail/TestsTab";
+export { HistoryTab } from "./entityDetail/HistoryTab";
 
 function isEntityPath(value: string | undefined): value is EntityPath {
   return (
@@ -44,40 +37,9 @@ function isEntityPath(value: string | undefined): value is EntityPath {
     value === "segments" ||
     value === "attributes" ||
     value === "targets" ||
-    value === "groups" ||
     value === "schemas" ||
-    value === "variables"
-  );
-}
-
-function slugifyFragment(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function RulePermalink(props: { targetId: string; label?: string }) {
-  return (
-    <a
-      href={`#${props.targetId}`}
-      aria-label={props.label || "Link to this rule"}
-      className="inline-flex rounded p-1 text-muted opacity-0 transition-opacity hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary group-hover:opacity-100"
-    >
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      >
-        <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4" />
-        <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 1 0 7.07 7.07L13 20" />
-      </svg>
-    </a>
+    value === "variables" ||
+    value === "tests"
   );
 }
 
@@ -162,9 +124,9 @@ function CopyEntityKeyButton(props: { entityKey: string }) {
           "hover:border-border hover:bg-elevated hover:text-text",
           "focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary",
           status === "copied"
-            ? "border-green-200 bg-green-50 text-green-600 !opacity-100"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-700 !opacity-100"
             : status === "error"
-              ? "border-red-200 bg-red-50 text-red-600 !opacity-100"
+              ? "border-rose-200 bg-rose-50 text-rose-700 !opacity-100"
               : "border-border/70 bg-surface",
         ].join(" ")}
       >
@@ -204,264 +166,177 @@ function CopyEntityKeyButton(props: { entityKey: string }) {
   );
 }
 
-function useScrollToHash(dependencies: React.DependencyList) {
+function getKeySuggestions(keys: string[], wanted: string) {
+  const needle = wanted.toLowerCase();
+
+  return keys
+    .map((key) => {
+      const candidate = key.toLowerCase();
+      let score = 0;
+      if (candidate.includes(needle) || needle.includes(candidate)) score += 3;
+      let prefix = 0;
+      while (
+        prefix < Math.min(candidate.length, needle.length) &&
+        candidate[prefix] === needle[prefix]
+      )
+        prefix += 1;
+      score += Math.min(prefix, 6) / 2;
+      return { key, score };
+    })
+    .filter((item) => item.score >= 1.5)
+    .sort((left, right) => right.score - left.score || left.key.localeCompare(right.key))
+    .slice(0, 5)
+    .map((item) => item.key);
+}
+
+const ENTITY_TABS = new Set([
+  "variations",
+  "variables",
+  "rules",
+  "force",
+  "overrides",
+  "tests",
+  "usage",
+  "contents",
+  "history",
+]);
+
+/**
+ * Path segments after the entity key that are not a tab. A key pasted with its namespace
+ * written as slashes, such as /tests/scenarios/checkout, arrives this way.
+ */
+export function getExtraKeySegments(pathname: string, entityPath: string, entityKey: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  const keyIndex = segments.findIndex(
+    (segment, index) =>
+      segments[index - 1] === entityPath && decodeRouteSegment(segment) === entityKey,
+  );
+  if (keyIndex === -1) return [];
+  const rest = segments.slice(keyIndex + 1).map(decodeRouteSegment);
+  return rest.length && !ENTITY_TABS.has(rest[0]) ? rest : [];
+}
+
+/** Join extra segments with a slash or a dot, the two namespace characters in use. */
+export function findNamespacedKey(keys: string[], entityKey: string, extra: string[]) {
+  if (!extra.length) return undefined;
+  const candidates = [[entityKey, ...extra].join("/"), [entityKey, ...extra].join(".")];
+  return candidates.find((key) => keys.includes(key));
+}
+
+function EntityNotFound(props: { type: CatalogEntityType; entityKey: string; setKey?: string }) {
+  const [suggestions, setSuggestions] = React.useState<string[]>([]);
+  const [redirect, setRedirect] = React.useState<string>();
+  const label = entityLabels[props.type];
+  const location = useLocation();
+  const extra = getExtraKeySegments(
+    location.pathname,
+    entityTypeToPath[props.type],
+    props.entityKey,
+  );
+  const fullKey = [props.entityKey, ...extra].join("/");
+
   React.useEffect(() => {
-    if (typeof window === "undefined" || !window.location.hash) {
-      return;
-    }
-
-    const targetId = decodeURIComponent(window.location.hash.slice(1));
-
-    if (!targetId) {
-      return;
-    }
-
-    const frame = window.requestAnimationFrame(() => {
-      const targetElement = document.getElementById(targetId);
-
-      if (!targetElement) {
-        return;
-      }
-
-      targetElement.scrollIntoView({ block: "start" });
-    });
-
+    let active = true;
+    fetchIndex(props.setKey)
+      .then((index) => {
+        const keys = (index.entities[props.type] || []).map((entity) => entity.key);
+        const match = findNamespacedKey(keys, props.entityKey, extra);
+        if (!active) return;
+        if (match) setRedirect(getEntityRoute(props.type, match, props.setKey));
+        else setSuggestions(getKeySuggestions(keys, fullKey));
+      })
+      .catch(() => undefined);
     return () => {
-      window.cancelAnimationFrame(frame);
+      active = false;
     };
-  }, dependencies);
-}
+  }, [props.type, props.entityKey, props.setKey, fullKey, extra.length]);
 
-export function useEntityDetail() {
-  return useOutletContext<{ detail: EntityDetail; setKey?: string }>();
-}
+  if (redirect) return <Navigate to={redirect} replace />;
 
-function formatScalar(value: unknown) {
-  if (value === undefined || value === null || value === "") {
-    return <span className="text-muted">n/a</span>;
-  }
-
-  if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
-  }
-
-  return String(value);
-}
-
-function FormattedValue(props: { value: unknown }) {
-  const value = props.value;
-
-  if (value === undefined || value === null || value === "") {
-    return <span className="text-muted">n/a</span>;
-  }
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return <span className="text-muted">empty</span>;
-    }
-
-    return (
-      <div className="flex flex-wrap gap-2">
-        {value.map((item, index) => (
-          <span key={index} className="rounded border border-border bg-elevated px-2 py-1 text-xs">
-            <FormattedValue value={item} />
-          </span>
-        ))}
-      </div>
-    );
-  }
-
-  if (typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>);
-
-    if (entries.length === 0) {
-      return <span className="text-muted">empty</span>;
-    }
-
-    return (
-      <dl className="space-y-2">
-        {entries.map(([key, item]) => (
-          <div
-            key={key}
-            className="grid gap-1 rounded border border-border bg-elevated p-2 sm:grid-cols-3"
-          >
-            <dt className="font-mono text-xs font-semibold text-muted">{key}</dt>
-            <dd className="min-w-0 sm:col-span-2">
-              <FormattedValue value={item} />
-            </dd>
+  return (
+    <div className="px-6 py-12 text-center">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">Not found</p>
+      <h1 className="mt-2 text-xl font-semibold text-text">
+        {label.singular} <span className="font-mono">{fullKey}</span> does not exist
+      </h1>
+      <p className="mt-2 text-sm text-muted">
+        It may have been renamed or removed, or it may belong to another set.
+      </p>
+      {suggestions.length > 0 && (
+        <div className="mt-6">
+          <p className="text-sm text-muted">Did you mean:</p>
+          <div className="mt-2 flex flex-wrap justify-center gap-2">
+            {suggestions.map((key) => (
+              <OverviewChipLink key={key} to={getEntityRoute(props.type, key, props.setKey)}>
+                {key}
+              </OverviewChipLink>
+            ))}
           </div>
-        ))}
-      </dl>
-    );
-  }
-
-  return <span>{formatScalar(value)}</span>;
-}
-
-function CaretIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" className="h-3 w-3">
-      <path
-        d="M3.25 4.5 6 7.25 8.75 4.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function EditorIcon(props: { icon: DevEditor["icon"] }) {
-  if (props.icon === "cursor") {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-        <path d="M4 3l16 9-7 2-3 7L4 3Z" fill="#111827" />
-        <path d="M8.2 8.6 15 12.6" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" />
-        <path d="M10.2 12.9 12.6 14.3 10.5 18.8Z" fill="#ffffff" opacity=".92" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-      <path
-        d="M17.2 3.2 9.4 10 5.1 6.7 3 7.8v8.4l2.1 1.1 4.3-3.3 7.8 6.8L21 19V5l-3.8-1.8Z"
-        fill="#007ACC"
-      />
-      <path d="M17.2 8.2v7.6L12.5 12l4.7-3.8Z" fill="#ffffff" opacity=".35" />
-    </svg>
-  );
-}
-
-function EditLink(props: { sourcePath?: string; editLinks?: EntityDetail["editLinks"] }) {
-  const { manifest } = useCatalog();
-  const [open, setOpen] = React.useState(false);
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
-
-  React.useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  const sourceHref =
-    props.sourcePath && manifest.links?.source
-      ? manifest.links.source.replace("{{path}}", props.sourcePath)
-      : undefined;
-  const editors = (manifest.dev?.editors || []).filter((editor) => props.editLinks?.[editor.id]);
-  const hasEditorLinks = editors.length > 0;
-
-  if (!sourceHref && !hasEditorLinks) {
-    return null;
-  }
-
-  const buttonClass =
-    "rounded border border-border bg-elevated px-4 py-2 text-sm font-bold text-muted shadow-sm hover:bg-background";
-  const splitButtonClass =
-    "border border-border bg-elevated px-4 py-2 text-sm font-bold text-muted shadow-sm hover:bg-background";
-  const menuButtonClass =
-    "border border-border bg-elevated py-2 text-sm font-bold text-muted shadow-sm hover:bg-background";
-
-  const dropdown = hasEditorLinks ? (
-    <div
-      role="menu"
-      className="absolute right-0 top-full z-20 mt-px min-w-48 overflow-hidden rounded border border-border bg-surface py-1 shadow-lg"
-    >
-      {editors.map((editor) => (
-        <a
-          key={editor.id}
-          role="menuitem"
-          href={props.editLinks?.[editor.id]}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-muted hover:bg-elevated hover:text-text"
-          onClick={() => setOpen(false)}
-        >
-          <EditorIcon icon={editor.icon} />
-          <span>Open in {editor.label}</span>
-        </a>
-      ))}
-    </div>
-  ) : null;
-
-  if (!hasEditorLinks) {
-    return sourceHref ? (
-      <a href={sourceHref} target="_blank" rel="noreferrer" className={buttonClass}>
-        Edit
-      </a>
-    ) : null;
-  }
-
-  return (
-    <div ref={containerRef} className="relative inline-flex">
-      {sourceHref ? (
-        <a
-          href={sourceHref}
-          target="_blank"
-          rel="noreferrer"
-          className={`${splitButtonClass} rounded-l`}
-        >
-          Edit
-        </a>
-      ) : (
-        <button
-          type="button"
-          className={`${splitButtonClass} rounded-l`}
-          onClick={() => setOpen((current) => !current)}
-        >
-          Edit
-        </button>
+        </div>
       )}
-      <button
-        type="button"
-        className={`${menuButtonClass} -ml-px rounded-r px-2`}
-        aria-label="Open edit options"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+      <Link
+        to={getEntityListRoute(props.type, props.setKey)}
+        className="mt-6 inline-flex text-sm font-medium text-primary hover:underline"
       >
-        <CaretIcon />
-      </button>
-      {open ? dropdown : null}
+        Browse all {label.plural.toLowerCase()}
+      </Link>
     </div>
   );
 }
 
+/**
+ * Remount per entity so tabs never render with the previous entity's detail. Otherwise a
+ * link from a segment straight to a feature's rules would briefly see a segment, and the
+ * feature only tabs would redirect to the overview before the new detail loads.
+ */
 export function EntityDetailPage() {
   const { entityPath, entityKey, setKey } = useParams();
+
+  return (
+    <EntityDetailView key={[setKey || "", entityPath || "", entityKey || ""].join("\u0000")} />
+  );
+}
+
+function EntityDetailView() {
+  const { entityPath, entityKey, setKey: encodedSetKey } = useParams();
+  const setKey = encodedSetKey ? decodeRouteSegment(encodedSetKey) : undefined;
   const decodedEntityKey = entityKey ? decodeRouteSegment(entityKey) : undefined;
-  const [detail, setDetail] = React.useState<EntityDetail | null>(null);
+  // This view remounts per entity, so the cached detail (if any) is always the right one.
+  const [detail, setDetail] = React.useState<EntityDetail | null>(() =>
+    isEntityPath(entityPath) && decodedEntityKey
+      ? (peekEntityDetail(entityPathToType[entityPath], decodedEntityKey, setKey) ?? null)
+      : null,
+  );
   const [error, setError] = React.useState<string | null>(null);
+  const [notFound, setNotFound] = React.useState(false);
+  const dependencies = useEntityDependencies(detail, setKey);
+  useDocumentTitle(
+    notFound ? "Not found" : decodedEntityKey,
+    isEntityPath(entityPath) && entityLabels[entityPathToType[entityPath]].plural,
+    setKey,
+  );
+  React.useEffect(() => {
+    if (detail) recordRecentEntity({ type: detail.type, key: detail.key, set: setKey });
+  }, [detail, setKey]);
 
   React.useEffect(() => {
-    setDetail(null);
-    setError(null);
-
     if (!isEntityPath(entityPath) || !decodedEntityKey) {
       return;
     }
 
+    let active = true;
     fetchEntityDetail(entityPathToType[entityPath], decodedEntityKey, setKey)
-      .then(setDetail)
-      .catch((err: Error) => setError(err.message));
+      .then((value) => {
+        if (active) setDetail(value);
+      })
+      .catch((err: Error) => {
+        if (!active) return;
+        if (err instanceof CatalogNotFoundError) setNotFound(true);
+        else setError(err.message);
+      });
+    return () => {
+      active = false;
+    };
   }, [entityPath, decodedEntityKey, setKey]);
 
   if (!isEntityPath(entityPath) || !decodedEntityKey) {
@@ -470,29 +345,57 @@ export function EntityDetailPage() {
 
   const type = entityPathToType[entityPath];
 
+  if (notFound) {
+    return <EntityNotFound type={type} entityKey={decodedEntityKey} setKey={setKey} />;
+  }
+
   if (error) {
     return <EmptyState title="Unable to load entity" description={error} />;
   }
 
   if (!detail) {
-    return <div className="text-muted">Loading {entityLabels[type].singular.toLowerCase()}...</div>;
+    return (
+      <PageSkeleton
+        label={`Loading ${entityLabels[type].singular.toLowerCase()}`}
+        variant="detail"
+      />
+    );
   }
 
+  // Tabs with nothing to show are disabled and marked "(0)". History is left enabled,
+  // since its entries are only known once they load.
+  const entity = detail.entity as Record<string, unknown>;
   const tabs = [
     { to: ".", label: "Overview" },
     ...(type === "feature"
       ? [
-          { to: "variations", label: "Variations" },
-          { to: "variables", label: "Variables" },
-          { to: "rules", label: "Rules" },
-          { to: "force", label: "Force" },
+          { to: "variations", label: "Variations", count: countItems(entity.variations) },
+          {
+            to: "variables",
+            label: "Variables",
+            count: Object.keys((entity.variablesSchema as object) || {}).length,
+          },
+          { to: "rules", label: "Rules", count: countItems(entity.rules) },
+          { to: "force", label: "Force", count: countItems(entity.force) },
         ]
       : []),
-    ...(type === "variable" ? [{ to: "overrides", label: "Overrides" }] : []),
-    ...(type === "feature" || type === "segment" || type === "variable"
-      ? [{ to: "tests", label: "Tests" }]
+    ...(type === "variable"
+      ? [{ to: "overrides", label: "Overrides", count: countItems(entity.overrides) }]
       : []),
-    ...(type !== "test" ? [{ to: "usage", label: "Usage" }] : []),
+    ...(type === "feature" || type === "segment" || type === "variable"
+      ? [
+          {
+            to: "tests",
+            label: "Tests",
+            count: (detail.tests?.length || 0) + (detail.relatedScenarios?.length || 0),
+          },
+        ]
+      : []),
+    ...(type === "target"
+      ? [{ to: "contents", label: "Contents", count: countUsage(detail, dependencies) }]
+      : type !== "test"
+        ? [{ to: "usage", label: "Usage", count: countUsage(detail, dependencies) }]
+        : []),
     { to: "history", label: "History" },
   ];
 
@@ -501,955 +404,27 @@ export function EntityDetailPage() {
       <PageHeader
         title={detail.key}
         titleAction={<CopyEntityKeyButton entityKey={detail.key} />}
-        description={entityLabels[type].singular}
+        description={
+          type === "test" && "scenario" in detail.entity ? "Scenario" : entityLabels[type].singular
+        }
         actions={<EditLink sourcePath={detail.sourcePath} editLinks={detail.editLinks} />}
       />
+      <LifecycleBanner
+        type={type}
+        entity={detail.entity as Record<string, unknown>}
+        usage={{
+          direct: detail.usedBy?.length || 0,
+          indirect: dependencies.usedIndirectlyBy.length,
+        }}
+      />
+      <DeprecatedDependencies detail={detail} setKey={setKey} />
       <Tabs items={tabs} />
       <div className="px-6 py-6">
-        <Outlet context={{ detail, setKey }} />
+        {/* Tabs load on demand; keep the header and tab bar in place while one loads. */}
+        <React.Suspense fallback={<PageSkeleton label="Loading tab" variant="timeline" />}>
+          <Outlet context={{ detail, setKey }} />
+        </React.Suspense>
       </div>
-    </div>
-  );
-}
-
-export function OverviewTab() {
-  const { detail, setKey } = useEntityDetail();
-  const entity = detail.entity as Record<string, unknown>;
-  const schema = entity as SchemaLike;
-  const hasStructureTable =
-    (detail.type === "schema" && usesSchemaStructureTable(schema) && hasSchemaTableRows(schema)) ||
-    ((detail.type === "attribute" || detail.type === "variable") && hasSchemaTableRows(schema));
-
-  return (
-    <div className="space-y-6">
-      <EntityOverviewMeta detail={detail} entity={entity} setKey={setKey} />
-
-      {detail.type === "segment" && (
-        <OverviewSection title="Conditions">
-          <ConditionTree conditions={entity.conditions as any} />
-        </OverviewSection>
-      )}
-
-      {detail.type === "schema" && !usesSchemaStructureTable(entity as SchemaLike) && (
-        <SchemaPropertiesOverview schema={entity as SchemaLike} setKey={setKey} />
-      )}
-
-      {detail.type === "schema" &&
-        usesSchemaStructureTable(entity as SchemaLike) &&
-        hasSchemaTableRows(entity as SchemaLike) && (
-          <OverviewSection title="Structure">
-            <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
-          </OverviewSection>
-        )}
-
-      {detail.type === "attribute" && hasSchemaTableRows(entity as SchemaLike) && (
-        <OverviewSection title="Structure">
-          <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
-        </OverviewSection>
-      )}
-
-      {detail.type === "variable" && (
-        <>
-          {hasSchemaTableRows(entity as SchemaLike) && (
-            <OverviewSection title="Structure">
-              <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
-            </OverviewSection>
-          )}
-          <OverviewSection title="Values">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-border bg-elevated p-4">
-                <h3 className="mb-2 text-sm font-semibold text-muted">Default</h3>
-                <VariableValueView value={entity.defaultValue} />
-              </div>
-              {"disabledValue" in entity && (
-                <div className="rounded-xl border border-border bg-elevated p-4">
-                  <h3 className="mb-2 text-sm font-semibold text-muted">Disabled</h3>
-                  <VariableValueView value={entity.disabledValue} />
-                </div>
-              )}
-            </div>
-          </OverviewSection>
-        </>
-      )}
-
-      <DescriptionField value={entity.description} showTopDivider={!hasStructureTable} />
-    </div>
-  );
-}
-
-function EntityStatusBadges(props: { entity: Record<string, unknown> }) {
-  const hasBadges =
-    props.entity.archived === true ||
-    props.entity.deprecated === true ||
-    props.entity.promotable === false;
-
-  if (!hasBadges) {
-    return null;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {props.entity.archived === true && <Badge tone="danger">archived</Badge>}
-      {props.entity.deprecated === true && <Badge tone="warning">deprecated</Badge>}
-      {props.entity.promotable === false && <Badge>not promotable</Badge>}
-    </div>
-  );
-}
-
-function LinkedEntityChips(props: { type: CatalogEntityType; values?: string[]; setKey?: string }) {
-  if (!props.values?.length) {
-    return null;
-  }
-
-  return (
-    <>
-      {props.values.map((value) => (
-        <OverviewChipLink key={value} to={getEntityRoute(props.type, value, props.setKey)}>
-          {value}
-        </OverviewChipLink>
-      ))}
-    </>
-  );
-}
-
-function hasBucketBy(value: unknown) {
-  if (value === undefined || value === null || value === "") {
-    return false;
-  }
-
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-
-  return true;
-}
-
-function getAttributeEntityKey(attributePath: string) {
-  return attributePath.split(".")[0];
-}
-
-function BucketByDisplay(props: { value: unknown; setKey?: string }) {
-  const value = props.value;
-
-  if (!hasBucketBy(value)) {
-    return null;
-  }
-
-  if (typeof value === "string") {
-    return (
-      <OverviewChipLink
-        to={getEntityRoute("attribute", getAttributeEntityKey(value), props.setKey)}
-      >
-        <EntityKey value={value} className="font-mono" />
-      </OverviewChipLink>
-    );
-  }
-
-  if (Array.isArray(value)) {
-    return (
-      <>
-        {value.map((item, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && <span className="text-xs text-faint">and</span>}
-            <BucketByDisplay setKey={props.setKey} value={item} />
-          </React.Fragment>
-        ))}
-      </>
-    );
-  }
-
-  if (typeof value === "object" && value !== null && "or" in value) {
-    const orValue = (value as { or: unknown }).or;
-    const orItems = Array.isArray(orValue) ? orValue : [orValue];
-
-    return (
-      <>
-        {orItems.map((item, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && <span className="text-xs text-faint">or</span>}
-            <BucketByDisplay setKey={props.setKey} value={item} />
-          </React.Fragment>
-        ))}
-      </>
-    );
-  }
-
-  return (
-    <OverviewChip>
-      <span className="font-mono text-xs">
-        <FormattedValue value={value} />
-      </span>
-    </OverviewChip>
-  );
-}
-
-function asStringArray(value: unknown) {
-  if (!value) {
-    return undefined;
-  }
-
-  if (Array.isArray(value)) {
-    const items = value.map(String).filter(Boolean);
-    return items.length > 0 ? items : undefined;
-  }
-
-  if (typeof value === "string") {
-    return [value];
-  }
-
-  return undefined;
-}
-
-function asRequiredFeatures(
-  value: unknown,
-): Array<{ feature: string; enabled?: boolean; variation?: string }> {
-  const items = typeof value === "string" ? [value] : Array.isArray(value) ? value : [];
-  return items.flatMap((item) => {
-    if (typeof item === "string") return [{ feature: item }];
-    if (!item || typeof item !== "object") return [];
-    const requirement = item as {
-      feature?: unknown;
-      key?: unknown;
-      enabled?: unknown;
-      variation?: unknown;
-    };
-    const feature = requirement.feature || requirement.key;
-    return typeof feature === "string"
-      ? [
-          {
-            feature,
-            enabled: typeof requirement.enabled === "boolean" ? requirement.enabled : undefined,
-            variation:
-              typeof requirement.variation === "string" ? requirement.variation : undefined,
-          },
-        ]
-      : [];
-  });
-}
-
-function RequiredFeatureChips(props: { value: unknown; setKey?: string }) {
-  const requirements = asRequiredFeatures(props.value);
-
-  return (
-    <>
-      {requirements.map((requirement) => (
-        <OverviewChipLink
-          key={`${requirement.feature}:${requirement.enabled}:${requirement.variation}`}
-          to={getEntityRoute("feature", requirement.feature, props.setKey)}
-        >
-          {requirement.feature}
-          {requirement.enabled === false ? " (disabled)" : ""}
-          {requirement.variation ? ` (${requirement.variation})` : ""}
-        </OverviewChipLink>
-      ))}
-    </>
-  );
-}
-
-function EntityOverviewMeta(props: {
-  detail: EntityDetail;
-  entity: Record<string, unknown>;
-  setKey?: string;
-}) {
-  const { detail, entity, setKey } = props;
-  const tags = asStringArray(entity.tags);
-  const targets = detail.relationships?.targets;
-  const required = asRequiredFeatures(entity.requiredFeatures ?? entity.required);
-  const hasStatus =
-    entity.archived === true || entity.deprecated === true || entity.promotable === false;
-
-  if (detail.type === "feature") {
-    const showBucketBy = hasBucketBy(entity.bucketBy);
-    const hasFacts = showBucketBy || Boolean(required?.length);
-    const hasRelations = Boolean(tags?.length) || Boolean(targets?.length);
-
-    if (!hasStatus && !hasFacts && !hasRelations) {
-      return null;
-    }
-
-    return (
-      <OverviewMetaPanel>
-        {hasStatus && (
-          <OverviewMetaRow label="Status">
-            <EntityStatusBadges entity={entity} />
-          </OverviewMetaRow>
-        )}
-        {showBucketBy && (
-          <OverviewMetaRow label="Bucket by">
-            <BucketByDisplay value={entity.bucketBy} setKey={setKey} />
-          </OverviewMetaRow>
-        )}
-        {required?.length ? (
-          <OverviewMetaRow label="Required">
-            <RequiredFeatureChips
-              value={entity.requiredFeatures ?? entity.required}
-              setKey={setKey}
-            />
-          </OverviewMetaRow>
-        ) : null}
-        {tags?.length ? (
-          <OverviewMetaRow label="Tags">
-            {tags.map((tag) => (
-              <OverviewChip key={tag}>{tag}</OverviewChip>
-            ))}
-          </OverviewMetaRow>
-        ) : null}
-        {targets?.length ? (
-          <OverviewMetaRow label="Targets">
-            <LinkedEntityChips type="target" values={targets} setKey={setKey} />
-          </OverviewMetaRow>
-        ) : null}
-      </OverviewMetaPanel>
-    );
-  }
-
-  if (detail.type === "variable") {
-    const hasType =
-      Boolean(entity.type) || (Array.isArray(entity.oneOf) && entity.oneOf.length > 0);
-    const typeLabel = entity.type ? String(entity.type) : "oneOf";
-    const schemaKey = typeof entity.schema === "string" ? entity.schema : undefined;
-    const hasFacts = hasType || Boolean(schemaKey) || Boolean(required.length);
-    const hasRelations = Boolean(tags?.length) || Boolean(targets?.length);
-
-    if (!hasStatus && !hasFacts && !hasRelations) {
-      return null;
-    }
-
-    return (
-      <OverviewMetaPanel>
-        {hasStatus && (
-          <OverviewMetaRow label="Status">
-            <EntityStatusBadges entity={entity} />
-          </OverviewMetaRow>
-        )}
-        {hasType ? (
-          <OverviewMetaRow label="Type">
-            <OverviewChip>{typeLabel}</OverviewChip>
-          </OverviewMetaRow>
-        ) : null}
-        {schemaKey ? (
-          <OverviewMetaRow label="Schema">
-            <OverviewChipLink to={getEntityRoute("schema", schemaKey, setKey)}>
-              {schemaKey}
-            </OverviewChipLink>
-          </OverviewMetaRow>
-        ) : null}
-        {required.length ? (
-          <OverviewMetaRow label="Required">
-            <RequiredFeatureChips
-              value={entity.requiredFeatures ?? entity.required}
-              setKey={setKey}
-            />
-          </OverviewMetaRow>
-        ) : null}
-        {tags?.length ? (
-          <OverviewMetaRow label="Tags">
-            {tags.map((tag) => (
-              <OverviewChip key={tag}>{tag}</OverviewChip>
-            ))}
-          </OverviewMetaRow>
-        ) : null}
-        {targets?.length ? (
-          <OverviewMetaRow label="Targets">
-            <LinkedEntityChips type="target" values={targets} setKey={setKey} />
-          </OverviewMetaRow>
-        ) : null}
-      </OverviewMetaPanel>
-    );
-  }
-
-  if (
-    (detail.type === "attribute" || detail.type === "schema") &&
-    (entity.type || (Array.isArray(entity.oneOf) && entity.oneOf.length > 0))
-  ) {
-    const typeLabel = entity.type ? String(entity.type) : "oneOf";
-
-    return (
-      <OverviewMetaPanel>
-        {hasStatus && (
-          <OverviewMetaRow label="Status">
-            <EntityStatusBadges entity={entity} />
-          </OverviewMetaRow>
-        )}
-        <OverviewMetaRow label="Type">
-          <OverviewChip>{typeLabel}</OverviewChip>
-        </OverviewMetaRow>
-      </OverviewMetaPanel>
-    );
-  }
-
-  if (!hasStatus) {
-    return null;
-  }
-
-  return (
-    <OverviewMetaPanel>
-      <OverviewMetaRow label="Status">
-        <EntityStatusBadges entity={entity} />
-      </OverviewMetaRow>
-    </OverviewMetaPanel>
-  );
-}
-
-function getEnvironmentItems(detail: EntityDetail, tab: "rules" | "force" | "overrides") {
-  const entity = detail.entity as Record<string, any>;
-  const value = entity[tab];
-
-  if (!value || Array.isArray(value)) {
-    return [];
-  }
-
-  return Object.keys(value).sort(sortEnvironmentKeys);
-}
-
-function getEnvironmentSortGroup(value: string) {
-  const normalized = value.toLowerCase();
-
-  if (normalized.startsWith("dev")) {
-    return 0;
-  }
-
-  if (normalized.startsWith("prod")) {
-    return 2;
-  }
-
-  return 1;
-}
-
-function sortEnvironmentKeys(left: string, right: string) {
-  const leftGroup = getEnvironmentSortGroup(left);
-  const rightGroup = getEnvironmentSortGroup(right);
-
-  if (leftGroup !== rightGroup) {
-    return leftGroup - rightGroup;
-  }
-
-  return left.localeCompare(right);
-}
-
-export function FeatureRulesTab() {
-  const { detail, setKey } = useEntityDetail();
-  const { environmentKey } = useParams();
-  const entity = detail.entity as Record<string, any>;
-  const environments = getEnvironmentItems(detail, "rules");
-  const selectedEnvironment = environmentKey || environments[0];
-  const rules = environments.length > 0 ? entity.rules?.[selectedEnvironment] : entity.rules;
-  const expose = environments.length > 0 ? entity.expose?.[selectedEnvironment] : entity.expose;
-
-  if (detail.type !== "feature") return <Navigate to=".." replace />;
-
-  return (
-    <FeatureRows
-      title="Rules"
-      base="rules"
-      environments={environments}
-      selectedEnvironment={selectedEnvironment}
-      rows={rules || []}
-      expose={expose}
-      showConditions={false}
-      setKey={setKey}
-    />
-  );
-}
-
-export function VariableOverridesTab() {
-  const { detail, setKey } = useEntityDetail();
-  const { environmentKey } = useParams();
-  const entity = detail.entity as Record<string, any>;
-  const environments = getEnvironmentItems(detail, "overrides");
-  const selectedEnvironment = environmentKey || environments[0];
-  const rows = environments.length > 0 ? entity.overrides?.[selectedEnvironment] : entity.overrides;
-
-  if (detail.type !== "variable") return <Navigate to=".." replace />;
-
-  return (
-    <VariableOverrideRows
-      environments={environments}
-      selectedEnvironment={selectedEnvironment}
-      rows={Array.isArray(rows) ? rows : []}
-      setKey={setKey}
-    />
-  );
-}
-
-export function FeatureForceTab() {
-  const { detail, setKey } = useEntityDetail();
-  const { environmentKey } = useParams();
-  const entity = detail.entity as Record<string, any>;
-  const environments = getEnvironmentItems(detail, "force");
-  const selectedEnvironment = environmentKey || environments[0];
-  const rows = environments.length > 0 ? entity.force?.[selectedEnvironment] : entity.force;
-
-  if (detail.type !== "feature") return <Navigate to=".." replace />;
-
-  return (
-    <FeatureRows
-      title="Force"
-      emptyTitle="No forced rules found"
-      base="force"
-      environments={environments}
-      selectedEnvironment={selectedEnvironment}
-      rows={rows || []}
-      showConditions
-      setKey={setKey}
-    />
-  );
-}
-
-function EnvironmentPills(props: {
-  base: string;
-  environments: string[];
-  selectedEnvironment?: string;
-}) {
-  if (props.environments.length === 0) {
-    return null;
-  }
-
-  return (
-    <nav className="flex flex-wrap gap-2">
-      {props.environments.map((environment) => (
-        <Link
-          key={environment}
-          to={`../${props.base}/${environment}`}
-          className={[
-            "inline-flex rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-            environment === props.selectedEnvironment
-              ? "border-primary bg-header-active !text-header-text"
-              : "border-pill bg-transparent text-text hover:bg-elevated",
-          ].join(" ")}
-        >
-          {environment}
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
-function FeatureRows(props: {
-  title: string;
-  emptyTitle?: string;
-  base: string;
-  environments: string[];
-  selectedEnvironment?: string;
-  rows: any[];
-  expose?: unknown;
-  showConditions: boolean;
-  setKey?: string;
-}) {
-  useScrollToHash([props.base, props.selectedEnvironment, props.rows.length]);
-
-  if (props.environments.length > 0 && props.selectedEnvironment) {
-    const isKnown = props.environments.includes(props.selectedEnvironment);
-    if (!isKnown) {
-      return <Navigate to={`../${props.base}/${props.environments[0]}`} replace />;
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <EnvironmentPills
-        base={props.base}
-        environments={props.environments}
-        selectedEnvironment={props.selectedEnvironment}
-      />
-
-      {typeof props.expose !== "undefined" && (
-        <div className="rounded border border-border bg-warning-surface p-3 text-sm">
-          <span className="font-semibold">Expose</span>
-          <div className="mt-2">
-            <FormattedValue value={props.expose} />
-          </div>
-        </div>
-      )}
-
-      {props.rows.length === 0 && (
-        <EmptyState title={props.emptyTitle || `No ${props.title.toLowerCase()} found`} />
-      )}
-      <div className="space-y-8">
-        {props.rows.map((row, index) => {
-          const ruleKey = String(row.key || `#${index + 1}`);
-          const ruleId = slugifyFragment(
-            [props.base, props.selectedEnvironment, ruleKey].filter(Boolean).join("-"),
-          );
-
-          return (
-            <section key={row.key || index} className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex min-w-0 items-center justify-between gap-4">
-                  <div className="group flex min-w-0 flex-wrap items-center gap-2">
-                    <h2 id={ruleId} className="font-semibold [overflow-wrap:anywhere]">
-                      <EntityKey value={ruleKey} className="font-semibold" />
-                    </h2>
-                    <RulePermalink targetId={ruleId} />
-                    {row.enabled === false && <Badge tone="danger">disabled</Badge>}
-                    {row.promotable === false && <Badge>not promotable</Badge>}
-                  </div>
-                  {typeof row.percentage === "number" && <RuleProgress value={row.percentage} />}
-                </div>
-                {row.summary && <p className="text-sm text-muted">{row.summary}</p>}
-                {row.description && <MarkdownContent value={row.description} />}
-              </div>
-
-              <div className={`grid gap-4 ${props.showConditions ? "md:grid-cols-2" : ""}`}>
-                <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
-                  <h3 className="text-sm font-semibold text-muted">Segments</h3>
-                  <GroupSegmentTree segments={row.segments} setKey={props.setKey} />
-                </div>
-                {props.showConditions && (
-                  <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
-                    <h3 className="text-sm font-semibold text-muted">Conditions</h3>
-                    <ConditionTree conditions={row.conditions} setKey={props.setKey} />
-                  </div>
-                )}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function RuleProgress(props: { value: number }) {
-  const value = Math.max(0, Math.min(100, props.value));
-
-  return (
-    <div className="flex w-2/5 min-w-0 max-w-sm shrink-0 items-center gap-2">
-      <span className="w-10 shrink-0 text-right text-xs font-semibold text-muted">{value}%</span>
-      <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200">
-        <div className="h-full rounded-full bg-green-500" style={{ width: `${value}%` }} />
-      </div>
-    </div>
-  );
-}
-
-interface GlobalVariableOverrideView {
-  key?: string;
-  description?: string;
-  promotable?: boolean;
-  conditions?: unknown;
-  segments?: unknown;
-  requiredFeatures?: unknown;
-  value?: unknown;
-  mutate?: unknown;
-  overrides?: GlobalVariableOverrideView[];
-}
-
-function VariableOverrideRows(props: {
-  environments: string[];
-  selectedEnvironment?: string;
-  rows: GlobalVariableOverrideView[];
-  setKey?: string;
-}) {
-  const base = "overrides";
-  useScrollToHash([base, props.selectedEnvironment, props.rows.length]);
-
-  if (props.environments.length > 0 && props.selectedEnvironment) {
-    const isKnown = props.environments.includes(props.selectedEnvironment);
-    if (!isKnown) {
-      return <Navigate to={`../${base}/${props.environments[0]}`} replace />;
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <EnvironmentPills
-        base={base}
-        environments={props.environments}
-        selectedEnvironment={props.selectedEnvironment}
-      />
-
-      {props.rows.length === 0 && <EmptyState title="No overrides found" />}
-      <div className="space-y-8">
-        {props.rows.map((row, index) => (
-          <VariableOverrideSection
-            key={row.key || index}
-            override={row}
-            index={index}
-            base={base}
-            selectedEnvironment={props.selectedEnvironment}
-            setKey={props.setKey}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function VariableOverrideSection(props: {
-  override: GlobalVariableOverrideView;
-  index: number;
-  depth?: number;
-  base: string;
-  selectedEnvironment?: string;
-  ancestorKeys?: string[];
-  setKey?: string;
-}) {
-  const { override, index, depth = 0, setKey } = props;
-  const ancestorKeys = props.ancestorKeys || [];
-  const overrideKey = String(override.key || `#${index + 1}`);
-  const keyPath = [...ancestorKeys, overrideKey];
-  const overrideId = slugifyFragment(
-    [props.base, props.selectedEnvironment, ...keyPath].filter(Boolean).join("-"),
-  );
-  const required = asRequiredFeatures(override.requiredFeatures);
-  const hasSegments = typeof override.segments !== "undefined";
-  const hasConditions = typeof override.conditions !== "undefined";
-  const hasRequirements = required.length > 0;
-  const hasMutate = typeof override.mutate !== "undefined";
-  const selectorCount = [hasSegments, hasConditions, hasRequirements].filter(Boolean).length;
-
-  return (
-    <div className={depth > 0 ? "border-l border-border pl-4" : undefined}>
-      <section className="space-y-4">
-        <div className="space-y-3">
-          <div className="group flex min-w-0 flex-wrap items-center gap-2">
-            <h2 id={overrideId} className="font-semibold [overflow-wrap:anywhere]">
-              <EntityKey value={overrideKey} className="font-semibold" />
-            </h2>
-            <RulePermalink targetId={overrideId} label="Link to this override" />
-            {depth > 0 && <Badge>nested</Badge>}
-            {override.promotable === false && <Badge>not promotable</Badge>}
-          </div>
-          {override.description && <MarkdownContent value={override.description} />}
-        </div>
-
-        {selectorCount > 0 && (
-          <div className={`grid gap-4 ${selectorCount > 1 ? "md:grid-cols-2" : ""}`}>
-            {hasSegments && (
-              <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
-                <h3 className="text-sm font-semibold text-muted">Segments</h3>
-                <GroupSegmentTree segments={override.segments as any} setKey={setKey} />
-              </div>
-            )}
-            {hasConditions && (
-              <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
-                <h3 className="text-sm font-semibold text-muted">Conditions</h3>
-                <ConditionTree conditions={override.conditions as any} setKey={setKey} />
-              </div>
-            )}
-            {hasRequirements && (
-              <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
-                <h3 className="text-sm font-semibold text-muted">Required features</h3>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                  <RequiredFeatureChips value={override.requiredFeatures} setKey={setKey} />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-2 rounded-xl border border-border bg-elevated p-4">
-          <h3 className="text-sm font-semibold text-muted">{hasMutate ? "Mutation" : "Value"}</h3>
-          <VariableValueView value={hasMutate ? override.mutate : override.value} />
-        </div>
-      </section>
-
-      {override.overrides?.length ? (
-        <div className="mt-8 space-y-8">
-          {override.overrides.map((child, childIndex) => (
-            <VariableOverrideSection
-              key={child.key || childIndex}
-              override={child}
-              index={childIndex}
-              depth={depth + 1}
-              base={props.base}
-              selectedEnvironment={props.selectedEnvironment}
-              ancestorKeys={keyPath}
-              setKey={setKey}
-            />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-export function FeatureVariationsTab() {
-  const { detail, setKey } = useEntityDetail();
-  const entity = detail.entity as Record<string, any>;
-  const variations = entity.variations || [];
-
-  if (detail.type !== "feature") return <Navigate to=".." replace />;
-
-  if (variations.length === 0) {
-    return <EmptyState title="No variations found" />;
-  }
-
-  return <FeatureVariationsList variations={variations} setKey={setKey} />;
-}
-
-export function FeatureVariablesTab() {
-  const { detail, setKey } = useEntityDetail();
-  const entity = detail.entity as Record<string, any>;
-  const variablesSchema = entity.variablesSchema || {};
-
-  if (detail.type !== "feature") return <Navigate to=".." replace />;
-
-  if (Object.keys(variablesSchema).length === 0) {
-    return <EmptyState title="No variables found" />;
-  }
-
-  return <FeatureVariablesList variablesSchema={variablesSchema} setKey={setKey} />;
-}
-
-function getUsageEntityType(label: string): CatalogEntityType {
-  if (label.includes("segment")) {
-    return "segment";
-  }
-
-  if (label.includes("target")) {
-    return "target";
-  }
-
-  if (label.includes("attribute")) {
-    return "attribute";
-  }
-
-  if (label.includes("schema")) {
-    return "schema";
-  }
-
-  if (label.includes("group")) {
-    return "group";
-  }
-
-  if (label.includes("test")) {
-    return "test";
-  }
-  if (label.includes("variable")) {
-    return "variable";
-  }
-
-  return "feature";
-}
-
-function getUsageTitle(label: string) {
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-function UsageSection(props: {
-  title: string;
-  type: CatalogEntityType;
-  values: string[];
-  setKey?: string;
-}) {
-  return (
-    <section>
-      <h2 className="mb-2 text-sm font-semibold text-text">{props.title}</h2>
-      <ul className="list-inside list-disc space-y-1 text-sm">
-        {props.values.map((value) => (
-          <li key={value} className="[overflow-wrap:anywhere]">
-            <Link
-              className="text-primary hover:underline"
-              to={getEntityRoute(props.type, value, props.setKey)}
-            >
-              <EntityKey value={value} className="font-medium" />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-export function UsageTab() {
-  const { detail, setKey } = useEntityDetail();
-  const relationships = detail.relationships || {};
-  const entries: Array<[string, string[]]> =
-    detail.type === "feature"
-      ? [
-          ["targets", relationships.targets || []],
-          ["features", relationships.requiredBy || []],
-          ["variables", relationships.variables || []],
-        ]
-      : Object.entries(relationships).filter(([label]) => label !== "tests");
-  const visibleEntries = entries.filter(([, values]) => values.length > 0);
-
-  if (visibleEntries.length === 0) {
-    return <EmptyState title="No usage found" />;
-  }
-
-  return (
-    <div className="space-y-6">
-      {visibleEntries.map(([label, values]) => (
-        <UsageSection
-          key={label}
-          title={getUsageTitle(label)}
-          type={getUsageEntityType(label)}
-          values={values}
-          setKey={setKey}
-        />
-      ))}
-    </div>
-  );
-}
-
-export function TestsTab() {
-  const { detail } = useEntityDetail();
-
-  if (detail.type !== "feature" && detail.type !== "segment" && detail.type !== "variable") {
-    return <Navigate to=".." replace />;
-  }
-
-  if (!detail.tests?.length) {
-    return <EmptyState title="No test specs found" />;
-  }
-
-  return <EntityTests tests={detail.tests} />;
-}
-
-export function HistoryTab() {
-  const { detail } = useEntityDetail();
-  const { manifest } = useCatalog();
-  const [page, setPage] = React.useState<HistoryPageData | null>(null);
-
-  React.useEffect(() => {
-    if (!detail.historyPath) {
-      setPage({ page: 1, pageSize: 50, totalPages: 1, entries: [] });
-      return;
-    }
-
-    fetchHistoryPage(detail.historyPath, 1).then(setPage);
-  }, [detail.historyPath]);
-
-  if (!page) {
-    return <div className="text-muted">Loading history...</div>;
-  }
-
-  return (
-    <div className="space-y-3">
-      {page.entries.length === 0 && <EmptyState title="No history found" />}
-      {page.entries.map((entry) => {
-        const commitHref = manifest.links?.commit?.replace("{{hash}}", entry.commit);
-        const content = (
-          <>
-            <div className="font-mono text-sm">{entry.commit.slice(0, 10)}</div>
-            <div className="text-sm text-muted">
-              {entry.author} · {new Date(entry.timestamp).toLocaleString()}
-            </div>
-          </>
-        );
-
-        return commitHref ? (
-          <a
-            key={entry.commit}
-            href={commitHref}
-            target="_blank"
-            rel="noreferrer"
-            className="block rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5 hover:bg-elevated"
-          >
-            {content}
-          </a>
-        ) : (
-          <div
-            key={entry.commit}
-            className="rounded-lg border border-border bg-surface p-4 shadow-sm ring-1 ring-black/5"
-          >
-            {content}
-          </div>
-        );
-      })}
     </div>
   );
 }

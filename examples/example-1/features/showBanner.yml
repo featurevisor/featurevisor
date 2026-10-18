@@ -7,7 +7,7 @@ bucketBy: userId
 
 force:
   staging:
-    - segments: qa
+    - conditions: qa
       enabled: true
 
     - conditions:
@@ -19,12 +19,12 @@ force:
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 0
 
   production:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 0
 
 expose:
@@ -33,4 +33,5 @@ expose:
     #   - will exist in datafiles/staging/featurevisor-checkout.json only
     #   - not exist in datafiles/staging/featurevisor-all.json
     - checkout
+
 # See README for additional test scripts for verifying the datafile generation

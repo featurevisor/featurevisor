@@ -9,7 +9,7 @@ Full docs:
 
 ## What "activation" means
 
-When a user is evaluated as bucketed into a variation, that's an **activation**. The module runs after each evaluation; you decide what to push downstream.
+When a user is evaluated as bucketed into a variation, that's an **activation**. The module runs after each evaluation. You decide what to push downstream.
 
 ## Minimal module (vendor-agnostic)
 
@@ -23,7 +23,12 @@ const f = createFeaturevisor({
     {
       name: 'analyticsActivation',
 
-      afterEvaluation: function (evaluation) {
+      afterEvaluation: function (evaluation, options) {
+        // Prerequisite reads are not direct experiment activations.
+        if (options.dependencyPurpose === 'condition') {
+          return evaluation
+        }
+
         // Read the variation the same way getVariation() does: for the common
         // `allocated` reason the value lives on `variation`, not `variationValue`.
         const variationValue =
@@ -34,7 +39,7 @@ const f = createFeaturevisor({
           evaluation.type === 'variation' &&
           typeof variationValue === 'string'
         ) {
-          const { userId } = f.getContext()
+          const { userId } = options.context
 
           // hand off to your analytics
           yourAnalytics.track('featurevisor_activation', {
@@ -59,7 +64,9 @@ Two things in that shape are load-bearing, and both fail silently if you get the
 
 `afterEvaluation` also receives **global variable** evaluations ([global-variables.md](global-variables.md)). The `type === 'variation'` guard above already excludes them. If a module should act only on global variables, branch on a variable evaluation that has no `featureKey`.
 
-Modules written against the older `after` callback still run, but only for feature evaluations, and that callback is deprecated. Use `afterEvaluation` in new code.
+Use `afterEvaluation`. The old `after` callback does not run in v4. Dependency evaluations also pass through this module pipeline once per equivalent dependency within one top-level getter call. The main example ignores these prerequisite evaluations before recording direct activation events.
+
+`dependencyOf` and `dependencyPurpose` are absent for direct application calls. Consumed composition reads carry `dependencyPurpose: 'composition'` and can be experiment exposures. Do not skip them merely because they have `dependencyOf`. Evaluate compositions when displaying their values, not while loading speculatively. The memo is discarded when the root getter returns.
 
 ## Google Analytics 4 + GTM (canonical recipe)
 
@@ -85,12 +92,12 @@ Convention from the docs: snake_case for GA4 event names, camelCase for the `dat
 
 Tracking is application-side. Authoring affects what _can_ be tracked:
 
-- Only variation evaluations fire meaningfully for experiments. If the user is running a simple boolean rollout (no `variations:`), there's nothing experiment-shaped to activate — track flag evaluations directly if needed.
-- Variable evaluations don't generally need their own activation events; the variation evaluation already represents the bucketed cohort.
+- Only variation evaluations fire meaningfully for experiments. If the user is running a simple boolean rollout (no `variations:`), there's nothing experiment-shaped to activate: track flag evaluations directly if needed.
+- Variable evaluations don't generally need their own activation events. The variation evaluation already represents the bucketed cohort.
 - Stable feature/variation **keys** are what analytics joins on. Reinforce: don't rename rule keys, don't rename variation values once tracked. Renames invalidate dashboards.
 
 ## When the user asks
 
 - "How do I measure my A/B test?" → point at this file + the experiments recipe in [recipes.md](recipes.md).
-- "How do I send to <vendor>?" → vendor-agnostic shape above; the module runs, you bridge.
+- "How do I send to <vendor>?" → use the vendor-agnostic shape above. The module runs, and you bridge it to the vendor.
 - "Is Featurevisor an analytics tool?" → no, it's a feature-management tool. Activation events flow into whatever you already use.

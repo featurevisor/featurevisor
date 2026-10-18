@@ -1,14 +1,14 @@
-# Variables and reusable schemas
+# Feature variables, schemas and mutations
 
 Full docs:
 
-- Variables: <https://featurevisor.com/docs/features#variables>
-- Reusable schemas: <https://featurevisor.com/docs/schemas>
-- Mutations: <https://featurevisor.com/docs/mutations>
+- Feature variables: <https://featurevisor.com/docs/variables/#feature-variables>
+- Schemas: <https://featurevisor.com/docs/schemas/>
+- Mutations: <https://featurevisor.com/docs/mutations/>
 
-Variables turn a feature into a typed remote-config bundle. They are declared once in the feature's `variablesSchema`, given default values, and then optionally overridden per rule and per variation.
+Feature variables turn a feature into typed remote configuration. They are declared in the feature's `variablesSchema`, with defaults, and changed per rule, variation and override. For values that stand on their own, use [global variables](global-variables.md) instead. The type, schema and mutation rules here apply to both.
 
-## variablesSchema
+## Declare
 
 ```yaml
 variablesSchema:
@@ -16,313 +16,230 @@ variablesSchema:
     type: string
     description: Sidebar background
     defaultValue: red
+
+  hero:
+    type: object
+    properties:
+      title: { type: string }
+      subtitle: { type: string }
+    required: [title, subtitle]
+    defaultValue:
+      title: Welcome
+      subtitle: Welcome to our site
 ```
 
-Each variable entry must have a `type` (or a `schema` reference — see [reusable schemas](#reusable-schemas)) and a `defaultValue` of the matching type.
+Each variable needs a `type` (or `oneOf`, or a `schema` reference) and a `defaultValue` that fits it.
 
-### Behaviour when feature is disabled
+### While the feature is disabled
+
+Without either of these, a disabled feature returns `null` for its variables:
 
 ```yaml
 variablesSchema:
   bgColor:
     type: string
     defaultValue: red
-    useDefaultWhenDisabled: true   # return defaultValue when disabled (else null)
-    disabledValue: purple          # return this specific value when disabled
-    deprecated: true               # logs warning when read
+    disabledValue: grey # returned while disabled
+    # or: useDefaultWhenDisabled: true, to return defaultValue
+    deprecated: true # SDKs log a warning when read
 ```
 
-Without these, a disabled feature returns `null` for variables.
+## Types
 
-## Supported types
+| Type      | Notes                                                            |
+| --------- | ---------------------------------------------------------------- |
+| `string`  | optionally `format: date-time` or `format: semver`               |
+| `boolean` |                                                                  |
+| `integer` |                                                                  |
+| `number`  | whole numbers and decimals                                       |
+| `array`   | strings unless `items` declares another item type                |
+| `object`  | `properties` may nest, unlike attributes                         |
+| `json`    | a JSON document stored as a string, decoded by `getVariableJSON` |
 
-| Type      | Notes                                    |
-| --------- | ---------------------------------------- |
-| `string`  |                                          |
-| `boolean` |                                          |
-| `integer` |                                          |
-| `double`  | floating point                           |
-| `array`   | items typed; default is array-of-strings |
-| `object`  | flat OR nested with `properties`         |
-| `json`    | stringified arbitrary JSON               |
+Constraints follow JSON Schema: `enum`, `const`, `minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `items`, `minItems`, `maxItems`, `uniqueItems`, `properties`, `required`, `additionalProperties` and `oneOf`. An object without `properties` has no required keys. `double`, `date` and `semver` are no longer types ([attributes.md](attributes.md#removed-types)).
 
-### array
+`format: date-time` validates stored timestamps during lint. Date-time variables compare only with `before`, `after` and the presence operators in conditions. Plain strings can also use `before` and `after`.
 
-```yaml
-acceptedCards:
-  type: array
-  defaultValue: [visa, mastercard]
-```
-
-With validated items:
+Applications read `number` variables with `getVariableNumber` in JavaScript, Python, Ruby, PHP and Elixir, and with `getVariableDouble` in Java, Swift, Go, Rust, Dart and .NET.
 
 ```yaml
 acceptedCards:
   type: array
   items:
     type: string
+    enum: [visa, mastercard, amex]
   defaultValue: [visa, mastercard]
-```
 
-Array of objects:
-
-```yaml
 navLinks:
   type: array
   items:
     type: object
     properties:
-      title: { type: string }
+      id: { type: string }
       url: { type: string }
   defaultValue:
-    - { title: Home, url: / }
-    - { title: Contact, url: /contact }
+    - { id: home, url: / }
+    - { id: help, url: /help }
 ```
 
-### object
+## Change values
 
-Flat:
-
-```yaml
-hero:
-  type: object
-  defaultValue:
-    title: Welcome
-    subtitle: Welcome to our site
-```
-
-Validated:
-
-```yaml
-hero:
-  type: object
-  properties:
-    title: { type: string }
-    subtitle: { type: string }
-  required: [title, subtitle]
-  defaultValue:
-    title: Welcome
-    subtitle: Welcome to our site
-```
-
-Nested objects are allowed for **variable** schemas (unlike attributes, which must stay flat):
-
-```yaml
-hero:
-  type: object
-  properties:
-    background:
-      type: object
-      properties:
-        image: { type: string }
-        color: { type: string }
-    cta:
-      type: object
-      properties:
-        title: { type: string }
-        url: { type: string }
-  defaultValue:
-    background: { image: /img/hero.png, color: red }
-    cta: { title: Get started, url: /start }
-```
-
-### json
-
-```yaml
-hero:
-  type: json
-  defaultValue: '{"title":"Welcome"}'
-```
-
-## Overriding variables
-
-### From a rule
+### In a rule
 
 ```yaml
 rules:
-  production:
-    - key: nl
-      segments: netherlands
-      percentage: 100
-      variables:
-        bgColor: orange
+  - key: nl
+    conditions: netherlands
+    percentage: 100
+    variables:
+      bgColor: orange
 ```
 
-### Conditionally inside a rule
-
-```yaml
-rules:
-  production:
-    - key: nl
-      segments: netherlands
-      percentage: 100
-      variables:
-        bgColor: orange
-      variableOverrides:
-        bgColor:
-          - key: amsterdam
-            segments: amsterdam
-            value: red
-          - key: rotterdam
-            conditions:
-              - attribute: city
-                operator: equals
-                value: rotterdam
-            requiredFeatures: checkout
-            value: blue
-```
-
-### From a variation
+### In a variation
 
 ```yaml
 variations:
   - value: control
     weight: 50
+
   - value: treatment
     weight: 50
     variables:
       bgColor: blue
-    variableOverrides:
-      bgColor:
-        - key: netherlands
-          segments: netherlands
-          value: orange
-        - key: germany
-          conditions:
-            - attribute: country
-              operator: equals
-              value: de
-          value: yellow
 ```
 
-Feature variable overrides follow the global override shape. Provide at least one of `conditions`, `segments`, or `requiredFeatures`. Do not combine conditions and segments. Requirements can be paired with either selector. Provide exactly one of `value` or explicit `mutate`. A stable `key` is recommended, appears in detailed evaluations, and is required for item level promotion protection. Existing unkeyed overrides and mutation maps under `value` remain valid for compatibility.
+A variation can only set variables declared in `variablesSchema`.
+
+### Narrow with overrides
+
+`variableOverrides` in a rule or variation narrows a value further. The first matching entry wins, and the rule's or variation's `variables` value applies otherwise:
+
+```yaml
+rules:
+  - key: nl
+    conditions: netherlands
+    percentage: 100
+    variables:
+      bgColor: orange
+    variableOverrides:
+      bgColor:
+        - key: amsterdam
+          conditions:
+            - attribute: city
+              operator: equals
+              value: amsterdam
+          value: red
+```
+
+Each entry needs `conditions` and exactly one of `value` or `mutate`. Conditions take every leaf kind. A stable `key` is recommended. Feature variable overrides are flat: nesting and `continue` exist only for global variables.
+
+Precedence for a variable: force entry, then the matched rule's overrides and `variables`, then the selected variation's overrides and `variables`, then `defaultValue`.
 
 ## Reusable schemas
 
-When the same variable shape repeats across features, extract it to `schemas/<name>.yml`.
+When a shape repeats, define it once in `schemas/<key>.yml`:
 
 ```yaml
 # schemas/link.yml
-description: Individual link
+description: A link
+
 type: object
+
 properties:
   title: { type: string }
   url: { type: string }
+
 required: [title, url]
 ```
 
-```yaml
-# schemas/hero.yml
-description: Hero
-type: object
-properties:
-  title: { type: string }
-  subtitle: { type: string }
-  cta:
-    schema: link    # schemas can reference other schemas
-```
-
-Reference by name from a feature:
+Reference it from a variable, an item, or another schema:
 
 ```yaml
 variablesSchema:
-  hero:
-    schema: hero
-    defaultValue:
-      title: Welcome
-      subtitle: Welcome
-      cta: { title: Start, url: /start }
+  cta:
+    schema: link
+    defaultValue: { title: Start, url: /start }
 
   navLinks:
     type: array
     items:
-      schema: link            # reference at item level
+      schema: link
     defaultValue:
       - { title: Home, url: / }
 ```
 
-Or extract the array shape too:
-
-```yaml
-# schemas/links.yml
-description: List of links
-type: array
-items:
-  schema: link
-```
-
-```yaml
-variablesSchema:
-  navLinks:
-    schema: links
-    defaultValue: [...]
-```
+`npx featurevisor list --schemas --json` lists existing schemas. Lint checks every value against the resolved schema.
 
 ## Mutations
 
-When overriding a complex `object` or `array` variable from a rule/variation, repeating the entire structure to change one field is noisy and error-prone. **Mutations** let you target individual paths.
+Repeating a whole object or array to change one part is noisy. Mutations change paths and keep the rest.
 
-Without mutations:
+### Where they go
 
-```yaml
-variables:
-  hero:
-    title: Welcome              # unchanged
-    subtitle: Welcome to NL     # the only real change
-```
-
-With mutations:
+| Where                                | Write        | Path starts at                                           |
+| ------------------------------------ | ------------ | -------------------------------------------------------- |
+| Global variable `overrides`          | `mutate`     | the variable                                             |
+| Feature variable `variableOverrides` | `mutate`     | the variable                                             |
+| A rule's or variation's `variables`  | a dotted key | the variables map, so it starts with the variable's name |
 
 ```yaml
+# in a variation's variables: the key starts with the variable name
 variables:
-  "hero.subtitle": Welcome to NL
+  hero.subtitle: Welcome to the new design
 ```
-
-### YAML quoting (important)
-
-Mutation keys contain characters (`.`, `[`, `]`, `:`) that YAML interprets specially. **Always quote mutation keys.** Plain-style keys without these characters work unquoted, but quoting unconditionally is the safe default:
 
 ```yaml
-variables:
-  "hero.subtitle": Welcome to NL          # dot path
-  "items[2]:remove": null                 # index + verb
-  "items[id=2]:before": { id: "2a" }      # selector + verb
-  "tags:append": "first"                  # array verb
-  "list:prepend": "nl"
+# in an override's mutate: paths are relative to the variable
+variableOverrides:
+  navLinks:
+    - key: nl
+      conditions: netherlands
+      mutate:
+        '[id=help].url': /hulp
+        ':append': { id: blog, url: /blog }
 ```
 
-`null` is a common value for `:remove` since the operation doesn't need data; the key itself encodes the action.
+### Syntax
 
-### Mutation syntax
+| Path                                     | Works on            | Effect                                             |
+| ---------------------------------------- | ------------------- | -------------------------------------------------- |
+| `a.b`                                    | object              | set a property, nested with dots                   |
+| `a.b:remove`                             | object              | remove a property, not allowed for `required` ones |
+| `list[2]`                                | array               | replace the item at an index                       |
+| `list[2].title`                          | array of objects    | set a property of the item                         |
+| `list[id=help]`                          | array of objects    | replace the first matching item                    |
+| `list[id=help].url`                      | array of objects    | set a property of the matching item                |
+| `list[id=help]:before`, `:after`         | array               | insert next to the matching item                   |
+| `list[2]:before`, `:after`               | array               | insert next to the index                           |
+| `list[id=help]:remove`, `list[2]:remove` | array               | remove the item                                    |
+| `list:append`, `list:prepend`            | array               | add one item at the end or start                   |
+| `list:appendUnique`                      | array of primitives | append a value only if absent                      |
+| `list:removeValue`                       | array of primitives | remove every equal value                           |
 
-| Syntax                       | Variable type | Effect                                    |
-| ---------------------------- | ------------- | ----------------------------------------- |
-| `"key.property"`             | object        | Set property (nested ok: `"a.b.c"`)       |
-| `"key.property:remove"`      | object        | Remove property (forbidden if `required`) |
-| `"key[index]"`               | array         | Replace item at index                     |
-| `"key[index].property"`      | array         | Set property of item at index             |
-| `"key[index]:before"`        | array         | Insert before that index                  |
-| `"key[index]:after"`         | array         | Insert after that index                   |
-| `"key[index]:remove"`        | array         | Remove that index                         |
-| `"key[prop=value].property"` | array         | Set property of item matching selector    |
-| `"key[prop=value]:before"`   | array         | Insert before matching item               |
-| `"key[prop=value]:after"`    | array         | Insert after matching item                |
-| `"key[prop=value]:remove"`   | array         | Remove matching item                      |
-| `"key:prepend"`              | array         | Prepend a new item                        |
-| `"key:append"`               | array         | Append a new item                         |
+For an array variable itself, the path before the operation is empty: `:append`, `[id=help].url`, `:appendUnique`. The value of `:remove` is ignored, so `null` or `true` both work.
 
-Example combining several mutations on the same rule (verbatim shape used in the monorepo's `example-1/features/withMutations.yml`):
+**Quote mutation keys** in YAML when they start with `[` or `:`, or contain characters YAML treats specially. Quoting every mutation key is the safe default.
+
+### Order
+
+Entries apply in the order written, and each sees the changes before it:
 
 ```yaml
-variables:
-  "tags:prepend": "first"
-  "tags:append": "extra"
-  "items[id=2]:before": { id: "2a", name: "Before Second", meta: { score: 0.15 } }
-  "items[id=2]:after": { id: "2b", name: "After Second", meta: { score: 0.25 } }
-  "payload.rows:append": { id: 3, label: "C" }
-  "items[2]:remove": null
-  "hero.cta.url": /signup-nl
-  "acceptedCards[id=amex]:remove": null
+mutate:
+  paymentMethods: [card]
+  'paymentMethods:append': ideal
 ```
 
-Mutations are validated by `npx featurevisor lint` against the variable's schema — wrong paths, invalid types, or removing required properties will fail lint.
+This gives `[card, ideal]`. When the order must survive tools that rewrite YAML, or a path repeats, write a list of single entry maps:
+
+```yaml
+mutate:
+  - 'paymentMethods:append': ideal
+  - 'paymentMethods:append': paypal
+```
+
+- Setting an object or array replaces it. It does not merge.
+- A selector, property or index that matches nothing changes nothing, and no intermediate objects are created.
+- `appendUnique` and `removeValue` take one string, number, boolean or `null`, and compare strictly, so `1` differs from `"1"`.
+
+Lint checks every path, operand and resulting value against the schema, including selectors that match nothing today. Removing a required property or breaking an array's size limits fails lint. v4 applies mutation maps in written order. Projects upgrading from v3 can review affected values with `npx featurevisor lint --v3-mutation-order`.

@@ -4,6 +4,7 @@ import type { Dependencies } from "../dependencies";
 import { resolveTargets } from "../targeting";
 import { buildDatafile } from "./buildDatafile";
 import { buildTargetDatafile } from "./buildProject";
+import { resolveBuildEnvironments } from "./environments";
 
 export interface RuntimeDatafile {
   target?: string;
@@ -20,6 +21,7 @@ export async function buildRuntimeDatafiles(
   },
 ): Promise<RuntimeDatafile[]> {
   const { projectConfig, datasource } = deps;
+  resolveBuildEnvironments(projectConfig, options.environment, true);
   const existingState = await datasource.readState(options.environment);
   const targets = await resolveTargets(datasource, options.target, {
     defaultToAll: false,

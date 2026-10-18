@@ -7,16 +7,17 @@ import { FilesystemAdapter } from "../datasource/filesystemAdapter";
 import { compareValues, type ValueChange } from "./compare";
 import { describeDefinitionChanges, formatDetails, type DiffDetail } from "./details";
 import { DiffGit, diffError, type DiffSelection, type GitFile } from "./git";
+import { isScenarioSpec } from "../datasource/testSpecs";
 
 const entities = [
   "feature",
   "variable",
   "segment",
   "attribute",
-  "group",
   "schema",
   "target",
   "test",
+  "scenario",
 ] as const;
 type EntityType = (typeof entities)[number] | "config";
 
@@ -71,10 +72,13 @@ export function diffDefinitions(
     return value ? value + "/" : "";
   };
   const directories = (projectConfig: ProjectConfig) =>
-    entities.map((entity) => ({
-      entity,
-      prefix: prefix(projectConfig[`${entity}sDirectoryPath`]),
-    }));
+    entities
+      .filter((entity) => entity !== "scenario")
+      .map((entity) => ({
+        entity,
+        prefix: prefix(projectConfig[`${entity}sDirectoryPath`]),
+      }))
+      .sort((a, b) => b.prefix.length - a.prefix.length);
   const roots = config.sets ? [] : directories(config);
   const setsPrefix = config.sets ? prefix(config.setsDirectoryPath) : "";
   const selection = git.select(options.from, options.to);
@@ -185,7 +189,10 @@ export function diffDefinitions(
           : compareValues(previous, next);
     if (!changes.length) continue;
     result.summary[kind]++;
-    const entity = identified.get(file)!;
+    const entity = { ...identified.get(file)! };
+    if (entity.entity === "test" && isScenarioSpec(next ?? previous)) {
+      entity.entity = "scenario";
+    }
     result.changes.push({
       ...entity,
       file,

@@ -1,223 +1,301 @@
-# Testing reference
+# Testing
 
-Full docs: <https://featurevisor.com/docs/testing>
+Full docs: <https://featurevisor.com/docs/testing/>
 
-Featurevisor ships an in-process test runner. Specs live in `tests/features/`, `tests/segments/`, and `tests/variables/` by default. File names are conventional, not load-bearing.
+Specs are declarative YAML files that check what definitions evaluate to for given contexts. The CLI builds datafiles in memory and evaluates every assertion through the SDK, so a passing spec means the definitions behave as written. Add or update specs in the same change as the definitions they cover.
 
-In a sets project, `promotable: false` can be set at the top level of either kind of test spec. If the matching destination spec exists, it is preserved when either the source or destination spec has this field. A missing destination spec is still created.
+Examples use the default scaffold. When the project configures environments, add `environment` to every feature and global variable assertion and to scenario roots that evaluate a feature or variable.
 
-Individual assertions can also set `promotable: false`. Give every assertion in that spec a unique stable `key`. A protected source assertion is omitted, while a protected destination assertion is preserved when the source contains the same key. Both source and destination specs must use assertion keys when protection is involved. Matrix cases and child assertions are protected together through their parent assertion.
+## Where specs live
 
-Assertion `key`s are useful beyond promotions: they become stable labels and permalinks in the [Catalog](querying.md), with expanded matrix cases labelled `<key>.1`, `<key>.2`, and so on, so a failing case can be linked to directly.
+Every `.spec.yml` file under `tests/` (or `sets/<set>/tests/`) is discovered. The root field decides the kind:
 
-Run:
+| Root field              | Kind                 | Convention                        |
+| ----------------------- | -------------------- | --------------------------------- |
+| `feature`               | Feature spec         | `tests/features/<key>.spec.yml`   |
+| `segment`               | Segment spec         | `tests/segments/<key>.spec.yml`   |
+| `variable`              | Global variable spec | `tests/variables/<key>.spec.yml`  |
+| `checks`, with no owner | Scenario             | `tests/scenarios/<name>.spec.yml` |
+
+Starting points: [templates/test-feature.spec.yml](../templates/test-feature.spec.yml), [templates/test-segment.spec.yml](../templates/test-segment.spec.yml), [templates/test-variable.spec.yml](../templates/test-variable.spec.yml) and [templates/scenario.spec.yml](../templates/scenario.spec.yml).
+
+A spec cannot test or check an archived definition, or set a sticky value for one. Lint reports `archived_reference`, so delete the specs of whatever you archive.
+
+Give every assertion a stable `key`. Keys label failures, become permalinks in the Catalog (matrix cases as `<key>.1`, `<key>.2`), and are required for promotion protection in Sets.
+
+## Run
 
 ```bash
 npx featurevisor test
-npx featurevisor test --keyPattern="myFeature"
-npx featurevisor test --keyPattern="myFeature" --assertionPattern="in NL"
-npx featurevisor test --verbose                  # SDK trace per assertion
-npx featurevisor test --onlyFailures
+npx featurevisor test --key-pattern="checkout"
+npx featurevisor test --key-pattern="checkout" --assertion-pattern="Netherlands"
+npx featurevisor test --entity-type=scenario
+npx featurevisor test --only-failures
+npx featurevisor test --verbose
+npx featurevisor test --json --pretty
+npx featurevisor test --uncovered
+npx featurevisor test --coverage
 ```
 
-## Feature spec
+`--key-pattern` is a regular expression over the key a spec tests, so `checkout` also matches `checkoutPromoBanner`. Use `^checkout$` for one definition. `--assertion-pattern` matches assertion descriptions.
+
+`test` does not run lint. Run `npx featurevisor lint` first: it validates specs against the project and warns with `context_value_mismatch` about contexts that do not fit attribute types.
+
+### When a test fails
+
+Each failure prints what differed and an exact rerun command:
+
+```text
+✘ Assertion #3: Outside the Netherlands, buckets above 10 are out
+  => expectedToBeEnabled: expected false, received true
+  Rerun (POSIX shell): npx featurevisor test --case='[null,"feature","features.checkout",2,null]'
+```
+
+1. Run `npx featurevisor test --json` for structured results. Each failing case in `results[].cases[]` has `errors` with `path` (into the spec), `expected` and `actual`, plus `rerun.args`.
+2. Decide whether the spec or the definition is wrong. `npx featurevisor evaluate --feature=<key> --context='{…}' --explain` shows the deciding rule and the bucket for that context. Use the assertion's `at` to reason about percentages.
+3. Rerun only that case with the printed `--case` value until it passes, then run the whole suite.
+
+The process exits nonzero when anything fails. `--json` writes exactly one report to stdout. When the command fails before tests start, for example on an invalid option, there is no report: check the exit code and stderr.
+
+### Coverage gaps
+
+- `--uncovered` lists features and global variables that no spec references, including references from checks and scenarios. It is about authoring, not runtime coverage.
+- `--coverage` lists the rule keys and override paths the specs actually selected. A rule or override missing from that list was never exercised. It is not branch coverage.
+
+## Feature specs
 
 ```yaml
-feature: foo
+feature: checkout
+
 assertions:
-  - key: control-in-nl
-    description: Control in NL at 40th percentile
-    environment: production       # omit if project has no environments configured
-    at: 40                        # bucketed percentile (0–100) the assertion runs at
+  - key: nl
+    description: Dutch users are in at any bucket
+    at: 90
     context:
-      userId: '123'
+      userId: test-user-nl
       country: nl
     expectedToBeEnabled: true
-    expectedVariation: control
     expectedVariables:
-      bgColor: red
+      paymentMethods: [paypal, ideal]
+
+  - key: treatment
+    description: Buckets above 50 get the treatment
+    at: 75
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+
+  - key: outside-rollout
+    description: Others are out above 25
+    at: 90
+    context:
+      country: de
+    expectedToBeEnabled: false
 ```
 
-Available expectations on a feature assertion:
+- `at` is **required**: the bucket position from 0 to 100. It replaces searching for user IDs that land in a range. With a 25% rule, `at: 10` is inside and `at: 90` outside. With 50/50 variations, `at` below 50 gets the first variation.
+- `expectedToBeEnabled`, `expectedVariation` and `expectedVariables` check the three results. `expectedVariation` needs a feature with variations or a `disabledVariationValue`. Every key in `expectedVariables` must be declared in `variablesSchema`.
+- `expectedEvaluations` checks evaluation details: `{ flag: { reason: rule, ruleKey: nl }, variation: {…}, variables: { bgColor: {…} } }`.
+- `stickyFeatures` supplies sticky feature results, as `f.setStickyFeatures()` would. `stickyVariables` supplies global variable values, as `f.setStickyVariables()` would, for features gated on a variable. Every kind of spec uses these two names. The v3 name `sticky` fails lint with `removed_test_field`.
+- `defaultVariationValue` and `defaultVariableValues` supply per call fallbacks.
+- `children` evaluate through `f.spawn()`, each with its own `context`, `stickyFeatures`, `stickyVariables`, expectations and an optional `description`. A child does not inherit its parent's sticky values.
+- `target` evaluates against a target's datafile. `matrix` repeats the assertion.
 
-| Field                 | Type    | Notes                                           |
-| --------------------- | ------- | ----------------------------------------------- |
-| `expectedToBeEnabled` | boolean | Flag check                                      |
-| `expectedVariation`   | string  | Expected variation value                        |
-| `expectedVariables`   | object  | Map of variable key → expected value            |
-| `expectedEvaluations` | object  | Lower-level evaluation result checks (advanced) |
-
-Additional inputs an assertion can set up (advanced, all optional):
-
-| Field                                             | Purpose                                                                                                                                                                                     |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sticky`                                          | Sticky features for the test SDK instance, consulted before evaluation exactly like `f.setStickyFeatures()` at runtime                                                                      |
-| `defaultVariationValue` / `defaultVariableValues` | Fallback values the SDK would return instead of `null`. Presence-based: `""`, `0`, `false`, and `null` are honored as explicit defaults, not ignored as "empty"                             |
-| `children`                                        | List of child-instance assertions — each entry spawns a child (`f.spawn()`) with its own `context` / `sticky` and its own `expectedToBeEnabled` / `expectedVariation` / `expectedVariables` |
+A feature gated on a kill switch is tested in its own spec:
 
 ```yaml
-assertions:
-  # child instances (server-side spawn behavior)
-  - at: 10
-    environment: production
-    context: {}
-    expectedToBeEnabled: true
-    children:
-      - context: { country: nl }
-        expectedToBeEnabled: false
+feature: checkout
 
-  # sticky input
-  - at: 40
-    environment: production
-    sticky:
-      redesign:
-        enabled: true
-    context: { country: de }
-    expectedToBeEnabled: true
+assertions:
+  - key: maintenance
+    description: The kill switch disables checkout
+    at: 5
+    stickyVariables:
+      maintenanceMode: true
+    expectedToBeEnabled: false
 ```
 
-`expectedEvaluations` asserts fields of the raw evaluation objects (`flag:`, `variation:`, `variables.<key>:`) such as `reason` or `ruleKey` — useful for pinning _why_ a value was returned, not just what.
-
-## Segment spec
+## Segment specs
 
 ```yaml
 segment: netherlands
+
 assertions:
-  - description: NL context matches
+  - key: nl
     context:
       country: nl
     expectedToMatch: true
 
-  - description: DE context does not match
-    context:
-      country: de
+  - key: missing-country
+    context: {}
     expectedToMatch: false
 ```
 
-## Global variable spec
+Attribute only segments need nothing else. A segment that depends on a feature or variable accepts `at`, `stickyFeatures` and `stickyVariables`, and needs `environment` when environments are configured.
+
+## Global variable specs
 
 ```yaml
 variable: supportEmail
+
 assertions:
-  - environment: production
-    context: { country: nl }
+  - key: nl
+    description: Dutch users reach the local desk
+    context:
+      country: nl
     expectedValue: support-nl@example.com
     expectedEvaluation:
       reason: variable_override_rule
       variableOverrideKey: netherlands
+
+  - key: maintenance
+    description: The kill switch wins over every audience
+    context:
+      country: nl
+    stickyVariables:
+      maintenanceMode: true
+    expectedValue: status@example.com
 ```
 
-Variable assertions support `matrix`, `target`, `at`, `stickyFeatures`, `stickyVariables`, `defaultVariableValue`, and `children`.
+- `expectedValue` compares the whole value, objects and arrays included. `expectedEvaluation` checks detail fields such as `reason`, `variableOverrideKey` and `variableOverridePath`.
+- Global variables are not bucketed. `at` fixes the bucket only for features reached through conditions or a composition.
+- `stickyFeatures` fixes upstream feature results (`enabled`, `variation`, `variables`) and wins over `at`. `stickyVariables` fixes global variable values, including this one.
+- `checks` adds further expectations ([Checks](#checks)). Inside a variable spec, a check without `variable` refers to the spec's own variable.
+- `children` inherit the parent context and `at`, but not its sticky maps. Repeat `stickyFeatures` or `stickyVariables` in a child that needs them.
 
-Global variables are never bucketed directly. In a variable assertion, `at` sets the 0 to 100 bucket position only for feature evaluations reached through `requiredFeatures`. This makes a required feature's rollout and variation allocation deterministic without searching for a particular `userId`. It has no effect when no required feature is evaluated.
+## Checks
 
-Use `stickyFeatures` to supply exact upstream feature results. Sticky features take precedence over `at`. Use `stickyVariables` separately to bypass normal evaluation for the global variable itself.
-
-`at` must be a number from 0 to 100 or a complete matrix placeholder whose values are all in that range. One value applies to every non-sticky feature reached through the required feature chain. A sticky result affects only its own feature, while the remaining required features continue to use `at`.
+Checks are expectations on global variable assertions and scenarios. The top level list means AND, and `and`, `or` and `not` groups nest.
 
 ```yaml
-variable: signupMessage
-assertions:
-  - environment: production
-    at: 75
-    expectedValue: Sign up with your preferred provider
+checks:
+  # a variable value, by operator
+  - key: positive-minimum
+    variable: checkoutPolicy
+    path: limits.minimumOrder
+    operator: greaterThan
+    value: 0
 
-  - environment: production
-    at: 25
-    stickyFeatures:
-      allowSignup:
+  # compared with another value instead of a literal
+  - variable: checkoutPolicy
+    path: currency
+    operator: equals
+    compareTo:
+      feature: checkout
+      variable: currency
+
+  # a feature's flag and variation
+  - feature: checkout
+    enabled: true
+    variation: treatment
+
+  # segment membership
+  - segment: netherlands
+    matches: true
+```
+
+- A variable check has a left reference (`variable`, or `feature` plus `variable` for a feature variable, optional `path`), an `operator`, and exactly one of `value` or `compareTo`. Unary operators such as `notNull` take neither.
+- A feature check takes `enabled`, `variation` or both. `variation` alone does not imply `enabled: true`. `variation: null` expects the getter to return `null`.
+- A segment check needs both `segment` and `matches`.
+- `key` and `description` label any check or group in failure output. Keys must be unique among siblings.
+- Paths and missing values work as in [conditions](conditions.md#variable-leaves), with one difference: when a path is missing, every operator except the presence and emptiness ones is `false`, `notEquals` included.
+- A check that reaches a value of the wrong type for its operator, or an invalid date or version, is a test error, which `not` cannot invert.
+
+## Scenarios
+
+A scenario checks several definitions together when no single owner fits, for example "the kill switch turns off checkout and everything built on it".
+
+```yaml
+description: Maintenance mode switches off checkout and its promo
+
+stickyVariables:
+  maintenanceMode: true
+
+at: 5
+
+context:
+  userId: test-user-nl
+  country: nl
+
+checks:
+  - key: checkout-off
+    feature: checkout
+    enabled: false
+
+  - key: no-promo
+    variable: checkoutPromoBanner
+    operator: equals
+    value: ''
+
+children:
+  - description: QA keeps access, because force entries run before the root gate
+    context:
+      userId: u_qa_1
+    stickyVariables:
+      maintenanceMode: true
+    checks:
+      - feature: checkout
         enabled: true
-        variation: treatment
-    expectedValue: Sign up with your preferred provider
 ```
 
-Child assertions evaluate the same global variable through `f.spawn()`. They inherit the parent context, then apply their own context on top. Child sticky maps are isolated from the parent, so pass `stickyFeatures` or `stickyVariables` in the child when needed. The parent assertion's `at` remains active for child evaluations.
+- The root needs nonempty `checks` and no `feature`, `segment` or `variable` owner. It also accepts `description`, `environment`, `target`, `matrix`, `context`, `at`, `stickyFeatures`, `stickyVariables`, `children` and `promotable`.
+- Do not add `key`, `name`, `type`, `assertions`, `expectedValue` or `expectedEvaluation`. The key comes from the file path: `tests/scenarios/maintenance.spec.yml` is `scenarios.maintenance`.
+- Every variable check names its `variable` explicitly.
+- Children need their own `checks`, inherit the root `context` and `at`, and do not inherit sticky maps. A child may have a `description` for readers.
+- Run only scenarios with `npx featurevisor test --entity-type=scenario`.
+
+## Matrix
+
+Repeat an assertion across combinations:
 
 ```yaml
-variable: campaignBanner
+feature: checkout
+
 assertions:
-  - environment: production
-    context: { country: nl }
-    expectedValue: Welcome
-    children:
-      - context: { city: amsterdam }
-        expectedValue: Welkom
-      - stickyVariables:
-          campaignBanner: Preview
-        expectedValue: Preview
-```
-
-## Matrix expansion
-
-Run the same assertion across combinations of values:
-
-```yaml
-feature: foo
-assertions:
-  - matrix:
-      at: [40, 60]
-      environment: [production]
-      country: [nl, de, us]
-      plan: [free, premium]
-    description: At ${{ at }}% in ${{ country }}/${{ plan }}
-    environment: ${{ environment }}
+  - key: in-rollout
+    matrix:
+      at: [5, 20]
+      country: [de, us]
+    description: At ${{ at }} in ${{ country }}
     at: ${{ at }}
     context:
       country: ${{ country }}
-      plan: ${{ plan }}
     expectedToBeEnabled: true
 ```
 
-Use `${{ name }}` to interpolate any matrix key. Mixing static and matrix driven fields is fine. Placeholders are replaced recursively inside nested objects and arrays, including context, sticky values, defaults, expected values, detailed expected evaluations, and child assertions. A placeholder used as the complete value preserves its original type.
+`${{ name }}` substitutes anywhere in the assertion, including nested values and children. A placeholder that is the whole value keeps its type, so `at: ${{ at }}` stays a number. Every placeholder must name a matrix key, and every axis must be nonempty. Scenarios take a root `matrix`.
 
-Matrices and their axes must be nonempty. Every placeholder must name a key in the same assertion's matrix. Matrix driven `environment` and `target` selectors must be complete placeholders whose values name entities that exist in the project. Assertions must contain at least one case, and `expectedEvaluation` must contain at least one field. Expanded JSON from `list --tests --apply-matrix` contains final assertions and omits the original `matrix` property.
+## Targets and environments
 
-## Testing against target datafiles
+`target: web` evaluates against that target's datafile, as an application loading it would. A definition the target leaves out evaluates as missing, which is how to test that a target excludes it. Use `matrix: { target: [web, mobile] }` with `target: ${{ target }}` to repeat across targets. `npx featurevisor test --target=web` runs untargeted assertions plus those for `web`.
 
-The runner builds target datafiles in memory. A Target assertion must use its exact Target datafile and must fail clearly when that datafile is unavailable. It must never fall back to the base environment datafile. To imitate a real consumer that loads a target-specific datafile:
+With environments configured, every feature and global variable assertion needs `environment: <name>`. Without environments, `environment` is a lint error.
 
-```yaml
-assertions:
-  - environment: production
-    at: 90
-    context: { country: nl }
-    target: web
-    expectedToBeEnabled: true
-```
+## What to cover
 
-Then run:
+When creating or changing a feature, cover at least:
 
-```bash
-npx featurevisor test
-```
+- one context inside each targeted audience and one outside,
+- the catch-all rule at a bucket inside and outside its percentage,
+- each variation, using `at` inside its weight range,
+- variables a rule, variation or override changes, with the changed value,
+- force entries, with a context that matches them,
+- root conditions, met and unmet. Use a scenario when the gate reads a variable.
 
-Pass `--target=web` to build only that target datafile and run untargeted assertions plus assertions for `web`. Repeat the option to select several targets. Segment tests are always run because they do not select a target datafile.
+For global variables, cover each override, the default, and the gate. For compositions, assert the whole `expectedValue` for one context per interesting combination.
 
-## When you create a feature or segment
+## Promotion protection in Sets
 
-Offer (don't force): "I can add a `tests/.../spec.yml` for this — want me to?" If yes, use [templates/test-feature.spec.yml](../templates/test-feature.spec.yml) / [templates/test-segment.spec.yml](../templates/test-segment.spec.yml).
+In a Sets project, `promotable: false` on a spec root, on a scenario root or on an individual keyed assertion keeps the destination's version during promotion. See [sets-promotions.md](sets-promotions.md).
 
-Cover at minimum:
+## Running specs through other SDKs
 
-- The catch-all rule at a high `at` (e.g. 99) in each environment that should be enabled.
-- One assertion **inside** any targeted segment (e.g. country = nl) and one outside it.
-- If variations exist, one assertion per variation by picking `at` values in their weight bands.
-- If variables override per rule/variation, assert the overridden values directly.
-
-After authoring, run:
+Each non JavaScript SDK ships a CLI that runs these same specs through its own evaluation engine, proving the definitions behave the same in the language the application uses:
 
 ```bash
-npx featurevisor test --keyPattern="<key>"
+python -m featurevisor test --project-directory-path=/path/to/featurevisor-project
+bundle exec featurevisor test --project-directory-path=/path/to/featurevisor-project
 ```
 
-## Running the same specs through another language's SDK
-
-Test specs aren't JavaScript-specific. Every non-JS SDK ships a CLI that runs **these same spec files** through its own implementation — proving the features behave identically in the language the application actually uses:
-
-```bash
-python -m featurevisor test
-go run cmd/main.go test --projectDirectoryPath="/absolute/path/to/project"
-bundle exec featurevisor test --projectDirectoryPath="/absolute/path/to/project"
-```
-
-Definitions, spec discovery, and datafile generation still come from the Node.js CLI; the language CLI supplies only the evaluation engine. Details and the full per-language list: [sdk-other-languages.md](sdk-other-languages.md#verifying-your-project-against-a-specific-sdk).
+The Node.js CLI still discovers specs and builds datafiles, so `npx featurevisor` must work in the project. Check the runner's version against the [SDK compatibility matrix](https://featurevisor.com/docs/sdks/compatibility/) before relying on checks and scenarios there. Every language: [sdk-other-languages.md](sdk-other-languages.md#run-the-projects-specs-through-another-sdk).

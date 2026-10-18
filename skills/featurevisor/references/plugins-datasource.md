@@ -10,7 +10,7 @@ Every built-in `featurevisor` command is itself a plugin, so a project can add c
 Two situations to recognize before writing one:
 
 - **A plugin already exists in the project.** `npx featurevisor --help` listing commands not in [cli.md](cli.md) means project plugins are registered. Read their source (from `plugins:` in `featurevisor.config.js`) before running them, because a plugin can write definition files.
-- **The task is a one-off.** Don't build a plugin for a single bulk edit; edit the files, lint, done. Plugins earn their keep when the operation repeats or belongs in CI.
+- **The task is a one-off.** Don't build a plugin for a single bulk edit. Edit the files, lint, done. Plugins earn their keep when the operation repeats or belongs in CI.
 
 ## Registering
 
@@ -69,19 +69,19 @@ const examplePlugin: Plugin = {
 export default examplePlugin
 ```
 
-| Field         | Notes                                                                                             |
-| ------------- | ------------------------------------------------------------------------------------------------- |
-| `command`     | Subcommand name. May declare positionals, e.g. `'example [subcommand]'`                            |
-| `description` | Shown next to the command in help; falls back to the first example's description                  |
+| Field         | Notes                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `command`     | Subcommand name. May declare positionals, e.g. `'example [subcommand]'`                                                                           |
+| `description` | Shown next to the command in help. Falls back to the first example's description                                                                  |
 | `options`     | Optional map. Each entry takes `type` (`string` \| `number` \| `boolean` \| `array`), `alias`, `choices`, `description`, `demandOption`, `hidden` |
-| `handler`     | Async; receives the four values below. Return `false` to fail the command                          |
-| `examples`    | Required list of `{ command, description }`                                                        |
+| `handler`     | Async. Receives the four values below. Return `false` to fail the command                                                                         |
+| `examples`    | Required list of `{ command, description }`                                                                                                       |
 
-**Always declare `options`.** Doing so makes Featurevisor reject unknown flags, wrong types, and stray positionals *before* your handler runs, so `--fo=value` fails loudly instead of silently doing the wrong thing. Plugins that omit `options` stay in the old permissive parsing mode for backwards compatibility; that is a legacy affordance, not a default to copy. Use `array` for options that can be passed more than once.
+**Always declare `options`.** Doing so makes Featurevisor reject unknown flags, wrong types, and stray positionals _before_ your handler runs, so `--fo=value` fails loudly instead of silently doing the wrong thing. Plugins that omit `options` stay in the old permissive parsing mode for backwards compatibility. That is a legacy affordance, not a default to copy. Use `array` for options that can be passed more than once.
 
 Handler arguments:
 
-- `rootDirectoryPath`: project root the CLI resolved (respects `--rootDirectoryPath`).
+- `rootDirectoryPath`: project root the CLI resolved (respects `--root-directory-path`).
 - `projectConfig`: the fully processed config ([configuration.md](configuration.md)).
 - `datasource`: read and write project entities without touching the filesystem (below).
 - `parsed`: yargs-parsed arguments, e.g. `{ foo: 'bar' }` for `--foo=bar`.
@@ -91,7 +91,7 @@ Handler arguments:
 Use `datasource` instead of `fs` plus a YAML parser: it honours the project's `parser`, directory overrides, namespace character, and adapter, so a plugin keeps working in a JSON or TOML project without changes.
 
 ```js
-// features / segments / attributes / groups / schemas / targets follow one pattern
+// features, segments, attributes, schemas, variables and targets follow one pattern
 const features = await datasource.listFeatures()
 const exists = await datasource.featureExists('foo')
 const feature = await datasource.readFeature('foo')
@@ -99,20 +99,21 @@ await datasource.writeFeature('foo', { ...feature, ...changes })
 await datasource.deleteFeature('foo')
 ```
 
-Same quartet for `Segment`, `Attribute`, `Group`, `Schema`, and `Target` (`listSegments`/`readSegment`/…). Beyond those:
+The same calls exist for `Segment`, `Attribute`, `Schema`, `Variable` (global variables) and `Target`, such as `listVariables` and `readVariable`. Beyond those:
 
-| Call                                            | Purpose                                                          |
-| ----------------------------------------------- | ------------------------------------------------------------------ |
-| `listTests()` / `readTest(key)` / `writeTest()` / `deleteTest()` | Test specs ([testing.md](testing.md))            |
-| `getTestSpecName(key)`                          | Spec file name for a test key                                     |
-| `listFlattenedAttributes()`                     | Attribute keys, with object attributes' properties expanded as `key.property` |
-| `getRequiredFeaturesChain(key)`                 | Transitive `required:` dependencies of a feature                  |
-| `readRevision()` / `writeRevision(value)`       | `.featurevisor/REVISION` ([building-datafiles.md](building-datafiles.md)) |
-| `readState(env)` / `writeState(env, state)`     | Traffic allocation state (pass `false` when the project has no environments) |
-| `listDatafiles()` / `readDatafile(opts)` / `writeDatafile(content, opts)` | Generated datafiles                      |
-| `listHistoryEntries(entityType?, key?)` / `readCommit(hash, …)` | Git history for `feature` \| `segment` \| `attribute` \| `group` \| `test` |
-| `getConfig()` / `getExtension()`                | Active config; file extension for the configured parser           |
-| `listSets()` / `getSet()` / `forSet(set)`       | Sets projects. `forSet()` returns a datasource scoped to one set ([sets-promotions.md](sets-promotions.md)) |
+| Call                                                                             | Purpose                                                                                                     |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `listTests()` / `readTest(key)` / `writeTest()` / `deleteTest()`                 | Feature, segment and variable specs ([testing.md](testing.md))                                              |
+| `listScenarios()` / `readScenario(key)` / `writeScenario()` / `deleteScenario()` | Scenario specs                                                                                              |
+| `getTestSpecName(key)`                                                           | Spec file name for a test key                                                                               |
+| `listFlattenedAttributes()`                                                      | Attribute keys, with object attributes' properties expanded as `key.property`                               |
+| `getRequiredFeaturesChain(key)` / `getRequiredFeaturesChainForVariable(key)`     | Features a feature or global variable depends on through `conditions`, transitively                         |
+| `readRevision()` / `writeRevision(value)`                                        | `.featurevisor/REVISION` ([building-datafiles.md](building-datafiles.md))                                   |
+| `readState(env)` / `writeState(env, state)`                                      | Traffic allocation state (pass `false` when the project has no environments)                                |
+| `listDatafiles()` / `readDatafile(opts)` / `writeDatafile(content, opts)`        | Generated datafiles                                                                                         |
+| `listHistoryEntries(entityType?, key?)` / `readCommit(hash, …)`                  | Git history for `feature` \| `segment` \| `attribute` \| `test`                                             |
+| `getConfig()` / `getExtension()`                                                 | Active config and file extension for the configured parser                                                  |
+| `listSets()` / `getSet()` / `forSet(set)`                                        | Sets projects. `forSet()` returns a datasource scoped to one set ([sets-promotions.md](sets-promotions.md)) |
 
 In a sets project a plugin that ignores `forSet()` will read the wrong tree. Scope explicitly, or accept `--set` and honour it.
 
@@ -148,4 +149,4 @@ module.exports = {
 
 Mirror [`FilesystemAdapter`](https://github.com/featurevisor/featurevisor/blob/main/packages/core/src/datasource/filesystemAdapter.ts) when implementing one.
 
-**Rarely the right answer.** Featurevisor's value is that definitions are reviewed in Git like code, and an adapter that moves them into a database gives that up. Before writing one, check whether the actual need is a plugin that *syncs* to the external system while Git stays the source of truth. Say so plainly if the user is about to trade away the GitOps workflow by accident.
+**Rarely the right answer.** Featurevisor's value is that definitions are reviewed in Git like code, and an adapter that moves them into a database gives that up. Before writing one, check whether the actual need is a plugin that _syncs_ to the external system while Git stays the source of truth. Say so plainly if the user is about to trade away the GitOps workflow by accident.

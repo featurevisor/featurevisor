@@ -1,0 +1,57 @@
+description: Ordered checkout mutations preserve repeated paths and accumulate matching overrides
+tags: [all]
+type: object
+properties:
+  currency: { type: string }
+  methods: { type: array, items: { type: string } }
+  label: { type: string }
+required: [currency, methods, label]
+defaultValue:
+  currency: USD
+  methods: [default]
+  label: Default
+overrides:
+  staging:
+    - key: bootstrap
+      conditions: "*"
+      continue: true
+      mutate:
+        - methods: [card]
+        - "methods:append": ideal
+        - "methods:append": paypal
+        - currency: EUR
+    - key: netherlands
+      conditions: { attribute: country, operator: equals, value: nl }
+      continue: true
+      mutate:
+        - label: Netherlands
+      overrides:
+        - key: amsterdam
+          conditions: { attribute: city, operator: equals, value: amsterdam }
+          mutate:
+            - "methods:append": local
+            - "methods:append": collection
+            - label: Amsterdam
+    - key: finish
+      conditions: "*"
+      mutate:
+        - "methods:append": final
+  production:
+    - key: netherlands
+      conditions: { attribute: country, operator: equals, value: nl }
+      mutate:
+        - "methods:append": discarded
+        - methods: [card]
+        - "methods:append": ideal
+        - "methods:append": paypal
+        - currency: EUR
+      overrides:
+        - key: amsterdam
+          conditions: { attribute: city, operator: equals, value: amsterdam }
+          mutate:
+            - label: Amsterdam
+            - "methods:append": local
+            - "methods:append": collection
+    - key: unchanged
+      conditions: "*"
+      mutate: []

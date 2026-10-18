@@ -35,6 +35,8 @@ Use the resolver matching the Featurevisor value type. Boolean variables use the
 
 The provider maps OpenFeature `targetingKey` to Featurevisor `userId` by default. Configure `targetingKeyField`, `keySeparator`, `variationKey`, or `globalVariablePrefix` when your project needs different names. The global variable prefix defaults to `variable`.
 
+The provider distinguishes an omitted `targetingKey` from an explicitly empty string. The OpenFeature web client passes both through, so `{ targetingKey: '', userId: 'old' }` maps `userId` to the empty string. If no targeting key is supplied, an existing `userId` is preserved. Untyped JavaScript callers can also supply a finite numeric targeting key, including `0`; `NaN` and infinity do not override the existing field.
+
 ## Featurevisor instance
 
 The provider can create and own a Featurevisor instance, or reuse one created by your application.
@@ -69,6 +71,10 @@ await OpenFeature.setProviderAndWait(provider)
 ```
 
 The same instance is available as `provider.featurevisor`. Evaluations, datafile updates, modules, diagnostics, and events continue to use that instance.
+
+An invalid initial datafile rejects `setProviderAndWait` with `PARSE_ERROR`, regardless of diagnostic log level. The provider remains in an error state until a valid datafile is supplied. Malformed datafile updates return the OpenFeature default with `PARSE_ERROR` and emit a provider error event. A subsequent valid update emits ready and configuration change events, even when it restores the same data.
+
+Datafile, sticky state and Featurevisor context changes invalidate all OpenFeature keys conservatively, including keys that depend on another feature or variable. This also applies when your application calls `setContext` on a supplied Featurevisor instance. OpenFeature context remains separate and continues to take precedence for each evaluation.
 
 An instance passed this way remains owned by your application. Closing the OpenFeature provider does not close it, so other consumers can continue using it. Call `featurevisor.close()` when every consumer is finished.
 

@@ -1,0 +1,17 @@
+description: Everything the checkout page reads
+
+# Each property names its source. Its type comes from that source.
+# Every member is evaluated on each read, so compose only values used together.
+# Not allowed here: type, defaultValue, useDefaultWhenDisabled.
+compose:
+  enabled: { feature: <featureKey> } # the flag
+  variation: { feature: <featureKey>, variation: true } # the variation
+  label: { feature: <featureKey>, variable: <variableKey> } # a feature variable
+  supportEmail: { variable: <globalVariableKey> } # a global variable
+
+
+# Optional gate. While unmet, the result is disabledValue, or null,
+# and no source is read.
+# conditions:
+#   - feature: <featureKey>
+# disabledValue: null

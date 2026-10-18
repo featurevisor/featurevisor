@@ -1,0 +1,22 @@
+description: Screen for ${{ country }}
+
+matrix:
+  country: [nl, de]
+
+context:
+  userId: example-user
+  country: ${{ country }}
+
+checks:
+  - variable: screen
+    path: [flags, checkout]
+    operator: equals
+    value: true
+  - variable: screen
+    path: [flags, delivery]
+    operator: equals
+    value: false
+  - feature: checkout
+    enabled: true
+  - feature: checkout
+    variation: standard

@@ -1,0 +1,196 @@
+{
+  "kind": "featurevisor.sdk-diagnostics",
+  "version": 1,
+  "cases": [
+    {
+      "name": "eager and lazy diagnostics cache before reentry and reset only replaced entities",
+      "operations": [
+        {
+          "action": "setDatafile",
+          "datafile": {
+            "schemaVersion": "2",
+            "revision": "r2",
+            "segments": {
+              "broken": {
+                "conditions": "[{\"attribute\":"
+              }
+            },
+            "features": {
+              "a": {
+                "bucketBy": "userId",
+                "force": [
+                  {
+                    "conditions": "{\"and\":[",
+                    "enabled": false
+                  }
+                ],
+                "traffic": [
+                  {
+                    "key": "all",
+                    "segments": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            }
+          },
+          "replace": true,
+          "expectedResult": true,
+          "diagnostics": [
+            {
+              "code": "conditions_parse_error",
+              "level": "error",
+              "details": {
+                "conditions": "[{\"attribute\":",
+                "entityType": "segment",
+                "entityKey": "broken"
+              },
+              "revision": "r2"
+            },
+            {
+              "code": "conditions_parse_error",
+              "level": "error",
+              "details": {
+                "conditions": "{\"and\":[",
+                "entityType": "feature",
+                "entityKey": "a"
+              },
+              "revision": "r2"
+            }
+          ]
+        },
+        {
+          "action": "isEnabled",
+          "feature": "a",
+          "expectedResult": true,
+          "diagnostics": []
+        },
+        {
+          "action": "setDatafile",
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "r4",
+            "segments": {},
+            "features": {
+              "b": {
+                "bucketBy": "userId",
+                "traffic": [
+                  {
+                    "key": "broken",
+                    "conditions": "[\"x\"",
+                    "percentage": 100000
+                  },
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            }
+          },
+          "replace": true,
+          "expectedResult": true,
+          "diagnostics": []
+        },
+        {
+          "action": "isEnabled",
+          "feature": "b",
+          "expectedResult": true,
+          "diagnostics": [
+            {
+              "code": "conditions_parse_error",
+              "level": "error",
+              "details": {
+                "conditions": "[\"x\"",
+                "entityType": "feature",
+                "entityKey": "b"
+              },
+              "revision": "r4"
+            }
+          ]
+        },
+        {
+          "action": "isEnabled",
+          "feature": "b",
+          "expectedResult": true,
+          "diagnostics": []
+        },
+        {
+          "action": "setDatafile",
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "r5",
+            "segments": {},
+            "features": {
+              "c": {
+                "bucketBy": "userId",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            }
+          },
+          "replace": false,
+          "expectedResult": true,
+          "diagnostics": []
+        },
+        {
+          "action": "isEnabled",
+          "feature": "b",
+          "expectedResult": true,
+          "diagnostics": []
+        },
+        {
+          "action": "setDatafile",
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "r6",
+            "segments": {},
+            "features": {
+              "b": {
+                "bucketBy": "userId",
+                "traffic": [
+                  {
+                    "key": "broken",
+                    "conditions": "[\"x\"",
+                    "percentage": 100000
+                  },
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            }
+          },
+          "replace": false,
+          "expectedResult": true,
+          "diagnostics": []
+        },
+        {
+          "action": "isEnabled",
+          "feature": "b",
+          "expectedResult": true,
+          "diagnostics": [
+            {
+              "code": "conditions_parse_error",
+              "level": "error",
+              "details": {
+                "conditions": "[\"x\"",
+                "entityType": "feature",
+                "entityKey": "b"
+              },
+              "revision": "r6"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

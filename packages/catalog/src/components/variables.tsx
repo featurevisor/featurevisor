@@ -45,7 +45,15 @@ export function usesSchemaStructureTable(schema: SchemaLike) {
 }
 
 export function hasSchemaTableRows(schema: SchemaLike) {
-  return flattenSchemaRows(schema, "").length > 0;
+  const rows = flattenSchemaRows(schema, "");
+
+  // A lone root row for a primitive only repeats the type and description,
+  // so show a table only when it adds structure or constraints.
+  if (rows.length === 1 && rows[0].path === "—" && !rows[0].isRef) {
+    return rows[0].constraints.length > 0;
+  }
+
+  return rows.length > 0;
 }
 
 function getSchemaDescription(schema: SchemaLike) {
@@ -97,6 +105,10 @@ function getSchemaConstraintLines(schema: SchemaLike) {
 
   if (typeof schema.pattern === "string") {
     lines.push(`pattern: ${schema.pattern}`);
+  }
+
+  if (typeof schema.format === "string") {
+    lines.push(`format: ${schema.format}`);
   }
 
   if (typeof schema.minItems === "number") {
@@ -171,17 +183,23 @@ function appendAdditionalPropertyRows(schema: SchemaLike, prefix: string, rows: 
   return rows;
 }
 
+/** Types read as code, matching the type chips on the variables list. */
 function TypeBadge(props: { children: React.ReactNode }) {
-  return <Badge tone="primary">{props.children}</Badge>;
+  return (
+    <code className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] leading-none text-slate-700">
+      {props.children}
+    </code>
+  );
 }
 
 function SchemaRefLink(props: { name: string; setKey?: string }) {
   return (
     <Link
       to={getEntityRoute("schema", props.name, props.setKey)}
-      className="inline-flex hover:opacity-80"
+      title={`Schema ${props.name}`}
+      className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 font-mono text-[11px] leading-none text-sky-800 ring-1 ring-inset ring-sky-200 hover:bg-sky-100"
     >
-      <Badge tone="primary">{props.name}</Badge>
+      {props.name}
     </Link>
   );
 }
@@ -321,7 +339,7 @@ export function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
           <col className="variable-schema-col-description" />
         </colgroup>
         <thead>
-          <tr className="border-b border-border text-left text-[10px] font-semibold uppercase tracking-wide text-faint">
+          <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-wider text-faint">
             <th className="pb-1.5 pr-3 font-semibold">Path</th>
             <th className="pb-1.5 pr-3 font-semibold">Type</th>
             <th className="pb-1.5 pr-3 font-semibold">Constraints</th>
@@ -457,6 +475,13 @@ function getSchemaProperties(
     });
   }
 
+  if (typeof schema.format === "string") {
+    properties.push({
+      label: "Format",
+      value: <SchemaPropertyValue>{schema.format}</SchemaPropertyValue>,
+    });
+  }
+
   if (typeof schema.minItems === "number") {
     properties.push({
       label: "Min items",
@@ -525,7 +550,7 @@ export function SchemaPropertiesOverview(props: { schema: SchemaLike; setKey?: s
       <div className="space-y-4">
         {(schema.oneOf as SchemaLike[]).map((option, index) => (
           <section key={index}>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
               Option {index + 1}
             </h3>
             <SchemaPropertiesPanel schema={option} setKey={props.setKey} includeType />
@@ -560,6 +585,17 @@ export function VariableValueView(props: { value: unknown; nested?: boolean }) {
     return <span className="text-muted">none</span>;
   }
 
+  if (value === "") {
+    return (
+      <span className="inline-flex items-center gap-2 text-sm">
+        <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700">
+          ""
+        </code>
+        <span className="text-xs text-muted">empty string</span>
+      </span>
+    );
+  }
+
   if (typeof value === "string") {
     return <DefaultValueCodeBlock nested={props.nested}>{value}</DefaultValueCodeBlock>;
   }
@@ -576,10 +612,23 @@ export function VariableValueView(props: { value: unknown; nested?: boolean }) {
 }
 
 export function isInlineVariableValue(value: unknown) {
-  return typeof value === "number" || typeof value === "boolean";
+  return typeof value === "number" || typeof value === "boolean" || value === "";
 }
 
-function VariableDefinition(props: { name: string; schema: SchemaLike; setKey?: string }) {
+/** A place in the feature that sets a variable, linked to that place. */
+export interface VariableSetter {
+  label: string;
+  to: string;
+}
+
+function VariableDefinition(props: {
+  name: string;
+  schema: SchemaLike;
+  setKey?: string;
+  setBy?: VariableSetter[];
+  /** Entities whose conditions or compositions read this variable. */
+  readBy?: React.ReactNode;
+}) {
   const schema = props.schema;
   const variableId = slugifyFragment(props.name);
   const schemaRef = isSchemaRef(schema);
@@ -592,10 +641,10 @@ function VariableDefinition(props: { name: string; schema: SchemaLike; setKey?: 
   return (
     <section
       id={variableId}
-      className="scroll-mt-6 rounded-lg border border-border bg-elevated/60 p-4 ring-1 ring-black/5"
+      className="scroll-mt-6 overflow-hidden rounded-xl border border-border bg-surface"
     >
-      <div className="group flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h2 className="min-w-0 font-mono text-base font-semibold text-text">
+      <header className="group flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border bg-elevated px-4 py-2.5">
+        <h2 className="min-w-0 font-mono font-semibold text-text">
           <a
             href={`#${variableId}`}
             className="text-text no-underline hover:text-primary [overflow-wrap:anywhere]"
@@ -608,37 +657,74 @@ function VariableDefinition(props: { name: string; schema: SchemaLike; setKey?: 
         ) : type ? (
           <TypeBadge>{type}</TypeBadge>
         ) : null}
-        <VariablePermalink targetId={variableId} />
         {schema.deprecated === true && <Badge tone="warning">deprecated</Badge>}
-      </div>
+        <VariablePermalink targetId={variableId} />
+      </header>
 
-      {description && <p className="mt-1.5 text-sm text-muted">{description}</p>}
+      <div className="divide-y divide-border">
+        {description && <p className="px-4 py-3 text-sm text-muted">{description}</p>}
 
-      {showStructure && (
-        <div className="mt-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
-            Structure
-          </h3>
-          <SchemaTable schema={schema} setKey={props.setKey} />
-        </div>
-      )}
-
-      {"defaultValue" in schema &&
-        (inlineDefault ? (
-          <p className="mt-3 text-sm">
-            <span className="text-xs font-semibold uppercase tracking-wide text-faint">
-              Default{" "}
-            </span>
-            <VariableValueView value={defaultValue} />
-          </p>
-        ) : (
-          <div className="mt-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
-              Default
+        {showStructure && (
+          <div className="px-4 py-3">
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
+              Structure
             </h3>
-            <VariableValueView value={defaultValue} />
+            <SchemaTable schema={schema} setKey={props.setKey} />
           </div>
-        ))}
+        )}
+
+        {"defaultValue" in schema &&
+          (inlineDefault ? (
+            <div className="flex items-center gap-3 px-4 py-3 text-sm">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-faint">
+                Default
+              </span>
+              <VariableValueView value={defaultValue} />
+            </div>
+          ) : (
+            <div className="px-4 py-3">
+              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
+                Default
+              </h3>
+              <VariableValueView value={defaultValue} />
+            </div>
+          ))}
+
+        {props.setBy && (
+          <div className="flex flex-wrap items-center gap-1.5 px-4 py-3 text-sm">
+            <span className="mr-1.5 text-[11px] font-semibold uppercase tracking-wider text-faint">
+              Set by
+            </span>
+            {props.setBy.length ? (
+              props.setBy.map((setter) => (
+                <Link
+                  key={`${setter.label}:${setter.to}`}
+                  to={setter.to}
+                  className="rounded-md border border-border bg-surface px-2 py-0.5 text-xs text-text hover:border-slate-400 hover:bg-elevated"
+                >
+                  {setter.label}
+                </Link>
+              ))
+            ) : (
+              <span className="text-xs text-muted">
+                No variation, rule or force entry changes it, so it is always the default.
+              </span>
+            )}
+          </div>
+        )}
+
+        {props.readBy && (
+          <div className="flex flex-wrap items-center gap-1.5 px-4 py-3 text-sm">
+            <span
+              className="mr-1.5 text-[11px] font-semibold uppercase tracking-wider text-faint"
+              title="Their conditions or compositions read this variable, so changing its type or values changes them."
+            >
+              Read by
+            </span>
+            {props.readBy}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -674,6 +760,10 @@ function useScrollToHash(dependencies: React.DependencyList) {
 export function FeatureVariablesList(props: {
   variablesSchema: Record<string, unknown>;
   setKey?: string;
+  /** Where each variable is set, by variable name. */
+  setBy?: Record<string, VariableSetter[]>;
+  /** Who reads each variable, by variable name. */
+  readBy?: Map<string, React.ReactNode>;
 }) {
   const entries = Object.entries(props.variablesSchema).sort(([left], [right]) =>
     left.localeCompare(right),
@@ -693,6 +783,8 @@ export function FeatureVariablesList(props: {
           name={name}
           schema={(schema || {}) as SchemaLike}
           setKey={props.setKey}
+          setBy={props.setBy ? props.setBy[name] || [] : undefined}
+          readBy={props.readBy?.get(name)}
         />
       ))}
     </div>

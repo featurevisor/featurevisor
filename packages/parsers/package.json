@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/parsers",
   "version": "3.2.0",
-  "description": "Parsers package of Featurevisor",
+  "description": "YAML and JSON parsers for reading and writing Featurevisor definitions",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
@@ -31,6 +31,7 @@
     "experiments"
   ],
   "repository": {
+    "directory": "packages/parsers",
     "type": "git",
     "url": "https://github.com/featurevisor/featurevisor.git"
   },

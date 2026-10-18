@@ -223,8 +223,13 @@ export const assessDistributionPlugin: Plugin = {
   examples: [
     {
       command:
-        "assess-distribution --environment=production --feature=my_feature --context='{}' --populateUuid=userId -n=100",
-      description: "test traffic distribution a feature against provided context",
+        'assess-distribution --feature=showCookieBanner --context=\'{"country":"nl"}\' --populate-uuid=userId --n=100',
+      description: "Test traffic distribution of a feature against provided context",
+    },
+    {
+      command:
+        'assess-distribution --feature=showCookieBanner --environment=production --context=\'{"country":"nl"}\' --populate-uuid=userId --n=100',
+      description: "With environments configured: test traffic distribution in production",
     },
   ],
 };

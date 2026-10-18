@@ -1,0 +1,28 @@
+description: <Feature that depends on other definitions>
+
+bucketBy: userId
+
+# Root gate, checked before rules. Every entry must match.
+# While unmet, the feature is disabled with reason conditions_unmet.
+# Force entries run before this gate.
+conditions:
+  # requires another feature to be enabled
+  - feature: <otherFeatureKey>
+
+  # or a specific variation of it
+  # - feature: <experimentKey>
+  #   variation: treatment
+
+  # or another feature to be disabled (priority exclusion)
+  # - feature: <higherPriorityFeatureKey>
+  #   enabled: false
+
+  # or a global variable's value, such as a kill switch
+  # - variable: <killSwitchKey>
+  #   operator: equals
+  #   value: false
+
+rules:
+  - key: everyone
+    conditions: "*"
+    percentage: 100

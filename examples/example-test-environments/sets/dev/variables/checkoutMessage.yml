@@ -5,8 +5,8 @@ type: string
 defaultValue: Development checkout
 overrides:
   - key: internal
-    segments: internal
+    conditions: internal
     value: Development checkout for engineers
   - key: default
-    segments: "*"
+    conditions: "*"
     value: Development checkout

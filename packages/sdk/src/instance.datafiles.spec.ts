@@ -1,6 +1,12 @@
 import { createFeaturevisor, type FeaturevisorDiagnostic } from "./index";
 import { createDatafile, createFeature } from "./instance.test-fixtures";
 
+function dictionary<TValue>(entries: Array<[string, TValue]>): Record<string, TValue> {
+  const result = Object.create(null) as Record<string, TValue>;
+  for (const [key, value] of entries) result[key] = value;
+  return result;
+}
+
 function createDependencyDatafile(
   revision: string,
   segmentValue: string | undefined,
@@ -56,6 +62,35 @@ function createDependencyDatafile(
         requiredFeatures: ["requiredDependent"],
       },
       unrelated: { hash: "unrelated", type: "string", defaultValue: "default" },
+    },
+  });
+}
+
+function createVariableGateDatafile(
+  revision: string,
+  sourceHash: string,
+  sourceValue: boolean,
+  requirements: boolean,
+) {
+  const conditions = requirements
+    ? [{ variable: "source", operator: "equals" as const, value: true }]
+    : undefined;
+
+  return createDatafile({
+    revision,
+    features: {
+      dependent: createFeature({ hash: "dependent", conditions }),
+      transitive: createFeature({ hash: "transitive", requiredFeatures: ["dependent"] }),
+    },
+    variables: {
+      source: { hash: sourceHash, type: "boolean", defaultValue: sourceValue },
+      message: {
+        hash: "message",
+        type: "string",
+        defaultValue: "ready",
+        disabledValue: "blocked",
+        conditions,
+      },
     },
   });
 }
@@ -542,14 +577,91 @@ describe("Featurevisor public API: datafiles", () => {
     expect(events[0].variables).toEqual(["message"]);
   });
 
+  it.each([
+    ["partial", false],
+    ["replacement", true],
+  ])("propagates a variable only %s update through the mixed graph", (_, replace) => {
+    const events: any[] = [];
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: createVariableGateDatafile("initial", "source-old", false, true),
+    });
+    sdk.on("datafile_set", (event) => events.push(event));
+
+    expect(sdk.isEnabled("dependent")).toBe(false);
+    expect(sdk.isEnabled("transitive")).toBe(false);
+    expect(sdk.getVariable("message")).toBe("blocked");
+
+    sdk.setDatafile(
+      replace
+        ? createVariableGateDatafile("updated", "source-new", true, true)
+        : createDatafile({
+            revision: "updated",
+            variables: {
+              source: { hash: "source-new", type: "boolean", defaultValue: true },
+            },
+          }),
+      replace,
+    );
+
+    expect(events[0]).toEqual({
+      revision: "updated",
+      previousRevision: "initial",
+      revisionChanged: true,
+      features: ["dependent", "transitive"],
+      variables: ["source", "message"],
+      replaced: replace,
+    });
+    expect(sdk.isEnabled("dependent")).toBe(true);
+    expect(sdk.isEnabled("transitive")).toBe(true);
+    expect(sdk.getVariable("message")).toBe("ready");
+  });
+
+  it.each([
+    ["partial", false, "added", false, true],
+    ["partial", false, "removed", true, false],
+    ["replacement", true, "added", false, true],
+    ["replacement", true, "removed", true, false],
+  ])(
+    "uses old and new dependency graphs for a %s update with a %s same hash dependent",
+    (_, replace, _change, previousRequirements, nextRequirements) => {
+      const events: any[] = [];
+      const sdk = createFeaturevisor({
+        logLevel: "fatal",
+        datafile: createVariableGateDatafile("initial", "source-old", false, previousRequirements),
+      });
+      sdk.on("datafile_set", (event) => events.push(event));
+
+      expect(sdk.isEnabled("dependent")).toBe(!previousRequirements);
+      expect(sdk.getVariable("message")).toBe(previousRequirements ? "blocked" : "ready");
+
+      const updated = createVariableGateDatafile("updated", "source-new", false, nextRequirements);
+      sdk.setDatafile(
+        replace
+          ? updated
+          : createDatafile({
+              revision: updated.revision,
+              features: updated.features,
+              variables: updated.variables,
+            }),
+        replace,
+      );
+
+      expect(events[0].features).toEqual(["dependent", "transitive"]);
+      expect(events[0].variables).toEqual(["source", "message"]);
+      expect(sdk.isEnabled("dependent")).toBe(!nextRequirements);
+      expect(sdk.getVariable("message")).toBe(nextRequirements ? "blocked" : "ready");
+    },
+  );
+
   it("terminates dependency propagation defensively when datafile requirements are cyclic", () => {
     const events: any[] = [];
     const sdk = createFeaturevisor({
       logLevel: "fatal",
       datafile: createDatafile({
         features: {
-          a: createFeature({ hash: "a", required: ["b"] }),
-          b: createFeature({ hash: "b", required: ["a"] }),
+          a: createFeature({ hash: "a", requiredFeatures: ["b"] }),
+          b: createFeature({ hash: "b", requiredFeatures: ["a"] }),
         },
       }),
     });
@@ -675,5 +787,106 @@ describe("Featurevisor public API: datafiles", () => {
 
     expect(events[2].features).toEqual([]);
     expect(events[2].variables).toEqual([]);
+  });
+
+  it("does not resolve inherited entity keys from empty dictionaries", () => {
+    const sdk = createFeaturevisor({ logLevel: "fatal" });
+
+    for (const key of ["toString", "constructor", "hasOwnProperty", "__proto__"]) {
+      expect(sdk.getSegment(key)).toBeUndefined();
+      expect(sdk.getFeature(key)).toBeUndefined();
+      expect(sdk.isEnabled(key)).toBe(false);
+      expect(sdk.getVariable(key)).toBeNull();
+    }
+  });
+
+  it("evaluates literal owned special keys and returns safe result dictionaries", () => {
+    const keys = ["toString", "constructor", "hasOwnProperty", "__proto__"];
+    const variableSchemas = dictionary(
+      keys.map((key) => [key, { type: "string" as const, defaultValue: `default-${key}` }]),
+    );
+    const variableValues = dictionary(keys.map((key) => [key, `feature-${key}`]));
+    const features = dictionary(
+      keys.map((key) => [
+        key,
+        createFeature({
+          hash: key,
+          traffic: [
+            {
+              key: "segment",
+              segments: key,
+              percentage: 100000,
+              variables: variableValues,
+            },
+          ],
+          variablesSchema: variableSchemas,
+        }),
+      ]),
+    );
+    const variables = dictionary(
+      keys.map((key) => [
+        key,
+        { hash: key, type: "string" as const, defaultValue: `global-${key}` },
+      ]),
+    );
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: JSON.stringify(
+        createDatafile({
+          segments: dictionary(keys.map((key) => [key, { conditions: "*" as const }])),
+          features,
+          variables,
+        }),
+      ),
+    });
+
+    for (const key of keys) {
+      expect(sdk.getSegment(key)).toEqual({ conditions: "*" });
+      expect(sdk.getFeature(key)?.hash).toBe(key);
+      expect(sdk.isEnabled(key)).toBe(true);
+      expect(sdk.getVariable(key, key)).toBe(`feature-${key}`);
+      expect(sdk.getVariable(key)).toBe(`global-${key}`);
+    }
+
+    const featureResults = sdk.getFeatureEvaluations();
+    const variableResults = sdk.getVariableEvaluations();
+    expect(Object.getPrototypeOf(featureResults)).toBeNull();
+    expect(Object.getPrototypeOf(variableResults)).toBeNull();
+    for (const key of keys) {
+      expect(Object.prototype.hasOwnProperty.call(featureResults, key)).toBe(true);
+      expect(featureResults[key].enabled).toBe(true);
+      expect(Object.getPrototypeOf(featureResults[key].variables!)).toBeNull();
+      expect(featureResults[key].variables![key]).toBe(`feature-${key}`);
+      expect(Object.prototype.hasOwnProperty.call(variableResults, key)).toBe(true);
+      expect(variableResults[key]).toBe(`global-${key}`);
+    }
+
+    const stickyFeatures = dictionary(keys.map((key) => [key, { enabled: false }]));
+    const stickyVariables = dictionary(keys.map((key) => [key, `sticky-global-${key}`]));
+    sdk.setStickyFeatures(stickyFeatures, true);
+    sdk.setStickyVariables(stickyVariables, true);
+    for (const key of keys) {
+      expect(sdk.isEnabled(key)).toBe(false);
+      expect(sdk.getVariable(key)).toBe(`sticky-global-${key}`);
+    }
+
+    sdk.setStickyFeatures(
+      dictionary(
+        keys.map((key) => [
+          key,
+          { enabled: true, variables: dictionary([[key, `sticky-${key}`]]) },
+        ]),
+      ),
+      true,
+    );
+    for (const key of keys) expect(sdk.getVariable(key, key)).toBe(`sticky-${key}`);
+
+    const child = sdk.spawn();
+    child.setStickyFeatures(dictionary(keys.map((key) => [key, { enabled: false }])), true);
+    child.setStickyVariables(dictionary(keys.map((key) => [key, `child-global-${key}`])), true);
+    for (const key of keys) {
+      expect(child.isEnabled(key)).toBe(false);
+      expect(child.getVariable(key)).toBe(`child-global-${key}`);
+    }
   });
 });

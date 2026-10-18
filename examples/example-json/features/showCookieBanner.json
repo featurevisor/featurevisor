@@ -6,19 +6,19 @@
     "staging": [
       {
         "key": "everyone",
-        "segments": "*",
+        "conditions": "*",
         "percentage": 100
       }
     ],
     "production": [
       {
         "key": "nl",
-        "segments": ["netherlands"],
+        "conditions": ["netherlands"],
         "percentage": 100
       },
       {
         "key": "everyone",
-        "segments": "*",
+        "conditions": "*",
         "percentage": 0
       }
     ]

@@ -1,0 +1,28 @@
+description: Checkout copy is present for ${{ team }}
+matrix:
+  team: [engineering, marketing]
+target: all
+context:
+  team: ${{ team }}
+  userId: customer-1
+checks:
+  - feature: checkoutFlow
+    variation: null
+  - variable: checkoutMessage
+    operator: notNull
+  - variable: checkoutMessage
+    operator: contains
+    value: checkout
+children:
+  - stickyVariables:
+      checkoutMessage: Contact support
+    stickyFeatures:
+      checkoutFlow:
+        enabled: true
+    checks:
+      - feature: checkoutFlow
+        enabled: true
+        variation: null
+      - variable: checkoutMessage
+        operator: startsWith
+        value: Contact

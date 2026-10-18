@@ -1,0 +1,9 @@
+description: Variable configuration
+
+tags: [web]
+
+compose:
+  policy:
+    variable: policy
+  raw:
+    variable: raw

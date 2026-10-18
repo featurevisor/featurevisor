@@ -1,0 +1,17 @@
+description: A feature gated by a version requirement
+tags: [all]
+bucketBy: userId
+conditions:
+  - variable: clientVersion
+    operator: semverGreaterThan
+    value: 1.0.0-1a
+variablesSchema:
+  minimumVersion:
+    type: string
+    defaultValue: 1.0.0-1a
+rules:
+  staging: &rules
+    - key: available
+      conditions: "*"
+      percentage: 100
+  production: *rules

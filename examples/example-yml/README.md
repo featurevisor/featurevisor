@@ -2,56 +2,64 @@
 
 Basic example showing how Featurevisor works, with all definitions written in YAML.
 
+This is the default scaffold. Rules are flat lists, tests do not select an
+environment, and the `all` target includes every active feature and global
+variable without requiring tags. Building writes `datafiles/featurevisor-all.json`.
+
+For staging and production rules in shared definitions, use
+`init --example=with-environments`. The existing `init --example=environments`
+choice instead models release lanes with Sets.
+
 Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
 ## Initialize
 
-```
-$ mkdir my-featurevisor-project
-$ cd my-featurevisor-project
-$ npx @featurevisor/cli init --example example-yml
+```sh
+mkdir my-featurevisor-project
+cd my-featurevisor-project
+npx @featurevisor/cli init
 ```
 
 ## Installation
 
-```
-$ npm install
+```sh
+npm install
 ```
 
 ## Usage
 
-### Lint YAMLs
+### Validate definitions
 
-```
-$ npm run lint
+```sh
+npm run lint
 ```
 
 ### Build datafiles
 
-```
-$ npm run build
-```
-
-### Test features
-
-```
-$ npm test
+```sh
+npm run build
 ```
 
-### Start local server
+### Run tests
+
+```sh
+npm test
+```
+
+### Browse the Catalog
 
 Generates and serves the project catalog:
 
-```
-$ npm start
+```sh
+npm start
 ```
 
 ### Generate code
 
-For additional type safety and autocompletion, you can generate TypeScript code from your YAMLs:
+For additional type safety and autocompletion, you can generate TypeScript code from your definitions:
 
-```
-$ npm run generate-code
+```sh
+npm run generate-code
 ```
 
 See output in `./src` directory.

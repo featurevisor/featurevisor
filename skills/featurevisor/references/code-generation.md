@@ -1,77 +1,62 @@
 # Code generation
 
-Full docs: <https://featurevisor.com/docs/code-generation>
+Full docs: <https://featurevisor.com/docs/code-generation/>
 
-Generate type-safe TypeScript bindings from your feature definitions so applications get autocomplete and compile-time checks on feature keys, variable keys, variable types, and context attribute types.
-
-Currently TypeScript only. Other languages are planned as more SDKs mature.
-
-## Generate
+Generate TypeScript bindings from the project, so applications get autocompletion and compile time checks on feature keys, variation values, variable keys and types, and context attributes. TypeScript is the only language today.
 
 ```bash
-npx featurevisor generate-code --language typescript --out-dir ./src
+npx featurevisor generate-code --language typescript --out-dir ./src/featurevisor
 ```
 
-Optional flags:
+| Option              | Effect                                                      |
+| ------------------- | ----------------------------------------------------------- |
+| `--tag=<tag>`       | only features and global variables with the tag. Repeatable |
+| `--target=<target>` | only what the target selects. Repeatable                    |
+| `--react`           | also generate typed React hooks                             |
 
-| Flag                | Effect                                                                 |
-| ------------------- | ---------------------------------------------------------------------- |
-| `--tag=<tag>`       | Generate for features and global variables carrying the tag            |
-| `--target=<target>` | Generate for features and global variables selected by the target      |
-| `--react`           | Also emit typed React hooks (`useFlag`, `useVariation`, `useVariable`) |
-
-`--tag` and `--target` are repeatable. All supplied tags and targets form a union for both features and global variables. A target applies `tag` or `tags` to both entity types. `includeFeatures` and `excludeFeatures` filter features. `includeVariables` and `excludeVariables` filter global variables. Target context does not specialize generated types.
-
-When a selected feature or global variable requires other features, generated feature types include the complete transitive required feature chain even when those features do not match the selectors directly. This mirrors the corresponding datafile payload.
+Several tags and targets form a union. Like datafiles, the output includes the definitions selected ones reference.
 
 ## Output
 
-Inside `--out-dir`:
+| File            | Contents                                                                           |
+| --------------- | ---------------------------------------------------------------------------------- |
+| `context.ts`    | the `Context` interface, from attributes                                           |
+| `attributes.ts` | one type per attribute                                                             |
+| `features.ts`   | `FeatureKey`, `Variation<F>`, `FeatureVariableKey<F>`, `FeatureVariableType<F, V>` |
+| `variables.ts`  | `Variables`, `VariableKey`, `VariableType<K>` for global variables                 |
+| `functions.ts`  | typed `isEnabled`, `getVariation` and `getVariable`                                |
+| `instance.ts`   | `setInstance` and `getInstance`                                                    |
+| `index.ts`      | exports everything                                                                 |
+| `react.ts`      | typed hooks, with `--react`                                                        |
 
-- `context.ts` — typed `Context` interface built from all attribute definitions.
-- `attributes.ts` — typed per-attribute types (`CountryAttribute`, `UserIdAttribute`, etc.).
-- `schemas.ts` — reusable schema types from `schemas/`.
-- `features.ts` — feature keys, variation values, variable keys, and variable value types.
-- `functions.ts` — typed `isEnabled`, `getVariation`, and `getVariable` functions.
-- `instance.ts` — SDK instance wiring through `setInstance`.
-- `index.ts` — barrel exports for the function API (`isEnabled`, `getVariation`, `getVariable`, plus `setInstance`).
-- `react.ts` — typed hooks (only with `--react`).
+Types follow the schemas: `enum` and `const` become literal types, `required` properties are non optional, `format: date-time` attributes accept `Date | string`. A composition's type is derived from its sources, read only, and conservatively nullable, because any member can be `null` at runtime.
 
-## Wiring into an application
+## Use in an application
 
 ```ts
 import { createFeaturevisor } from '@featurevisor/sdk'
-import { setInstance, isEnabled, getVariation, getVariable } from '@yourorg/features'
+import { setInstance, isEnabled, getVariation, getVariable } from './featurevisor'
 
 const f = createFeaturevisor({ datafile })
 setInstance(f)
 
-// from here on, calls are type-checked
-const ok = isEnabled('checkout.express')                // wrong key → TS error
-const v  = getVariation('sidebar', { userId: 'u_1' })   // wrong context attribute type → TS error
-const c  = getVariable('sidebar', 'color')              // wrong variable key for this feature → TS error
+const context = {
+  userId: '8f2a',
+  country: 'nl',
+}
+
+isEnabled('checkout', context) // an unknown key is a type error
+getVariation('pricing', context) // 'control' | 'treatment' | null
+getVariable('buyButton', 'label', context) // string | null
+getVariable('supportEmail', context) // a global variable
 ```
 
-React hooks (if generated):
+Call `setInstance` before using the functions, or they throw. Imports use `.js` extensions, which works with NodeNext, CommonJS and bundlers.
 
-```tsx
-import { useFlag, useVariation, useVariable } from '@yourorg/features'
+## When to suggest it
 
-const show = useFlag('checkout.express')
-const v    = useVariation('sidebar')
-const color = useVariable('sidebar', 'color')
-```
+- The application is TypeScript and calls the SDK with string keys.
+- Typos in keys or context attributes have caused bugs.
+- Many features, or several teams consuming one project.
 
-## Publishing
-
-Common pattern: publish the generated code as a private npm package (e.g. `@yourorg/features`) from the same CI pipeline that builds and deploys datafiles. ESM build enables tree-shaking on the consumer side.
-
-The skill does not author the npm package itself — that's project setup work; defer to the user.
-
-## When the agent should suggest code-gen
-
-- The user is consuming features from TypeScript and asks "how do I avoid string-typing feature keys?"
-- The user is rolling out a new attribute and worries about wrong-type context payloads.
-- The user manages many features and reports churn from typo-driven bugs.
-
-For SDK usage in JS/TS _without_ code-gen, see [sdk-javascript.md](sdk-javascript.md).
+Regenerate after changing definitions, and compile the application. Teams often publish the generated code as a private package from the same CI pipeline that deploys datafiles. Setting that up is project work: agree it with the user before doing it.

@@ -205,21 +205,65 @@ describe("core: definition diff", () => {
       "variables",
       "segments",
       "attributes",
-      "groups",
       "schemas",
       "targets",
       "tests",
     ]) {
       write(`${directory}/nested/example.yml`, "description: New entity\n");
     }
+    write(
+      "tests/scenarios/nested/example.spec.yml",
+      "description: New scenario\nchecks:\n  - variable: settings\n    operator: exists\n",
+    );
     const result = diff();
     expect(result.changes).toHaveLength(7);
-    expect(result.changes.every((entity) => entity.key === "nested.example")).toBe(true);
+    expect(result.changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ entity: "test", key: "nested.example" }),
+        expect.objectContaining({ entity: "scenario", key: "scenarios.nested.example.spec" }),
+      ]),
+    );
+    expect(result.changes.filter((entity) => entity.file.includes("tests/scenarios"))).toHaveLength(
+      1,
+    );
     const config = getProjectConfig(root);
     config.namespaceCharacter = "/";
-    expect(
-      diffDefinitions(root, config).changes.every((entity) => entity.key === "nested/example"),
-    ).toBe(true);
+    expect(diffDefinitions(root, config).changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ entity: "test", key: "nested/example" }),
+        expect.objectContaining({ entity: "scenario", key: "scenarios/nested/example.spec" }),
+      ]),
+    );
+  });
+
+  it("classifies changed and removed scenarios by content rather than their directory", () => {
+    const file = "tests/journeys/checkout.spec.yml";
+    const scenario = "checks:\n  - feature: checkout\n    enabled: true\n";
+    const entity = "feature: checkout\nassertions: []\n";
+    write(file, scenario);
+    const initial = commit();
+    write(file, entity);
+    const changed = commit();
+    expect(diff({ from: initial, to: changed }).changes).toEqual([
+      expect.objectContaining({ entity: "test", key: "journeys.checkout.spec", kind: "changed" }),
+    ]);
+    expect(diff({ from: changed, to: initial }).changes).toEqual([
+      expect.objectContaining({
+        entity: "scenario",
+        key: "journeys.checkout.spec",
+        kind: "changed",
+      }),
+    ]);
+    write(file, scenario);
+    commit();
+    fs.unlinkSync(path.join(root, file));
+    expect(diff().changes).toEqual([
+      expect.objectContaining({
+        entity: "scenario",
+        key: "journeys.checkout.spec",
+        kind: "removed",
+      }),
+    ]);
   });
 
   it("compares sets from both snapshots, including removed sets", () => {

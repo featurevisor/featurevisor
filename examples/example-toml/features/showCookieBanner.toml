@@ -4,15 +4,15 @@ bucketBy = "userId"
 
 [[rules.staging]]
 key = "everyone"
-segments = "*"
+conditions = "*"
 percentage = 100
 
 [[rules.production]]
 key = "nl"
-segments = [ "netherlands" ]
+conditions = [ "netherlands" ]
 percentage = 100
 
 [[rules.production]]
 key = "everyone"
-segments = "*"
+conditions = "*"
 percentage = 0

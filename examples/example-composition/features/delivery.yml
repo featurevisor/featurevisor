@@ -1,0 +1,24 @@
+description: Delivery offer when available
+
+tags: [source]
+
+bucketBy: userId
+
+disabledVariationValue: unavailable
+
+variablesSchema:
+  label:
+    type: string
+    defaultValue: Delivery
+    disabledValue: Not available
+
+variations:
+  - value: express
+    weight: 100
+  - value: unavailable
+    weight: 0
+
+rules:
+  - key: none
+    conditions: "*"
+    percentage: 0

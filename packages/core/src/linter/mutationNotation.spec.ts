@@ -13,6 +13,29 @@ import {
 } from "./mutationNotation";
 
 describe("mutationNotation.ts", () => {
+  it.each(["appendUnique", "removeValue"])(
+    "validates %s against the array at the complete path",
+    (op) => {
+      const schemas: Record<string, Schema> = {
+        tags: { type: "array", items: { type: "string" } },
+        matrix: { type: "array", items: { type: "array", items: { type: "integer" } } },
+        title: { type: "string" },
+      };
+      expect(isMutationKey(`tags:${op}`)).toBe(true);
+      expect(validateMutationKey(`tags:${op}`, schemas)).toMatchObject({
+        valid: true,
+        operation: op,
+        valueSchema: { type: "string" },
+      });
+      expect(validateMutationKey(`matrix[0]:${op}`, schemas)).toMatchObject({
+        valid: true,
+        operation: op,
+        valueSchema: { type: "integer" },
+      });
+      expect(validateMutationKey(`tags[0]:${op}`, schemas).valid).toBe(false);
+      expect(validateMutationKey(`title:${op}`, schemas).valid).toBe(false);
+    },
+  );
   describe("isMutationKey", () => {
     it("returns false for empty string", () => {
       expect(isMutationKey("")).toBe(false);
@@ -438,7 +461,7 @@ describe("mutationNotation.ts", () => {
       };
       const r = validateMutationKey("myVar.foo", schemas, {});
       expect(r.valid).toBe(false);
-      expect(r.error).toMatch(/path does not exist|could not be loaded/);
+      expect(r.error).toBe('Path "myVar.foo" does not exist in the schema of variable "myVar".');
       expect(r.error).toContain("myVar");
     });
 
@@ -469,7 +492,9 @@ describe("mutationNotation.ts", () => {
       it("invalid when path does not exist", () => {
         const r = validateMutationKey("config.nonexistent", variableSchemaByKey);
         expect(r.valid).toBe(false);
-        expect(r.error).toContain("path does not exist");
+        expect(r.error).toBe(
+          'Path "config.nonexistent" does not exist in the schema of variable "config".',
+        );
       });
 
       it("valid when path uses additionalProperties", () => {
@@ -516,7 +541,9 @@ describe("mutationNotation.ts", () => {
       it("invalid when path does not exist", () => {
         const r = validateMutationKey("config.nested:append", variableSchemaByKey);
         expect(r.valid).toBe(false);
-        expect(r.error).toContain("path does not exist");
+        expect(r.error).toBe(
+          'Path "config.nested" does not exist in the schema of variable "config" (operation :append).',
+        );
       });
 
       it("invalid when path points to non-array", () => {
@@ -592,7 +619,9 @@ describe("mutationNotation.ts", () => {
       it("invalid when path does not exist or does not point to array element", () => {
         const r = validateMutationKey("config.fake[0]:after", variableSchemaByKey);
         expect(r.valid).toBe(false);
-        expect(r.error).toMatch(/path does not exist|does not point to an array/);
+        expect(r.error).toBe(
+          'Path "config.fake[0]" does not exist in the schema of variable "config" (operation :after).',
+        );
       });
 
       it("invalid when array items is oneOf", () => {
@@ -654,7 +683,9 @@ describe("mutationNotation.ts", () => {
       it("invalid when path does not exist", () => {
         const r = validateMutationKey("config.bad:remove", variableSchemaByKey);
         expect(r.valid).toBe(false);
-        expect(r.error).toContain("path does not exist");
+        expect(r.error).toBe(
+          'Path "config.bad" does not exist in the schema of variable "config" (operation :remove).',
+        );
       });
     });
 

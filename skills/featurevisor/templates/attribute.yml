@@ -1,9 +1,11 @@
 description: <Human-readable description>
-type: string
-# Other supported types: boolean, integer, double, date, array, object
-# Use `oneOf` at top level instead of `type` for union-like attributes.
 
-# Optional schema-ish properties for stricter linting / code generation:
+type: string
+# Other types: boolean, integer, number, array (of strings), object (flat)
+# Strings may add `format: date-time` (timestamps) or `format: semver` (versions).
+# Use `oneOf` instead of `type` for a value matching one of several schemas.
+
+# Optional constraints, checked against every condition value:
 # enum: [free, pro, enterprise]
 # pattern: '^[a-z]{2}$'
 # minLength: 2

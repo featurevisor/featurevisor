@@ -2,10 +2,15 @@ variable: supportEmail
 assertions:
   - key: netherlands
     description: Uses the Netherlands override
-    environment: production
+    # Add environment: production only when that environment is configured.
     context:
       country: nl
     expectedValue: support-nl@example.com
     expectedEvaluation:
       reason: variable_override_rule
       variableOverrideKey: netherlands
+    checks:
+      - key: trusted-domain
+        description: Support address uses the expected domain
+        operator: matches
+        value: '@example\.com$'

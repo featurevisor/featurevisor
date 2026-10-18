@@ -1,105 +1,98 @@
-# Overview <!-- omit in toc -->
+# Working on Featurevisor
 
-This is the original monorepo of Featurevisor, which is a Git-based feature management tool offering a CLI and also a SDK (in several different languages, but this monorepo has the original TypeScript/JavaScript SDK only).
+Featurevisor is a Git managed feature and configuration system. This monorepo
+contains the TypeScript types, JavaScript SDK, Core, CLI, Catalog, framework
+integrations, OpenFeature providers, skills and example projects.
 
-- [Links](#links)
-- [Stack](#stack)
-- [Packages](#packages)
-- [Examples](#examples)
-- [Installation](#installation)
-- [Building](#building)
-- [Testing](#testing)
-- [Linting](#linting)
-- [Formatting](#formatting)
-- [Documentation](#documentation)
+## Setup and checks
 
-## Links
+Use Node.js 24 or newer and npm workspaces.
 
-- Website: https://featurevisor.com
-- GitHub: https://github.com/featurevisor/featurevisor
-- Full documentation as a single llms.txt file: https://featurevisor.com/llms.txt
-
-## Stack
-
-- The monorepo is managed with Lerna
-- Using Node.js v24+
-- Using npm workspaces
-- Using TypeScript
-
-## Packages
-
-They can be found in the `packages/` directory which are published to npm.
-
-Individual packages can be built and tested by `cd`ing into the package directory and then running `npm run build` and `npm run test` respectively.
-
-- `packages/types`: TypeScript types for all other packages
-- `packages/core`: Core package used in Featurevisor CLI
-- `packages/cli`: Featurevisor CLI package
-- `packages/sdk`: Featurevisor SDK package
-- `packages/react`: Additional React-specific hooks and components
-
-## Examples
-
-Example projects are available as packages in the `examples/` directory, which are for testing and development purposes only, and not published to npm.
-
-The `examples/example-1` project is used for testing and development purposes covering all possible use cases. You can run `npx featurevisor ...` commands there to test things out quickly while changing/adding any definitions in that project.
-
-YAML is the default file format for the example projects, but Featurevisor projects also allow other formats via its custom parsers API.
-
-## Installation
-
-Dependencies of entire monorepo can be installed via:
-
-```
-$ make install
+```sh
+make install
+make build
+make test
+make lint
+make typecheck
+make format
 ```
 
-## Building
+CI runs installation, build, lint, typechecks and tests only, to stay fast.
+make check runs the same steps, then make test-extended for the slower checks:
+compiled package consumers, browsers, CLI integration, JavaScript conformance,
+editor schemas, release configuration and bundle sizes. Run make check locally
+before publishing. The browser checks need a local Chromium compatible browser.
+There are no Git commit hooks. make format formats examples and package sources. Lerna coordinates npm workspaces.
+Package directories also expose their own
+build, test and typecheck scripts. SDK and Core source lives under packages.
+Internal projects under examples exercise supported authoring and CLI flows.
 
-All the packages in the monorepo can be built via:
+Build packages before testing compiled consumers. Do not rebuild a package
+while another check imports output that the build replaces. Unit tests importing
+workspace siblings should resolve their source through the test configuration.
 
+## Project fixtures
+
+The default init scaffold comes from examples/example-yml. It has no
+environments and an unfiltered all Target. The with-environments scaffold
+uses staging and production. The existing environments scaffold models
+release lanes as Sets instead. Verify scaffold content through the init
+archive path, not only by inspecting example files.
+
+Attribute files belong directly in the configured attributes directory,
+including within each Set. Nested files and dots in attribute names are
+rejected with invalid_attribute_namespace. Do not silently filter these files
+out during discovery. Nested context uses object properties instead. The
+slash namespace example declares attributes/user.yml and reads user.id and
+user.country from a nested user object, while other entity keys may use slash.
+
+## Contracts and integration
+
+Read [the runtime contract](conformance/runtime.md) and
+[fixture guide](conformance/README.md) before changing evaluation, datafile
+handling or portable fixtures. Native runners use the separate
+[test execution protocol](conformance/test-execution.md).
+
+Execute all applicable fixture cases and preserve historical fixture bytes.
+A version constant or a passing fixture copy check alone does not verify a port.
+Keep expected results independent of the current reference implementation.
+Compare sdk-diagnostics as unordered lists while preserving duplicate counts.
+Turning them into sets can hide an extra or missing diagnostic.
+
+Jest tests importing workspace siblings must map their package names to source
+entry points with moduleNameMapper. Stale cjs output can otherwise make tests
+pass against an old build. Retain the provider tests' source resolution
+assertions for both the SDK and shared provider core. Rebuild dependency output
+before compiled integration checks.
+
+Useful optional integration checks are:
+
+```sh
+make test-cli-integration
+make check-conformance-fixtures
+make test-runner-conformance RUNNERS="javascript go"
+make test-mutation-conformance RUNNERS="javascript go"
 ```
-$ make build
-```
 
-To specifically build a particular package, you can `cd` into the package directory and then run `npm run build`:
+Native checks expect sibling SDK repositories with their CLI runners built.
+Example 1 is the broad integration project. Other examples cover compositions,
+Sets, namespaces and optional environments.
 
-```
-$ (cd packages/core && npm run build)
-```
+## Catalog
 
-## Testing
+Catalog export and React UI live in packages/catalog. Run its package tests
+and typecheck after changes. Visible interactions also need the isolated
+make test-catalog-browser suite. Keep Core supplied Target membership as the
+authority and use the existing shared reference walker for dependencies.
+Follow surrounding components and test both flat and configured projects.
 
-All the packages in the monorepo can be tested via:
+## Contribution boundaries
 
-```
-$ make test
-```
+Preserve unrelated edits. Keep generated files, secrets and personal filesystem
+paths out of commits. Do not change published APIs or evaluation semantics
+incidentally while refactoring internals. Add regressions for behaviour changes.
 
-To specifically test a particular package, you can `cd` into the package directory and then run `npm run test`:
-
-```
-$ (cd packages/core && npm run test)
-```
-
-## Linting
-
-All the packages in the monorepo can be linted via:
-
-```
-$ make lint
-```
-
-Uses both ESLint and Prettier to lint the code everywhere.
-
-## Formatting
-
-To automatically format the code everywhere, run:
-
-```
-$ make format
-```
-
-## Documentation
-
-Documentation is maintained separately in the Featurevisor website repository and published at https://featurevisor.com. This repository does not contain the documentation source.
+Public documentation is maintained at
+[featurevisor.com](https://featurevisor.com/docs/). Skills live in skills.
+Keep repository instructions focused on contributing here rather than private
+release coordination, review history or local benchmark records.

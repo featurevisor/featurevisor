@@ -82,7 +82,7 @@ export function benchmarkFeatureVariable(
   return benchmarkEvaluation(n, () => f.getVariable(featureKey, variableKey, context as Context));
 }
 
-export function benchmarkGlobalVariable(
+export function benchmarkVariable(
   f: Featurevisor,
   variableKey: string,
   context: Record<string, unknown>,
@@ -148,7 +148,7 @@ async function benchmarkFeatureWithDatafile(
     console.log(`Evaluating variable "${options.variable}" ${options.n} times...`);
     output = options.feature
       ? benchmarkFeatureVariable(f, options.feature, options.variable, options.context, options.n)
-      : benchmarkGlobalVariable(f, options.variable, options.context, options.n);
+      : benchmarkVariable(f, options.variable, options.context, options.n);
   } else if (options.variation) {
     // variation
     console.log(`Evaluating variation ${options.n} times...`);
@@ -200,6 +200,7 @@ export async function benchmarkFeature(
 
 export const benchmarkPlugin: Plugin = {
   command: "benchmark",
+  description: "Benchmark feature or variable evaluation",
   handler: async ({ rootDirectoryPath, projectConfig, datasource, parsed }) => {
     if (parsed.variation && parsed.variable) {
       throw new FeaturevisorCLIError(
@@ -252,23 +253,28 @@ export const benchmarkPlugin: Plugin = {
   examples: [
     {
       command:
-        'benchmark --environment=production --feature=my_feature -n=1000 --context=\'{"userId": "123"}\'',
+        'benchmark --feature=showCookieBanner --n=1000 --context=\'{"userId":"123","country":"nl"}\'',
       description: "Benchmark a feature flag",
     },
     {
       command:
-        'benchmark --environment=production --feature=my_feature -n=1000 --context=\'{"userId": "123"}\' --variation',
-      description: "Benchmark a feature variation",
+        'benchmark --feature=sidebar --variation --n=1000 --context=\'{"userId":"123","country":"nl"}\'',
+      description: "For a project defining sidebar variations: benchmark a feature variation",
     },
     {
       command:
-        'benchmark --environment=production --feature=my_feature -n=1000 --context=\'{"userId": "123"}\' --variable=my-variable',
-      description: "Benchmark a feature variable",
+        'benchmark --feature=sidebar --variable=title --n=1000 --context=\'{"userId":"123","country":"nl"}\'',
+      description:
+        "For a project defining sidebar with a title variable: benchmark a feature variable",
+    },
+    {
+      command: 'benchmark --variable=supportEmail --n=1000 --context=\'{"country":"nl"}\'',
+      description: "For a project defining supportEmail: benchmark a global variable",
     },
     {
       command:
-        'benchmark --environment=production -n=1000 --context=\'{"country": "nl"}\' --variable=supportEmail',
-      description: "Benchmark a global variable",
+        'benchmark --feature=showCookieBanner --environment=production --n=1000 --context=\'{"userId":"123","country":"nl"}\'',
+      description: "With environments configured: benchmark a feature flag in production",
     },
   ],
 };

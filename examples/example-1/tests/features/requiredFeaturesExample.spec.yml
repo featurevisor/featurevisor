@@ -18,8 +18,8 @@ assertions:
     expectedToBeEnabled: false
     expectedEvaluations:
       flag:
-        reason: required
-        requiredFeatures:
+        reason: conditions_unmet
+        conditions:
           - feature: redesign
             enabled: true
           - feature: sidebar
@@ -36,7 +36,7 @@ assertions:
     expectedToBeEnabled: false
     expectedEvaluations:
       flag:
-        reason: required
+        reason: conditions_unmet
 
   - description: fails when a feature required to be disabled is enabled
     at: 90
@@ -46,4 +46,4 @@ assertions:
     expectedToBeEnabled: false
     expectedEvaluations:
       flag:
-        reason: required
+        reason: conditions_unmet

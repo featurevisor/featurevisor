@@ -1,5 +1,7 @@
+import { getTestDatafileKey } from "./datafileKey";
 import type { DatafileContent, TestFeature } from "@featurevisor/types";
 
+import { getFeatureAssertionsFromMatrix } from "../list/matrix";
 import { testFeature } from "./testFeature";
 
 const featureKey = "checkout";
@@ -60,7 +62,7 @@ describe("core: feature tester behavior", () => {
         ],
       },
       { quiet: true },
-      new Map([["production", createDatafile()]]),
+      new Map([[getTestDatafileKey("production"), createDatafile()]]),
     );
 
     expect(result.passed).toBe(false);
@@ -113,7 +115,7 @@ describe("core: feature tester behavior", () => {
       {} as any,
       test,
       { quiet: true },
-      new Map([[false, createDatafile()]]),
+      new Map([[getTestDatafileKey(false), createDatafile()]]),
     );
 
     expect(result).toEqual(expect.objectContaining({ passed: true }));
@@ -151,7 +153,7 @@ describe("core: feature tester behavior", () => {
       {} as any,
       test,
       { quiet: true },
-      new Map([[false, createDatafile()]]),
+      new Map([[getTestDatafileKey(false), createDatafile()]]),
     );
 
     expect(result.passed).toBe(true);
@@ -177,10 +179,82 @@ describe("core: feature tester behavior", () => {
       {} as any,
       test,
       { quiet: true },
-      new Map([[false, createDatafile()]]),
+      new Map([[getTestDatafileKey(false), createDatafile()]]),
     );
 
     expect(result.passed).toBe(true);
     expect(result.assertions[0].errors).toEqual([]);
+  });
+
+  it("does not compare the flag when a matrix assertion only expects a variation", async () => {
+    const test = {
+      key: featureKey,
+      feature: featureKey,
+      assertions: getFeatureAssertionsFromMatrix(0, {
+        description: "variation only",
+        matrix: { country: ["child"] },
+        at: 50,
+        context: { country: "${{ country }}" },
+        expectedVariation: "control",
+      }),
+    } as unknown as TestFeature;
+
+    const result = await testFeature(
+      createDatasource(),
+      {} as any,
+      test,
+      { quiet: true },
+      new Map([[getTestDatafileKey(false), createDatafile()]]),
+    );
+
+    expect(result.assertions[0].errors).toEqual([]);
+    expect(result.passed).toBe(true);
+  });
+
+  it("applies sticky global variables to a feature gated on a variable", async () => {
+    const datafile = {
+      schemaVersion: "4",
+      revision: "test",
+      segments: {},
+      variables: { maintenanceMode: { type: "boolean", defaultValue: false } },
+      features: {
+        [featureKey]: {
+          bucketBy: "userId",
+          conditions: [{ variable: "maintenanceMode", operator: "equals", value: false }],
+          traffic: [{ key: "everyone", conditions: "*", percentage: 100000, allocation: [] }],
+        },
+      },
+    } as unknown as DatafileContent;
+    const test = {
+      key: featureKey,
+      feature: featureKey,
+      assertions: [
+        {
+          description: "maintenance",
+          at: 50,
+          stickyVariables: { maintenanceMode: true },
+          expectedToBeEnabled: false,
+          children: [
+            {
+              description: "normal",
+              stickyVariables: { maintenanceMode: false },
+              expectedToBeEnabled: true,
+            },
+          ],
+        },
+        { description: "normal", at: 50, expectedToBeEnabled: true },
+      ],
+    } as unknown as TestFeature;
+
+    const result = await testFeature(
+      createDatasource(),
+      {} as any,
+      test,
+      { quiet: true },
+      new Map([[getTestDatafileKey(false), datafile]]),
+    );
+
+    expect(result.assertions.flatMap((assertion) => assertion.errors)).toEqual([]);
+    expect(result.passed).toBe(true);
   });
 });

@@ -1,0 +1,6 @@
+description: Version of the mobile app build, such as 5.5.0
+
+type: string
+
+# Lint checks every version operand in conditions against this format.
+format: semver

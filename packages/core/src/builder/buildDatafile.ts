@@ -1,13 +1,24 @@
 import * as fs from "fs";
+import * as path from "path";
+import { resolveBuildEnvironments } from "./environments";
+import { parsePositiveIntegerOption } from "../cli/validation";
+import { inflateEntries } from "./inflate";
 
+import { assertNoLegacyDatasourceGroups } from "../config/removedGroups";
+import {
+  DEPENDENCY_HANDOFF_LIMIT,
+  describeDependencyChain,
+  findDeepDependencyChains,
+} from "../linter/dependencyDepth";
 import type {
   DatafileVariable,
   DatafileVariableOverride,
   ParsedVariable,
+  OrdinaryParsedVariable,
   ParsedVariableOverride,
   ParsedFeature,
   Schema,
-  GlobalVariableKey,
+  VariableKey,
   VariableType,
   VariableValue,
 } from "@featurevisor/types";
@@ -20,9 +31,7 @@ import {
   Traffic,
   SegmentKey,
   AttributeKey,
-  Attribute,
-  GroupSegment,
-  Condition,
+  Conditions,
   ExistingState,
   FeatureKey,
   Allocation,
@@ -32,23 +41,40 @@ import {
 } from "@featurevisor/types";
 
 import { ProjectConfig } from "../config";
-import { Datasource } from "../datasource";
-import { extractAttributeKeysFromConditions, extractSegmentKeysFromGroupSegments } from "../utils";
+import { isComposedVariable } from "../datasource/composition";
 import {
-  generateHashForDatafile,
-  generateHashForFeature,
-  generateHashForVariable,
-  getSegmentHashes,
-} from "./hashes";
+  findDisallowedAuthoredOperators,
+  findDisallowedCheckOperators,
+} from "../linter/comparisonOperators";
+import { Datasource, FilesystemAdapter, getExistingStateFilePath } from "../datasource";
+import { generateHashForDatafile, refreshDatafileHashes } from "./hashes";
 
 import { getTraffic } from "./traffic";
-import { getFeatureRanges } from "./getFeatureRanges";
 import {
   resolveMutationsForMultipleVariables,
   resolveMutationsForSingleVariable,
 } from "./mutateVariables";
 import { mutate } from "./mutator";
-import { normalizeRequiredFeatures } from "../datasource/requiredFeatures";
+import { mutationEntries } from "./mutationEntries";
+import {
+  compileConditions,
+  combineConditions,
+  getConditionReferences,
+} from "../datasource/conditions";
+import {
+  collectDependencyClosure,
+  buildDependencyGraph,
+  findDependencyCycles,
+  findUnavailableCompositionDependency,
+  readableDependencyChain,
+  featureFlagNode,
+  variableNode,
+} from "../datasource/dependencies";
+import {
+  buildVariableOverrideProgram,
+  hasContinuingVariableOverrides,
+  hasVariableOverrideMutations,
+} from "./variableOverrideProgram";
 
 function buildFeatureVariableOverride(
   override: VariableOverride,
@@ -65,136 +91,62 @@ function buildFeatureVariableOverride(
     variableKey,
     authoredValue as VariableValue,
     baseValue,
+    typeof override.mutate !== "undefined",
   );
-  const requiredFeatures =
-    typeof override.requiredFeatures !== "undefined"
-      ? normalizeRequiredFeatures(override.requiredFeatures)
-      : undefined;
   const result = { value } as VariableOverride;
-
-  if (typeof override.key !== "undefined") result.key = override.key;
-  if (typeof requiredFeatures !== "undefined") result.requiredFeatures = requiredFeatures;
-
-  if (typeof override.conditions !== "undefined") {
-    extractAttributeKeysFromConditions(override.conditions).forEach((attributeKey) =>
-      attributeKeysUsedByTag.add(attributeKey),
-    );
-    result.conditions =
-      projectConfig.stringify && typeof override.conditions !== "string"
-        ? (JSON.stringify(override.conditions) as unknown as Condition)
-        : override.conditions;
-  } else if (typeof override.segments !== "undefined") {
-    extractSegmentKeysFromGroupSegments(override.segments as GroupSegment | GroupSegment[]).forEach(
-      (segmentKey) => segmentKeysUsedByTag.add(segmentKey),
-    );
-    result.segments =
-      projectConfig.stringify && typeof override.segments !== "string"
-        ? (JSON.stringify(override.segments) as unknown as GroupSegment)
-        : override.segments;
-  }
-
+  if (override.key !== undefined) result.key = override.key;
+  const references = getConditionReferences(override.conditions);
+  references.attributes.forEach((key) => attributeKeysUsedByTag.add(key));
+  references.segments.forEach((key) => segmentKeysUsedByTag.add(key));
+  result.conditions = compileConditions(override.conditions, projectConfig.stringify);
   return result;
 }
 
-function toArray<T>(value: T | T[] | undefined): T[] {
-  if (typeof value === "undefined") return [];
-  return Array.isArray(value) ? value : [value];
-}
-
-function combineConditions(
-  inherited: Condition | Condition[] | undefined,
-  own: Condition | Condition[] | undefined,
-): Condition | Condition[] | undefined {
-  const conditions = [...toArray(inherited), ...toArray(own)];
-  if (conditions.length === 0) return undefined;
-  return conditions.length === 1 ? conditions[0] : conditions;
-}
-
-function combineSegments(
-  inherited: GroupSegment | GroupSegment[] | "*" | undefined,
-  own: GroupSegment | GroupSegment[] | "*" | undefined,
-): GroupSegment | GroupSegment[] | "*" | undefined {
-  if (typeof inherited === "undefined" && typeof own === "undefined") return undefined;
-  const segments = [...toArray(inherited), ...toArray(own)].filter((segment) => segment !== "*");
-  if (segments.length === 0) return "*";
-  return segments.length === 1 ? segments[0] : segments;
-}
-
-function resolveGlobalVariableOverrideValue(
-  variable: ParsedVariable,
+/** Apply one authored global override's value or mutations to a base value. */
+export function resolveVariableOverrideValue(
+  variable: OrdinaryParsedVariable,
   override: ParsedVariableOverride,
   baseValue: VariableValue,
 ): VariableValue {
   if (typeof override.mutate === "undefined") return override.value;
 
   let value = JSON.parse(JSON.stringify(baseValue)) as VariableValue;
-  for (const [mutationKey, mutationValue] of Object.entries(override.mutate)) {
+  for (const [mutationKey, mutationValue] of mutationEntries(override.mutate)) {
     value = mutate(variable, value, mutationKey, mutationValue);
   }
   return value;
 }
 
-function buildGlobalVariableOverrides(
-  parsedVariable: ParsedVariable,
+function buildVariableOverrides(
+  parsedVariable: OrdinaryParsedVariable,
   sourceOverrides: ParsedVariableOverride[] | undefined,
   projectConfig: ProjectConfig,
   segmentKeysUsedByTag: Set<SegmentKey>,
   attributeKeysUsedByTag: Set<AttributeKey>,
 ): DatafileVariableOverride[] {
   const result: DatafileVariableOverride[] = [];
-
   const visit = (
     overrides: ParsedVariableOverride[] | undefined,
     baseValue: VariableValue,
-    inheritedConditions: Condition | Condition[] | undefined,
-    inheritedSegments: GroupSegment | GroupSegment[] | "*" | undefined,
-    inheritedRequirements: ReturnType<typeof normalizeRequiredFeatures>,
+    inheritedConditions: Conditions | undefined,
     inheritedPath: string[],
   ) => {
     for (const override of overrides || []) {
-      if (override.segments) {
-        extractSegmentKeysFromGroupSegments(override.segments).forEach((segmentKey) =>
-          segmentKeysUsedByTag.add(segmentKey),
-        );
-      }
-      if (override.conditions) {
-        extractAttributeKeysFromConditions(override.conditions).forEach((attributeKey) =>
-          attributeKeysUsedByTag.add(attributeKey),
-        );
-      }
-
-      const value = resolveGlobalVariableOverrideValue(parsedVariable, override, baseValue);
+      const references = getConditionReferences(override.conditions);
+      references.segments.forEach((key) => segmentKeysUsedByTag.add(key));
+      references.attributes.forEach((key) => attributeKeysUsedByTag.add(key));
+      const value = resolveVariableOverrideValue(parsedVariable, override, baseValue);
       const conditions = combineConditions(inheritedConditions, override.conditions);
-      const segments = combineSegments(inheritedSegments, override.segments);
-      const requiredFeatures = [
-        ...inheritedRequirements,
-        ...normalizeRequiredFeatures(override.requiredFeatures),
-      ];
       const keyPath = [...inheritedPath, override.key];
-
       // Descendants are more specific than their parent fallback.
-      visit(override.overrides, value, conditions, segments, requiredFeatures, keyPath);
-
-      const built: DatafileVariableOverride = {
-        key: override.key,
-        value,
-      };
+      visit(override.overrides, value, conditions, keyPath);
+      const built: DatafileVariableOverride = { key: override.key, value };
       if (keyPath.length > 1) built.keyPath = keyPath;
-      if (requiredFeatures.length > 0) built.requiredFeatures = requiredFeatures;
-      if (typeof conditions !== "undefined") {
-        built.conditions = projectConfig.stringify ? JSON.stringify(conditions) : conditions;
-      }
-      if (typeof segments !== "undefined") {
-        built.segments =
-          projectConfig.stringify && typeof segments !== "string"
-            ? JSON.stringify(segments)
-            : segments;
-      }
+      built.conditions = compileConditions(conditions, projectConfig.stringify);
       result.push(built);
     }
   };
-
-  visit(sourceOverrides, parsedVariable.defaultValue, undefined, undefined, [], []);
+  visit(sourceOverrides, parsedVariable.defaultValue, undefined, []);
   return result;
 }
 
@@ -210,26 +162,14 @@ export interface CustomDatafileOptions {
   tags?: BuildTags;
   includeFeatures?: "*" | FeatureKey[];
   excludeFeatures?: "*" | FeatureKey[];
-  includeVariables?: "*" | GlobalVariableKey[];
-  excludeVariables?: "*" | GlobalVariableKey[];
+  includeVariables?: "*" | VariableKey[];
+  excludeVariables?: "*" | VariableKey[];
   featurevisorVersion?: string;
   revisionFromHash?: boolean;
 }
 
 export async function getCustomDatafile(options: CustomDatafileOptions): Promise<DatafileContent> {
-  let featuresToInclude: FeatureKey[] | undefined;
-
-  if (options.featureKey) {
-    const requiredChain = await options.datasource.getRequiredFeaturesChain(options.featureKey);
-    featuresToInclude = Array.from(requiredChain);
-  }
-  if (options.variableKey) {
-    const requiredChain = await options.datasource.getRequiredFeaturesChainForVariable(
-      options.variableKey,
-    );
-    featuresToInclude = Array.from(new Set([...(featuresToInclude || []), ...requiredChain]));
-  }
-
+  resolveBuildEnvironments(options.projectConfig, options.environment, true);
   const existingState = await options.datasource.readState(options.environment);
   const datafileContent = await buildDatafile(
     options.projectConfig,
@@ -237,7 +177,7 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
     {
       revision: options.revision || "tester",
       environment: options.environment,
-      features: featuresToInclude,
+      features: options.featureKey ? [options.featureKey] : options.variableKey ? [] : undefined,
       variables: options.variableKey ? [options.variableKey] : options.featureKey ? [] : undefined,
       inflate: options.inflate,
       tag: options.tag,
@@ -299,6 +239,8 @@ function matchesFeaturePatterns(featureKey: FeatureKey, patterns?: "*" | Feature
 }
 
 export interface BuildOptions {
+  /** Names the trial completeness diagnostic without changing datafile contents. */
+  compositionTargetKey?: string;
   revision: string;
   featurevisorVersion?: string;
   revisionFromHash?: boolean;
@@ -307,11 +249,16 @@ export interface BuildOptions {
   tags?: BuildTags;
   includeFeatures?: "*" | FeatureKey[];
   excludeFeatures?: "*" | FeatureKey[];
-  includeVariables?: "*" | GlobalVariableKey[];
-  excludeVariables?: "*" | GlobalVariableKey[];
+  includeVariables?: "*" | VariableKey[];
+  excludeVariables?: "*" | VariableKey[];
   features?: FeatureKey[];
-  variables?: GlobalVariableKey[];
+  variables?: VariableKey[];
   inflate?: number;
+  /**
+   * The dependency graph, when a caller builds several datafiles from the same
+   * definitions. It depends only on those definitions, never on the Target or environment.
+   */
+  dependencyGraph?: Map<string, Set<string>>;
 }
 
 export async function buildDatafile(
@@ -320,15 +267,91 @@ export async function buildDatafile(
   options: BuildOptions,
   existingState: ExistingState,
 ): Promise<DatafileContent> {
+  await assertNoLegacyDatasourceGroups(datasource);
+  const inflation = parsePositiveIntegerOption("--inflate", options.inflate, 1);
+  const disallowedOperators = projectConfig.disallowOperators || [];
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
-  const { featureRanges, featureIsInGroup } = await getFeatureRanges(projectConfig, datasource);
+  const collectConditions = (conditions: Conditions | undefined) => {
+    const references = getConditionReferences(conditions);
+    references.segments.forEach((key) => segmentKeysUsedByTag.add(key));
+    references.attributes.forEach((key) => attributeKeysUsedByTag.add(key));
+  };
 
-  const parsedVariables: Array<{ key: string; value: ParsedVariable }> = [];
-  const featureKeysRequiredByVariables = new Set<FeatureKey>();
   const variableFiles = await datasource.listVariables();
+  const featureFiles = await datasource.listFeatures();
+  const parsedVariablesByKey = new Map<VariableKey, ParsedVariable>();
+  const parsedFeaturesByKey: Record<FeatureKey, ParsedFeature> = {};
+  const dependencyDatasource = {
+    listVariables: async () => variableFiles,
+    listFeatures: async () => featureFiles,
+    listSegments: () => datasource.listSegments(),
+    readSegment: (key: SegmentKey) => datasource.readSegment(key),
+    readVariable: async (key: VariableKey) => {
+      const cached = parsedVariablesByKey.get(key);
+      if (cached) return cached;
+      const value = await datasource.readVariable(key);
+      if (disallowedOperators.length > 0) {
+        const issue = findDisallowedAuthoredOperators(value, disallowedOperators)[0];
+        if (issue)
+          throw new Error(
+            `Variable "${key}" at ${issue.path.join(".")}: operator "${issue.operator}" is disallowed by project configuration.`,
+          );
+      }
+      parsedVariablesByKey.set(key, value);
+      return value;
+    },
+    readFeature: async (key: FeatureKey) => {
+      if (parsedFeaturesByKey[key]) return parsedFeaturesByKey[key];
+      const value = await datasource.readFeature(key);
+      if (Object.prototype.hasOwnProperty.call(value, "required")) {
+        throw new Error(
+          `Feature "${key}" at required: legacy feature \`required\` was removed. Use \`conditions\` and rename \`{ key }\` to \`{ feature }\`.`,
+        );
+      }
+      if (disallowedOperators.length > 0) {
+        const issue = findDisallowedAuthoredOperators(value, disallowedOperators)[0];
+        if (issue)
+          throw new Error(
+            `Feature "${key}" at ${issue.path.join(".")}: operator "${issue.operator}" is disallowed by project configuration.`,
+          );
+      }
+      parsedFeaturesByKey[key] = value;
+      return value;
+    },
+  };
+  const parsedVariables: Array<{ key: string; value: ParsedVariable }> = [];
+  const dependencyGraph =
+    options.dependencyGraph || (await buildDependencyGraph(dependencyDatasource));
+  // Cycles are unsafe at runtime even when a build deliberately skips lint.
+  // Reuse the acquired graph, including a caller's shared graph, before allocation.
+  const dependencyCycles = await findDependencyCycles(dependencyDatasource, dependencyGraph);
+  if (dependencyCycles.length) throw dependencyCycles[0];
+  // SDKs fail every evaluation of a chain at the runtime limit, so it is never publishable.
+  const tooDeep = findDeepDependencyChains(dependencyGraph, DEPENDENCY_HANDOFF_LIMIT)[0];
+  if (tooDeep)
+    throw new Error(
+      `Evaluation needs ${tooDeep.handoffs} dependency handoffs, more than the runtime limit of ${DEPENDENCY_HANDOFF_LIMIT}: ${describeDependencyChain(tooDeep.nodes)}.`,
+    );
+  let policySegmentFiles: SegmentKey[] | undefined;
+  const policySegments = new Map<SegmentKey, Segment>();
+  if (disallowedOperators.length > 0) {
+    policySegmentFiles = await datasource.listSegments();
+    for (const key of policySegmentFiles) {
+      const segment = await datasource.readSegment(key);
+      const issue = findDisallowedAuthoredOperators(segment, disallowedOperators)[0];
+      if (issue)
+        throw new Error(
+          `Segment "${key}" at ${issue.path.join(".")}: operator "${issue.operator}" is disallowed by project configuration.`,
+        );
+      policySegments.set(key, segment);
+    }
+  }
+  const featureKeysRequiredByVariables = new Set<FeatureKey>();
+  const variableKeysRequiredStructurally = new Set<VariableKey>();
+  const selectedVariableRoots: string[] = [];
   for (const variableKey of variableFiles) {
-    const parsedVariable = await datasource.readVariable(variableKey);
+    const parsedVariable = await dependencyDatasource.readVariable(variableKey);
     const variableTags = parsedVariable.tags || [];
 
     if (parsedVariable.archived === true) continue;
@@ -344,8 +367,48 @@ export async function buildDatafile(
     if (matchesFeaturePatterns(variableKey, options.excludeVariables)) continue;
 
     parsedVariables.push({ key: variableKey, value: parsedVariable });
-    const requiredChain = await datasource.getRequiredFeaturesChainForVariable(variableKey);
-    requiredChain.forEach((featureKey) => featureKeysRequiredByVariables.add(featureKey));
+    selectedVariableRoots.push(variableNode(variableKey));
+  }
+
+  if (selectedVariableRoots.length > 0) {
+    const structural = await collectDependencyClosure(datasource, selectedVariableRoots, {
+      graph: dependencyGraph,
+    });
+    structural.segments.forEach((key) => segmentKeysUsedByTag.add(key));
+    structural.features.forEach((key) => featureKeysRequiredByVariables.add(key));
+    structural.variables.forEach((key) => variableKeysRequiredStructurally.add(key));
+  }
+
+  for (const variableKey of variableKeysRequiredStructurally) {
+    if (parsedVariables.some((entry) => entry.key === variableKey)) continue;
+    if (await datasource.variableExists(variableKey)) {
+      parsedVariables.push({
+        key: variableKey,
+        value: await dependencyDatasource.readVariable(variableKey),
+      });
+    }
+  }
+  if (disallowedOperators.length > 0) {
+    for (const key of (await datasource.listTests?.()) || []) {
+      const issue = findDisallowedCheckOperators(
+        await datasource.readTest(key),
+        disallowedOperators,
+      )[0];
+      if (issue)
+        throw new Error(
+          `Test "${key}" at ${issue.path.join(".")}: operator "${issue.operator}" is disallowed by project configuration.`,
+        );
+    }
+    for (const key of (await datasource.listScenarios?.()) || []) {
+      const issue = findDisallowedCheckOperators(
+        await datasource.readScenario(key),
+        disallowedOperators,
+      )[0];
+      if (issue)
+        throw new Error(
+          `Scenario "${key}" at ${issue.path.join(".")}: operator "${issue.operator}" is disallowed by project configuration.`,
+        );
+    }
   }
 
   // Load schemas for resolving variable schema references in features
@@ -360,14 +423,12 @@ export async function buildDatafile(
   }
 
   // features
-  const features: Feature[] = [];
+  let features: Feature[] = [];
   const featuresDirectory = projectConfig.featuresDirectoryPath;
 
   if (fs.existsSync(featuresDirectory)) {
-    const featureFiles = await datasource.listFeatures();
-    const parsedFeaturesByKey: Record<FeatureKey, ParsedFeature> = {};
     for (const featureKey of featureFiles) {
-      parsedFeaturesByKey[featureKey] = await datasource.readFeature(featureKey);
+      parsedFeaturesByKey[featureKey] = await dependencyDatasource.readFeature(featureKey);
     }
     const featureKeysRequiredByFeatures = new Set<FeatureKey>();
     const hasFeatureSelection = Boolean(
@@ -375,10 +436,14 @@ export async function buildDatafile(
       options.tags ||
       options.includeFeatures ||
       options.excludeFeatures ||
-      options.features,
+      options.features ||
+      options.includeVariables ||
+      options.excludeVariables ||
+      options.variables,
     );
 
     if (hasFeatureSelection) {
+      const selectedFeatureRoots: string[] = [];
       for (const featureKey of featureFiles) {
         const parsedFeature = parsedFeaturesByKey[featureKey];
         if (parsedFeature.archived === true) continue;
@@ -408,8 +473,23 @@ export async function buildDatafile(
           if (options.tags && matchesBuildTags(expose, options.tags) === false) continue;
         }
 
-        const requiredChain = await datasource.getRequiredFeaturesChain(featureKey);
-        requiredChain.forEach((key) => featureKeysRequiredByFeatures.add(key));
+        selectedFeatureRoots.push(featureFlagNode(featureKey));
+      }
+      const structural = await collectDependencyClosure(datasource, selectedFeatureRoots, {
+        graph: dependencyGraph,
+      });
+      structural.segments.forEach((key) => segmentKeysUsedByTag.add(key));
+      structural.features.forEach((key) => featureKeysRequiredByFeatures.add(key));
+      structural.variables.forEach((key) => variableKeysRequiredStructurally.add(key));
+    }
+
+    for (const variableKey of variableKeysRequiredStructurally) {
+      if (parsedVariables.some((entry) => entry.key === variableKey)) continue;
+      if (await datasource.variableExists(variableKey)) {
+        parsedVariables.push({
+          key: variableKey,
+          value: await dependencyDatasource.readVariable(variableKey),
+        });
       }
     }
 
@@ -460,7 +540,7 @@ export async function buildDatafile(
 
       if (options.environment) {
         expose = parsedFeature.expose?.[options.environment] as Expose | undefined;
-        rules = parsedFeature.rules?.[options.environment] as Rule[];
+        rules = (parsedFeature.rules?.[options.environment] || []) as Rule[];
         force = parsedFeature.force?.[options.environment] as Force[] | undefined;
       } else {
         expose = parsedFeature.expose as Expose | undefined;
@@ -484,43 +564,14 @@ export async function buildDatafile(
         }
       }
 
-      for (const parsedRule of rules) {
-        const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(parsedRule.segments);
-        extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
-
-        if (parsedRule.variableOverrides) {
-          for (const variableOverrides of Object.values(parsedRule.variableOverrides)) {
-            for (const override of variableOverrides) {
-              if (typeof override.conditions !== "undefined") {
-                const extractedAttributeKeys = extractAttributeKeysFromConditions(
-                  override.conditions,
-                );
-                extractedAttributeKeys.forEach((attributeKey) =>
-                  attributeKeysUsedByTag.add(attributeKey),
-                );
-              }
-
-              if (typeof override.segments !== "undefined") {
-                const extractedOverrideSegmentKeys = extractSegmentKeysFromGroupSegments(
-                  override.segments as GroupSegment | GroupSegment[],
-                );
-                extractedOverrideSegmentKeys.forEach((segmentKey) =>
-                  segmentKeysUsedByTag.add(segmentKey),
-                );
-              }
-            }
-          }
-        }
-      }
+      collectConditions(parsedFeature.conditions);
+      for (const parsedRule of rules) collectConditions(parsedRule.conditions);
 
       const feature: Feature = {
         key: featureKey,
         deprecated: parsedFeature.deprecated === true ? true : undefined,
         bucketBy: parsedFeature.bucketBy || projectConfig.defaultBucketBy,
-        required: parsedFeature.required,
-        requiredFeatures: parsedFeature.requiredFeatures
-          ? normalizeRequiredFeatures(parsedFeature.requiredFeatures)
-          : undefined,
+        conditions: compileConditions(parsedFeature.conditions, projectConfig.stringify),
         disabledVariationValue: parsedFeature.disabledVariationValue,
         variations: Array.isArray(parsedFeature.variations)
           ? parsedFeature.variations.map((variation: Variation) => {
@@ -531,7 +582,9 @@ export async function buildDatafile(
                   parsedFeature.variablesSchema,
                   variation.variables,
                 ),
-                variableOverrides: variation.variableOverrides,
+                // A new object, filled below in the same key order. Writing into the
+                // authored one would change the input for every later Target build.
+                variableOverrides: variation.variableOverrides ? {} : variation.variableOverrides,
               };
 
               if (variation.variableOverrides) {
@@ -566,7 +619,14 @@ export async function buildDatafile(
           parsedFeature.variations,
           rules,
           existingState.features[featureKey],
-          featureRanges.get(featureKey) || [],
+          featureKey,
+          projectConfig.adapter === FilesystemAdapter ||
+            projectConfig.adapter?.prototype instanceof FilesystemAdapter
+            ? path.relative(
+                datasource.getRootDirectoryPath() || process.cwd(),
+                getExistingStateFilePath(projectConfig, options.environment),
+              )
+            : undefined,
         ).map((t: Traffic) => {
           const resolvedVariables = resolveMutationsForMultipleVariables(
             parsedFeature.variablesSchema,
@@ -601,13 +661,9 @@ export async function buildDatafile(
             ...t,
             variables: resolvedVariables,
             variableOverrides: resolvedVariableOverrides,
-            segments:
-              typeof t.segments !== "string" && projectConfig.stringify
-                ? JSON.stringify(t.segments)
-                : t.segments,
+            conditions: compileConditions(t.conditions, projectConfig.stringify),
           };
         }),
-        ranges: featureRanges.get(featureKey) || undefined,
       };
 
       // update state in memory, so that next datafile build can use it (in case it contains the same feature)
@@ -636,10 +692,6 @@ export async function buildDatafile(
         }),
       };
 
-      if (featureIsInGroup[featureKey] === true) {
-        feature.ranges = featureRanges.get(featureKey);
-      }
-
       if (parsedFeature.variablesSchema) {
         const variableKeys = Object.keys(parsedFeature.variablesSchema);
         feature.variablesSchema = {};
@@ -663,23 +715,16 @@ export async function buildDatafile(
       }
 
       if (force) {
-        feature.force = force.map((f) => {
-          if (f.segments) {
-            const extractedSegmentKeys = extractSegmentKeysFromGroupSegments(f.segments);
-            extractedSegmentKeys.forEach((segmentKey) => segmentKeysUsedByTag.add(segmentKey));
-
-            f.segments =
-              typeof f.segments !== "string" && projectConfig.stringify
-                ? JSON.stringify(f.segments)
-                : f.segments;
-          }
-
-          if (f.conditions) {
-            f.conditions =
-              typeof f.conditions !== "string" && projectConfig.stringify
-                ? JSON.stringify(f.conditions)
-                : f.conditions;
-          }
+        feature.force = force.map((authored) => {
+          // Assign to a copy. The authored entry is input to every Target and environment.
+          const f: Force = {
+            conditions: authored.conditions,
+            enabled: authored.enabled,
+            variation: authored.variation,
+            variables: authored.variables,
+          };
+          collectConditions(f.conditions);
+          f.conditions = compileConditions(f.conditions, projectConfig.stringify);
 
           if (f.variables) {
             f.variables = resolveMutationsForMultipleVariables(
@@ -697,24 +742,120 @@ export async function buildDatafile(
   }
 
   // global variables
-  const variables: Array<{ key: string; value: DatafileVariable }> = [];
+  const includedFeatureKeys = new Set(features.map((feature) => feature.key));
+  const unavailableCompositionDependency = findUnavailableCompositionDependency(
+    dependencyGraph,
+    parsedVariables
+      .filter(({ value }) => isComposedVariable(value))
+      .map(({ key }) => variableNode(key)),
+    (node) => {
+      if (node[0] === "variable") {
+        const definition = parsedVariablesByKey.get(node[1]);
+        if (!definition) return `variable "${node[1]}" has a missing definition`;
+        if (definition.archived) return `variable "${node[1]}" is archived`;
+      } else if (node[0] !== "segment") {
+        if (!includedFeatureKeys.has(node[1])) {
+          const definition = parsedFeaturesByKey[node[1]];
+          if (!definition) return `feature "${node[1]}" has a missing definition`;
+          if (definition.archived) return `feature "${node[1]}" is archived`;
+          return `feature "${node[1]}" is excluded by exposure`;
+        }
+        if (
+          node[0] === "feature-variable" &&
+          !Object.prototype.hasOwnProperty.call(
+            parsedFeaturesByKey[node[1]]?.variablesSchema || {},
+            node[2],
+          )
+        )
+          return `feature "${node[1]}" references missing variable "${node[1]}:${node[2]}"`;
+      }
+      return undefined;
+    },
+  );
+  if (unavailableCompositionDependency) {
+    const { root, alias, nodes, reason } = unavailableCompositionDependency;
+    throw new Error(
+      `Composition ${JSON.stringify(JSON.parse(root)[1])}${alias === undefined ? "" : ` property ${JSON.stringify(alias)}`} cannot include its dependency in Target "${options.compositionTargetKey || "custom"}" and environment "${options.environment || "none"}" with filters ${JSON.stringify({ tag: options.tag, tags: options.tags, includeFeatures: options.includeFeatures, excludeFeatures: options.excludeFeatures, includeVariables: options.includeVariables, excludeVariables: options.excludeVariables, features: options.features, variables: options.variables })}. Dependency chain ${readableDependencyChain(dependencyGraph, nodes)} is unavailable: ${reason}.`,
+    );
+  }
+  let variables: Array<{ key: string; value: DatafileVariable }> = [];
+  const compositionTypes = new Map<ParsedVariable, VariableType>();
+  const compositionType = (variable: ParsedVariable): VariableType => {
+    const seen = new Set<ParsedVariable>();
+    let type = compositionTypes.get(variable);
+    while (type === undefined && typeof variable.compose === "string") {
+      if (seen.has(variable)) throw new Error("circular dependency found through compose");
+      seen.add(variable);
+      variable = parsedVariablesByKey.get(variable.compose)!;
+      type = compositionTypes.get(variable);
+    }
+    if (type === undefined) {
+      if (isComposedVariable(variable)) type = "object";
+      else {
+        let schema: Schema | ParsedVariable | undefined = variable;
+        const seenSchemas = new Set<string>();
+        while (schema?.schema) {
+          if (seenSchemas.has(schema.schema)) throw new Error("circular schema reference found");
+          seenSchemas.add(schema.schema);
+          schema = schemasByKey[schema.schema];
+        }
+        type = (schema?.type || "string") as VariableType;
+      }
+      compositionTypes.set(variable, type);
+    }
+    for (const alias of seen) compositionTypes.set(alias, type);
+    return type;
+  };
   for (const { key, value: parsedVariable } of parsedVariables) {
-    const resolvedSchema = parsedVariable.schema
-      ? schemasByKey[parsedVariable.schema]
-      : parsedVariable;
     const sourceOverrides = options.environment
       ? (parsedVariable.overrides as Record<string, ParsedVariableOverride[]> | undefined)?.[
           options.environment
         ]
       : (parsedVariable.overrides as ParsedVariableOverride[] | undefined);
-    const overrides = buildGlobalVariableOverrides(
-      parsedVariable,
-      sourceOverrides,
-      projectConfig,
-      segmentKeysUsedByTag,
-      attributeKeysUsedByTag,
-    );
-
+    // A composition has no static starting value, even without continuation.
+    const useProgram =
+      (isComposedVariable(parsedVariable) && !!sourceOverrides?.length) ||
+      hasContinuingVariableOverrides(sourceOverrides) ||
+      (projectConfig.precomputeMutations === false &&
+        hasVariableOverrideMutations(sourceOverrides));
+    const program = useProgram
+      ? buildVariableOverrideProgram(sourceOverrides!, projectConfig.stringify)
+      : undefined;
+    collectConditions(parsedVariable.conditions);
+    for (const step of program || []) collectConditions(step.conditions);
+    if (isComposedVariable(parsedVariable)) {
+      const definition = parsedVariable.compose;
+      const compose =
+        typeof definition === "string"
+          ? definition
+          : Object.keys(definition)
+              .sort()
+              .map((alias) => ({ key: alias, ...definition[alias] }));
+      variables.push({
+        key,
+        value: {
+          type: compositionType(parsedVariable),
+          compose,
+          conditions: compileConditions(parsedVariable.conditions, projectConfig.stringify),
+          disabledValue: parsedVariable.disabledValue,
+          ...(program ? { overrideProgram: program } : {}),
+          ...(parsedVariable.deprecated ? { deprecated: true } : {}),
+        },
+      });
+      continue;
+    }
+    const resolvedSchema = parsedVariable.schema
+      ? schemasByKey[parsedVariable.schema]
+      : parsedVariable;
+    const overrides = program
+      ? []
+      : buildVariableOverrides(
+          parsedVariable,
+          sourceOverrides,
+          projectConfig,
+          segmentKeysUsedByTag,
+          attributeKeysUsedByTag,
+        );
     variables.push({
       key,
       value: {
@@ -726,23 +867,37 @@ export async function buildDatafile(
         defaultValue: parsedVariable.defaultValue,
         disabledValue: parsedVariable.disabledValue,
         useDefaultWhenDisabled: parsedVariable.useDefaultWhenDisabled === true ? true : undefined,
-        requiredFeatures: parsedVariable.requiredFeatures
-          ? normalizeRequiredFeatures(parsedVariable.requiredFeatures)
-          : undefined,
+        conditions: compileConditions(parsedVariable.conditions, projectConfig.stringify),
         overrides: overrides.length > 0 ? overrides : undefined,
+        ...(program ? { overrideProgram: program } : {}),
       },
     });
   }
 
   // segments
-  const segments: Segment[] = [];
+  let segments: Segment[] = [];
   const segmentsDirectory = projectConfig.segmentsDirectoryPath;
 
   if (fs.existsSync(segmentsDirectory)) {
-    const segmentFiles = await datasource.listSegments();
+    const segmentFiles = policySegmentFiles || (await datasource.listSegments());
+    const pending = [...segmentKeysUsedByTag];
+    const visited = new Set<string>();
+    while (pending.length) {
+      const key = pending.pop()!;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      if (!segmentFiles.includes(key)) continue;
+      const segment = policySegments.get(key) || (await datasource.readSegment(key));
+      policySegments.set(key, segment);
+      for (const ref of getConditionReferences(segment.conditions).segments) {
+        segmentKeysUsedByTag.add(ref);
+        pending.push(ref);
+      }
+    }
 
     for (const segmentKey of segmentFiles) {
-      const parsedSegment = await datasource.readSegment(segmentKey);
+      const parsedSegment =
+        policySegments.get(segmentKey) || (await datasource.readSegment(segmentKey));
 
       if (parsedSegment.archived === true) {
         continue;
@@ -752,91 +907,33 @@ export async function buildDatafile(
         continue;
       }
 
-      const extractedAttributeKeys = extractAttributeKeysFromConditions(
-        parsedSegment.conditions as Condition | Condition[],
-      );
-      extractedAttributeKeys.forEach((attributeKey) => attributeKeysUsedByTag.add(attributeKey));
+      collectConditions(parsedSegment.conditions);
 
       const segment: Segment = {
         key: segmentKey,
-        conditions:
-          typeof parsedSegment.conditions !== "string" && projectConfig.stringify === true
-            ? JSON.stringify(parsedSegment.conditions)
-            : parsedSegment.conditions,
+        conditions: compileConditions(parsedSegment.conditions, projectConfig.stringify)!,
       };
 
       segments.push(segment);
     }
   }
 
-  // attributes
-  const attributes: Attribute[] = [];
-  const attributesDirectory = projectConfig.attributesDirectoryPath;
-
-  if (fs.existsSync(attributesDirectory)) {
-    const attributeFiles = await datasource.listAttributes();
-
-    for (const attributeKey of attributeFiles) {
-      const parsedAttribute = await datasource.readAttribute(attributeKey);
-
-      if (parsedAttribute.archived === true) {
-        continue;
-      }
-
-      if (attributeKeysUsedByTag.has(attributeKey) === false) {
-        continue;
-      }
-
-      const attribute: Attribute = {
-        key: attributeKey,
-        type: parsedAttribute.type,
-      };
-
-      attributes.push(attribute);
+  // Attributes are not part of datafiles. Reading each one still rejects invalid
+  // attribute files during build, including attributes nothing uses.
+  if (fs.existsSync(projectConfig.attributesDirectoryPath)) {
+    for (const attributeKey of await datasource.listAttributes()) {
+      await datasource.readAttribute(attributeKey);
     }
   }
 
-  // inflate
-  if (options.inflate && options.inflate >= 2) {
-    const allFeatureKeys = features.map((f) => f.key);
-    const allSegmentKeys = segments.map((s) => s.key);
-    const allAttributeKeys = attributes.map((a) => a.key);
-
-    for (let i = 0; i < options.inflate - 1; i++) {
-      // feature
-      for (const featureKey of allFeatureKeys) {
-        const originalFeature = features.find((f) => f.key === featureKey) as Feature;
-
-        features.unshift({
-          ...originalFeature,
-          key: `${originalFeature.key}-${i}`,
-        });
-      }
-
-      // segment
-      for (const segmentKey of allSegmentKeys) {
-        const originalSegment = segments.find((s) => s.key === segmentKey) as Segment;
-
-        segments.unshift({
-          ...originalSegment,
-          key: `${originalSegment.key}-${i}`,
-        });
-      }
-
-      // attribute
-      for (const attributeKey of allAttributeKeys) {
-        const originalAttribute = attributes.find((a) => a.key === attributeKey) as Attribute;
-
-        attributes.unshift({
-          ...originalAttribute,
-          key: `${originalAttribute.key}-${i}`,
-        });
-      }
-    }
+  if (inflation > 1) {
+    features = inflateEntries(features, inflation);
+    segments = inflateEntries(segments, inflation);
+    variables = inflateEntries(variables, inflation);
   }
 
   const datafileContent: DatafileContent = {
-    schemaVersion: "2",
+    schemaVersion: "4",
     featurevisorVersion: options.featurevisorVersion,
     revision: options.revision,
     segments: {},
@@ -883,28 +980,16 @@ export async function buildDatafile(
       acc[variable.key] = variable.value;
       return acc;
     },
-    {} as Record<GlobalVariableKey, DatafileVariable>,
+    {} as Record<VariableKey, DatafileVariable>,
   );
 
-  // add feature hashes for change detection
-  const segmentHashes = getSegmentHashes(datafileContent.segments);
+  // Hash the complete graph, including feature dependencies on global variables.
+  refreshDatafileHashes(datafileContent);
   Object.keys(datafileContent.features).forEach((featureKey) => {
-    const hash = generateHashForFeature(featureKey, datafileContent.features, segmentHashes);
-
-    datafileContent.features[featureKey].hash = hash;
-
     // check needed to support --inflate option
     if (existingState.features[featureKey]) {
-      existingState.features[featureKey].hash = hash;
+      existingState.features[featureKey].hash = datafileContent.features[featureKey].hash;
     }
-  });
-  Object.keys(datafileContent.variables).forEach((variableKey) => {
-    datafileContent.variables![variableKey].hash = generateHashForVariable(
-      variableKey,
-      datafileContent.variables!,
-      datafileContent.features,
-      segmentHashes,
-    );
   });
 
   if (options.revisionFromHash) {

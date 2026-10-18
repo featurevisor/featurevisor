@@ -5,4 +5,5 @@ type: string
 defaultValue: Header fallback
 disabledValue: This value is intentionally ignored
 useDefaultWhenDisabled: true
-requiredFeatures: showHeader
+conditions:
+  feature: showHeader

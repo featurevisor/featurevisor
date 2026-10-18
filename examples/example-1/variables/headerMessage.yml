@@ -4,13 +4,14 @@ tags:
 type: string
 defaultValue: Welcome
 disabledValue: Header unavailable
-requiredFeatures: showHeader
+conditions:
+  feature: showHeader
 overrides:
   staging:
     - key: staging
-      segments: "*"
+      conditions: "*"
       value: Welcome to staging
   production:
     - key: default
-      segments: "*"
+      conditions: "*"
       value: Welcome

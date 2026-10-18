@@ -247,7 +247,7 @@ assertions:
           reason: variable_override_rule
           variableOverrideKey: mobile
 
-  # A feature variable override can use requiredFeatures as its only selector.
+  # A feature variable override can use a feature leaf as its only condition.
   - at: 50
     environment: production
     context:

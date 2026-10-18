@@ -8,7 +8,7 @@ defaultValue: anonymous
 overrides:
   staging:
     - key: staging
-      segments: "*"
+      conditions: "*"
       value: preview
   production:
     - key: numeric
@@ -18,5 +18,5 @@ overrides:
         value: nl
       value: 42
     - key: default
-      segments: "*"
+      conditions: "*"
       value: anonymous

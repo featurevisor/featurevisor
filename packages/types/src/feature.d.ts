@@ -1,5 +1,5 @@
 import type { BucketBy } from "./bucket";
-import type { Condition } from "./condition";
+import type { Conditions } from "./condition";
 import type { GroupSegment } from "./segment";
 import type { SchemaType, Value, Schema, SchemaKey } from "./schema";
 
@@ -7,7 +7,14 @@ export type VariationValue = string;
 
 export type VariableKey = string;
 export type VariableType = SchemaType | "json";
+/** Datafile variable type. Older datafiles may say "double", which reads like "number". */
+export type DatafileVariableType = VariableType | "double";
 export type VariableValue = Value | null;
+
+/** Partial updates in map key order, or explicit list order with one path per item. */
+export type VariableMutations =
+  | Record<string, VariableValue>
+  | Array<Record<string, VariableValue>>;
 
 /**
  * Variable override used inside a feature rule or variation.
@@ -21,32 +28,18 @@ interface VariableOverrideBase {
   key?: string;
   description?: string;
   promotable?: boolean;
+  conditions?: Conditions;
+  /** @deprecated Legacy datafile selector. Author conditions instead. */
+  segments?: GroupSegment | GroupSegment[] | "*";
+  /** @deprecated Legacy datafile gate. Author conditions instead. */
+  requiredFeatures?: RequiredFeatures;
 }
-
-type VariableOverrideSelector =
-  | {
-      conditions: Condition | Condition[];
-      segments?: never;
-      requiredFeatures?: RequiredFeatures;
-    }
-  | {
-      segments: GroupSegment | GroupSegment[] | "*";
-      conditions?: never;
-      requiredFeatures?: RequiredFeatures;
-    }
-  | {
-      requiredFeatures: RequiredFeatures;
-      conditions?: never;
-      segments?: never;
-    };
 
 type VariableOverrideValue =
   | { value: VariableValue; mutate?: never }
-  | { mutate: Record<string, VariableValue>; value?: never };
+  | { mutate: VariableMutations; value?: never };
 
-export type VariableOverride = VariableOverrideBase &
-  VariableOverrideSelector &
-  VariableOverrideValue;
+export type VariableOverride = VariableOverrideBase & VariableOverrideValue;
 
 export interface Variation {
   description?: string; // only available in YAML files
@@ -86,7 +79,7 @@ export interface VariableSchemaWithInline {
   enum?: Value[];
   const?: VariableValue;
 
-  // Numeric validation (when type is "integer" or "double")
+  // Numeric validation (when type is "integer" or "number")
   minimum?: number;
   maximum?: number;
 
@@ -94,6 +87,7 @@ export interface VariableSchemaWithInline {
   minLength?: number;
   maxLength?: number;
   pattern?: string;
+  format?: Schema["format"];
 
   // Array validation (when type is "array")
   minItems?: number;
@@ -116,7 +110,7 @@ export type VariableSchema = VariableSchemaWithReference | VariableSchemaWithInl
 export interface ResolvedVariableSchema {
   deprecated?: boolean;
   key?: VariableKey;
-  type: VariableType;
+  type: DatafileVariableType;
 
   defaultValue: VariableValue;
   description?: string;
@@ -126,14 +120,6 @@ export interface ResolvedVariableSchema {
 
 export type FeatureKey = string;
 
-export interface RequiredWithVariation {
-  key: FeatureKey;
-  variation: VariationValue;
-}
-
-/** @deprecated Use `RequiredFeature` and `requiredFeatures` instead. */
-export type Required = FeatureKey | RequiredWithVariation;
-
 export interface RequiredFeatureOptions {
   feature: FeatureKey;
   /** Expected result from `isEnabled()`. Defaults to `true`. */
@@ -142,10 +128,15 @@ export interface RequiredFeatureOptions {
   variation?: VariationValue;
 }
 
-export type RequiredFeature = FeatureKey | RequiredFeatureOptions;
+export type RequiredFeature =
+  | FeatureKey
+  | RequiredFeatureOptions
+  | { and: RequiredFeature[] }
+  | { or: RequiredFeature[] }
+  | { not: RequiredFeature[] };
 
-/** Authoring form. A single feature key is shorthand for a one-item array. */
-export type RequiredFeatures = FeatureKey | RequiredFeature[];
+/** Arrays imply AND. A group or leaf is shorthand for a one item array. */
+export type RequiredFeatures = RequiredFeature | RequiredFeature[];
 
 export type Weight = number; // 0 to 100
 
@@ -159,7 +150,7 @@ export interface Rule {
   key: RuleKey;
   description?: string; // only available in YAML
   promotable?: boolean; // only available in YAML
-  segments: GroupSegment | GroupSegment[] | "*";
+  conditions: Conditions;
   percentage: Weight;
 
   enabled?: boolean;
@@ -180,8 +171,9 @@ export interface RulesByEnvironment {
 }
 
 export interface Force {
-  // one of the below must be present in YAML
-  conditions?: Condition | Condition[];
+  // Author conditions. The optional legacy selector is for v3 datafile reads.
+  conditions?: Conditions;
+  /** @deprecated Legacy datafile selector. */
   segments?: GroupSegment | GroupSegment[] | "*";
 
   enabled?: boolean;
@@ -211,9 +203,7 @@ export interface ParsedFeature {
   description: string;
   tags?: Tag[];
 
-  /** @deprecated Use `requiredFeatures`. */
-  required?: Required[];
-  requiredFeatures?: RequiredFeatures;
+  conditions?: Conditions;
 
   bucketBy: BucketBy;
 

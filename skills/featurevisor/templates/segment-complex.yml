@@ -1,4 +1,6 @@
-description: Adult iPhone users in NL or DE, not on the newsletter
+description: Adult iPhone users in the Netherlands or Germany, not on the newsletter
+
+# A list means AND. Groups nest to any depth.
 conditions:
   - and:
       - attribute: device
@@ -16,20 +18,15 @@ conditions:
         operator: equals
         value: de
 
+  # `not` negates the AND of its children. For "none of these", wrap them in `or`.
   - not:
       - attribute: subscribedToNewsletter
         operator: equals
         value: true
 
-  # Nested example: NL users on app >= 5.5, OR DE users on any version
-  # - or:
-  #     - and:
-  #         - attribute: country
-  #           operator: equals
-  #           value: nl
-  #         - attribute: appVersion
-  #           operator: semverGreaterThanOrEquals
-  #           value: 5.5.0
-  #     - attribute: country
-  #       operator: equals
-  #       value: de
+  # Other leaf kinds work here too:
+  # - payingAccounts          # a bare string is another segment
+  # - feature: liveChat       # requires a feature
+  # - attribute: appVersion   # a string attribute with format: semver
+  #   operator: semverGreaterThanOrEquals
+  #   value: '5.5.0'          # quote versions

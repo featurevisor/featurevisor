@@ -1,52 +1,54 @@
 # Featurevisor skills
 
-Agent skills for authoring, querying, and integrating [Featurevisor](https://featurevisor.com) — Git-based feature flags, experimentation, and remote config.
+Agent skills for authoring, testing, querying and integrating [Featurevisor](https://featurevisor.com): feature flags, experiments and remote configuration managed in Git.
 
-Installable via [`npx skills`](https://www.skills.sh):
+Install with [`npx skills`](https://www.skills.sh):
 
 ```bash
-# inside your Featurevisor project (or your app repo)
+# inside your Featurevisor project, or your application repository
 npx skills add featurevisor/featurevisor
 
-# or pin to the path directly
+# or point at the path directly
 npx skills add https://github.com/featurevisor/featurevisor/tree/main/skills/featurevisor
 ```
 
-Then in your agent (Claude Code, Cursor, Codex, OpenCode, etc.) ask things like:
+Then ask your agent (Claude Code, Codex, Cursor, OpenCode and others), for example with `/featurevisor` in Claude Code:
 
-- "Create a `showCheckoutBanner` feature, rolled out 10% to users in NL"
-- "Why is `sidebar` evaluating to disabled for me?"
-- "Which features depend on `checkoutRedesign`?"
-- "Add an A/B test variation to `pricingPage`"
-- "What features are enabled in production without test coverage?"
-- "Set up a brand-new Featurevisor project for my team"
-- "Wire the `checkout` feature into my React app"
-- "Add a kill switch around the payments provider"
-- "Launch `promoBanner` automatically over Black Friday weekend, NL and DE only"
-- "Roll out `newEditor` to employees first, then beta users, then everyone"
-- "Put the support email in one place so every app reads the same value"
-- "Upgrade this project from Featurevisor v2 to v3"
+- "Create a showWishlist feature starting at 5%"
+- "Add an A/B test on the pricing page, 50/50, only in Germany and the Netherlands"
+- "Create a checkoutConfig global variable with paymentMethods and allowDiscountCode, with iDEAL for the Netherlands"
+- "Add a maintenanceMode kill switch that turns off checkout and its promo banner"
+- "Give the checkout page one composed value with the flag, the pricing variation and the support email"
+- "Why is checkout disabled for user 9b30 in Germany?"
+- "Which features use the netherlands segment, and what breaks if I archive it?"
+- "Write tests for pricing covering both variations, and a scenario for maintenance mode"
+- "Summarize what this branch changes in our flags"
+- "Set up a new Featurevisor project with staging and production environments"
+- "Wire the checkout feature into my React app, refreshing the datafile every 5 minutes"
+- "Upgrade this project from Featurevisor v3 to v4"
 
 ## What's included
 
-A single skill, `featurevisor`, that the agent invokes (e.g. as `/featurevisor` in Claude Code) covering:
+One skill, `featurevisor`, for Featurevisor v4:
 
-- **Authoring** — features (flags, variations, variables, force, `requiredFeatures`, expose), standalone global variables under `variables/` for shared config that no single feature owns, segments (and / or / not conditions, all operators), attributes (all types + JSON-schema-ish validation), reusable schemas, mutations for deep-merge variable overrides, groups for mutually-exclusive experiments, environments, sets, and promotions.
-- **Testing** — declarative `.spec.yml` assertions, matrix expansion, sticky/children inputs, per-target and per-set runs.
-- **Querying** — `list`, `find-usage`, `find-duplicate-segments`, `evaluate`, `assess-distribution` recipes for answering questions about an existing project without grepping YAML.
-- **Visual review** — pairs authoring with `npx featurevisor catalog` running locally in watch mode: the agent makes changes by prompt, and the Catalog in your (or the agent's) browser live-reloads so you see every change visually.
-- **Application integration** — `@featurevisor/sdk` (JavaScript/TypeScript, Node, browser, edge), `@featurevisor/react`, and `@featurevisor/vue`: context, evaluation, datafile refresh, server-side child instances, events, sticky, modules, and typed code generation. Featurevisor SDKs are cross-platform — the same datafiles and bucketing work identically in Go, Python, Ruby, Java, Kotlin/Android, Swift, PHP, and more (see [featurevisor.com/docs/sdks](https://featurevisor.com/docs/sdks)), and each ships a CLI that runs your project's test specs through that language.
-- **OpenFeature** — using Featurevisor through the vendor-neutral [OpenFeature](https://openfeature.dev/) API: providers for Node.js, browsers, Go, Swift, Java, Ruby, Python, and PHP, with flag-key conventions, reason/error mapping, and instance lifecycle.
-- **Upgrading**: the v2 to v3 path for both the project repo and each application, in the order that lets them ship separately.
-- **Extending the CLI**: custom commands via the plugins API, the datasource API for reading and writing definitions safely, and custom adapters.
-- **Templates** — copy-and-adapt YAML for every common authoring shape, plus a complete lint- and test-passing example project.
+- **Authoring**: features, variations, feature variables, force, attributes and their formats, segments, schemas and mutations, with unified `conditions` (attribute, segment, feature and variable leaves) for every selector and gate. Global variables with nested and accumulating overrides, and compositions with `compose`. Mutually exclusive experiments, environments, Sets and promotions.
+- **Verification**: a definition of done the agent follows after every change: `lint`, specs, `evaluate --explain` on representative contexts, `test --uncovered`, and `diff` to summarize the change.
+- **Testing**: feature, segment and global variable specs, checks, standalone scenarios, matrices, targets, JSON reports and exact case reruns.
+- **Querying**: `list`, `find-usage`, `find-duplicate-segments`, `evaluate --explain`, `assess-distribution` and `diff` for answering questions without reading YAML by hand.
+- **Visual review**: the Catalog in watch mode, so changes made by prompt appear in the browser as they are saved.
+- **Applications**: the JavaScript SDK in Node.js, browsers, edge runtimes and React Native, React and Vue, typed code generation, SDKs in other languages and their spec runners, and OpenFeature providers.
+- **Upgrades**: v3 to v4 and v2 to v3, for projects and applications, in an order that keeps them deployable.
+- **Extending**: CLI plugins, the datasource API and custom adapters.
+- **Templates**: a starting file for every common shape, and a complete example project that passes lint and test.
 
 ## Updating
 
 ```bash
-npx skills update featurevisor
+npx skills update featurevisor --project
 ```
+
+Use `--global` for a global installation. Updating the skill does not upgrade your Featurevisor CLI or SDKs.
 
 ## Reporting issues
 
-This skill lives in the main Featurevisor monorepo: <https://github.com/featurevisor/featurevisor/issues>
+The skill lives in the Featurevisor monorepo: <https://github.com/featurevisor/featurevisor/issues>

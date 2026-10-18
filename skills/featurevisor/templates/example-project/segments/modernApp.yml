@@ -1,0 +1,6 @@
+description: App builds from 5.5 onwards, which contain live chat
+
+conditions:
+  - attribute: appVersion
+    operator: semverGreaterThanOrEquals
+    value: "5.5"

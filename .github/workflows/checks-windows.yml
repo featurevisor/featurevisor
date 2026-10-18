@@ -10,7 +10,7 @@ jobs:
   ci:
     name: Checks
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -35,9 +35,18 @@ jobs:
           npm run build
 
       - name: Lint
-        run: |
-          (cd examples/example-1 && npx featurevisor lint)
+        working-directory: examples/example-1
+        run: npx featurevisor lint
 
-      - name: Test
-        run: |
-          (cd examples/example-1 && npx featurevisor test)
+      - name: Example 1 tests
+        working-directory: examples/example-1
+        run: npx featurevisor test
+
+      - name: Package and example tests
+        run: npx lerna run test
+
+      - name: CLI integration
+        run: node scripts/test-cli-integration.mjs
+
+      - name: JavaScript runner conformance
+        run: node scripts/test-runner-conformance.mjs javascript

@@ -11,6 +11,13 @@ import type {
 } from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
 import {
+  buildDependencyGraph,
+  collectDependencyClosure,
+  featureFlagNode,
+  variableNode,
+} from "../datasource/dependencies";
+import { isComposedVariable } from "../datasource/composition";
+import {
   normalizeOptionValues,
   resolveTargets,
   targetIncludesFeature,
@@ -37,10 +44,17 @@ function formatObjectKey(key: string): string {
   return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
 }
 
+/**
+ * Context values are inputs and may be native dates. Variable values are outputs and
+ * always arrive as JSON, so a date-time string stays a string there.
+ */
+type TypePosition = "input" | "output";
+
 function buildObjectTypeFromSchema(
   schema: Schema,
   schemasByKey: Record<string, Schema>,
   schemaTypeNames?: Record<string, string>,
+  position: TypePosition = "output",
 ): string {
   const props = schema.properties;
   const additional = schema.additionalProperties;
@@ -50,19 +64,20 @@ function buildObjectTypeFromSchema(
   if (hasProps && hasAdditional) {
     const requiredSet = new Set(schema.required || []);
     const propEntries = Object.entries(props as Record<string, Schema>).map(([k, v]) => {
-      const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames);
+      const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames, position);
       const optional = !requiredSet.has(k);
       return optional
         ? `${formatObjectKey(k)}?: ${propType}`
         : `${formatObjectKey(k)}: ${propType}`;
     });
     const propUnion = Object.entries(props as Record<string, Schema>)
-      .map(([, v]) => schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames))
+      .map(([, v]) => schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames, position))
       .join(" | ");
     const additionalType = schemaToTypeScriptType(
       additional as Schema,
       schemasByKey,
       schemaTypeNames,
+      position,
     );
     const indexType = [additionalType, propUnion].filter(Boolean).join(" | ");
     return `{ ${propEntries.join("; ")}; [key: string]: ${indexType} }`;
@@ -72,7 +87,12 @@ function buildObjectTypeFromSchema(
     const requiredSet = new Set(schema.required || []);
     const entries = Object.entries(props as Record<string, Schema>)
       .map(([k, v]) => {
-        const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames);
+        const propType = schemaToTypeScriptType(
+          v as Schema,
+          schemasByKey,
+          schemaTypeNames,
+          position,
+        );
         const optional = !requiredSet.has(k);
         return optional
           ? `${formatObjectKey(k)}?: ${propType}`
@@ -87,6 +107,7 @@ function buildObjectTypeFromSchema(
       additional as Schema,
       schemasByKey,
       schemaTypeNames,
+      position,
     );
     return `Record<string, ${additionalType}>`;
   }
@@ -139,18 +160,42 @@ function enumToUnionType(enumArr: unknown[]): string | null {
  * When schema has `oneOf`, emits a union of each branch type. When schema has primitive `const` or `enum`, emits a literal or union type.
  * When schemaTypeNames is provided and schema is a reference (schema: key), returns that type name instead of inlining.
  */
+/** True when a schema, or anything it references, contains a date-time string. */
+function containsDateTime(
+  schema: Schema | undefined,
+  schemasByKey: Record<string, Schema>,
+  seen = new Set<Schema>(),
+): boolean {
+  if (!schema || typeof schema !== "object" || seen.has(schema)) return false;
+  seen.add(schema);
+  const resolved = resolveSchema(schema, schemasByKey);
+  if (resolved.type === "string" && resolved.format === "date-time") return true;
+  return [
+    resolved.items,
+    resolved.additionalProperties,
+    ...Object.values(resolved.properties || {}),
+    ...(resolved.oneOf || []),
+  ].some((child) => containsDateTime(child as Schema | undefined, schemasByKey, seen));
+}
+
 function schemaToTypeScriptType(
   schema: Schema,
   schemasByKey: Record<string, Schema>,
   schemaTypeNames?: Record<string, string>,
+  position: TypePosition = "output",
 ): string {
-  if (schema?.schema && schemaTypeNames?.[schema.schema]) {
+  // A named schema type describes values as outputs. Inline it where an input may hold a Date.
+  if (
+    schema?.schema &&
+    schemaTypeNames?.[schema.schema] &&
+    !(position === "input" && containsDateTime(schema, schemasByKey))
+  ) {
     return schemaTypeNames[schema.schema];
   }
   const resolved = resolveSchema(schema, schemasByKey);
   if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
     const parts = resolved.oneOf.map((branch) =>
-      schemaToTypeScriptType(branch as Schema, schemasByKey, schemaTypeNames),
+      schemaToTypeScriptType(branch as Schema, schemasByKey, schemaTypeNames, position),
     );
     return parts.join(" | ");
   }
@@ -167,21 +212,27 @@ function schemaToTypeScriptType(
     case "boolean":
       return literalFromConst ?? unionFromEnum ?? "boolean";
     case "string":
-    case "semver":
-      return literalFromConst ?? unionFromEnum ?? "string";
-    case "date":
-      return literalFromConst ?? unionFromEnum ?? "Date | string";
+      return (
+        literalFromConst ??
+        unionFromEnum ??
+        (position === "input" && resolved.format === "date-time" ? "Date | string" : "string")
+      );
     case "integer":
-    case "double":
+    case "number":
       return literalFromConst ?? unionFromEnum ?? "number";
     case "array":
       if (resolved.items) {
-        const itemType = schemaToTypeScriptType(resolved.items, schemasByKey, schemaTypeNames);
+        const itemType = schemaToTypeScriptType(
+          resolved.items,
+          schemasByKey,
+          schemaTypeNames,
+          position,
+        );
         return shouldWrapArrayItemType(itemType) ? `(${itemType})[]` : `${itemType}[]`;
       }
       return "string[]";
     case "object": {
-      return buildObjectTypeFromSchema(resolved, schemasByKey, schemaTypeNames);
+      return buildObjectTypeFromSchema(resolved, schemasByKey, schemaTypeNames, position);
     }
     default:
       return "unknown";
@@ -222,12 +273,13 @@ function getRelativePath(from, to) {
 }
 
 function getVariationUnionFromFeature(parsedFeature: ParsedFeature): string | null {
-  if (!parsedFeature.variations || parsedFeature.variations.length === 0) {
-    return null;
-  }
-
   const values = Array.from(
-    new Set(parsedFeature.variations.map((variation) => JSON.stringify(variation.value))),
+    new Set([
+      ...(parsedFeature.variations || []).map((variation) => JSON.stringify(variation.value)),
+      ...(parsedFeature.disabledVariationValue !== undefined
+        ? [JSON.stringify(parsedFeature.disabledVariationValue)]
+        : []),
+    ]),
   );
 
   return values.length > 0 ? values.join(" | ") : null;
@@ -314,7 +366,7 @@ function generateAttributesFileContent(
     });
   }
 
-  const importLine = formatTypeImport(Array.from(schemaTypesUsed).sort(), "./schemas");
+  const importLine = formatTypeImport(Array.from(schemaTypesUsed).sort(), "./schemas.js");
   const lines = attributes.map((attribute) => {
     const typeName = `${getPascalCase(attribute.key)}Attribute`;
     return `export type ${typeName} = ${attribute.typescriptType};`;
@@ -330,14 +382,15 @@ function generateInstanceFileContent(importSdkPath: string): string {
   return `
 import type { Featurevisor } from ${JSON.stringify(importSdkPath)};
 
-let _instance: Featurevisor;
+let _instance: Featurevisor | undefined;
 
 export function setInstance(instance: Featurevisor) {
   _instance = instance;
 }
 
 export function getInstance(): Featurevisor {
-  return _instance as Featurevisor;
+  if (!_instance) throw new Error("Call setInstance() before using generated functions");
+  return _instance;
 }
 `.trimStart();
 }
@@ -364,6 +417,9 @@ export async function generateTypeScriptCodeForProject(
     defaultToAll: false,
     requireTargets: false,
   });
+
+  // Reject invalid attribute layout before writing generated files.
+  const attributeFiles = await datasource.listAttributes();
 
   console.log("\nGenerating TypeScript code...\n");
 
@@ -399,7 +455,6 @@ export async function generateTypeScriptCodeForProject(
   console.log(`Instance file written at: ${getRelativePath(rootDirectoryPath, instanceFilePath)}`);
 
   // attributes
-  const attributeFiles = await datasource.listAttributes();
   const attributes: (Attribute & { typescriptType: string })[] = [];
   const attributeTypeNames: Record<string, string> = {};
 
@@ -414,6 +469,7 @@ export async function generateTypeScriptCodeForProject(
       parsedAttribute as Schema,
       schemasByKey,
       hasSchemasFile ? schemaTypeNames : undefined,
+      "input",
     );
 
     attributes.push({
@@ -435,7 +491,10 @@ export async function generateTypeScriptCodeForProject(
   );
 
   // context
-  const contextImport = formatTypeImport(Object.values(attributeTypeNames).sort(), "./attributes");
+  const contextImport = formatTypeImport(
+    Object.values(attributeTypeNames).sort(),
+    "./attributes.js",
+  );
   const attributeProperties = attributes
     .map((attribute) => {
       return `  ${formatObjectKey(attribute.key)}?: ${attributeTypeNames[attribute.key]};`;
@@ -458,9 +517,12 @@ ${attributeProperties}
   // Resolve global variables before features so required feature chains are
   // represented in generated types just as they are in target datafiles.
   const parsedVariables: Array<{ key: string; value: ParsedVariable }> = [];
+  const dependencyGraph = await buildDependencyGraph(datasource);
+  const allVariables = new Map<string, ParsedVariable>();
   const featureKeysRequiredByVariables = new Set<string>();
   for (const key of await datasource.listVariables()) {
     const variable = await datasource.readVariable(key);
+    allVariables.set(key, variable);
     if (variable.archived) continue;
     const matchesSelectedTag = selectedTags.some((tag) => (variable.tags || []).includes(tag));
     const matchesSelectedTarget = selectedTargets.some((target) =>
@@ -474,8 +536,10 @@ ${attributeProperties}
       continue;
     }
     parsedVariables.push({ key, value: variable });
-    const requiredChain = await datasource.getRequiredFeaturesChainForVariable(key);
-    requiredChain.forEach((featureKey) => featureKeysRequiredByVariables.add(featureKey));
+    const closure = await collectDependencyClosure(datasource, [variableNode(key)], {
+      graph: dependencyGraph,
+    });
+    closure.features.forEach((featureKey) => featureKeysRequiredByVariables.add(featureKey));
   }
 
   // features
@@ -511,8 +575,10 @@ ${attributeProperties}
 
   if (hasSelection) {
     for (const featureKey of directlySelectedFeatureKeys) {
-      const requiredChain = await datasource.getRequiredFeaturesChain(featureKey);
-      requiredChain.forEach((requiredFeatureKey) => selectedFeatureKeys.add(requiredFeatureKey));
+      const closure = await collectDependencyClosure(datasource, [featureFlagNode(featureKey)], {
+        graph: dependencyGraph,
+      });
+      closure.features.forEach((requiredFeatureKey) => selectedFeatureKeys.add(requiredFeatureKey));
     }
   }
 
@@ -552,7 +618,7 @@ ${attributeProperties}
 
   const featuresSchemasImportLine = formatTypeImport(
     [...featuresTypeSchemasUsed].sort(),
-    "./schemas",
+    "./schemas.js",
   );
 
   const featuresFileContent = `
@@ -567,10 +633,6 @@ export type FeatureVariableKey<F extends FeatureKey> = Features[F] extends Recor
 export type FeatureVariableType<F extends FeatureKey, V extends FeatureVariableKey<F>> = Features[F] extends Record<string, unknown>
   ? Features[F][V]
   : never;
-/** @deprecated Use FeatureVariableKey. */
-export type VariableKey<F extends FeatureKey> = FeatureVariableKey<F>;
-/** @deprecated Use FeatureVariableType. */
-export type VariableType<F extends FeatureKey, V extends VariableKey<F>> = FeatureVariableType<F, V>;
 export type Variation<F extends FeatureKey> = Features[F] extends { variation: infer V }
   ? Extract<V, string>
   : never;
@@ -580,19 +642,91 @@ export type Variation<F extends FeatureKey> = Features[F] extends { variation: i
   console.log(`Features file written at: ${getRelativePath(rootDirectoryPath, featuresFilePath)}`);
 
   const variableSchemaTypesUsed = new Set<string>();
-  const variableTypeEntries = parsedVariables.map(({ key, value }) => {
+  const allFeatures = new Map(
+    featureCandidates.map(({ featureKey, parsedFeature }) => [featureKey, parsedFeature]),
+  );
+  interface ResolvedVariableType {
+    typeName: string;
+    sourceTypeName: string;
+  }
+  const resolvedVariableTypes = new Map<string, ResolvedVariableType>();
+  const resolvingVariableKeys = new Set<string>();
+  let hasCompositionTypes = false;
+  const sourceVariableType = (value: VariableSchema): string => {
     const { typeName, schemaTypesUsed } = getVariableTypeForFeaturesMap(
-      value as VariableSchema,
+      value,
       schemasByKey,
       hasSchemasFile ? schemaTypeNames : undefined,
     );
     schemaTypesUsed.forEach((name) => variableSchemaTypesUsed.add(name));
-    return `  ${formatObjectKey(key)}: ${typeName};`;
-  });
+    return typeName;
+  };
+  const resolveVariableType = (key: string): ResolvedVariableType => {
+    const cached = resolvedVariableTypes.get(key);
+    if (cached !== undefined) return cached;
+    if (resolvingVariableKeys.has(key)) {
+      throw new Error(`Circular composition reference: ${key}`);
+    }
+    const value = allVariables.get(key);
+    if (!value) throw new Error(`Unknown composition variable: ${key}`);
+    resolvingVariableKeys.add(key);
+    let resolved: ResolvedVariableType;
+    if (isComposedVariable(value)) {
+      hasCompositionTypes = true;
+      if (typeof value.compose === "string") {
+        const { sourceTypeName } = resolveVariableType(value.compose);
+        resolved = { typeName: sourceTypeName, sourceTypeName };
+      } else {
+        const members = Object.entries(value.compose)
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([property, reference]) => {
+            let memberType: string;
+            if (reference.feature !== undefined) {
+              const feature = allFeatures.get(reference.feature);
+              if (!feature) throw new Error(`Unknown composition feature: ${reference.feature}`);
+              if (reference.variable !== undefined) {
+                const schema = feature.variablesSchema?.[reference.variable];
+                if (!schema) {
+                  throw new Error(
+                    `Unknown composition feature variable: ${reference.feature}.${reference.variable}`,
+                  );
+                }
+                memberType = `CompositionSource<${sourceVariableType(schema)}> | null`;
+              } else if (reference.variation) {
+                const variations = getVariationUnionFromFeature(feature);
+                memberType = variations ? `${variations} | null` : "null";
+              } else {
+                memberType = "boolean";
+              }
+            } else {
+              memberType = resolveVariableType(reference.variable).sourceTypeName;
+            }
+            return `${formatObjectKey(property)}: ${memberType}`;
+          });
+        resolved = {
+          typeName: `{ ${members.join("; ")} }`,
+          sourceTypeName: `{ ${members.map((member) => `readonly ${member}`).join("; ")} } | null`,
+        };
+      }
+    } else {
+      const typeName = sourceVariableType(value);
+      resolved = { typeName, sourceTypeName: `CompositionSource<${typeName}> | null` };
+    }
+    resolvingVariableKeys.delete(key);
+    resolvedVariableTypes.set(key, resolved);
+    return resolved;
+  };
+  const variableTypeEntries = parsedVariables.map(
+    ({ key }) => `  ${formatObjectKey(key)}: ${resolveVariableType(key).typeName};`,
+  );
+  // Map roots are owned by the caller. Alias roots and source members may be borrowed.
+  const compositionSourceType = hasCompositionTypes
+    ? `type CompositionSource<T> = T extends object ? { readonly [K in keyof T]: CompositionSource<T[K]> } : T;\n\n`
+    : "";
   const variablesFileContent = `${formatTypeImport(
     [...variableSchemaTypesUsed].sort(),
-    "./schemas",
-  )}export type GlobalVariables = {\n${variableTypeEntries.join("\n")}\n};\n\nexport type GlobalVariableKey = keyof GlobalVariables;\nexport type GlobalVariableType<K extends GlobalVariableKey> = GlobalVariables[K];\n`;
+    "./schemas.js",
+  )}${compositionSourceType}export type Variables = {\n${variableTypeEntries.join("\n")}\n};\n\nexport type VariableKey = keyof Variables;\nexport type VariableType<K extends VariableKey> = Variables[K];\n`;
   const variablesFilePath = path.join(outputPath, "variables.ts");
   fs.writeFileSync(variablesFilePath, variablesFileContent);
   console.log(
@@ -600,10 +734,10 @@ export type Variation<F extends FeatureKey> = Features[F] extends { variation: i
   );
 
   const functionsFileContent = `
-import type { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features";
-import type { GlobalVariableKey, GlobalVariableType } from "./variables";
-import type { Context } from "./context";
-import { getInstance } from "./instance";
+import type { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features.js";
+import type { VariableKey, VariableType } from "./variables.js";
+import type { Context } from "./context.js";
+import { getInstance } from "./instance.js";
 
 export function isEnabled(featureKey: FeatureKey, context: Context = {}): boolean {
   return getInstance().isEnabled(featureKey, context);
@@ -621,12 +755,12 @@ export function getVariable<F extends FeatureKey, V extends FeatureVariableKey<F
   variableKey: V,
   context?: Context,
 ): FeatureVariableType<F, V> | null;
-export function getVariable<K extends GlobalVariableKey>(
+export function getVariable<K extends VariableKey>(
   variableKey: K,
   context?: Context,
-): GlobalVariableType<K> | null;
+): VariableType<K> | null;
 export function getVariable(
-  featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+  featureKeyOrVariableKey: FeatureKey | VariableKey,
   variableKeyOrContext: string | Context = {},
   context: Context = {},
 ): unknown {
@@ -649,9 +783,9 @@ import {
   useVariable as useVariableOriginal,
 } from ${JSON.stringify(importReactPath)};
 
-import type { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features";
-import type { GlobalVariableKey, GlobalVariableType } from "./variables";
-import type { Context } from "./context";
+import type { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features.js";
+import type { VariableKey, VariableType } from "./variables.js";
+import type { Context } from "./context.js";
 
 export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
   return useFlagOriginal(featureKey, context);
@@ -669,12 +803,12 @@ export function useVariable<F extends FeatureKey, V extends FeatureVariableKey<F
   variableKey: V,
   context?: Context,
 ): FeatureVariableType<F, V> | null;
-export function useVariable<K extends GlobalVariableKey>(
+export function useVariable<K extends VariableKey>(
   variableKey: K,
   context?: Context,
-): GlobalVariableType<K> | null;
+): VariableType<K> | null;
 export function useVariable(
-  featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+  featureKeyOrVariableKey: FeatureKey | VariableKey,
   variableKeyOrContext: string | Context = {},
   context: Context = {},
 ): unknown {
@@ -691,14 +825,14 @@ export function useVariable(
   // index
   const indexContent =
     [
-      `export * from "./attributes";`,
-      `export * from "./context";`,
-      `export * from "./instance";`,
-      ...(hasSchemasFile ? [`export * from "./schemas";`] : []),
-      `export * from "./features";`,
-      `export * from "./variables";`,
-      `export * from "./functions";`,
-      ...(shouldGenerateReact ? [`export * from "./react";`] : []),
+      `export * from "./attributes.js";`,
+      `export * from "./context.js";`,
+      `export * from "./instance.js";`,
+      ...(hasSchemasFile ? [`export * from "./schemas.js";`] : []),
+      `export * from "./features.js";`,
+      `export * from "./variables.js";`,
+      `export * from "./functions.js";`,
+      ...(shouldGenerateReact ? [`export * from "./react.js";`] : []),
     ].join("\n") + "\n";
   const indexFilePath = path.join(outputPath, "index.ts");
   fs.writeFileSync(indexFilePath, indexContent);

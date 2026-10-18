@@ -12,7 +12,8 @@ variablesSchema:
       - blue
       - green
 
-  simpleStringArray: # same as above, but with explicit items type
+  simpleStringArray:
+    # same as above, but with explicit items type
     type: array
     items:
       type: string
@@ -21,7 +22,8 @@ variablesSchema:
       - blue
       - green
 
-  objectArray: # with typed objects as array items
+  objectArray:
+    # with typed objects as array items
     type: array
     items:
       type: object
@@ -41,9 +43,9 @@ variablesSchema:
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 50
   production:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 50

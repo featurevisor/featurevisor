@@ -4,6 +4,7 @@ import { FeaturevisorCLIError, formatFeaturevisorCLIError } from "../error";
 import { explainEvaluation } from "./explain";
 import type { EvaluationExplanation, ExplanationOptions } from "./explain";
 import { assertExplanationMatchesEvaluation } from "./validateExplanation";
+import { probeConditions } from "./probeConditions";
 
 const empty: DatafileContent = { schemaVersion: "2", revision: "test", features: {}, segments: {} };
 const check = (evaluation: Evaluation, datafile = empty, options: ExplanationOptions = {}) => {
@@ -13,6 +14,53 @@ const check = (evaluation: Evaluation, datafile = empty, options: ExplanationOpt
 };
 
 describe("explanation consistency", () => {
+  test("rejects a probe contradicting a passed root without asserting skipped roots", () => {
+    const probe = probeConditions(empty, {}, [{ variable: "absent", operator: "notNull" }]);
+    const options = { conditionsProbe: probe };
+    expect(() =>
+      check({ type: "flag", featureKey: "gate", reason: "rule", enabled: true }, empty, options),
+    ).toThrow("evidence.cliProbe.reachedRootSuccess");
+    for (const reason of ["forced", "sticky", "conditions_unmet", "error"] as const) {
+      expect(() =>
+        check({ type: "flag", featureKey: "gate", reason }, empty, options),
+      ).not.toThrow();
+    }
+    expect(() =>
+      check({ type: "flag", featureKey: "gate", reason: "rule", enabled: true }, empty, {
+        conditionsProbe: { ...probe, reliable: false },
+      }),
+    ).not.toThrow();
+  });
+  test("rejects tampered probe evidence and a reached root failure contradicted by a reliable probe", () => {
+    const datafile: DatafileContent = {
+      ...empty,
+      variables: {
+        gate: {
+          type: "boolean",
+          defaultValue: true,
+          conditions: [{ variable: "gateSource", operator: "equals", value: true }],
+        },
+        gateSource: { type: "boolean", defaultValue: true },
+      },
+    };
+    const probe = probeConditions(datafile, {}, datafile.variables!.gate.conditions!);
+    const sdk: Evaluation = {
+      type: "variable",
+      variableKey: "gate",
+      reason: "conditions_unmet",
+    };
+    const options = { conditionsProbe: probe };
+    const explanation = explainEvaluation(sdk, datafile, [], options);
+    expect(() => assertExplanationMatchesEvaluation(sdk, explanation, datafile, options)).toThrow(
+      "evidence.cliProbe.reachedRootFailure",
+    );
+    sdk.reason = "variable_default";
+    const ordinary = explainEvaluation(sdk, datafile, [], options);
+    ordinary.evidence.find((entry) => entry.basis === "cli-probe")!.details.passed = false;
+    expect(() => assertExplanationMatchesEvaluation(sdk, ordinary, datafile, options)).toThrow(
+      "evidence.cliProbe.details",
+    );
+  });
   test.each([false, 0, "", null, { a: [1, { b: false }] }, undefined])(
     "accepts unchanged SDK value %j",
     (value) => {
@@ -115,7 +163,12 @@ describe("explanation consistency", () => {
         defaultValue: { text: "default" },
         disabledValue: { text: "disabled" },
         overrides: [
-          { key: "mobile", keyPath: ["nl", "mobile"], segments: "*", value: { text: "selected" } },
+          {
+            key: "mobile",
+            keyPath: ["nl", "mobile"],
+            conditions: "*",
+            value: { text: "selected" },
+          },
         ],
       },
     },
@@ -146,7 +199,106 @@ describe("explanation consistency", () => {
     );
   });
 
-  test.each(["variable_default", "required_features_unmet"] as const)(
+  const accumulatingFile: DatafileContent = {
+    ...empty,
+    variables: {
+      config: {
+        type: "object",
+        defaultValue: { colour: "blue", labels: [] },
+        overrideProgram: [
+          {
+            key: "nl",
+            keyPath: ["nl"],
+            operations: [{ op: "set", path: ["colour"], value: "orange" }],
+            onMatch: 1,
+            onMiss: 2,
+          },
+          {
+            key: "mobile",
+            keyPath: ["nl", "mobile"],
+            operations: [{ op: "append", path: ["labels"], value: "mobile" }],
+            onMatch: 2,
+            onMiss: 2,
+          },
+          {
+            key: "experiment",
+            keyPath: ["experiment"],
+            operations: [{ op: "append", path: ["labels"], value: "experiment" }],
+            onMatch: 3,
+            onMiss: 3,
+          },
+        ],
+      },
+    },
+  };
+  const accumulatingEvaluation: Evaluation = {
+    type: "variable",
+    variableKey: "config",
+    reason: "variable_override_rule",
+    variableOverrideIndex: 2,
+    variableOverrideKey: "experiment",
+    variableOverridePath: ["experiment"],
+    variableOverridePaths: [["nl"], ["nl", "mobile"], ["experiment"]],
+    variableValue: { colour: "orange", labels: ["mobile", "experiment"] },
+  };
+
+  test("replays every recorded accumulating override from the default value", () => {
+    expect(() => check(accumulatingEvaluation, accumulatingFile)).not.toThrow();
+  });
+
+  test("rejects a tampered accumulating final value through the normal mismatch error", () => {
+    expect(() =>
+      check(
+        {
+          ...accumulatingEvaluation,
+          variableValue: { colour: "blue", labels: ["mobile", "experiment"] },
+        },
+        accumulatingFile,
+      ),
+    ).toThrow("definition.overrideProgram.finalValue");
+  });
+
+  test("rejects out of order, missing, and inconsistent accumulating override paths", () => {
+    expect(() =>
+      check(
+        {
+          ...accumulatingEvaluation,
+          variableOverridePaths: [["nl", "mobile"], ["nl"], ["experiment"]],
+        },
+        accumulatingFile,
+      ),
+    ).toThrow("definition.overrideProgram.jump.0");
+    expect(() =>
+      check(
+        {
+          ...accumulatingEvaluation,
+          variableOverridePaths: [["nl"], ["missing"]],
+        },
+        accumulatingFile,
+      ),
+    ).toThrow("definition.overrideProgram.path.1");
+    expect(() =>
+      check(
+        { ...accumulatingEvaluation, variableOverridePath: ["nl", "mobile"] },
+        accumulatingFile,
+      ),
+    ).toThrow("definition.overrideProgram.lastPath");
+  });
+
+  test("rejects tampered accumulating runtime-operation evidence", () => {
+    const explanation = check(accumulatingEvaluation, accumulatingFile);
+    const details = explanation.evidence.find(
+      (entry) => entry.title === "Applied runtime global variable overrides",
+    )!.details;
+    (details.steps as Array<Record<string, unknown>>)[1].operations = [
+      { op: "append", path: ["labels"], value: "tampered" },
+    ];
+    expect(() =>
+      assertExplanationMatchesEvaluation(accumulatingEvaluation, explanation, accumulatingFile, {}),
+    ).toThrow("evidence.accumulatingOverride.steps");
+  });
+
+  test.each(["variable_default", "conditions_unmet"] as const)(
     "checks global value policy for %s",
     (reason) => {
       expect(() =>
@@ -206,8 +358,8 @@ describe("explanation consistency", () => {
       traffic: {
         key: "all",
         percentage: 100000,
-        segments: "*",
-        variableOverrides: { config: [{ key: "nl", segments: "*", value: "right" }] },
+        conditions: "*",
+        variableOverrides: { config: [{ key: "nl", conditions: "*", value: "right" }] },
       },
     };
     expect(() => check(overridden)).toThrow("definition.override.value");
@@ -231,8 +383,8 @@ describe("explanation consistency", () => {
     ["Bucketing reported by the SDK", "bucketValue", 100],
     ["Matched rule", "key", "wrong"],
     ["Matched rule", "percentage", 0],
-    ["Matched rule", "segments", "wrong-segment"],
-    ["Selected compiled override selectors", "segments", "wrong-segment"],
+    ["Matched rule", "conditions", "wrong-segment"],
+    ["Selected compiled override selectors", "conditions", "wrong-segment"],
     ["Variable value policy", "defaultValue", "wrong-default"],
     ["Selected variable override", "path", ["wrong"]],
     ["Authored value construction (build time)", "compiledValue", "wrong"],
@@ -241,7 +393,7 @@ describe("explanation consistency", () => {
       ...selected,
       bucketValue: 10,
       ruleKey: "all",
-      traffic: { key: "all", segments: "*", percentage: 100000 },
+      traffic: { key: "all", conditions: "*", percentage: 100000 },
     };
     const explanation = explainEvaluation(sdk, file, [], {});
     explanation.evidence.push({

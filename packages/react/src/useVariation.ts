@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
-
 import type { Context, FeatureKey, VariationValue } from "@featurevisor/types";
 
 import { useSdk } from "./useSdk.js";
-import { onFeatureChange } from "./onFeatureChange.js";
+import { useEvaluationSubscription } from "./useEvaluationSubscription.js";
 
 /**
  * Returns the evaluated variation and updates it when the feature changes. The
@@ -14,20 +12,7 @@ export function useVariation<TVariation extends VariationValue = VariationValue>
   context: Context = {},
 ): TVariation | null {
   const sdk = useSdk();
-  const [variationValue, setVariationValue] = useState<TVariation | null>(() =>
-    sdk.getVariation<TVariation>(featureKey, context),
-  );
+  useEvaluationSubscription(sdk, featureKey);
 
-  useEffect(() => {
-    setVariationValue(sdk.getVariation<TVariation>(featureKey, context));
-
-    const unsubscribe = onFeatureChange(sdk, featureKey, () => {
-      const newValue = sdk.getVariation<TVariation>(featureKey, context);
-      setVariationValue((prev) => (newValue !== prev ? newValue : prev));
-    });
-
-    return unsubscribe;
-  }, [sdk, featureKey, context]);
-
-  return variationValue;
+  return sdk.getVariation<TVariation>(featureKey, context);
 }

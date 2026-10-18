@@ -3,7 +3,7 @@ import type { DatafileContent, Feature } from "@featurevisor/types";
 export function createFeature(overrides: Partial<Feature> = {}): Feature {
   return {
     bucketBy: "userId",
-    traffic: [{ key: "everyone", segments: "*", percentage: 100000, allocation: [] }],
+    traffic: [{ key: "everyone", conditions: "*", percentage: 100000, allocation: [] }],
     ...overrides,
   };
 }
@@ -122,7 +122,7 @@ export function createComplexDatafile(): DatafileContent {
         ],
       }),
       dependent: createFeature({
-        required: [{ key: "prerequisite", variation: "ready" }, "experiment"],
+        requiredFeatures: [{ feature: "prerequisite", variation: "ready" }, "experiment"],
       }),
       disabledFallbacks: createFeature({
         disabledVariationValue: "disabled",
@@ -134,9 +134,10 @@ export function createComplexDatafile(): DatafileContent {
         },
         traffic: [{ key: "off", segments: "*", percentage: 0, allocation: [] }],
       }),
-      mutex: createFeature({
-        ranges: [[20000, 40000]],
-      }),
+      mutex: {
+        ...createFeature(),
+        ...{ ranges: [[20000, 40000]] },
+      },
       deprecatedFeature: createFeature({ deprecated: true }),
     },
   });

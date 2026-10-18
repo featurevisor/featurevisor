@@ -10,7 +10,7 @@ defaultValue:
 overrides:
   staging:
     - key: staging
-      segments: "*"
+      conditions: "*"
       mutate:
         message: Welcome to staging
   production:
@@ -31,11 +31,11 @@ overrides:
             cta.title: Meer informatie
           overrides:
             - key: mobile
-              segments: mobile
+              conditions: mobile
               mutate:
                 cta.url: https://featurevisor.com/mobile
     - key: default
-      segments: "*"
+      conditions: "*"
       value:
         message: Welcome
         cta:

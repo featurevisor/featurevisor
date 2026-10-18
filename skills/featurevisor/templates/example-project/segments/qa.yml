@@ -1,13 +1,10 @@
-description: QA team members (matched by either user or device id)
+description: QA team, matched by user or device ID
+
 conditions:
   or:
     - attribute: userId
       operator: in
-      value:
-        - u_qa_1
-        - u_qa_2
+      value: [u_qa_1, u_qa_2]
     - attribute: deviceId
       operator: in
-      value:
-        - dev_qa_1
-        - dev_qa_2
+      value: [dev_qa_1, dev_qa_2]

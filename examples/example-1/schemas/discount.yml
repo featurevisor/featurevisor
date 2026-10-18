@@ -7,7 +7,7 @@ properties:
   type:
     type: string
   value:
-    type: double
+    type: number
 
 required:
   - code

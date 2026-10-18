@@ -1,4 +1,5 @@
 export { createFeaturevisor } from "./instance.js";
+export { getRequiredVariableValueAtPath } from "./instance.js";
 
 // Runtime exports below this line are intentionally narrow.
 // `createFeaturevisor()` is the main public API; these helpers stay public
@@ -6,7 +7,9 @@ export { createFeaturevisor } from "./instance.js";
 // datafiles. Keep additional helper exports type-only unless a real runtime
 // consumer needs them.
 export { MAX_BUCKETED_NUMBER } from "./bucketer.js";
-export { allConditionsAreMatched, allSegmentsAreMatched } from "./conditions.js";
+export { allConditionsAreMatched, getPortableTimestamp } from "./conditions.js";
+export { isValidVersion } from "./compareVersions.js";
+export { applyVariableOperations } from "./mutations.js";
 
 export type {
   Featurevisor,
@@ -16,6 +19,7 @@ export type {
 } from "./instance.js";
 export type { FeaturevisorChildInstance } from "./child.js";
 export type { Evaluation, EvaluationOptions, EvaluationReason } from "./evaluate.js";
+export type { DependencyOf } from "./session.js";
 export type {
   FeaturevisorDiagnostic,
   FeaturevisorDiagnosticHandler,
@@ -43,7 +47,6 @@ export type {
   EventDetailsByName,
   EventName,
   StickyFeaturesSetEventDetails,
-  StickySetEventDetails,
   StickyVariablesSetEventDetails,
 } from "./events.js";
 

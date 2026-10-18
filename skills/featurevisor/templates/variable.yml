@@ -1,16 +1,16 @@
 description: Support email shown to users
-tags:
-  - all
+
 type: string
+
 defaultValue: support@example.com
+
+# Overrides run in order and the first match wins.
+# Each needs a unique key, conditions, and exactly one of value or mutate.
+# With environments configured, nest this list under each environment key.
 overrides:
-  production:
-    - key: netherlands
-      conditions:
-        attribute: country
+  - key: netherlands
+    conditions:
+      - attribute: country
         operator: equals
         value: nl
-      value: support-nl@example.com
-    - key: default
-      segments: "*"
-      value: support@example.com
+    value: support-nl@example.com

@@ -1,0 +1,23 @@
+description: Reuse the evaluated policy and refine it for Amsterdam
+
+tags: [web]
+
+compose: policy
+
+overrides:
+  - key: netherlands
+    conditions:
+      attribute: country
+      operator: equals
+      value: nl
+    continue: true
+    mutate:
+      limit: 90
+    overrides:
+      - key: amsterdam
+        conditions:
+          attribute: city
+          operator: equals
+          value: Amsterdam
+        mutate:
+          limit: 100

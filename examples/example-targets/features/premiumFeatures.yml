@@ -10,14 +10,14 @@ bucketBy: userId
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: premium-users
-      segments: premiumUsers
+      conditions: premiumUsers
       percentage: 100
 
     - key: regular-users
-      segments: "*"
+      conditions: "*"
       percentage: 0

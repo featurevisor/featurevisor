@@ -16,12 +16,12 @@ variations:
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: "1"
-      segments: countries.germany
+      conditions: countries.germany
       percentage: 100
     - key: "2"
-      segments: "*"
+      conditions: "*"
       percentage: 0

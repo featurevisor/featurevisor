@@ -177,7 +177,7 @@ describe("sdk: instance", function () {
         defaultVariableValue: 5,
       },
     );
-    const doubleVariable = f.getVariableDouble(
+    const doubleVariable = f.getVariableNumber(
       "checkout",
       "price",
       {},
@@ -215,7 +215,7 @@ describe("sdk: instance", function () {
     expectExactType<IsExact<typeof stringVariable, string | null>>(true);
     expectExactType<IsExact<typeof integerVariable, number | null>>(true);
     expectExactType<IsExact<typeof doubleVariable, number | null>>(true);
-    expectExactType<IsExact<typeof arrayVariable, string[] | null>>(true);
+    expectExactType<IsExact<typeof arrayVariable, unknown[] | null>>(true);
     expectExactType<IsExact<typeof typedArrayVariable, number[] | null>>(true);
     expectExactType<IsExact<typeof objectVariable, ObjectValue | null>>(true);
     expectExactType<IsExact<typeof typedObjectVariable, CheckoutConfig | null>>(true);
@@ -383,8 +383,8 @@ describe("sdk: instance", function () {
     const events: any[] = [];
     sdk.on("datafile_set", (event) => events.push(event));
 
-    sdk.setDatafile({ schemaVersion: "2" } as any);
-    sdk.setDatafile("{not json");
+    expect(sdk.setDatafile({ schemaVersion: "2" } as any)).toBe(false);
+    expect(sdk.setDatafile("{not json")).toBe(false);
 
     expect(sdk.getRevision()).toEqual("1");
     expect(sdk.getFeature("oldFeature")?.hash).toEqual("old-hash");
@@ -393,6 +393,21 @@ describe("sdk: instance", function () {
       expect.objectContaining({ level: "error", code: "invalid_datafile" }),
       expect.objectContaining({ level: "error", code: "invalid_datafile" }),
     ]);
+  });
+
+  it("returns acceptance independently of whether content changed", () => {
+    const sdk = createFeaturevisor({ onDiagnostic: () => {} });
+    const datafile = createTestDatafile();
+    const accepted: boolean = sdk.setDatafile(datafile);
+    expect(accepted).toBe(true);
+    expect(sdk.setDatafile(datafile)).toBe(true);
+    expect(sdk.setDatafile(JSON.stringify(datafile), true)).toBe(true);
+    sdk.on("datafile_set", () => {
+      throw new Error("application callback");
+    });
+    expect(sdk.setDatafile(datafile, true)).toBe(true);
+    sdk.close();
+    expect(sdk.setDatafile(datafile)).toBe(false);
   });
 
   it("should filter diagnostics by instance logLevel", function () {
@@ -447,8 +462,8 @@ describe("sdk: instance", function () {
       setup() {
         calls.push("setup");
       },
-      before(options) {
-        calls.push("before");
+      beforeEvaluation(options) {
+        calls.push("beforeEvaluation");
         return {
           ...options,
           context: {
@@ -465,8 +480,8 @@ describe("sdk: instance", function () {
         calls.push("bucketValue");
         return bucketValue;
       },
-      after(evaluation) {
-        calls.push("after");
+      afterEvaluation(evaluation) {
+        calls.push("afterEvaluation");
         return evaluation;
       },
     };
@@ -485,7 +500,13 @@ describe("sdk: instance", function () {
     await sdk.removeModule("unit-test");
     expect(sdk.isEnabled("test")).toEqual(true);
 
-    expect(calls).toEqual(["setup", "before", "bucketKey", "bucketValue", "after"]);
+    expect(calls).toEqual([
+      "setup",
+      "beforeEvaluation",
+      "bucketKey",
+      "bucketValue",
+      "afterEvaluation",
+    ]);
   });
 
   it("should reject duplicate named modules with a diagnostic", function () {
@@ -734,7 +755,7 @@ describe("sdk: instance", function () {
     expect(capturedBucketKey).toEqual("456.test");
   });
 
-  it("should intercept context: before module", function () {
+  it("should intercept context in beforeEvaluation modules", function () {
     let intercepted = false;
     let interceptedFeatureKey = "";
     let interceptedVariableKey: string | undefined = "";
@@ -766,8 +787,9 @@ describe("sdk: instance", function () {
       modules: [
         {
           name: "unit-test",
-          before: (options) => {
-            const { featureKey, variableKey } = options;
+          beforeEvaluation: (options) => {
+            const featureKey = "featureKey" in options ? options.featureKey : undefined;
+            const { variableKey } = options;
 
             intercepted = true;
             interceptedFeatureKey = featureKey || "";
@@ -789,7 +811,7 @@ describe("sdk: instance", function () {
     expect(interceptedVariableKey).toEqual(undefined);
   });
 
-  it("should intercept value: after module", function () {
+  it("should intercept values in afterEvaluation modules", function () {
     let intercepted = false;
     let interceptedFeatureKey = "";
     let interceptedVariableKey: string | undefined = "";
@@ -821,7 +843,7 @@ describe("sdk: instance", function () {
       modules: [
         {
           name: "unit-test",
-          after: (options) => {
+          afterEvaluation: (options) => {
             const { featureKey, variableKey } = options;
 
             intercepted = true;
@@ -939,7 +961,7 @@ describe("sdk: instance", function () {
           myKey: {
             key: "myKey",
             bucketBy: "userId",
-            required: ["requiredKey"],
+            requiredFeatures: ["requiredKey"],
             traffic: [
               {
                 key: "1",
@@ -979,7 +1001,7 @@ describe("sdk: instance", function () {
           myKey: {
             key: "myKey",
             bucketBy: "userId",
-            required: ["requiredKey"],
+            requiredFeatures: ["requiredKey"],
             traffic: [
               {
                 key: "1",
@@ -1023,9 +1045,9 @@ describe("sdk: instance", function () {
           myKey: {
             key: "myKey",
             bucketBy: "userId",
-            required: [
+            requiredFeatures: [
               {
-                key: "requiredKey",
+                feature: "requiredKey",
                 variation: "control", // different variation
               },
             ],
@@ -1071,9 +1093,9 @@ describe("sdk: instance", function () {
           myKey: {
             key: "myKey",
             bucketBy: "userId",
-            required: [
+            requiredFeatures: [
               {
-                key: "requiredKey",
+                feature: "requiredKey",
                 variation: "treatment", // desired variation
               },
             ],
@@ -1202,7 +1224,7 @@ describe("sdk: instance", function () {
     expect(sdk.isEnabled("test", { userId: "user-123", country: "nl" })).toEqual(false);
   });
 
-  it("should check if enabled for mutually exclusive features", function () {
+  it("ignores legacy Group ranges and uses the rule percentage", function () {
     let bucketValue = 10000;
 
     const sdk = createFeaturevisor({
@@ -1222,7 +1244,7 @@ describe("sdk: instance", function () {
           mutex: {
             key: "mutex",
             bucketBy: "userId",
-            ranges: [[0, 50000]],
+            ...{ ranges: [[70000, 90000]] },
             traffic: [{ key: "1", segments: "*", percentage: 50000, allocation: [] }],
           },
         },
@@ -1238,6 +1260,37 @@ describe("sdk: instance", function () {
 
     bucketValue = 60000;
     expect(sdk.isEnabled("mutex", { userId: "123" })).toEqual(false);
+  });
+
+  it("ignores legacy ranges without remapping old variation allocations", function () {
+    const sdk = createFeaturevisor({
+      modules: [{ name: "bucket", bucketValue: () => 10000 }],
+      datafile: JSON.stringify({
+        schemaVersion: "2",
+        revision: "legacy",
+        segments: {},
+        features: {
+          legacy: {
+            bucketBy: "userId",
+            ranges: [[50001, 100000]],
+            variations: [{ value: "control" }, { value: "treatment" }],
+            traffic: [
+              {
+                key: "everyone",
+                segments: "*",
+                percentage: 50000,
+                allocation: [
+                  { variation: "control", range: [50001, 75000] },
+                  { variation: "treatment", range: [75000, 100000] },
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    });
+    expect(sdk.isEnabled("legacy", { userId: "123" })).toBe(true);
+    expect(sdk.getVariation("legacy", { userId: "123" })).toBeNull();
   });
 
   it("should get variation", function () {
@@ -1596,7 +1649,7 @@ describe("sdk: instance", function () {
     expect(sdk.getVariableInteger("test", "count", context)).toEqual(0);
 
     expect(sdk.getVariable("test", "price", context)).toEqual(9.99);
-    expect(sdk.getVariableDouble("test", "price", context)).toEqual(9.99);
+    expect(sdk.getVariableNumber("test", "price", context)).toEqual(9.99);
 
     expect(sdk.getVariable("test", "paymentMethods", context)).toEqual(["paypal", "creditcard"]);
     expect(sdk.getVariableArray("test", "paymentMethods", context)).toEqual([

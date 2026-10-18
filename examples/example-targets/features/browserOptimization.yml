@@ -8,19 +8,19 @@ bucketBy: userId
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: chrome-users
-      segments: chromeUsers
+      conditions: chromeUsers
       percentage: 100
 
     - key: other-browsers
-      segments: "*"
+      conditions: "*"
       percentage: 50
 
 force:
   production:
-    - segments: chromeUsers
+    - conditions: chromeUsers
       enabled: true

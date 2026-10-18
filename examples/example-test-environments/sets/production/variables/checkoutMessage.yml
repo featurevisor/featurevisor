@@ -5,8 +5,8 @@ type: string
 defaultValue: Production checkout
 overrides:
   - key: internal
-    segments: internal
+    conditions: internal
     value: Production checkout for engineers
   - key: default
-    segments: "*"
+    conditions: "*"
     value: Production checkout

@@ -1,4 +1,9 @@
 {
   "$schema": "node_modules/lerna/schemas/lerna-schema.json",
-  "version": "3.11.0"
+  "version": "3.11.0",
+  "command": {
+    "version": {
+      "changelogPreset": "conventionalcommits"
+    }
+  }
 }

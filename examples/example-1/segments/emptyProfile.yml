@@ -1,0 +1,9 @@
+description: Users whose shallow profile fields are all empty
+conditions:
+  and:
+    - attribute: phone
+      operator: empty
+    - attribute: interests
+      operator: empty
+    - attribute: preferences
+      operator: empty

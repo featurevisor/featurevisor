@@ -6,8 +6,29 @@ import {
 
 describe("mutateVariables", function () {
   describe("resolveMutationsForMultipleVariables", function () {
+    test("uses authored order for overlapping rule and variation paths", () => {
+      const schema: any = { cta: { type: "object", defaultValue: { label: "Start" } } };
+      expect(
+        resolveMutationsForMultipleVariables(schema, {
+          "cta.label": "Local",
+          cta: { label: "Parent" },
+        }),
+      ).toEqual({ cta: { label: "Parent" } });
+    });
     test("is a function", function () {
       expect(resolveMutationsForMultipleVariables).toBeInstanceOf(Function);
+    });
+
+    test("gives an exact dotted variable key precedence for direct rule replacements", () => {
+      const schema: any = {
+        config: { type: "object", defaultValue: { policy: { retries: 1 } } },
+        "config.policy": { type: "object", defaultValue: { retries: 3, mode: "safe" } },
+      };
+      expect(
+        resolveMutationsForMultipleVariables(schema, {
+          "config.policy": { retries: 5 },
+        }),
+      ).toEqual({ "config.policy": { retries: 5 } });
     });
 
     describe("returns undefined when", function () {
@@ -176,7 +197,7 @@ describe("mutateVariables", function () {
         expect(result).toEqual({ foo: { a: 100, b: 999 } });
       });
 
-      test("nested then full key: full key applied first (shorter), then nested", function () {
+      test("nested then full key: full key replaces the earlier nested mutation", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue: { a: 1, b: 2 } },
         };
@@ -184,7 +205,7 @@ describe("mutateVariables", function () {
           "foo.a": 10,
           foo: { x: 1 },
         });
-        expect(result).toEqual({ foo: { x: 1, a: 10 } });
+        expect(result).toEqual({ foo: { x: 1 } });
       });
     });
 
@@ -299,7 +320,7 @@ describe("mutateVariables", function () {
         expect(result).toEqual({ a: { b: { c: 1 } } });
       });
 
-      test("same variable overridden by exact and dotted keys (shorter key applied first)", function () {
+      test("same variable overridden by exact and dotted keys in authored order", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           v: { type: "object", defaultValue: { p: 1, q: 2 } },
         };
@@ -307,7 +328,7 @@ describe("mutateVariables", function () {
           "v.p": 10,
           v: { p: 100, q: 200 },
         });
-        expect(result).toEqual({ v: { p: 10, q: 200 } });
+        expect(result).toEqual({ v: { p: 100, q: 200 } });
       });
 
       test("returns undefined when result is empty (all override keys unknown)", function () {
@@ -752,7 +773,7 @@ describe("mutateVariables", function () {
         });
       });
 
-      test("single variable: mix of exact key and dotted overrides (order by length)", function () {
+      test("single variable: mix of exact key and dotted overrides in authored order", function () {
         const variablesSchema: Record<string, VariableSchema> = {
           v: {
             type: "object",
@@ -764,7 +785,7 @@ describe("mutateVariables", function () {
           v: { x: 100, y: 200, z: 300 },
           "v.y": 2,
         });
-        expect(result).toEqual({ v: { x: 1, y: 2, z: 300 } });
+        expect(result).toEqual({ v: { x: 100, y: 2, z: 300 } });
       });
     });
 
@@ -808,6 +829,52 @@ describe("mutateVariables", function () {
   describe("resolveMutationsForSingleVariable", function () {
     test("is a function", function () {
       expect(resolveMutationsForSingleVariable).toBeInstanceOf(Function);
+    });
+
+    test("mutates a dotted variable key without parsing the key as notation", () => {
+      const schema: any = {
+        "config.policy": {
+          type: "object",
+          defaultValue: { retries: 3, mode: "safe" },
+        },
+      };
+      expect(
+        resolveMutationsForSingleVariable(
+          schema,
+          "config.policy",
+          { retries: 5 },
+          { retries: 3, mode: "safe" },
+        ),
+      ).toEqual({ retries: 5, mode: "safe" });
+    });
+
+    test("returns a provided base for an empty path map", () => {
+      const schema: any = {
+        "config.policy": { type: "object", defaultValue: { retries: 3 } },
+      };
+      expect(
+        resolveMutationsForSingleVariable(
+          schema,
+          "config.policy",
+          {},
+          { retries: 5, mode: "safe" },
+        ),
+      ).toEqual({ retries: 5, mode: "safe" });
+    });
+
+    test("applies mutation paths in authored order like global overrides", () => {
+      const schema: any = {
+        "config.policy": {
+          type: "object",
+          defaultValue: { nested: { retries: 1, mode: "old" } },
+        },
+      };
+      expect(
+        resolveMutationsForSingleVariable(schema, "config.policy", {
+          "nested.retries": 5,
+          nested: { retries: 3, mode: "safe" },
+        }),
+      ).toEqual({ nested: { retries: 3, mode: "safe" } });
     });
 
     describe("returns overrideValue unchanged when", function () {
@@ -1155,14 +1222,14 @@ describe("mutateVariables", function () {
     });
 
     describe("schema default handling", function () {
-      test("defaultValue null with path map leaves value undefined (mutator cannot mutate null)", function () {
+      test("defaultValue null with path map remains null like global overrides", function () {
         const schema: Record<string, VariableSchema> = {
           foo: { type: "object", defaultValue: null },
         };
         const result = resolveMutationsForSingleVariable(schema, "foo", {
           a: 1,
         });
-        expect(result).toBeUndefined();
+        expect(result).toBeNull();
       });
 
       test("defaultValue undefined with path map leaves value undefined (mutator cannot mutate undefined)", function () {

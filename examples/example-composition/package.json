@@ -1,0 +1,14 @@
+{
+  "name": "@featurevisor/example-composition",
+  "private": true,
+  "version": "3.11.0",
+  "description": "For testing only",
+  "scripts": {
+    "lint": "node ../../packages/cli/bin.js lint",
+    "build": "node ../../packages/cli/bin.js build",
+    "test": "node ../../packages/cli/bin.js test"
+  },
+  "dependencies": {
+    "@featurevisor/cli": "3.11.0"
+  }
+}

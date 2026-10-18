@@ -6,7 +6,12 @@ import type {
   TestResultAssertionError,
 } from "@featurevisor/types";
 import { createFeaturevisor } from "@featurevisor/sdk";
-import type { Featurevisor, FeaturevisorLogLevel, OverrideOptions } from "@featurevisor/sdk";
+import type {
+  Evaluation,
+  Featurevisor,
+  FeaturevisorLogLevel,
+  OverrideOptions,
+} from "@featurevisor/sdk";
 import { MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 
 import { Datasource } from "../datasource";
@@ -14,6 +19,8 @@ import { ProjectConfig } from "../config";
 
 import { checkIfArraysAreEqual, checkIfObjectsAreEqual } from "./helpers";
 import type { DatafileContentByKey } from "./testProject";
+import { getMissingDatafileMessage, getTestDatafileKey } from "./datafileKey";
+import { createTestDiagnosticHandler } from "./diagnostics";
 
 function evaluationValuesAreEqual(expected: unknown, actual: unknown): boolean {
   if (Array.isArray(expected) && Array.isArray(actual)) {
@@ -29,6 +36,7 @@ export interface TestFeatureOptions {
   verbose?: boolean;
   quiet?: boolean;
   showDatafile?: boolean;
+  onEvaluation?: (evaluation: Evaluation, assertion: any) => void;
   [key: string]: any;
 }
 
@@ -64,10 +72,9 @@ export async function testFeature(
       errors: [],
     };
 
-    const targetDatafileKey = `${assertion.environment || false}-target-${assertion.target}`;
-    const datafileContent = assertion.target
-      ? datafileContentByKey.get(targetDatafileKey)
-      : datafileContentByKey.get(assertion.environment || false);
+    const datafileContent = datafileContentByKey.get(
+      getTestDatafileKey(assertion.environment, assertion.target),
+    );
 
     let logLevel: FeaturevisorLogLevel = "warn";
     if (options.verbose) {
@@ -91,9 +98,7 @@ export async function testFeature(
         type: "flag",
         expected: "datafile",
         actual: undefined,
-        message: `datafile not found for environment "${assertion.environment || "none"}"${
-          assertion.target ? ` and target "${assertion.target}"` : ""
-        }`,
+        message: getMissingDatafileMessage(assertion.environment, assertion.target),
       });
       testResultAssertion.duration = Date.now() - assertionStartTime;
       testResult.assertions.push(testResultAssertion);
@@ -106,9 +111,11 @@ export async function testFeature(
       console.log("");
     }
 
+    const onEvaluation = options.onEvaluation;
     const sdk: Featurevisor = createFeaturevisor({
       datafile: datafileContent as DatafileContent,
-      stickyFeatures: assertion.sticky ? assertion.sticky : {},
+      stickyFeatures: assertion.stickyFeatures || {},
+      stickyVariables: assertion.stickyVariables || {},
       modules: [
         {
           name: "tester",
@@ -119,9 +126,16 @@ export async function testFeature(
 
             return bucketValue;
           },
+          afterEvaluation: onEvaluation
+            ? (evaluation) => {
+                onEvaluation(evaluation, assertion);
+                return evaluation;
+              }
+            : undefined,
         },
       ],
       logLevel,
+      onDiagnostic: createTestDiagnosticHandler(options),
     });
 
     try {
@@ -157,7 +171,7 @@ export async function testFeature(
         }
       }
 
-      if ("expectedToBeEnabled" in assertion) {
+      if (typeof assertion.expectedToBeEnabled !== "undefined") {
         testExpectedToBeEnabled(sdk, assertion);
       }
 
@@ -361,7 +375,8 @@ export async function testFeature(
 
         for (const child of assertion.children) {
           const childSdk = sdk.spawn(child.context || {}, {
-            stickyFeatures: assertion.sticky || {},
+            stickyFeatures: child.stickyFeatures || {},
+            stickyVariables: child.stickyVariables || {},
           });
           try {
             // expectedToBeEnabled

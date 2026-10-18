@@ -11,18 +11,18 @@ bucketBy: userId
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: web
-      segments: web
+      conditions: web
       percentage: 100
 
     - key: ios
-      segments: ios
+      conditions: ios
       percentage: 50
 
     - key: android
-      segments: android
+      conditions: android
       percentage: 25

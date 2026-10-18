@@ -27,21 +27,21 @@ variations:
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: nl
-      segments:
+      conditions:
         - countries.netherlands
       percentage: 100
       variation: treatment
     - key: ch
-      segments:
+      conditions:
         - countries.switzerland
       percentage: 100
       variationWeights:
         control: 10
         treatment: 90
     - key: everyone
-      segments: everyone
+      conditions: everyone
       percentage: 100

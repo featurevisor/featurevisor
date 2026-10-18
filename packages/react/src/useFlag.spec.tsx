@@ -6,6 +6,10 @@ import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useFlag } from "./useFlag";
 import { createFeaturevisor } from "@featurevisor/sdk";
 
+const { createFeaturevisor: createSourceFeaturevisor } = jest.requireActual(
+  "../../sdk/src",
+) as typeof import("@featurevisor/sdk");
+
 function getNewDatafile(enabled = true) {
   return {
     schemaVersion: "2",
@@ -104,6 +108,54 @@ describe("react: useFlag", function () {
       expect(screen.getByText("False")).toBeInTheDocument();
       expect(screen.queryByText("True")).not.toBeInTheDocument();
     });
+  });
+
+  test("updates when only a required global variable changes", async function () {
+    const f = createSourceFeaturevisor({
+      logLevel: "fatal",
+      datafile: {
+        schemaVersion: "2",
+        revision: "1.0",
+        segments: {},
+        features: {
+          test: {
+            key: "test",
+            hash: "same-dependent-hash",
+            bucketBy: "userId",
+            conditions: [{ variable: "gate", operator: "equals", value: true }],
+            traffic: [{ key: "all", segments: "*", percentage: 100000, allocation: [] }],
+          },
+        },
+        variables: {
+          gate: { hash: "gate-false", type: "boolean", defaultValue: false },
+        },
+      },
+    });
+
+    function TestComponent() {
+      return <p>{useFlag("test") ? "Allowed" : "Blocked"}</p>;
+    }
+
+    render(
+      <FeaturevisorProvider instance={f}>
+        <TestComponent />
+      </FeaturevisorProvider>,
+    );
+    expect(screen.getByText("Blocked")).toBeInTheDocument();
+
+    await act(async () => {
+      f.setDatafile({
+        schemaVersion: "2",
+        revision: "2.0",
+        segments: {},
+        features: {},
+        variables: {
+          gate: { hash: "gate-true", type: "boolean", defaultValue: true },
+        },
+      });
+    });
+
+    await waitFor(() => expect(screen.getByText("Allowed")).toBeInTheDocument());
   });
 
   test("should work with only a feature key (default context)", function () {

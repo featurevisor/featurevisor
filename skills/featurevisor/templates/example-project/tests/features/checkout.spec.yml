@@ -1,17 +1,9 @@
 feature: checkout
 
 assertions:
-  - description: Staging — everyone is in at 99th percentile
-    environment: staging
-    at: 99
-    context:
-      userId: test-user-1
-      country: us
-    expectedToBeEnabled: true
-
-  - description: Production — NL rule gets local payment methods at any percentile
-    environment: production
-    at: 5
+  - key: nl-local-payments
+    description: The Netherlands gets local payment methods at any bucket
+    at: 95
     context:
       userId: test-user-nl
       country: nl
@@ -20,24 +12,48 @@ assertions:
       paymentMethods: [paypal, ideal]
       allowDiscountCode: true
 
-  - description: Production — outside NL, only the catch-all 10% rule applies
-    environment: production
+  - key: nl-free-plan
+    description: The free plan gets no discount code, even in the Netherlands
+    at: 95
+    context:
+      userId: test-user-nl
+      country: nl
+      plan: free
+    expectedToBeEnabled: true
+    expectedVariables:
+      allowDiscountCode: false
+
+  - key: everyone-inside-rollout
+    description: Outside the Netherlands, buckets below 10 are in
     at: 5
     context:
       userId: test-user-us
       country: us
-    expectedToBeEnabled: true # at: 5 lies inside the 10% rollout
+    expectedToBeEnabled: true
 
-  - description: Production — outside NL, above 10% percentile is gated
-    environment: production
+  - key: everyone-outside-rollout
+    description: Outside the Netherlands, buckets above 10 are out
     at: 50
     context:
       userId: test-user-us-2
       country: us
     expectedToBeEnabled: false
 
-  - description: QA force always wins, even when rollout is 0% effective
-    environment: production
+  - key: treatment-hero
+    description: Treatment changes only the hero subtitle
+    at: 75
+    context:
+      userId: test-user-nl-2
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      hero:
+        title: Checkout
+        subtitle: Faster, simpler checkout
+
+  - key: qa-force
+    description: QA is forced into the treatment while the rollout is low
     at: 50
     context:
       userId: u_qa_1
@@ -45,13 +61,29 @@ assertions:
     expectedToBeEnabled: true
     expectedVariation: treatment
 
-  - matrix:
+  - key: maintenance
+    description: The maintenanceMode kill switch disables checkout
+    at: 95
+    stickyVariables:
+      maintenanceMode: true
+    context:
+      userId: test-user-nl
+      country: nl
+    expectedToBeEnabled: false
+    children:
+      - description: QA keeps access, because force entries run before the root gate
+        stickyVariables:
+          maintenanceMode: true
+        context:
+          userId: u_qa_1
+        expectedToBeEnabled: true
+
+  - key: nl-matrix
+    matrix:
       at: [10, 90]
-      country: [us, de]
-    description: Matrix — at ${{ at }}% percentile in ${{ country }}
-    environment: staging
+    description: The Netherlands is in at bucket ${{ at }}
     at: ${{ at }}
     context:
-      userId: matrix-user-${{ at }}-${{ country }}
-      country: ${{ country }}
+      userId: matrix-user-${{ at }}
+      country: nl
     expectedToBeEnabled: true

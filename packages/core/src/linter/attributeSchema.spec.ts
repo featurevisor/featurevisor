@@ -34,6 +34,90 @@ function expectAttributeFailure(input: unknown, messageSubstring?: string): z.Zo
 }
 
 describe("attributeSchema.ts :: getAttributeZodSchema", () => {
+  describe("portable date literals", () => {
+    it("distinguishes invalid timestamps from enum type mismatches and names const values", () => {
+      const error = expectAttributeFailure({
+        description: "Launch",
+        type: "string",
+        format: "date-time",
+        enum: ["soon", 42],
+        const: "later",
+      });
+      expect(error.issues.map((issue) => ({ path: issue.path, message: issue.message }))).toEqual([
+        {
+          path: ["enum", 0],
+          message:
+            'Enum value at index 0 ("soon") is not a portable ISO 8601 timestamp for format: date-time.',
+        },
+        {
+          path: ["enum", 1],
+          message:
+            'Enum value at index 1 (42) does not match type "string". All enum values must be of the same type as `type`.',
+        },
+        {
+          path: ["const"],
+          message:
+            '`const` value ("later") is not a portable ISO 8601 timestamp for format: date-time.',
+        },
+      ]);
+    });
+    it.each([
+      "2026-01-01",
+      "2026-01-01T00:00:00",
+      "2026-02-29T00:00:00Z",
+      "2026-01-01T00:00:00+14:01",
+      "0000-01-01T00:00:00Z",
+      "soon",
+      42,
+      null,
+    ])("rejects date enum and const literal %s", (value) => {
+      for (const field of ["enum", "const"] as const) {
+        const error = expectAttributeFailure({
+          description: "Launch",
+          type: "string",
+          format: "date-time",
+          [field]: field === "enum" ? [value] : value,
+        });
+        expect(error.issues).toHaveLength(1);
+        expect(error.issues[0].path).toEqual(field === "enum" ? ["enum", 0] : ["const"]);
+      }
+    });
+
+    it("accepts offsets, leap days and extended precision", () => {
+      expectAttributeSuccess({
+        description: "Launch",
+        type: "string",
+        format: "date-time",
+        enum: ["2024-02-29T12:00:00Z", "2026-01-01T00:00:00.123456789+14:00"],
+        const: "2026-01-01T00:00:00-14:00",
+      });
+    });
+
+    it.each(["properties", "additionalProperties", "oneOf"])(
+      "reports exactly one indexed issue for dates nested through %s",
+      (location) => {
+        const child = { type: "string", format: "date-time", enum: ["soon"] };
+        const definition =
+          location === "oneOf"
+            ? { description: "Dates", oneOf: [child, { type: "string" }] }
+            : {
+                description: "Dates",
+                type: "object",
+                [location]: location === "properties" ? { launch: child } : child,
+              };
+        const error = expectAttributeFailure(definition);
+        expect(error.issues).toHaveLength(1);
+        expect(error.issues[0].path).toEqual(
+          location === "properties"
+            ? [location, "launch", "enum", 0]
+            : location === "oneOf"
+              ? [location, 0, "enum", 0]
+              : [location, "enum", 0],
+        );
+      },
+    );
+  });
+
   it("accepts flat object attributes without additional schema details", () => {
     expectAttributeSuccess({
       description: "Traits",
@@ -86,7 +170,7 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
   it("accepts top-level oneOf attributes without type", () => {
     expectAttributeSuccess({
       description: "Version number of the app",
-      oneOf: [{ type: "string" }, { type: "double" }],
+      oneOf: [{ type: "string" }, { type: "number" }],
     });
   });
 
@@ -95,7 +179,7 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
       description: "Plan or score",
       oneOf: [
         { type: "string", enum: ["free", "pro"] },
-        { type: "double", minimum: 0 },
+        { type: "number", minimum: 0 },
       ],
     });
   });
@@ -125,7 +209,7 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
       {
         description: "Version number of the app",
         type: "string",
-        oneOf: [{ type: "string" }, { type: "double" }],
+        oneOf: [{ type: "string" }, { type: "number" }],
       },
       "cannot have both `type` and `oneOf`",
     );
@@ -135,7 +219,7 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
     expectAttributeFailure(
       {
         description: "Plan or score",
-        oneOf: [{ type: "string", enum: ["free", 1] }, { type: "double" }],
+        oneOf: [{ type: "string", enum: ["free", 1] }, { type: "number" }],
       },
       'does not match type "string"',
     );
@@ -281,22 +365,44 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
     );
   });
 
-  it("accepts required keys on flat object attributes without declared properties", () => {
+  it("rejects required keys on flat object attributes without declared properties", () => {
+    // Without declared properties every key is optional, so nothing can be required.
+    expectAttributeFailure(
+      {
+        description: "Traits",
+        type: "object",
+        required: ["plan"],
+      },
+      'Unknown required field "plan"',
+    );
+  });
+
+  it("accepts object attributes without required keys", () => {
     expectAttributeSuccess({
-      description: "Traits",
+      description: "Account",
       type: "object",
-      required: ["plan"],
+      properties: { locale: { type: "string" } },
     });
   });
 
-  it("rejects enum values that do not match semver/date string-like types", () => {
+  it("rejects enum values that do not match formatted string types", () => {
     expectAttributeFailure(
       {
         description: "Browser version",
-        type: "semver",
+        type: "string",
+        format: "semver",
         enum: ["1.0.0", 2],
       },
-      'does not match type "semver"',
+      'does not match type "string"',
+    );
+    expectAttributeFailure(
+      {
+        description: "Browser version",
+        type: "string",
+        format: "semver",
+        enum: ["1.0.0", "5.5,0"],
+      },
+      "is not a version the version operators can compare",
     );
   });
 
@@ -304,7 +410,7 @@ describe("attributeSchema.ts :: getAttributeZodSchema", () => {
     expectAttributeFailure(
       {
         description: "Score",
-        type: "double",
+        type: "number",
         minimum: 10,
         maximum: 5,
       },

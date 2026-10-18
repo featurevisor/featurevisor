@@ -1,7 +1,8 @@
 {
   "name": "@featurevisor/react",
+  "sideEffects": false,
   "version": "3.8.0",
-  "description": "React package for Featurevisor",
+  "description": "React components and hooks for Featurevisor flags, variations and configuration",
   "main": "cjs/index.js",
   "module": "esm/index.js",
   "types": "cjs/index.d.ts",
@@ -43,6 +44,7 @@
     "react"
   ],
   "repository": {
+    "directory": "packages/react",
     "type": "git",
     "url": "https://github.com/featurevisor/featurevisor.git"
   },

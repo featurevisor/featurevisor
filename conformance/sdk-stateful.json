@@ -1,0 +1,4023 @@
+{
+  "kind": "featurevisor.sdk-stateful",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "partial and full variable updates propagate through same hash dependents",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "2",
+          "revision": "initial",
+          "segments": {},
+          "features": {
+            "dependent": {
+              "hash": "dependent",
+              "bucketBy": "userId",
+              "conditions": [{ "variable": "gate", "operator": "equals", "value": true }],
+              "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+            },
+            "transitive": {
+              "hash": "transitive",
+              "bucketBy": "userId",
+              "requiredFeatures": ["dependent"],
+              "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+            }
+          },
+          "variables": {
+            "gate": { "hash": "gate-1", "type": "boolean", "defaultValue": false },
+            "message": {
+              "hash": "message",
+              "type": "string",
+              "defaultValue": "ready",
+              "disabledValue": "blocked",
+              "conditions": [{ "variable": "gate", "operator": "equals", "value": true }]
+            }
+          }
+        }
+      },
+      "operations": [
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "2",
+            "revision": "partial",
+            "segments": {},
+            "features": {},
+            "variables": {
+              "gate": { "hash": "gate-2", "type": "boolean", "defaultValue": true }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "partial",
+                  "previousRevision": "initial",
+                  "revisionChanged": true,
+                  "features": ["dependent", "transitive"],
+                  "variables": ["gate", "message"],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              { "target": "root", "method": "isEnabled", "args": ["dependent"], "value": true },
+              { "target": "root", "method": "isEnabled", "args": ["transitive"], "value": true },
+              { "target": "root", "method": "getVariable", "args": ["message"], "value": "ready" }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "2",
+            "revision": "full",
+            "segments": {},
+            "features": {
+              "dependent": {
+                "hash": "dependent",
+                "bucketBy": "userId",
+                "conditions": [{ "variable": "gate", "operator": "equals", "value": true }],
+                "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+              },
+              "transitive": {
+                "hash": "transitive",
+                "bucketBy": "userId",
+                "requiredFeatures": ["dependent"],
+                "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+              }
+            },
+            "variables": {
+              "gate": { "hash": "gate-3", "type": "boolean", "defaultValue": false },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [{ "variable": "gate", "operator": "equals", "value": true }]
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "full",
+                  "previousRevision": "partial",
+                  "revisionChanged": true,
+                  "features": ["dependent", "transitive"],
+                  "variables": ["gate", "message"],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              { "target": "root", "method": "isEnabled", "args": ["dependent"], "value": false },
+              { "target": "root", "method": "isEnabled", "args": ["transitive"], "value": false },
+              { "target": "root", "method": "getVariable", "args": ["message"], "value": "blocked" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "partial and full updates use new and old dependency graphs",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "2",
+          "revision": "initial",
+          "segments": {},
+          "features": {
+            "dependent": {
+              "hash": "dependent",
+              "bucketBy": "userId",
+              "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+            },
+            "transitive": {
+              "hash": "transitive",
+              "bucketBy": "userId",
+              "requiredFeatures": ["dependent"],
+              "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+            }
+          },
+          "variables": {
+            "gate": { "hash": "gate-1", "type": "boolean", "defaultValue": false },
+            "message": { "hash": "message", "type": "string", "defaultValue": "ready" }
+          }
+        }
+      },
+      "operations": [
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "2",
+            "revision": "added",
+            "segments": {},
+            "features": {
+              "dependent": {
+                "hash": "dependent",
+                "bucketBy": "userId",
+                "conditions": [{ "variable": "gate", "operator": "equals", "value": true }],
+                "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+              }
+            },
+            "variables": {
+              "gate": { "hash": "gate-2", "type": "boolean", "defaultValue": false },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [{ "variable": "gate", "operator": "equals", "value": true }]
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "added",
+                  "previousRevision": "initial",
+                  "revisionChanged": true,
+                  "features": ["dependent", "transitive"],
+                  "variables": ["gate", "message"],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              { "target": "root", "method": "isEnabled", "args": ["dependent"], "value": false },
+              { "target": "root", "method": "getVariable", "args": ["message"], "value": "blocked" }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "2",
+            "revision": "removed",
+            "segments": {},
+            "features": {
+              "dependent": {
+                "hash": "dependent",
+                "bucketBy": "userId",
+                "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+              },
+              "transitive": {
+                "hash": "transitive",
+                "bucketBy": "userId",
+                "requiredFeatures": ["dependent"],
+                "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+              }
+            },
+            "variables": {
+              "gate": { "hash": "gate-3", "type": "boolean", "defaultValue": false },
+              "message": { "hash": "message", "type": "string", "defaultValue": "ready" }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "removed",
+                  "previousRevision": "added",
+                  "revisionChanged": true,
+                  "features": ["dependent", "transitive"],
+                  "variables": ["gate", "message"],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              { "target": "root", "method": "isEnabled", "args": ["dependent"], "value": true },
+              { "target": "root", "method": "getVariable", "args": ["message"], "value": "ready" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "rejected JSON preserves previous state",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "2",
+          "revision": "stable",
+          "segments": {},
+          "features": {
+            "stable": {
+              "hash": "stable",
+              "bucketBy": "userId",
+              "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+            }
+          }
+        }
+      },
+      "operations": [
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": "{not JSON",
+          "expect": {
+            "error": { "code": "invalid_datafile" },
+            "events": [],
+            "results": [
+              { "target": "root", "method": "getRevision", "args": [], "value": "stable" },
+              { "target": "root", "method": "isEnabled", "args": ["stable"], "value": true }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "root and child sticky payloads stay isolated",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "2",
+          "revision": "sticky",
+          "segments": {},
+          "features": {
+            "flag": {
+              "hash": "flag",
+              "bucketBy": "userId",
+              "variablesSchema": {
+                "message": { "type": "string", "defaultValue": "default-feature" }
+              },
+              "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+            }
+          },
+          "variables": {
+            "message": { "hash": "message", "type": "string", "defaultValue": "default-global" }
+          }
+        }
+      },
+      "operations": [
+        {
+          "action": "spawn",
+          "parent": "root",
+          "target": "child",
+          "context": { "tenant": "child" },
+          "options": {
+            "stickyFeatures": { "flag": { "enabled": false } },
+            "stickyVariables": { "message": "child-global" }
+          },
+          "expect": {
+            "events": [],
+            "results": [
+              { "target": "root", "method": "isEnabled", "args": ["flag"], "value": true },
+              { "target": "child", "method": "isEnabled", "args": ["flag"], "value": false },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": ["message"],
+                "value": "default-global"
+              },
+              {
+                "target": "child",
+                "method": "getVariable",
+                "args": ["message"],
+                "value": "child-global"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setStickyFeatures",
+          "target": "root",
+          "replace": true,
+          "stickyFeatures": {
+            "flag": { "enabled": true, "variables": { "message": "root-feature" } }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "sticky_features_set",
+                "details": { "features": ["flag"], "replaced": true }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": ["flag", "message"],
+                "value": "root-feature"
+              },
+              { "target": "child", "method": "isEnabled", "args": ["flag"], "value": false }
+            ]
+          }
+        },
+        {
+          "action": "setStickyFeatures",
+          "target": "child",
+          "replace": true,
+          "stickyFeatures": {
+            "flag": { "enabled": true, "variables": { "message": "child-feature" } }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "child",
+                "name": "sticky_features_set",
+                "details": { "features": ["flag"], "replaced": true }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": ["flag", "message"],
+                "value": "root-feature"
+              },
+              {
+                "target": "child",
+                "method": "getVariable",
+                "args": ["flag", "message"],
+                "value": "child-feature"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": ["message"],
+                "value": "default-global"
+              },
+              {
+                "target": "child",
+                "method": "getVariable",
+                "args": ["message"],
+                "value": "child-global"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setStickyVariables",
+          "target": "child",
+          "replace": true,
+          "stickyVariables": { "message": "child-global-updated" },
+          "expect": {
+            "events": [
+              {
+                "target": "child",
+                "name": "sticky_variables_set",
+                "details": { "variables": ["message"], "replaced": true }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": ["message"],
+                "value": "default-global"
+              },
+              {
+                "target": "child",
+                "method": "getVariable",
+                "args": ["message"],
+                "value": "child-global-updated"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "cached graph refreshes after segment only partial updates",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "4",
+          "revision": "0",
+          "segments": {
+            "s0": {
+              "conditions": [
+                {
+                  "attribute": "country",
+                  "operator": "equals",
+                  "value": "nl"
+                }
+              ]
+            },
+            "s4": {
+              "conditions": [
+                {
+                  "attribute": "country",
+                  "operator": "equals",
+                  "value": "nl"
+                }
+              ]
+            }
+          },
+          "features": {
+            "f3": {
+              "hash": "f3",
+              "bucketBy": "userId",
+              "conditions": [
+                "s4"
+              ],
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000
+                }
+              ]
+            },
+            "g": {
+              "hash": "g1",
+              "bucketBy": "userId",
+              "conditions": "*",
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000
+                }
+              ]
+            }
+          },
+          "variables": {}
+        },
+        "context": {
+          "userId": "subject",
+          "country": "nl"
+        }
+      },
+      "operations": [
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "1",
+            "segments": {},
+            "features": {
+              "g": {
+                "hash": "g2",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "1",
+                  "previousRevision": "0",
+                  "revisionChanged": true,
+                  "features": [
+                    "g"
+                  ],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "g"
+                ],
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "2",
+            "segments": {
+              "s4": {
+                "conditions": [
+                  "s0"
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "2",
+                  "previousRevision": "1",
+                  "revisionChanged": true,
+                  "features": [
+                    "f3"
+                  ],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "g"
+                ],
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "3",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "de"
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "3",
+                  "previousRevision": "2",
+                  "revisionChanged": true,
+                  "features": [
+                    "f3"
+                  ],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "g"
+                ],
+                "value": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "cache free graph history seed 5",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "4",
+          "revision": "0",
+          "segments": {
+            "s0": {
+              "conditions": [
+                {
+                  "attribute": "country",
+                  "operator": "equals",
+                  "value": "nl"
+                }
+              ]
+            },
+            "s4": {
+              "conditions": [
+                "s0"
+              ]
+            }
+          },
+          "features": {
+            "f3": {
+              "hash": "f3",
+              "bucketBy": "userId",
+              "conditions": [
+                "s4"
+              ],
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000
+                }
+              ]
+            },
+            "g": {
+              "hash": "g0",
+              "bucketBy": "userId",
+              "conditions": "*",
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000
+                }
+              ]
+            }
+          },
+          "variables": {
+            "gate": {
+              "hash": "gate0",
+              "type": "boolean",
+              "defaultValue": true
+            },
+            "message": {
+              "hash": "message",
+              "type": "string",
+              "defaultValue": "ready",
+              "disabledValue": "blocked",
+              "conditions": [
+                {
+                  "feature": "f3"
+                }
+              ]
+            },
+            "alias": {
+              "hash": "alias",
+              "type": "string",
+              "compose": "message"
+            }
+          }
+        },
+        "context": {
+          "userId": "subject",
+          "country": "nl"
+        }
+      },
+      "operations": [
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "1",
+            "segments": {},
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "1",
+                  "previousRevision": "0",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "2",
+            "segments": {},
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": [
+                  "s4"
+                ],
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "2",
+                  "previousRevision": "1",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "3",
+            "segments": {},
+            "features": {},
+            "variables": {
+              "gate": {
+                "type": "boolean",
+                "defaultValue": false
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "3",
+                  "previousRevision": "2",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "4",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "nl"
+                  }
+                ]
+              },
+              "s4": {
+                "conditions": [
+                  "s0"
+                ]
+              }
+            },
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": [
+                  "s4"
+                ],
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              },
+              "g": {
+                "hash": "g4",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {
+              "gate": {
+                "type": "boolean",
+                "defaultValue": false
+              },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [
+                  {
+                    "feature": "f3"
+                  }
+                ]
+              },
+              "alias": {
+                "hash": "alias",
+                "type": "string",
+                "compose": "message"
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "4",
+                  "previousRevision": "3",
+                  "revisionChanged": true,
+                  "features": [
+                    "g"
+                  ],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "5",
+            "segments": {
+              "s4": {
+                "conditions": [
+                  "s0"
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "5",
+                  "previousRevision": "4",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "6",
+            "segments": {},
+            "features": {},
+            "variables": {
+              "gate": {
+                "type": "boolean",
+                "defaultValue": true
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "6",
+                  "previousRevision": "5",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "7",
+            "segments": {
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "7",
+                  "previousRevision": "6",
+                  "revisionChanged": true,
+                  "features": [
+                    "f3"
+                  ],
+                  "variables": [
+                    "alias",
+                    "gate",
+                    "message"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "8",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "nl"
+                  }
+                ]
+              },
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": [
+                  "s4"
+                ],
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {
+              "gate": {
+                "hash": "gate8",
+                "type": "boolean",
+                "defaultValue": true
+              },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [
+                  {
+                    "feature": "f3"
+                  }
+                ]
+              },
+              "alias": {
+                "hash": "alias",
+                "type": "string",
+                "compose": "message"
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "8",
+                  "previousRevision": "7",
+                  "revisionChanged": true,
+                  "features": [
+                    "f3",
+                    "g"
+                  ],
+                  "variables": [
+                    "alias",
+                    "gate",
+                    "message"
+                  ],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "9",
+            "segments": {},
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": [
+                  "s4"
+                ],
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "9",
+                  "previousRevision": "8",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "10",
+            "segments": {
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "10",
+                  "previousRevision": "9",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "11",
+            "segments": {},
+            "features": {},
+            "variables": {
+              "gate": {
+                "hash": "gate11",
+                "type": "boolean",
+                "defaultValue": false
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "11",
+                  "previousRevision": "10",
+                  "revisionChanged": true,
+                  "features": [
+                    "f3"
+                  ],
+                  "variables": [
+                    "alias",
+                    "gate",
+                    "message"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "blocked"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "blocked"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "12",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "de"
+                  }
+                ]
+              },
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": [
+                  "s4"
+                ],
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {
+              "gate": {
+                "hash": "gate11",
+                "type": "boolean",
+                "defaultValue": false
+              },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [
+                  {
+                    "feature": "f3"
+                  }
+                ]
+              },
+              "alias": {
+                "hash": "alias",
+                "type": "string",
+                "compose": "message"
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "12",
+                  "previousRevision": "11",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "blocked"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "blocked"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "cache free graph history seed 11",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "4",
+          "revision": "0",
+          "segments": {
+            "s0": {
+              "conditions": [
+                {
+                  "attribute": "country",
+                  "operator": "equals",
+                  "value": "nl"
+                }
+              ]
+            },
+            "s4": {
+              "conditions": [
+                "s0"
+              ]
+            }
+          },
+          "features": {
+            "f3": {
+              "hash": "f3",
+              "bucketBy": "userId",
+              "conditions": [
+                "s4"
+              ],
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000
+                }
+              ]
+            },
+            "g": {
+              "hash": "g0",
+              "bucketBy": "userId",
+              "conditions": "*",
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000
+                }
+              ]
+            }
+          },
+          "variables": {
+            "gate": {
+              "hash": "gate0",
+              "type": "boolean",
+              "defaultValue": true
+            },
+            "message": {
+              "hash": "message",
+              "type": "string",
+              "defaultValue": "ready",
+              "disabledValue": "blocked",
+              "conditions": [
+                {
+                  "feature": "f3"
+                }
+              ]
+            },
+            "alias": {
+              "hash": "alias",
+              "type": "string",
+              "compose": "message"
+            }
+          }
+        },
+        "context": {
+          "userId": "subject",
+          "country": "nl"
+        }
+      },
+      "operations": [
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "1",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "de"
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "1",
+                  "previousRevision": "0",
+                  "revisionChanged": true,
+                  "features": [
+                    "f3"
+                  ],
+                  "variables": [
+                    "alias",
+                    "message"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "blocked"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "blocked"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "2",
+            "segments": {
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "2",
+                  "previousRevision": "1",
+                  "revisionChanged": true,
+                  "features": [
+                    "f3"
+                  ],
+                  "variables": [
+                    "alias",
+                    "message"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "3",
+            "segments": {},
+            "features": {
+              "g": {
+                "hash": "g3",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "3",
+                  "previousRevision": "2",
+                  "revisionChanged": true,
+                  "features": [
+                    "g"
+                  ],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "4",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "de"
+                  }
+                ]
+              },
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": [
+                  "s4"
+                ],
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              },
+              "g": {
+                "hash": "g4",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {
+              "gate": {
+                "hash": "gate0",
+                "type": "boolean",
+                "defaultValue": true
+              },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [
+                  {
+                    "feature": "f3"
+                  }
+                ]
+              },
+              "alias": {
+                "hash": "alias",
+                "type": "string",
+                "compose": "message"
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "4",
+                  "previousRevision": "3",
+                  "revisionChanged": true,
+                  "features": [
+                    "g"
+                  ],
+                  "variables": [],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "5",
+            "segments": {},
+            "features": {
+              "g": {
+                "hash": "g5",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "5",
+                  "previousRevision": "4",
+                  "revisionChanged": true,
+                  "features": [
+                    "g"
+                  ],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "6",
+            "segments": {},
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": [
+                  "s4"
+                ],
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "6",
+                  "previousRevision": "5",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "7",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "de"
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "7",
+                  "previousRevision": "6",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "8",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "de"
+                  }
+                ]
+              },
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": [
+                  "s4"
+                ],
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {
+              "gate": {
+                "hash": "gate8",
+                "type": "boolean",
+                "defaultValue": false
+              },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [
+                  {
+                    "feature": "f3"
+                  }
+                ]
+              },
+              "alias": {
+                "hash": "alias",
+                "type": "string",
+                "compose": "message"
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "8",
+                  "previousRevision": "7",
+                  "revisionChanged": true,
+                  "features": [
+                    "f3",
+                    "g"
+                  ],
+                  "variables": [
+                    "alias",
+                    "gate",
+                    "message"
+                  ],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "blocked"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "blocked"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "9",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "nl"
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "9",
+                  "previousRevision": "8",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "blocked"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "blocked"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "10",
+            "segments": {},
+            "features": {},
+            "variables": {
+              "gate": {
+                "hash": "gate10",
+                "type": "boolean",
+                "defaultValue": true
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "10",
+                  "previousRevision": "9",
+                  "revisionChanged": true,
+                  "features": [
+                    "f3"
+                  ],
+                  "variables": [
+                    "alias",
+                    "gate",
+                    "message"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "11",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "nl"
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "11",
+                  "previousRevision": "10",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "12",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "nl"
+                  }
+                ]
+              },
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": [
+                  "s4"
+                ],
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {
+              "gate": {
+                "hash": "gate10",
+                "type": "boolean",
+                "defaultValue": true
+              },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [
+                  {
+                    "feature": "f3"
+                  }
+                ]
+              },
+              "alias": {
+                "hash": "alias",
+                "type": "string",
+                "compose": "message"
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "12",
+                  "previousRevision": "11",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "cache free graph history seed 29",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "4",
+          "revision": "0",
+          "segments": {
+            "s0": {
+              "conditions": [
+                {
+                  "attribute": "country",
+                  "operator": "equals",
+                  "value": "nl"
+                }
+              ]
+            },
+            "s4": {
+              "conditions": [
+                "s0"
+              ]
+            }
+          },
+          "features": {
+            "f3": {
+              "hash": "f3",
+              "bucketBy": "userId",
+              "conditions": [
+                "s4"
+              ],
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000
+                }
+              ]
+            },
+            "g": {
+              "hash": "g0",
+              "bucketBy": "userId",
+              "conditions": "*",
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000
+                }
+              ]
+            }
+          },
+          "variables": {
+            "gate": {
+              "hash": "gate0",
+              "type": "boolean",
+              "defaultValue": true
+            },
+            "message": {
+              "hash": "message",
+              "type": "string",
+              "defaultValue": "ready",
+              "disabledValue": "blocked",
+              "conditions": [
+                {
+                  "feature": "f3"
+                }
+              ]
+            },
+            "alias": {
+              "hash": "alias",
+              "type": "string",
+              "compose": "message"
+            }
+          }
+        },
+        "context": {
+          "userId": "subject",
+          "country": "nl"
+        }
+      },
+      "operations": [
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "1",
+            "segments": {},
+            "features": {},
+            "variables": {
+              "gate": {
+                "hash": "gate1",
+                "type": "boolean",
+                "defaultValue": false
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "1",
+                  "previousRevision": "0",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "2",
+            "segments": {},
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "2",
+                  "previousRevision": "1",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": false
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "3",
+            "segments": {},
+            "features": {},
+            "variables": {
+              "gate": {
+                "type": "boolean",
+                "defaultValue": true
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "3",
+                  "previousRevision": "2",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "4",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "nl"
+                  }
+                ]
+              },
+              "s4": {
+                "conditions": [
+                  "s0"
+                ]
+              }
+            },
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              },
+              "g": {
+                "hash": "g0",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {
+              "gate": {
+                "hash": "gate4",
+                "type": "boolean",
+                "defaultValue": true
+              },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [
+                  {
+                    "feature": "f3"
+                  }
+                ]
+              },
+              "alias": {
+                "hash": "alias",
+                "type": "string",
+                "compose": "message"
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "4",
+                  "previousRevision": "3",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "5",
+            "segments": {},
+            "features": {
+              "g": {
+                "hash": "g5",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "5",
+                  "previousRevision": "4",
+                  "revisionChanged": true,
+                  "features": [
+                    "g"
+                  ],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "6",
+            "segments": {},
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "6",
+                  "previousRevision": "5",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "7",
+            "segments": {
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "7",
+                  "previousRevision": "6",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "8",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "de"
+                  }
+                ]
+              },
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {
+              "gate": {
+                "hash": "gate4",
+                "type": "boolean",
+                "defaultValue": true
+              },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [
+                  {
+                    "feature": "f3"
+                  }
+                ]
+              },
+              "alias": {
+                "hash": "alias",
+                "type": "string",
+                "compose": "message"
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "8",
+                  "previousRevision": "7",
+                  "revisionChanged": true,
+                  "features": [
+                    "g"
+                  ],
+                  "variables": [],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "9",
+            "segments": {},
+            "features": {},
+            "variables": {
+              "gate": {
+                "type": "boolean",
+                "defaultValue": true
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "9",
+                  "previousRevision": "8",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "10",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "de"
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "10",
+                  "previousRevision": "9",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "11",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "de"
+                  }
+                ]
+              }
+            },
+            "features": {},
+            "variables": {}
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "11",
+                  "previousRevision": "10",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": false
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "target": "root",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "12",
+            "segments": {
+              "s0": {
+                "conditions": [
+                  {
+                    "attribute": "country",
+                    "operator": "equals",
+                    "value": "de"
+                  }
+                ]
+              },
+              "s4": {
+                "conditions": [
+                  {
+                    "variable": "gate",
+                    "operator": "equals",
+                    "value": true
+                  }
+                ]
+              }
+            },
+            "features": {
+              "f3": {
+                "hash": "f3",
+                "bucketBy": "userId",
+                "conditions": "*",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000
+                  }
+                ]
+              }
+            },
+            "variables": {
+              "gate": {
+                "type": "boolean",
+                "defaultValue": true
+              },
+              "message": {
+                "hash": "message",
+                "type": "string",
+                "defaultValue": "ready",
+                "disabledValue": "blocked",
+                "conditions": [
+                  {
+                    "feature": "f3"
+                  }
+                ]
+              },
+              "alias": {
+                "hash": "alias",
+                "type": "string",
+                "compose": "message"
+              }
+            }
+          },
+          "expect": {
+            "events": [
+              {
+                "target": "root",
+                "name": "datafile_set",
+                "details": {
+                  "revision": "12",
+                  "previousRevision": "11",
+                  "revisionChanged": true,
+                  "features": [],
+                  "variables": [
+                    "gate"
+                  ],
+                  "replaced": true
+                }
+              }
+            ],
+            "results": [
+              {
+                "target": "root",
+                "method": "isEnabled",
+                "args": [
+                  "f3"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "gate"
+                ],
+                "value": true
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "message"
+                ],
+                "value": "ready"
+              },
+              {
+                "target": "root",
+                "method": "getVariable",
+                "args": [
+                  "alias"
+                ],
+                "value": "ready"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

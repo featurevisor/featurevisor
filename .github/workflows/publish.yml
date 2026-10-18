@@ -49,31 +49,15 @@ jobs:
         run: make typecheck
 
       - name: Test
+        # Slower checks run locally through `make check` before releasing.
         run: make test
 
       - name: Bump version
-        continue-on-error: true
-        id: graduateRelease
-        # @NOTE: versioning strategy
-        #   major:   npx lerna version X.0.0 --force-publish --exact --yes --no-push
-        #   regular: npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
+        # Force the initial v4 release, then recognise both ! headers and breaking footers.
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"
-          npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
-
-      - name: Bump version fallback
-        if: ${{ always() && steps.graduateRelease.outcome == 'failure'  }}
-        # @NOTE: versioning strategy
-        #   major:   npx lerna version X.0.0 --force-publish --exact --yes --no-push
-        #   regular: npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
-        run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor}}@users.noreply.github.com"
-
-          echo "Falling back to non-graduate release due to https://github.com/lerna/lerna/issues/2532"
-          git stash
-          npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
+          node scripts/release-version.mjs
 
       - name: Publish
         run: |

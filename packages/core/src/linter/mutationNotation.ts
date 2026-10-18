@@ -5,7 +5,12 @@ import { parseNotation, type MutationOperation, type PathPart } from "../builder
 export type { MutationOperation, PathPart };
 export type PathSegment = PathPart;
 
-const OPERATION_SUFFIX = /:((?:append|prepend|after|before|remove))$/;
+const OPERATION_SUFFIX = /:((?:append|prepend|appendUnique|removeValue|after|before|remove))$/;
+
+/** Keep the operation separate from the authored value path in diagnostics. */
+export function getMutationPath(key: string): string {
+  return key.trim().replace(OPERATION_SUFFIX, "");
+}
 
 export interface ParsedMutationKey {
   rootKey: string;
@@ -31,7 +36,13 @@ export function parseMutationKey(key: string): ParsedMutationKey | null {
   const rest = key.trim();
   if (!rest) return null;
 
-  const { segments, operation } = parseNotation(rest);
+  let notation;
+  try {
+    notation = parseNotation(rest);
+  } catch {
+    return null;
+  }
+  const { segments, operation } = notation;
   const rootKey = segments.length > 0 && "key" in segments[0] ? segments[0].key : "";
   const first = segments[0];
   const firstPathPart: PathSegment[] =
@@ -202,12 +213,16 @@ export interface MutationValidationResult {
  * Validate mutation key against variable schema: root exists, path valid, operation allowed.
  * Returns valueSchema to validate the value against (for set: schema at path; for append/prepend/after/before: item schema).
  * Uses Schema from @featurevisor/types; validates required (no :remove on required props) and does not allow path through oneOf.
+ * Diagnostic context names the authored variable and relative path without changing schema lookup.
  */
 export function validateMutationKey(
   key: string,
   variableSchemaByKey: Record<string, Schema>,
   schemasByKey?: Record<string, Schema>,
+  diagnostic?: { variableKey: string; path: string },
 ): MutationValidationResult {
+  const authoredKey = diagnostic?.path ?? key;
+  const displayPath = getMutationPath(authoredKey);
   const parsed = parseMutationKey(key);
   if (!parsed) {
     return {
@@ -216,10 +231,13 @@ export function validateMutationKey(
       pathSegments: [],
       operation: "set",
       valueSchema: null,
-      error: `Invalid mutation notation: "${key}"`,
+      error: `Invalid mutation notation: "${authoredKey}"`,
     };
   }
   const { rootKey, pathSegments, operation } = parsed;
+  const variableName = diagnostic?.variableKey ?? rootKey;
+  const operationLabel = operation === "set" ? "" : ` (operation :${operation})`;
+  const invalidPath = `Path "${displayPath}" does not exist in the schema of variable "${variableName}"${operationLabel}.`;
   if (!rootKey) {
     return {
       valid: false,
@@ -227,7 +245,7 @@ export function validateMutationKey(
       pathSegments: [],
       operation,
       valueSchema: null,
-      error: `Mutation key must start with a variable name: "${key}"`,
+      error: `Mutation key must start with a variable name: "${displayPath}"`,
     };
   }
   const variableSchema = variableSchemaByKey[rootKey];
@@ -238,7 +256,7 @@ export function validateMutationKey(
       pathSegments,
       operation,
       valueSchema: null,
-      error: `Variable "${rootKey}" is not defined in \`variablesSchema\`.`,
+      error: `Variable "${variableName}" is not defined in \`variablesSchema\`.`,
     };
   }
   const resolvedRoot = resolveSchemaRef(variableSchema, schemasByKey);
@@ -255,8 +273,8 @@ export function validateMutationKey(
       valueSchema: null,
       error:
         refName != null
-          ? `Schema "${refName}" could not be loaded for variable "${rootKey}".`
-          : `Could not resolve schema for variable "${rootKey}".`,
+          ? `Schema "${refName}" could not be loaded for variable "${variableName}".`
+          : `Could not resolve schema for variable "${variableName}".`,
     };
   }
   if (pathSegments.length > 0 && isOneOfSchema(resolvedRoot)) {
@@ -266,7 +284,7 @@ export function validateMutationKey(
       pathSegments,
       operation,
       valueSchema: null,
-      error: `Cannot mutate path into variable "${rootKey}" (root schema is \`oneOf\`; path resolution not defined).`,
+      error: `Cannot mutate path into variable "${variableName}" (root schema is \`oneOf\`; path resolution not defined).`,
     };
   }
 
@@ -275,6 +293,8 @@ export function validateMutationKey(
 
   switch (operation) {
     case "append":
+    case "appendUnique":
+    case "removeValue":
     case "prepend": {
       if (!container) {
         return {
@@ -283,10 +303,10 @@ export function validateMutationKey(
           pathSegments,
           operation,
           valueSchema: null,
-          error: `Path "${key}" is invalid for variable "${rootKey}" (path does not exist in schema).`,
+          error: invalidPath,
         };
       }
-      const arrResolved = container.containerSchema;
+      const arrResolved = valueSchemaAtPath;
       if (!arrResolved || arrResolved.type !== "array") {
         return {
           valid: false,
@@ -294,7 +314,7 @@ export function validateMutationKey(
           pathSegments,
           operation,
           valueSchema: null,
-          error: `Operation ":${operation}" is only allowed on array variables or object properties of type array; path "${key}" does not point to an array.`,
+          error: `Operation ":${operation}" is only allowed on array variables or object properties of type array; path "${displayPath}" does not point to an array.`,
         };
       }
       if (isOneOfSchema(arrResolved)) {
@@ -304,7 +324,7 @@ export function validateMutationKey(
           pathSegments,
           operation,
           valueSchema: null,
-          error: `Operation ":${operation}" is not allowed when array \`items\` is \`oneOf\` (path "${key}").`,
+          error: `Operation ":${operation}" is not allowed when array \`items\` is \`oneOf\` (path "${displayPath}").`,
         };
       }
       const itemSchema =
@@ -329,7 +349,7 @@ export function validateMutationKey(
           pathSegments,
           operation,
           valueSchema: null,
-          error: `Path "${key}" is invalid for variable "${rootKey}" (path does not exist in schema).`,
+          error: invalidPath,
         };
       }
       const last = container.lastSegment;
@@ -341,7 +361,7 @@ export function validateMutationKey(
             pathSegments,
             operation,
             valueSchema: null,
-            error: `Operation ":${operation}" with array index/selector is only allowed on arrays; path "${key}" does not point to an array element.`,
+            error: `Operation ":${operation}" with array index/selector is only allowed on arrays; path "${displayPath}" does not point to an array element.`,
           };
         }
         if (operation === "after" || operation === "before") {
@@ -353,7 +373,7 @@ export function validateMutationKey(
               pathSegments,
               operation,
               valueSchema: null,
-              error: `Operation ":${operation}" is not allowed when array \`items\` is \`oneOf\` (path "${key}").`,
+              error: `Operation ":${operation}" is not allowed when array \`items\` is \`oneOf\` (path "${displayPath}").`,
             };
           }
           const itemSchema =
@@ -371,7 +391,7 @@ export function validateMutationKey(
           pathSegments,
           operation,
           valueSchema: null,
-          error: `Operation ":${operation}" on a property is only allowed on objects; path "${key}" does not point to an object property.`,
+          error: `Operation ":${operation}" on a property is only allowed on objects; path "${displayPath}" does not point to an object property.`,
         };
       }
       const requiredKeys = container.parentSchema.required;
@@ -386,7 +406,7 @@ export function validateMutationKey(
           pathSegments,
           operation,
           valueSchema: null,
-          error: `Cannot remove required property "${last.key}" from variable "${rootKey}" (listed in schema \`required\`).`,
+          error: `Cannot remove required property "${last.key}" from variable "${variableName}" (listed in schema \`required\`).`,
         };
       }
       return { valid: true, rootKey, pathSegments, operation, valueSchema: null };
@@ -399,7 +419,7 @@ export function validateMutationKey(
           pathSegments,
           operation,
           valueSchema: null,
-          error: `Path "${key}" is invalid for variable "${rootKey}" (path does not exist in schema).`,
+          error: invalidPath,
         };
       }
       if (valueSchemaAtPath && isOneOfSchema(valueSchemaAtPath)) {
@@ -409,7 +429,7 @@ export function validateMutationKey(
           pathSegments,
           operation,
           valueSchema: null,
-          error: `Cannot set value at path "${key}" (target schema is \`oneOf\`; mutation target must be a single schema).`,
+          error: `Cannot set value at path "${displayPath}" (target schema is \`oneOf\`; mutation target must be a single schema).`,
         };
       }
       return {

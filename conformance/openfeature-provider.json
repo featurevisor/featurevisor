@@ -1,0 +1,264 @@
+{
+  "kind": "featurevisor.openfeature-provider",
+  "schemaVersion": 1,
+  "datafile": {
+    "schemaVersion": "2",
+    "revision": "provider-conformance",
+    "segments": {},
+    "features": {
+      "checkout": {
+        "bucketBy": "userId",
+        "variations": [
+          { "value": "on", "variables": { "config": "{\"enabled\":true}", "nullable": "null" } }
+        ],
+        "variablesSchema": {
+          "config": { "type": "json", "defaultValue": "{}" },
+          "nullable": { "type": "json", "defaultValue": "null" }
+        },
+        "force": [
+          {
+            "conditions": { "attribute": "userId", "operator": "equals", "value": "forced" },
+            "enabled": true,
+            "variation": "on"
+          }
+        ],
+        "traffic": [{ "key": "all", "segments": "*", "percentage": 100000, "variation": "on" }]
+      },
+      "disabled": {
+        "bucketBy": "userId",
+        "variations": [],
+        "force": [
+          {
+            "conditions": { "attribute": "blocked", "operator": "equals", "value": true },
+            "enabled": false
+          }
+        ],
+        "traffic": []
+      },
+      "accountTargeted": {
+        "bucketBy": "accountId",
+        "variations": [],
+        "force": [
+          {
+            "conditions": { "attribute": "accountId", "operator": "equals", "value": "" },
+            "enabled": true
+          }
+        ],
+        "traffic": []
+      },
+      "targetOnly": {
+        "bucketBy": "userId",
+        "variations": [],
+        "force": [
+          {
+            "conditions": { "attribute": "userId", "operator": "equals", "value": "forced" },
+            "enabled": true
+          }
+        ],
+        "traffic": []
+      },
+      "conditional": {
+        "bucketBy": "userId",
+        "conditions": { "feature": "checkout", "enabled": false },
+        "traffic": [{ "key": "all", "conditions": "*", "percentage": 100000 }]
+      }
+    },
+    "variables": {
+      "settings": { "type": "json", "defaultValue": "{\"region\":\"eu\"}" },
+      "nullable": { "type": "json", "defaultValue": "null" },
+      "settingsAlias": { "type": "json", "compose": "settings" },
+      "jsonText": { "type": "json", "defaultValue": "\"null\"" },
+      "jsonTextAlias": { "type": "json", "compose": "jsonText" },
+      "screen": {
+        "type": "object",
+        "compose": [
+          { "key": "enabled", "feature": "checkout" },
+          { "key": "settings", "variable": "settings" }
+        ]
+      },
+      "restricted": {
+        "type": "boolean",
+        "defaultValue": true,
+        "disabledValue": false,
+        "conditions": { "attribute": "allowed", "operator": "equals", "value": true }
+      },
+      "screenOverride": {
+        "type": "object",
+        "compose": "screen",
+        "overrideProgram": [
+          {
+            "key": "regional",
+            "conditions": "*",
+            "operations": [{ "op": "set", "path": ["settings", "region"], "value": "us" }],
+            "onMatch": 1,
+            "onMiss": 1
+          }
+        ]
+      },
+      "brokenAlias": { "type": "object", "compose": "brokenAlias" }
+    }
+  },
+  "cases": [
+    {
+      "name": "forced flag",
+      "flagKey": "checkout",
+      "type": "boolean",
+      "default": false,
+      "context": { "targetingKey": "forced" },
+      "expected": { "value": true, "reason": "TARGETING_MATCH" }
+    },
+    {
+      "name": "variation selector",
+      "flagKey": "checkout:variation",
+      "type": "string",
+      "default": "fallback",
+      "context": { "targetingKey": "forced" },
+      "expected": { "value": "on", "reason": "TARGETING_MATCH", "variant": "on" }
+    },
+    {
+      "name": "feature JSON",
+      "flagKey": "checkout:config",
+      "type": "object",
+      "default": {},
+      "context": { "targetingKey": "forced" },
+      "expected": { "value": { "enabled": true } }
+    },
+    {
+      "name": "global JSON",
+      "flagKey": "variable:settings",
+      "type": "object",
+      "default": {},
+      "context": {},
+      "expected": { "value": { "region": "eu" }, "reason": "DEFAULT" }
+    },
+    {
+      "name": "feature JSON null",
+      "flagKey": "checkout:nullable",
+      "type": "object",
+      "default": { "fallback": true },
+      "context": { "targetingKey": "forced" },
+      "expected": { "value": { "fallback": true } }
+    },
+    {
+      "name": "global JSON null",
+      "flagKey": "variable:nullable",
+      "type": "object",
+      "default": { "fallback": true },
+      "context": {},
+      "expected": { "value": { "fallback": true }, "reason": "DEFAULT" }
+    },
+    {
+      "name": "disabled flag",
+      "flagKey": "disabled",
+      "type": "boolean",
+      "default": true,
+      "context": { "blocked": true },
+      "expected": { "value": false, "reason": "TARGETING_MATCH" }
+    },
+    {
+      "name": "missing flag",
+      "flagKey": "missing",
+      "type": "boolean",
+      "default": false,
+      "context": {},
+      "expected": { "value": false, "reason": "ERROR", "errorCode": "FLAG_NOT_FOUND" }
+    },
+    {
+      "name": "type mismatch",
+      "flagKey": "checkout:config",
+      "type": "string",
+      "default": "fallback",
+      "context": { "targetingKey": "forced" },
+      "expected": { "value": "fallback", "reason": "ERROR", "errorCode": "TYPE_MISMATCH" }
+    },
+    {
+      "name": "composed object",
+      "flagKey": "variable:screen",
+      "type": "object",
+      "default": {},
+      "context": { "targetingKey": "forced" },
+      "expected": {
+        "value": { "enabled": true, "settings": { "region": "eu" } },
+        "reason": "TARGETING_MATCH"
+      }
+    },
+    {
+      "name": "string alias to JSON object",
+      "flagKey": "variable:settingsAlias",
+      "type": "object",
+      "default": {},
+      "context": {},
+      "expected": { "value": { "region": "eu" }, "reason": "TARGETING_MATCH" }
+    },
+    {
+      "name": "string alias decodes JSON exactly once",
+      "flagKey": "variable:jsonTextAlias",
+      "type": "string",
+      "default": "fallback",
+      "context": {},
+      "expected": { "value": "null", "reason": "TARGETING_MATCH" }
+    },
+    {
+      "name": "composed override",
+      "flagKey": "variable:screenOverride",
+      "type": "object",
+      "default": {},
+      "context": { "targetingKey": "forced" },
+      "expected": {
+        "value": { "enabled": true, "settings": { "region": "us" } },
+        "reason": "TARGETING_MATCH"
+      }
+    },
+    {
+      "name": "unmet variable root conditions",
+      "flagKey": "variable:restricted",
+      "type": "boolean",
+      "default": true,
+      "context": {},
+      "expected": { "value": false, "reason": "DISABLED" }
+    },
+    {
+      "name": "unmet feature root conditions",
+      "flagKey": "conditional",
+      "type": "boolean",
+      "default": true,
+      "context": { "targetingKey": "forced" },
+      "expected": { "value": false, "reason": "DISABLED" }
+    },
+    {
+      "name": "composition dependency error",
+      "flagKey": "variable:brokenAlias",
+      "type": "object",
+      "default": { "fallback": true },
+      "context": {},
+      "expected": { "value": { "fallback": true }, "reason": "ERROR", "errorCode": "GENERAL" }
+    }
+  ],
+  "targetingCases": [
+    {
+      "name": "absent preserves field",
+      "context": { "userId": "forced" },
+      "expectedUserId": "forced",
+      "expectedValue": true
+    },
+    {
+      "name": "empty overrides field",
+      "context": { "targetingKey": "", "userId": "forced" },
+      "expectedUserId": "",
+      "expectedValue": false
+    },
+    {
+      "name": "nonempty overrides field",
+      "context": { "targetingKey": "other", "userId": "forced" },
+      "expectedUserId": "other",
+      "expectedValue": false
+    }
+  ],
+  "customTargetingCase": {
+    "flagKey": "accountTargeted",
+    "context": { "targetingKey": "", "accountId": "old" },
+    "targetingKeyField": "accountId",
+    "expectedValue": true,
+    "expectedReason": "TARGETING_MATCH"
+  }
+}

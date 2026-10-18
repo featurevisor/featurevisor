@@ -1,0 +1,9 @@
+description: User context
+
+type: object
+
+properties:
+  id:
+    type: string
+  country:
+    type: string

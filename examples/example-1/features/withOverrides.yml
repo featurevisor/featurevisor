@@ -203,8 +203,8 @@ variations:
       variationOverrideOnly:
         - key: netherlands-treatment
           description: Netherlands values when pricing is in treatment
-          segments: countries.netherlands
-          requiredFeatures:
+          conditions:
+            - countries.netherlands
             - feature: pricing
               enabled: true
               variation: treatment
@@ -219,7 +219,7 @@ variations:
             base: variation-de
             "deep.count": 20
       partialMutationShowcase:
-        - segments: countries.netherlands
+        - conditions: countries.netherlands
           value:
             "nested.meta.region": nl-variation-override
             "list:prepend": nl
@@ -233,14 +233,14 @@ variations:
               id: 15
               label: one-half
       bothLayered:
-        - segments: mobile
+        - conditions: mobile
           value:
             "nested.value": 6
 
 rules:
   staging:
     - key: germany_both
-      segments: countries.germany
+      conditions: countries.germany
       percentage: 100
       variables:
         "partialMutationShowcase.text": rule-de
@@ -272,8 +272,8 @@ rules:
       variableOverrides:
         ruleOverrideOnly:
           - key: mobile
-            segments: mobile
-            requiredFeatures:
+            conditions:
+              - mobile
               - feature: pricing
                 enabled: true
                 variation: treatment
@@ -290,7 +290,7 @@ rules:
               style: de
               "options.enabled": true
         bothLayered:
-          - segments: mobile
+          - conditions: mobile
             value:
               "nested.value": 200
               "list[0].label": rule-mobile
@@ -301,7 +301,7 @@ rules:
             value:
               "nested.meta.from": rule-override
         partialMutationShowcase:
-          - segments: mobile
+          - conditions: mobile
             value:
               "list:prepend": mobile
               "nested.count": 200
@@ -314,7 +314,7 @@ rules:
               "rows[id=2]:remove": null
 
     - key: netherlands_variables_only
-      segments: countries.netherlands
+      conditions: countries.netherlands
       percentage: 100
       variables:
         ruleVariablesOnly:
@@ -331,7 +331,7 @@ rules:
               label: nl-rule
 
     - key: eu_overrides_only
-      segments: eu
+      conditions: eu
       percentage: 100
       variableOverrides:
         partialMutationShowcase:
@@ -341,7 +341,7 @@ rules:
                 value: desktop
             value:
               text: eu-desktop
-          - segments: mobile
+          - conditions: mobile
             value:
               "nested.meta.region": eu-mobile
               "rows[1].label": two-eu
@@ -353,22 +353,22 @@ rules:
             value:
               style: eu-desktop
         bothLayered:
-          - segments: mobile
+          - conditions: mobile
             value:
               "nested.value": 400
 
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
       variableOverrides:
         plainDefault:
           - key: pricing-disabled
-            requiredFeatures:
+            conditions:
               - feature: pricing
                 enabled: false
                 variation: control

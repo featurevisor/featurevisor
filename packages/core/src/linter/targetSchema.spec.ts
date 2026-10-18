@@ -6,7 +6,6 @@ function minimalProjectConfig(overrides: Partial<ProjectConfig> = {}): ProjectCo
     featuresDirectoryPath: "",
     segmentsDirectoryPath: "",
     attributesDirectoryPath: "",
-    groupsDirectoryPath: "",
     schemasDirectoryPath: "",
     targetsDirectoryPath: "",
     variablesDirectoryPath: "",

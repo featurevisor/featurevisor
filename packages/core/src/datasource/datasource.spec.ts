@@ -1,9 +1,60 @@
-import type { ParsedFeature } from "@featurevisor/types";
+import type { ExistingState, ParsedFeature } from "@featurevisor/types";
 
 import { Datasource } from "./datasource";
 
+describe("persisted state contract", () => {
+  it("projects all entries for every adapter without mutating caller state", async () => {
+    const state = {
+      obsolete: true,
+      features: {
+        unselected: {
+          hash: "keep",
+          ranges: [[50001, 100000]],
+          variations: [{ value: "control", weight: 100, obsolete: true }],
+          traffic: [
+            {
+              key: "stable",
+              percentage: 50000,
+              obsolete: true,
+              allocation: [
+                { variation: "control", range: [0, 50000] as [number, number], obsolete: true },
+              ],
+            },
+          ],
+        },
+        removedDefinition: { ranges: [[0, 100000]], traffic: [] },
+      },
+    };
+    const before = structuredClone(state);
+    const writeState = jest.fn(async () => undefined);
+    await Datasource.prototype.writeState.call(
+      { adapter: { writeState } },
+      false,
+      state as ExistingState,
+    );
+    expect(writeState).toHaveBeenCalledWith(false, {
+      features: {
+        unselected: {
+          hash: "keep",
+          variations: [{ value: "control", weight: 100 }],
+          traffic: [
+            {
+              key: "stable",
+              percentage: 50000,
+              allocation: [{ variation: "control", range: [0, 50000] }],
+            },
+          ],
+        },
+        removedDefinition: { traffic: [] },
+      },
+    });
+    expect(state).toEqual(before);
+  });
+});
+
 function createDatasource(features: Record<string, Partial<ParsedFeature>>) {
   return {
+    listFeatures: async () => Object.keys(features),
     featureExists: jest.fn(async (key: string) =>
       Object.prototype.hasOwnProperty.call(features, key),
     ),
@@ -14,9 +65,9 @@ function createDatasource(features: Record<string, Partial<ParsedFeature>>) {
 describe("core: datasource required features", () => {
   it("returns every feature once for shared dependency branches", async () => {
     const datasource = createDatasource({
-      checkout: { required: ["pricing", "shipping"] },
-      pricing: { required: ["currency"] },
-      shipping: { required: ["currency"] },
+      checkout: { conditions: [{ feature: "pricing" }, { feature: "shipping" }] },
+      pricing: { conditions: [{ feature: "currency" }] },
+      shipping: { conditions: [{ feature: "currency" }] },
       currency: {},
     });
 
@@ -30,14 +81,16 @@ describe("core: datasource required features", () => {
 
   it("reports nested circular dependencies with their exact path", async () => {
     const datasource = createDatasource({
-      checkout: { required: ["pricing"] },
-      pricing: { required: ["shipping"] },
-      shipping: { required: ["pricing"] },
+      checkout: { conditions: [{ feature: "pricing" }] },
+      pricing: { conditions: [{ feature: "shipping" }] },
+      shipping: { conditions: [{ feature: "pricing" }] },
     });
 
     await expect(
       Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout"),
-    ).rejects.toThrow("circular dependency found: pricing -> shipping -> pricing");
+    ).rejects.toThrow(
+      'feature "pricing" conditions[0] -> feature "shipping" conditions[0] -> feature "pricing"',
+    );
   });
 
   it("reports a missing root feature", async () => {
@@ -50,9 +103,18 @@ describe("core: datasource required features", () => {
 
   it("reports a missing required feature", async () => {
     const datasource = createDatasource({
-      checkout: { required: ["missing"] },
+      checkout: { conditions: [{ feature: "missing" }] },
     });
 
+    await expect(
+      Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout"),
+    ).rejects.toThrow('required feature "missing" not found');
+  });
+
+  it("reports missing structural dependencies under NOT", async () => {
+    const datasource = createDatasource({
+      checkout: { conditions: { not: [{ feature: "missing" }] } },
+    });
     await expect(
       Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout"),
     ).rejects.toThrow('required feature "missing" not found');
@@ -61,7 +123,7 @@ describe("core: datasource required features", () => {
   it("follows required features that specify a variation", async () => {
     const datasource = createDatasource({
       checkout: {
-        required: [{ key: "pricing", variation: "treatment" }],
+        conditions: [{ feature: "pricing", variation: "treatment" }],
       },
       pricing: {},
     });
@@ -73,14 +135,24 @@ describe("core: datasource required features", () => {
 
   it("follows canonical requiredFeatures including the direct string shorthand", async () => {
     const datasource = createDatasource({
-      checkout: { requiredFeatures: "pricing" },
-      pricing: { requiredFeatures: [{ feature: "currency", enabled: false }] },
+      checkout: { conditions: { feature: "pricing" } },
+      pricing: { conditions: [{ feature: "currency", enabled: false }] },
       currency: {},
     });
 
     const result = await Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout");
 
     expect(Array.from(result)).toEqual(["checkout", "pricing", "currency"]);
+  });
+
+  it("rejects legacy required instead of silently dropping its dependency", async () => {
+    const datasource = createDatasource({
+      checkout: { required: ["pricing"] } as unknown as Partial<ParsedFeature>,
+      pricing: {},
+    });
+    await expect(
+      Datasource.prototype.getRequiredFeaturesChain.call(datasource, "checkout"),
+    ).rejects.toThrow(/Legacy feature `required` was removed.*Use `conditions`/);
   });
 
   it("includes requirements from rule and variation variable overrides", async () => {
@@ -90,10 +162,10 @@ describe("core: datasource required features", () => {
           production: [
             {
               key: "all",
-              segments: "*",
+              conditions: "*",
               percentage: 100,
               variableOverrides: {
-                message: [{ requiredFeatures: "pricing", value: "rule" }],
+                message: [{ conditions: { feature: "pricing" }, value: "rule" }],
               },
             },
           ],
@@ -104,7 +176,7 @@ describe("core: datasource required features", () => {
             variableOverrides: {
               message: [
                 {
-                  requiredFeatures: [{ feature: "shipping", enabled: false }],
+                  conditions: [{ feature: "shipping", enabled: false }],
                   value: "variation",
                 },
               ],
@@ -112,7 +184,7 @@ describe("core: datasource required features", () => {
           },
         ],
       },
-      pricing: { requiredFeatures: "currency" },
+      pricing: { conditions: { feature: "currency" } },
       currency: {},
       shipping: {},
     });
@@ -128,7 +200,7 @@ describe("core: datasource required features", () => {
         variations: [
           {
             value: "control",
-            variableOverrides: { value: [{ requiredFeatures: "second", value: "first" }] },
+            variableOverrides: { value: [{ conditions: { feature: "second" }, value: "first" }] },
           },
         ],
       },
@@ -136,7 +208,7 @@ describe("core: datasource required features", () => {
         variations: [
           {
             value: "control",
-            variableOverrides: { value: [{ requiredFeatures: "first", value: "second" }] },
+            variableOverrides: { value: [{ conditions: { feature: "first" }, value: "second" }] },
           },
         ],
       },
@@ -148,22 +220,33 @@ describe("core: datasource required features", () => {
 
   it("includes requirements from every level of a global variable override tree", async () => {
     const datasource = {
+      listVariables: async () => ["settings"],
+      listFeatures: async () => [
+        "root",
+        "root-child",
+        "country-feature",
+        "country-feature-child",
+        "city-feature",
+        "city-feature-child",
+      ],
+      readFeature: async (key: string) =>
+        key.endsWith("-child") ? {} : { conditions: { feature: `${key}-child` } },
       variableExists: jest.fn(async () => true),
       readVariable: jest.fn(async () => ({
         defaultValue: "default",
-        requiredFeatures: "root",
+        conditions: { feature: "root" },
         overrides: {
           production: [
             {
               key: "country",
-              segments: "*",
-              requiredFeatures: "country-feature",
+              conditions: [{ feature: "country-feature" }],
+
               value: "country",
               overrides: [
                 {
                   key: "city",
-                  segments: "*",
-                  requiredFeatures: "city-feature",
+                  conditions: [{ feature: "city-feature" }],
+
                   value: "city",
                 },
               ],
@@ -171,7 +254,6 @@ describe("core: datasource required features", () => {
           ],
         },
       })),
-      getRequiredFeaturesChain: jest.fn(async (key: string) => new Set([key, `${key}-child`])),
     };
 
     const result = await Datasource.prototype.getRequiredFeaturesChainForVariable.call(

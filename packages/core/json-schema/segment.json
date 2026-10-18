@@ -1,137 +1,192 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$defs": {
-    "plain_condition": {
-      "type": "object",
-      "properties": {
-        "attribute": {
-          "type": "string",
-          "description": "Name of the attribute to be used in the condition."
-        },
-        "operator": {
-          "type": "string",
-          "description": "Operator to be used in the condition.",
-          "enum": [
-            "equals",
-            "notEquals",
-            "greaterThan",
-            "greaterThanOrEquals",
-            "lessThan",
-            "lessThanOrEquals",
-            "contains",
-            "notContains",
-            "startsWith",
-            "endsWith",
-            "includes",
-            "notIncludes",
-            "semverEquals",
-            "semverNotEquals",
-            "semverGreaterThan",
-            "semverGreaterThanOrEquals",
-            "semverLessThan",
-            "semverLessThanOrEquals",
-            "before",
-            "after",
-            "in",
-            "notIn",
-            "matches",
-            "notMatches",
-            "exists",
-            "notExists"
-          ]
-        },
-        "value": {
-          "anyOf": [
-            { "type": "string" },
-            { "type": "number" },
-            { "type": "boolean" },
-            {
-              "type": "array",
-              "items": { "type": "string" }
-            },
-            { "type": "null" }
-          ],
-          "description": "Value for the condition."
-        },
-        "regexFlags": {
-          "type": "string",
-          "description": "Regex flags for matches/notMatches operators."
-        }
-      },
-      "required": ["attribute", "operator"],
-      "additionalProperties": false
-    },
-    "and_condition": {
-      "type": "object",
-      "properties": {
-        "and": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/condition" },
-          "description": "The list of conditions to be combined with the 'and' operator."
-        }
-      },
-      "required": ["and"],
-      "additionalProperties": false
-    },
-    "or_condition": {
-      "type": "object",
-      "properties": {
-        "or": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/condition" },
-          "description": "The list of conditions to be combined with the 'or' operator."
-        }
-      },
-      "required": ["or"],
-      "additionalProperties": false
-    },
-    "not_condition": {
-      "type": "object",
-      "properties": {
-        "not": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/condition" },
-          "description": "The list of conditions to be combined with the 'not' operator."
-        }
-      },
-      "required": ["not"],
-      "additionalProperties": false
-    },
-    "complex_condition": {
-      "oneOf": [
-        { "$ref": "#/$defs/and_condition" },
-        { "$ref": "#/$defs/or_condition" },
-        { "$ref": "#/$defs/not_condition" }
-      ]
-    },
-    "condition": {
-      "oneOf": [{ "$ref": "#/$defs/plain_condition" }, { "$ref": "#/$defs/complex_condition" }]
-    },
-    "multiple_conditions": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/condition" }
-    }
-  },
   "type": "object",
   "properties": {
-    "archived": {
-      "type": "boolean",
-      "description": "Indicates whether the segment is archived or not."
-    },
-    "description": {
-      "type": "string",
-      "description": "Human readable description of the segment for documentation purposes."
-    },
+    "archived": { "type": "boolean" },
+    "promotable": { "type": "boolean" },
+    "description": { "type": "string" },
     "conditions": {
-      "oneOf": [
-        { "const": "*" },
-        { "$ref": "#/$defs/condition" },
-        { "$ref": "#/$defs/multiple_conditions" }
-      ],
-      "description": "The set of conditions to be evaluated for the segment."
+      "anyOf": [
+        { "type": "string", "const": "*" },
+        { "$ref": "#/definitions/__schema0" },
+        { "minItems": 1, "type": "array", "items": { "$ref": "#/definitions/__schema0" } }
+      ]
     }
   },
   "required": ["description", "conditions"],
   "additionalProperties": false,
-  "description": "JSON Schema for creating Featurevisor segment, expressed in YAML"
+  "definitions": {
+    "__schema0": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "attribute": { "type": "string" },
+            "operator": {
+              "type": "string",
+              "enum": [
+                "equals",
+                "notEquals",
+                "greaterThan",
+                "greaterThanOrEquals",
+                "lessThan",
+                "lessThanOrEquals",
+                "contains",
+                "notContains",
+                "startsWith",
+                "endsWith",
+                "matches",
+                "notMatches",
+                "semverEquals",
+                "semverNotEquals",
+                "semverGreaterThan",
+                "semverGreaterThanOrEquals",
+                "semverLessThan",
+                "semverLessThanOrEquals",
+                "before",
+                "after",
+                "in",
+                "notIn",
+                "includes",
+                "notIncludes",
+                "includesAny",
+                "notIncludesAny",
+                "exists",
+                "notExists",
+                "isNull",
+                "notNull",
+                "empty",
+                "notEmpty"
+              ]
+            },
+            "value": {
+              "anyOf": [
+                { "type": "string" },
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      { "type": "string" },
+                      { "type": "number" },
+                      { "type": "boolean" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                { "type": "number" },
+                { "type": "boolean" },
+                { "type": "null" }
+              ]
+            },
+            "regexFlags": { "type": "string" },
+            "compareTo": { "not": {} }
+          },
+          "required": ["attribute", "operator"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "feature": { "type": "string", "minLength": 1 },
+            "enabled": { "type": "boolean" },
+            "variation": { "type": "string", "minLength": 1 }
+          },
+          "required": ["feature"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "feature": { "type": "string", "minLength": 1 },
+            "variable": { "type": "string", "minLength": 1 },
+            "path": {
+              "anyOf": [
+                { "type": "string" },
+                {
+                  "type": "array",
+                  "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                }
+              ]
+            },
+            "operator": {
+              "type": "string",
+              "enum": [
+                "equals",
+                "notEquals",
+                "greaterThan",
+                "greaterThanOrEquals",
+                "lessThan",
+                "lessThanOrEquals",
+                "contains",
+                "notContains",
+                "startsWith",
+                "endsWith",
+                "matches",
+                "notMatches",
+                "semverEquals",
+                "semverNotEquals",
+                "semverGreaterThan",
+                "semverGreaterThanOrEquals",
+                "semverLessThan",
+                "semverLessThanOrEquals",
+                "before",
+                "after",
+                "in",
+                "notIn",
+                "includes",
+                "notIncludes",
+                "includesAny",
+                "notIncludesAny",
+                "exists",
+                "notExists",
+                "isNull",
+                "notNull",
+                "empty",
+                "notEmpty"
+              ]
+            },
+            "value": {
+              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+            },
+            "regexFlags": { "type": "string", "pattern": "^[gims]+$" }
+          },
+          "required": ["variable", "operator"],
+          "additionalProperties": false
+        },
+        { "type": "string", "minLength": 1, "pattern": "^(?!\\*$).+" },
+        {
+          "type": "object",
+          "properties": {
+            "and": {
+              "minItems": 1,
+              "type": "array",
+              "items": { "$ref": "#/definitions/__schema0" }
+            }
+          },
+          "required": ["and"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "or": { "minItems": 1, "type": "array", "items": { "$ref": "#/definitions/__schema0" } }
+          },
+          "required": ["or"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "minItems": 1,
+              "type": "array",
+              "items": { "$ref": "#/definitions/__schema0" }
+            }
+          },
+          "required": ["not"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
 }

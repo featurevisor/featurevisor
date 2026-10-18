@@ -1,21 +1,20 @@
-import type { Attribute, AttributeProperty } from "@featurevisor/types";
+import type { AttributeProperty, AttributeType } from "@featurevisor/types";
 import { z } from "zod";
 
-import { valueZodSchema, refineArrayItems, refineMinimumMaximum } from "./schema";
+import { countZodSchema, valueZodSchema, refineArrayItems, refineMinimumMaximum } from "./schema";
+import {
+  refineRemovedSchemaType,
+  schemaFormatZodSchema,
+  schemaTypeZodSchema,
+  SCHEMA_FORMATS,
+  valueMatchesFormat,
+} from "./schemaFormats";
 
-const attributeTypeEnum = z.enum([
-  "boolean",
-  "string",
-  "integer",
-  "double",
-  "date",
-  "semver",
-  "object",
-  "array",
-]);
+const attributeTypeEnum = schemaTypeZodSchema<AttributeType>();
 
 type AttributeSchemaLike = {
-  type?: Attribute["type"];
+  type?: string;
+  format?: string;
   enum?: unknown[];
   const?: unknown;
   minimum?: number;
@@ -34,15 +33,7 @@ function isArrayOfStrings(value: unknown): boolean {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string");
 }
 
-function isStringLikeAttributeType(type?: Attribute["type"]): boolean {
-  return type === "string" || type === "date" || type === "semver";
-}
-
-function valueMatchesAttributeType(value: unknown, type: Attribute["type"]): boolean {
-  if (type === "date" || type === "semver") {
-    return typeof value === "string";
-  }
-
+function valueMatchesAttributeType(value: unknown, type?: string): boolean {
   switch (type) {
     case "string":
       return typeof value === "string";
@@ -50,7 +41,7 @@ function valueMatchesAttributeType(value: unknown, type: Attribute["type"]): boo
       return typeof value === "boolean";
     case "integer":
       return typeof value === "number" && Number.isInteger(value);
-    case "double":
+    case "number":
       return typeof value === "number";
     case "object":
       return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -61,61 +52,65 @@ function valueMatchesAttributeType(value: unknown, type: Attribute["type"]): boo
   }
 }
 
+function literalIssue(
+  schema: AttributeSchemaLike,
+  value: unknown,
+  label: string,
+  kind: "enum" | "const",
+): string | null {
+  if (!valueMatchesAttributeType(value, schema.type)) {
+    return kind === "enum"
+      ? `${label} (${JSON.stringify(value)}) does not match type "${schema.type}". All enum values must be of the same type as \`type\`.`
+      : `${label} (${JSON.stringify(value)}) does not match type "${schema.type}".`;
+  }
+  if (
+    schema.type === "string" &&
+    (SCHEMA_FORMATS as readonly string[]).includes(schema.format as string) &&
+    !valueMatchesFormat(schema.format, value)
+  ) {
+    return schema.format === "date-time"
+      ? `${label} (${JSON.stringify(value)}) is not a portable ISO 8601 timestamp for format: date-time.`
+      : `${label} (${JSON.stringify(value)}) is not a version the version operators can compare, for format: semver.`;
+  }
+  return null;
+}
+
 function refineAttributeEnumMatchesType(
   schema: AttributeSchemaLike,
   pathPrefix: (string | number)[],
   ctx: z.RefinementCtx,
 ): void {
-  if (!schema || typeof schema !== "object") return;
+  if (!schema || typeof schema !== "object" || !schema.type) return;
 
-  if (schema.type && Array.isArray(schema.enum) && schema.enum.length > 0) {
-    for (let i = 0; i < schema.enum.length; i++) {
-      const value = schema.enum[i];
-      if (!valueMatchesAttributeType(value, schema.type)) {
+  if (Array.isArray(schema.enum)) {
+    schema.enum.forEach((value, index) => {
+      const message = literalIssue(schema, value, `Enum value at index ${index}`, "enum");
+      if (message) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Enum value at index ${i} (${JSON.stringify(value)}) does not match type "${schema.type}". All enum values must be of the same type as \`type\`.`,
-          path: [...pathPrefix, "enum", i],
+          message,
+          path: [...pathPrefix, "enum", index],
         });
       }
+    });
+  }
+
+  // Child schemas run this refinement themselves, keeping indexed issues unique.
+  // Array constants are checked by the string array refinement.
+  if (schema.const !== undefined && schema.type !== "array") {
+    const message = literalIssue(schema, schema.const, "`const` value", "const");
+    if (message) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: [...pathPrefix, "const"] });
     }
   }
+}
 
-  if (schema.items && typeof schema.items === "object") {
-    refineAttributeEnumMatchesType(
-      schema.items as AttributeSchemaLike,
-      [...pathPrefix, "items"],
-      ctx,
-    );
-  }
-
-  if (schema.properties && typeof schema.properties === "object") {
-    for (const key of Object.keys(schema.properties)) {
-      refineAttributeEnumMatchesType(
-        schema.properties[key] as AttributeSchemaLike,
-        [...pathPrefix, "properties", key],
-        ctx,
-      );
-    }
-  }
-
-  if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
-    refineAttributeEnumMatchesType(
-      schema.additionalProperties as AttributeSchemaLike,
-      [...pathPrefix, "additionalProperties"],
-      ctx,
-    );
-  }
-
-  if (schema.oneOf && Array.isArray(schema.oneOf)) {
-    schema.oneOf.forEach((branch, index) => {
-      if (branch && typeof branch === "object") {
-        refineAttributeEnumMatchesType(
-          branch as AttributeSchemaLike,
-          [...pathPrefix, "oneOf", index],
-          ctx,
-        );
-      }
+function refineAttributeFormat(schema: AttributeSchemaLike, ctx: z.RefinementCtx): void {
+  if (schema?.format !== undefined && schema.type !== "string") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "format is only supported on string schemas.",
+      path: ["format"],
     });
   }
 }
@@ -130,7 +125,7 @@ function refineAttributeStringLengthPattern(
   const minLength = schema.minLength;
   const maxLength = schema.maxLength;
   const pattern = schema.pattern;
-  const isString = isStringLikeAttributeType(schema.type);
+  const isString = schema.type === "string";
 
   if (isString && minLength !== undefined && maxLength !== undefined && minLength > maxLength) {
     ctx.addIssue({
@@ -267,13 +262,12 @@ function refineRequiredKeysInAttributeSchema(
 ): void {
   if (!schema || typeof schema !== "object") return;
 
-  if (
-    schema.type === "object" &&
-    Array.isArray(schema.required) &&
-    schema.properties &&
-    typeof schema.properties === "object"
-  ) {
-    const allowedKeys = Object.keys(schema.properties);
+  if (schema.type === "object" && Array.isArray(schema.required)) {
+    // Without required keys every property is optional, so a bare object needs none.
+    const allowedKeys =
+      schema.properties && typeof schema.properties === "object"
+        ? Object.keys(schema.properties)
+        : [];
     schema.required.forEach((key, index) => {
       if (!allowedKeys.includes(key)) {
         ctx.addIssue({
@@ -503,12 +497,13 @@ export function getAttributeZodSchema() {
         const: valueZodSchema.optional(),
         minimum: z.number().optional(),
         maximum: z.number().optional(),
-        minLength: z.number().optional(),
-        maxLength: z.number().optional(),
+        minLength: countZodSchema.optional(),
+        maxLength: countZodSchema.optional(),
         pattern: z.string().optional(),
+        format: schemaFormatZodSchema.optional(),
         items: attributePropertySchema.optional(),
-        minItems: z.number().optional(),
-        maxItems: z.number().optional(),
+        minItems: countZodSchema.optional(),
+        maxItems: countZodSchema.optional(),
         uniqueItems: z.boolean().optional(),
         required: z.array(z.string()).optional(),
         properties: z.record(z.string(), attributePropertySchema).optional(),
@@ -517,6 +512,8 @@ export function getAttributeZodSchema() {
         oneOf: z.array(attributePropertySchema).min(2).optional(),
       })
       .strict()
+      .superRefine((data, ctx) => refineRemovedSchemaType(data, ctx))
+      .superRefine((data, ctx) => refineAttributeFormat(data, ctx))
       .superRefine((data, ctx) => {
         const hasStructuredArrayDetails =
           data.items !== undefined ||
@@ -559,12 +556,13 @@ export function getAttributeZodSchema() {
       const: valueZodSchema.optional(),
       minimum: z.number().optional(),
       maximum: z.number().optional(),
-      minLength: z.number().optional(),
-      maxLength: z.number().optional(),
+      minLength: countZodSchema.optional(),
+      maxLength: countZodSchema.optional(),
       pattern: z.string().optional(),
+      format: schemaFormatZodSchema.optional(),
       items: attributePropertySchema.optional(),
-      minItems: z.number().optional(),
-      maxItems: z.number().optional(),
+      minItems: countZodSchema.optional(),
+      maxItems: countZodSchema.optional(),
       uniqueItems: z.boolean().optional(),
       required: z.array(z.string()).optional(),
       properties: z.record(z.string(), attributePropertySchema).optional(),
@@ -572,6 +570,8 @@ export function getAttributeZodSchema() {
       oneOf: z.array(attributePropertySchema).min(2).optional(),
     })
     .strict()
+    .superRefine((data, ctx) => refineRemovedSchemaType(data, ctx))
+    .superRefine((data, ctx) => refineAttributeFormat(data, ctx))
     .superRefine((data, ctx) => {
       const hasOneOf = data.oneOf !== undefined && data.oneOf.length > 0;
 

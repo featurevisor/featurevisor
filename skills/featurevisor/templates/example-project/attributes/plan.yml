@@ -1,5 +1,7 @@
-description: Account plan tier
+description: Account plan
+
 type: string
+
 enum:
   - free
   - pro

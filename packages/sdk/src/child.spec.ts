@@ -251,7 +251,8 @@ describe("sdk: child", function () {
     expect(childF.getVariableInteger("test", "count")).toEqual(0);
 
     expect(childF.getVariable("test", "price")).toEqual(9.99);
-    expect(childF.getVariableDouble("test", "price")).toEqual(9.99);
+    expect(childF.getVariableNumber("test", "price")).toEqual(9.99);
+    expect("getVariableDouble" in childF).toBe(false);
 
     expect(childF.getVariable("test", "paymentMethods")).toEqual(["paypal", "creditcard"]);
     expect(childF.getVariableArray("test", "paymentMethods")).toEqual(["paypal", "creditcard"]);

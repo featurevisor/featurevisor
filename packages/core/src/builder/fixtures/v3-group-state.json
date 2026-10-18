@@ -1,0 +1,91 @@
+{
+  "features": {
+    "experimentA": {
+      "variations": [
+        {
+          "value": "control",
+          "weight": 50
+        },
+        {
+          "value": "treatment",
+          "weight": 50
+        }
+      ],
+      "traffic": [
+        {
+          "key": "legacy",
+          "percentage": 50000,
+          "allocation": [
+            {
+              "variation": "control",
+              "range": [0, 25000]
+            },
+            {
+              "variation": "treatment",
+              "range": [25000, 50000]
+            }
+          ]
+        }
+      ],
+      "hash": "qOmmBz42Sx"
+    },
+    "experimentB": {
+      "variations": [
+        {
+          "value": "control",
+          "weight": 50
+        },
+        {
+          "value": "treatment",
+          "weight": 50
+        }
+      ],
+      "traffic": [
+        {
+          "key": "legacy",
+          "percentage": 50000,
+          "allocation": [
+            {
+              "variation": "control",
+              "range": [50001, 75001]
+            },
+            {
+              "variation": "treatment",
+              "range": [75001, 100000]
+            }
+          ]
+        }
+      ],
+      "hash": "L3nvNu927k"
+    },
+    "unrelated": {
+      "variations": [
+        {
+          "value": "control",
+          "weight": 60
+        },
+        {
+          "value": "treatment",
+          "weight": 40
+        }
+      ],
+      "traffic": [
+        {
+          "key": "unchanged",
+          "percentage": 35000,
+          "allocation": [
+            {
+              "variation": "control",
+              "range": [0, 21000]
+            },
+            {
+              "variation": "treatment",
+              "range": [21000, 35000]
+            }
+          ]
+        }
+      ],
+      "hash": "yEQZYpA88N"
+    }
+  }
+}

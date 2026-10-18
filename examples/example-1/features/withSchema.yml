@@ -50,7 +50,7 @@ variablesSchema:
     defaultValue: 0
 
   score:
-    type: double
+    type: number
     defaultValue: 0.0
 
   settings:
@@ -203,7 +203,7 @@ variablesSchema:
     defaultValue: 1
 
   discountRateInline:
-    type: double
+    type: number
     minimum: 0
     maximum: 1
     defaultValue: 0
@@ -409,19 +409,19 @@ variations:
         - y
     variableOverrides:
       shortLabel:
-        - segments: countries.germany
+        - conditions: countries.germany
           value: "Treat DE"
-        - segments: countries.netherlands
+        - conditions: countries.netherlands
           value: "Treat NL"
       inlineSlug:
-        - segments: countries.germany
+        - conditions: countries.germany
           value: "treatment-de"
 
 rules:
   staging:
     # Rule order matters: first matching rule wins. More specific segments first, catch-all last.
     - key: germany
-      segments: countries.germany
+      conditions: countries.germany
       percentage: 100
       variables:
         pageTitle: "Germany Title"
@@ -498,7 +498,7 @@ rules:
           - tag
 
     - key: nl_or_ch
-      segments:
+      conditions:
         or:
           - countries.netherlands
           - countries.switzerland
@@ -554,7 +554,7 @@ rules:
           - ch
 
     - key: mobile_eu
-      segments:
+      conditions:
         and:
           - mobile
           - eu
@@ -602,7 +602,7 @@ rules:
           - mobile
 
     - key: desktop_eu
-      segments:
+      conditions:
         and:
           - desktop
           - eu
@@ -644,12 +644,12 @@ rules:
           - eu
 
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: germany
-      segments: countries.germany
+      conditions: countries.germany
       percentage: 100
       variables:
         pageTitle: "Germany (Prod)"
@@ -680,7 +680,7 @@ rules:
           - prod
 
     - key: nl_or_ch
-      segments:
+      conditions:
         or:
           - countries.netherlands
           - countries.switzerland
@@ -711,7 +711,7 @@ rules:
           - n2
 
     - key: mobile_eu
-      segments:
+      conditions:
         and:
           - mobile
           - eu
@@ -740,5 +740,5 @@ rules:
           - mob
 
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100

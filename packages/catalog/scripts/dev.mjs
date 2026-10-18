@@ -17,7 +17,9 @@ function getArg(name, fallback) {
 
 const project = path.resolve(packageRoot, getArg("project", "../../examples/example-1"));
 const port = getArg("port", "3000");
-const publicDir = path.join(packageRoot, ".catalog-dev");
+const testReport = getArg("test-report", undefined);
+// A separate --out-dir lets several example projects be previewed side by side.
+const publicDir = path.resolve(packageRoot, getArg("out-dir", ".catalog-dev"));
 const ignoredProjectEntries = new Set([
   ".git",
   "node_modules",
@@ -35,6 +37,7 @@ function getExportArgs() {
     "--out-dir",
     publicDir,
     "--no-assets",
+    ...(testReport ? [`--test-report=${path.resolve(process.cwd(), testReport)}`] : []),
   ];
 }
 
@@ -203,14 +206,19 @@ function scheduleCatalogExport(changedPath) {
 
 const stopWatchingProject = watchProjectTree(project, scheduleCatalogExport);
 
-const vite = spawn("npx", ["vite", "--host", "127.0.0.1", "--port", port, "--open"], {
-  cwd: packageRoot,
-  stdio: "inherit",
-  env: {
-    ...process.env,
-    CATALOG_PUBLIC_DIR: publicDir,
+const openBrowser = !process.argv.slice(2).includes("--no-open");
+const vite = spawn(
+  "npx",
+  ["vite", "--host", "127.0.0.1", "--port", port, ...(openBrowser ? ["--open"] : [])],
+  {
+    cwd: packageRoot,
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      CATALOG_PUBLIC_DIR: publicDir,
+    },
   },
-});
+);
 
 vite.on("close", (code) => {
   stopWatchingProject();

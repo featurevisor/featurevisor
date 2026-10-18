@@ -5,6 +5,10 @@ export type Operator =
   | "notEquals"
   | "exists"
   | "notExists"
+  | "isNull"
+  | "notNull"
+  | "empty"
+  | "notEmpty"
 
   // numeric
   | "greaterThan"
@@ -30,9 +34,11 @@ export type Operator =
   | "before"
   | "after"
 
-  // array of strings
+  // array membership
   | "includes"
   | "notIncludes"
+  | "includesAny"
+  | "notIncludesAny"
 
   // regex
   | "matches"
@@ -51,11 +57,32 @@ export type ConditionValue =
   | undefined
   | Array<string | number | boolean | null>;
 
-export interface PlainCondition {
+export interface AttributeCondition {
   attribute: AttributeKey;
   operator: Operator;
-  value?: ConditionValue; // for all operators, except for "exists" and "notExists"
+  value?: ConditionValue; // omitted for presence, null and emptiness operators
   regexFlags?: string; // for regex operators only (matches, notMatches)
+}
+
+/** @deprecated Use AttributeCondition. */
+export type PlainCondition = AttributeCondition;
+
+export interface FeatureCondition {
+  feature: string;
+  /** Expected result from isEnabled(). Defaults to true. */
+  enabled?: boolean;
+  /** Expected result from getVariation(), also when disabled. */
+  variation?: string;
+}
+
+/** Variable keys are literal. Only path selects inside the evaluated value. */
+export interface VariableCondition {
+  variable: string;
+  feature?: string;
+  path?: string | (string | number)[];
+  operator: Operator;
+  value?: ConditionValue;
+  regexFlags?: string;
 }
 
 export interface AndCondition {
@@ -72,4 +99,7 @@ export interface NotCondition {
 
 export type AndOrNotCondition = AndCondition | OrCondition | NotCondition;
 
-export type Condition = PlainCondition | AndOrNotCondition | string;
+export type ConditionLeaf = AttributeCondition | FeatureCondition | VariableCondition | string;
+export type Condition = ConditionLeaf | AndOrNotCondition;
+/** Arrays mean AND. The wildcard is valid only as the entire expression. */
+export type Conditions = Condition | Condition[] | "*";

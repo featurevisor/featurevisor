@@ -1,10 +1,10 @@
-import { defineComponent, type App, type Plugin } from "vue";
-import type {
-  Context,
-  FeatureKey,
-  Featurevisor,
-  VariableValue,
-  VariationValue,
+import { defineComponent, nextTick, onUnmounted, ref, type App, type Plugin } from "vue";
+import {
+  type Context,
+  type FeatureKey,
+  type Featurevisor,
+  type VariableValue,
+  type VariationValue,
 } from "@featurevisor/sdk";
 import { mount } from "@vue/test-utils";
 
@@ -13,6 +13,10 @@ import { useFlag } from "./useFlag";
 import { useSdk } from "./useSdk";
 import { useVariable } from "./useVariable";
 import { useVariation } from "./useVariation";
+
+const { createFeaturevisor: createSourceFeaturevisor } = jest.requireActual(
+  "../../sdk/src",
+) as typeof import("@featurevisor/sdk");
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type IsExact<TActual, TExpected> =
@@ -212,5 +216,58 @@ describe("vue: composables", () => {
     expect(getVariationSpy).toHaveBeenCalledWith("checkout", {});
     expect(getVariableSpy).toHaveBeenCalledWith("checkout", "configuration", {});
     expect(getVariableSpy).toHaveBeenCalledWith("globalConfiguration", {});
+  });
+
+  it("reacts to a variable only dependency update through the SDK event", async () => {
+    const sdk = createSourceFeaturevisor({
+      logLevel: "fatal",
+      datafile: {
+        schemaVersion: "2",
+        revision: "1",
+        segments: {},
+        features: {
+          checkout: {
+            hash: "same-dependent-hash",
+            bucketBy: "userId",
+            conditions: [{ variable: "gate", operator: "equals", value: true }],
+            traffic: [{ key: "all", segments: "*", percentage: 100000 }],
+          },
+        },
+        variables: {
+          gate: { hash: "gate-false", type: "boolean", defaultValue: false },
+        },
+      },
+    });
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          const enabled = ref(useFlag("checkout"));
+          const activeSdk = useSdk();
+          const unsubscribe = activeSdk.on("datafile_set", ({ features }) => {
+            if (features.indexOf("checkout") !== -1) {
+              enabled.value = activeSdk.isEnabled("checkout");
+            }
+          });
+          onUnmounted(unsubscribe);
+          return { enabled };
+        },
+        template: "<p>{{ enabled ? 'Allowed' : 'Blocked' }}</p>",
+      }),
+      { global: { plugins: [featurevisorPlugin(sdk)] } },
+    );
+
+    expect(wrapper.text()).toBe("Blocked");
+    sdk.setDatafile({
+      schemaVersion: "2",
+      revision: "2",
+      segments: {},
+      features: {},
+      variables: {
+        gate: { hash: "gate-true", type: "boolean", defaultValue: true },
+      },
+    });
+    await nextTick();
+
+    expect(wrapper.text()).toBe("Allowed");
   });
 });

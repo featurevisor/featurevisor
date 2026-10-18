@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import type {
   ParsedFeature,
   Segment,
@@ -7,20 +9,28 @@ import type {
   FeatureAssertion,
   SegmentAssertion,
   Target,
-  Group,
   Schema,
   ParsedVariable,
   TestVariable,
   VariableAssertion,
+  TestScenario,
+  ScenarioAssertion,
+  Test,
+  TestCheckReference,
+  TestCaseExecutionMetadata,
+  TestEntityType,
+  TestExecutionDocument,
 } from "@featurevisor/types";
 
 import { Dependencies } from "../dependencies";
+import type { ProjectConfig } from "../config";
 import type { DatafileFile } from "../datasource";
 import { Plugin } from "../cli";
 import { parseRegexOption } from "../cli/validation";
 import { FeaturevisorCLIError } from "../error";
 import {
   getFeatureAssertionsFromMatrix,
+  getMatrixCombinations,
   getSegmentAssertionsFromMatrix,
   getVariableAssertionsFromMatrix,
 } from "./matrix";
@@ -35,6 +45,9 @@ import {
   CLI_FORMAT_YELLOW,
   colorize,
 } from "../tester/cliFormat";
+import { getCheckReferences } from "../tester/checks";
+import { compileConditions, walkConditionLeaves } from "../datasource/conditions";
+import { listTestSpecs } from "./scenarios";
 
 async function getEntitiesWithTests(
   deps: Dependencies,
@@ -45,20 +58,51 @@ async function getEntitiesWithTests(
   const segmentsWithTests = new Set<string>();
   const variablesWithTests = new Set<string>();
 
-  const tests = await datasource.listTests();
-  for (const testKey of tests) {
-    const test = await datasource.readTest(testKey);
-
-    if ((test as TestFeature).feature) {
-      featuresWithTests.add((test as TestFeature).feature);
+  const tests = await listTestSpecs(datasource);
+  for (const test of tests) {
+    if ("feature" in test) {
+      featuresWithTests.add(test.feature);
     }
 
-    if ((test as TestSegment).segment) {
-      segmentsWithTests.add((test as TestSegment).segment);
+    if ("segment" in test) {
+      segmentsWithTests.add(test.segment);
     }
 
-    if ((test as TestVariable).variable) {
-      variablesWithTests.add((test as TestVariable).variable);
+    if ("variable" in test) {
+      variablesWithTests.add(test.variable);
+    }
+
+    if ("variable" in test || "scenario" in test) {
+      const owner = "variable" in test ? test.variable : undefined;
+      const addReference = (reference: TestCheckReference) => {
+        if (reference.segment) {
+          segmentsWithTests.add(reference.segment);
+        } else if (reference.feature) {
+          featuresWithTests.add(reference.feature);
+        } else if (reference.variable || owner) {
+          variablesWithTests.add(reference.variable || owner!);
+        }
+      };
+
+      for (let assertionIndex = 0; assertionIndex < test.assertions.length; assertionIndex++) {
+        const authoredAssertion = test.assertions[assertionIndex];
+        if (
+          authoredAssertion.matrix &&
+          getMatrixCombinations(authoredAssertion.matrix).length === 0
+        ) {
+          throw new Error("Cannot collect test coverage from an empty assertion matrix.");
+        }
+        const assertions = getVariableAssertionsFromMatrix(
+          assertionIndex,
+          authoredAssertion as VariableAssertion,
+        );
+        for (const assertion of assertions) {
+          for (const expectation of [assertion, ...(assertion.children || [])]) {
+            if (expectation.checks === undefined) continue;
+            getCheckReferences(expectation.checks, owner).forEach(addReference);
+          }
+        }
+      }
     }
   }
 
@@ -87,11 +131,113 @@ function matchesBooleanOption(option: unknown, value: unknown, defaultOption?: b
   );
 }
 
+function getTestSource(deps: Dependencies, storageKey: string, entityType: TestEntityType): string {
+  const { datasource, projectConfig, rootDirectoryPath } = deps;
+  if (entityType === "scenario" && datasource.getScenarioSourcePath) {
+    return path
+      .relative(rootDirectoryPath, datasource.getScenarioSourcePath(storageKey))
+      .split(path.sep)
+      .join("/");
+  }
+  if (entityType !== "scenario" && datasource.getTestSourcePath) {
+    return path
+      .relative(rootDirectoryPath, datasource.getTestSourcePath(storageKey))
+      .split(path.sep)
+      .join("/");
+  }
+  const namespaceCharacter = projectConfig.namespaceCharacter;
+  const fallbackKey = storageKey.endsWith(".spec") ? storageKey : `${storageKey}.spec`;
+  const segments = namespaceCharacter ? fallbackKey.split(namespaceCharacter) : [fallbackKey];
+  if (
+    segments.length > 1 &&
+    ["spec", "feature", "segment"].includes(segments[segments.length - 1])
+  ) {
+    const suffix = segments.pop();
+    segments[segments.length - 1] = `${segments[segments.length - 1]}.${suffix}`;
+  }
+  const parser = projectConfig.parser as { extension?: string } | string;
+  const extension =
+    typeof datasource.getExtension === "function"
+      ? datasource.getExtension()
+      : typeof parser === "string"
+        ? parser
+        : parser.extension;
+  const directory = projectConfig.testsDirectoryPath;
+  const extensionSuffix = extension ? `.${extension}` : "";
+  const source = path.relative(
+    rootDirectoryPath,
+    `${path.join(directory, ...segments)}${extensionSuffix}`,
+  );
+
+  return source.split(path.sep).join("/");
+}
+
+function getTestCaseMetadata(
+  set: string | null,
+  entityType: TestEntityType,
+  storageKey: string,
+  assertion: FeatureAssertion | SegmentAssertion | VariableAssertion | ScenarioAssertion,
+  assertionIndex: number,
+  matrixIndex: number | null,
+  matrixValues: TestCaseExecutionMetadata["matrixValues"],
+): TestCaseExecutionMetadata {
+  return {
+    id: JSON.stringify([set, entityType, storageKey, assertion.key ?? assertionIndex, matrixIndex]),
+    assertionIndex,
+    matrixIndex,
+    matrixValues,
+  };
+}
+
+function throwTestCaseNotFound(caseId: string): never {
+  throw new FeaturevisorCLIError(`No test case matched --case=${caseId}.`, {
+    code: "test_case_not_found",
+    details: { case: caseId },
+  });
+}
+
+/**
+ * Feature assertions renamed `sticky` to `stickyFeatures`. Lint names the
+ * replacement. Running specs must not silently ignore the old field either.
+ */
+function assertNoRemovedSticky(assertions: FeatureAssertion[], key: string) {
+  const own = (value: unknown) =>
+    !!value && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, "sticky");
+  const found = assertions.some(
+    (assertion) =>
+      own(assertion) ||
+      (Array.isArray(assertion?.children) && assertion.children.some((child) => own(child))),
+  );
+  if (found) {
+    throw new FeaturevisorCLIError(
+      `Test "${key}" uses \`sticky\`. Replace it with \`stickyFeatures\`, then run lint.`,
+      { code: "removed_test_field", details: { test: key, field: "sticky" } },
+    );
+  }
+}
+
+/** A feature's rules for one environment, or its direct list when environments are not configured. */
+function getRulesIn(feature: ParsedFeature, environment: string | false) {
+  const rules = feature.rules as unknown;
+  if (Array.isArray(rules)) return environment === false ? rules : [];
+  if (environment === false || !rules || typeof rules !== "object") return [];
+  return (rules as Record<string, Array<{ percentage: number }>>)[environment] || [];
+}
+
 export async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
   const { datasource, options } = deps;
+  if (
+    options.case !== undefined &&
+    (typeof options.case !== "string" || options.case.length === 0)
+  ) {
+    throw new FeaturevisorCLIError("Pass one nonempty case ID with --case.", {
+      code: "invalid_test_case",
+    });
+  }
 
   const result: T[] = [];
   let entityKeys: string[] = [];
+  let testSpecs: Test[] = [];
 
   if (entityType === "feature") {
     entityKeys = await datasource.listFeatures();
@@ -99,12 +245,13 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     entityKeys = await datasource.listSegments();
   } else if (entityType === "attribute") {
     entityKeys = await datasource.listAttributes();
-  } else if (entityType === "group") {
-    entityKeys = await datasource.listGroups();
   } else if (entityType === "schema") {
     entityKeys = await datasource.listSchemas();
   } else if (entityType === "test") {
-    entityKeys = await datasource.listTests();
+    testSpecs = await listTestSpecs(datasource);
+    entityKeys = testSpecs.map((test) => test.key!);
+  } else if (entityType === "scenario") {
+    entityKeys = await datasource.listScenarios();
   } else if (entityType === "target") {
     entityKeys = await datasource.listTargets();
   } else if (entityType === "variable") {
@@ -112,6 +259,9 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
   }
 
   if (entityKeys.length === 0) {
+    if (entityType === "test" && typeof options.case === "string") {
+      throwTestCaseNotFound(options.case);
+    }
     return result;
   }
 
@@ -127,10 +277,10 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     ? parseRegexOption("--description", options.description, "i")
     : undefined;
   const keyRegex = options.keyPattern
-    ? parseRegexOption("--keyPattern", options.keyPattern, "i")
+    ? parseRegexOption("--key-pattern", options.keyPattern, "i")
     : undefined;
   const assertionRegex = options.assertionPattern
-    ? parseRegexOption("--assertionPattern", options.assertionPattern, "i")
+    ? parseRegexOption("--assertion-pattern", options.assertionPattern, "i")
     : undefined;
 
   if (entityType === "feature" && options.target) {
@@ -152,7 +302,7 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     entitiesWithTestsInitialized = true;
   }
 
-  for (const key of entityKeys) {
+  for (const [entityIndex, key] of entityKeys.entries()) {
     let entity = {} as T;
 
     if (entityType === "feature") {
@@ -161,12 +311,12 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       entity = (await datasource.readSegment(key)) as T;
     } else if (entityType === "attribute") {
       entity = (await datasource.readAttribute(key)) as T;
-    } else if (entityType === "group") {
-      entity = (await datasource.readGroup(key)) as T;
     } else if (entityType === "schema") {
       entity = (await datasource.readSchema(key)) as T;
     } else if (entityType === "test") {
-      entity = (await datasource.readTest(key)) as T;
+      entity = testSpecs[entityIndex] as T;
+    } else if (entityType === "scenario") {
+      entity = (await datasource.readScenario(key)) as T;
     } else if (entityType === "target") {
       entity = (await datasource.readTarget(key)) as T;
     } else if (entityType === "variable") {
@@ -215,27 +365,20 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         continue;
       }
 
-      // --disabledIn=<environment>
-      if (options.disabledIn && parsedFeature.rules && parsedFeature.rules[options.disabledIn]) {
-        const disabledInEnvironment = parsedFeature.rules[options.disabledIn].every((rule) => {
-          return rule.percentage === 0;
-        });
-
-        if (!disabledInEnvironment) {
+      // --disabled, or --disabled-in=<environment>: every rule is at 0%, or there are none
+      const disabledIn = options.disabled ? false : options.disabledIn;
+      if (typeof disabledIn !== "undefined") {
+        const rules = getRulesIn(parsedFeature, disabledIn);
+        if (rules.some((rule) => rule.percentage > 0)) {
           continue;
         }
       }
 
-      // --enabledIn=<environment>
-      if (options.enabledIn) {
-        const rules = parsedFeature.rules && parsedFeature.rules[options.enabledIn];
-        const enabledInEnvironment = Boolean(
-          rules?.some((rule) => {
-            return rule.percentage > 0;
-          }),
-        );
-
-        if (!enabledInEnvironment) {
+      // --enabled, or --enabled-in=<environment>: a rule is above 0%
+      const enabledIn = options.enabled ? false : options.enabledIn;
+      if (typeof enabledIn !== "undefined") {
+        const rules = getRulesIn(parsedFeature, enabledIn);
+        if (!rules.some((rule) => rule.percentage > 0)) {
           continue;
         }
       }
@@ -381,17 +524,29 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         }
       }
     } else if (entityType === "test") {
-      let test = entity as TestFeature | TestSegment | TestVariable;
+      let test = entity as TestFeature | TestSegment | TestVariable | TestScenario;
       const testEntityKey =
         (test as TestFeature).feature ||
         (test as TestSegment).segment ||
-        (test as TestVariable).variable;
+        (test as TestVariable).variable ||
+        (test as TestScenario).scenario;
       const testEntityType = (test as TestSegment).segment
         ? "segment"
         : (test as TestVariable).variable
           ? "variable"
-          : "feature";
+          : (test as TestScenario).scenario
+            ? "scenario"
+            : "feature";
       let testAssertions = test.assertions;
+      const set =
+        typeof options.set === "string"
+          ? options.set
+          : options.set === null
+            ? null
+            : typeof datasource.getSet === "function" && typeof datasource.getSet() === "string"
+              ? datasource.getSet()!
+              : null;
+      const applyMatrix = options.applyMatrix || typeof options.case === "string";
 
       if (
         typeof options.promotable !== "undefined" &&
@@ -405,15 +560,34 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         continue;
       }
 
+      if (testEntityType === "feature") {
+        assertNoRemovedSticky(testAssertions as FeatureAssertion[], key);
+      }
+
       // --apply-matrix
-      if (options.applyMatrix) {
+      if (applyMatrix) {
         if (testEntityType === "feature") {
           let assertionsAfterApplyingMatrix: FeatureAssertion[] = [];
           for (let aIndex = 0; aIndex < testAssertions.length; aIndex++) {
+            const authoredAssertion = testAssertions[aIndex] as FeatureAssertion;
+            const matrixValues = authoredAssertion.matrix
+              ? getMatrixCombinations(authoredAssertion.matrix)
+              : [{}];
             const processedAssertions = getFeatureAssertionsFromMatrix(
               aIndex,
-              testAssertions[aIndex] as FeatureAssertion,
-            );
+              authoredAssertion,
+            ).map((assertion, matrixIndex) => ({
+              ...assertion,
+              _case: getTestCaseMetadata(
+                set,
+                testEntityType,
+                key,
+                authoredAssertion,
+                aIndex,
+                authoredAssertion.matrix ? matrixIndex : null,
+                matrixValues[matrixIndex],
+              ),
+            }));
             assertionsAfterApplyingMatrix =
               assertionsAfterApplyingMatrix.concat(processedAssertions);
           }
@@ -422,24 +596,95 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         } else if (testEntityType === "segment") {
           let assertionsAfterApplyingMatrix: SegmentAssertion[] = [];
           for (let aIndex = 0; aIndex < testAssertions.length; aIndex++) {
+            const authoredAssertion = testAssertions[aIndex] as SegmentAssertion;
+            const matrixValues = authoredAssertion.matrix
+              ? getMatrixCombinations(authoredAssertion.matrix)
+              : [{}];
             const processedAssertions = getSegmentAssertionsFromMatrix(
               aIndex,
-              testAssertions[aIndex] as SegmentAssertion,
-            );
+              authoredAssertion,
+            ).map((assertion, matrixIndex) => ({
+              ...assertion,
+              _case: getTestCaseMetadata(
+                set,
+                testEntityType,
+                key,
+                authoredAssertion,
+                aIndex,
+                authoredAssertion.matrix ? matrixIndex : null,
+                matrixValues[matrixIndex],
+              ),
+            }));
             assertionsAfterApplyingMatrix =
               assertionsAfterApplyingMatrix.concat(processedAssertions);
           }
 
           testAssertions = assertionsAfterApplyingMatrix;
-        } else if (testEntityType === "variable") {
-          let assertionsAfterApplyingMatrix: VariableAssertion[] = [];
+        } else if (testEntityType === "variable" || testEntityType === "scenario") {
+          let assertionsAfterApplyingMatrix: Array<VariableAssertion | ScenarioAssertion> = [];
           for (let aIndex = 0; aIndex < testAssertions.length; aIndex++) {
+            const authoredAssertion = testAssertions[aIndex] as
+              | VariableAssertion
+              | ScenarioAssertion;
+            const matrixValues = authoredAssertion.matrix
+              ? getMatrixCombinations(authoredAssertion.matrix)
+              : [{}];
             assertionsAfterApplyingMatrix = assertionsAfterApplyingMatrix.concat(
-              getVariableAssertionsFromMatrix(aIndex, testAssertions[aIndex] as VariableAssertion),
+              getVariableAssertionsFromMatrix(
+                aIndex,
+                authoredAssertion,
+                testEntityType === "scenario" ? "scenario" : "assertion",
+              ).map((assertion, matrixIndex) => ({
+                ...assertion,
+                _case: getTestCaseMetadata(
+                  set,
+                  testEntityType,
+                  key,
+                  authoredAssertion,
+                  aIndex,
+                  authoredAssertion.matrix ? matrixIndex : null,
+                  matrixValues[matrixIndex],
+                ),
+              })),
             );
           }
           testAssertions = assertionsAfterApplyingMatrix;
         }
+      }
+
+      if (typeof options.case === "string") {
+        testAssertions = testAssertions.filter(
+          (assertion) => assertion._case?.id === options.case,
+        ) as FeatureAssertion[] | SegmentAssertion[] | VariableAssertion[] | ScenarioAssertion[];
+        if (testAssertions.length === 0) continue;
+      }
+
+      if (!options.executionMetadata) {
+        delete test._test;
+        testAssertions = testAssertions.map((assertion) => {
+          const withoutMetadata = { ...assertion };
+          delete withoutMetadata._case;
+          return withoutMetadata;
+        }) as FeatureAssertion[] | SegmentAssertion[] | VariableAssertion[] | ScenarioAssertion[];
+      } else {
+        test._test = {
+          source: getTestSource(deps, key, testEntityType),
+          set,
+          entityType: testEntityType,
+        };
+        // Child descriptions are documentation for readers. Native runners do not receive them.
+        testAssertions = testAssertions.map((assertion) => {
+          const children = (assertion as { children?: Array<Record<string, unknown>> }).children;
+          if (!Array.isArray(children)) return assertion;
+          return {
+            ...assertion,
+            children: children.map((child) => {
+              const withoutDescription = { ...child };
+              delete withoutDescription.description;
+              return withoutDescription;
+            }),
+          };
+        }) as FeatureAssertion[] | SegmentAssertion[] | VariableAssertion[] | ScenarioAssertion[];
       }
 
       // --keyPattern=<pattern>
@@ -457,20 +702,70 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
           }
 
           return assertionRegex.test(assertion.description);
-        }) as FeatureAssertion[] | SegmentAssertion[] | VariableAssertion[];
+        }) as FeatureAssertion[] | SegmentAssertion[] | VariableAssertion[] | ScenarioAssertion[];
 
         if (testAssertions.length === 0) {
           continue;
         }
       }
 
-      (entity as TestFeature | TestSegment | TestVariable).assertions = testAssertions;
+      (entity as TestFeature | TestSegment | TestVariable | TestScenario).assertions =
+        testAssertions;
+      if (
+        applyMatrix &&
+        ("variable" in test ||
+          "scenario" in test ||
+          (options.executionProtocol && "segment" in test))
+      ) {
+        const keys = new Set<string>();
+        if ("segment" in test) keys.add(test.segment);
+        const owner = "variable" in test ? test.variable : undefined;
+        for (const assertion of test.assertions) {
+          for (const expectation of [
+            assertion,
+            ...("children" in assertion ? assertion.children || [] : []),
+          ]) {
+            if (!("checks" in expectation)) continue;
+            if (!expectation.checks) continue;
+            for (const reference of getCheckReferences(expectation.checks, owner)) {
+              if (reference.segment) keys.add(reference.segment);
+            }
+          }
+        }
+        if (keys.size) {
+          const definitions: Array<[string, Segment]> = [];
+          const pending = Array.from(keys);
+          for (let index = 0; index < pending.length; index++) {
+            const segment = pending[index];
+            if (!(await datasource.segmentExists(segment)))
+              throw new Error(`Unknown segment "${segment}"`);
+            const definition = await datasource.readSegment(segment);
+            definitions.push([
+              segment,
+              options.executionProtocol
+                ? { ...definition, conditions: compileConditions(definition.conditions)! }
+                : definition,
+            ]);
+            walkConditionLeaves(definition.conditions, (leaf) => {
+              if (typeof leaf === "string" && !keys.has(leaf)) {
+                keys.add(leaf);
+                pending.push(leaf);
+              }
+            });
+          }
+          test._segments = Object.fromEntries(definitions);
+        }
+      }
     }
 
     result.push({
       ...entity,
       key,
     });
+  }
+
+  if (entityType === "test" && typeof options.case === "string" && result.length === 0) {
+    throwTestCaseNotFound(options.case);
   }
 
   return result;
@@ -482,7 +777,14 @@ function ucfirst(str: string) {
 
 function printResult({ result, entityType, options }) {
   if (options.json) {
-    console.log(options.pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result));
+    const output = options.executionProtocol
+      ? ({
+          kind: "featurevisor.test-execution",
+          schemaVersion: 1,
+          tests: result,
+        } satisfies TestExecutionDocument)
+      : result;
+    console.log(options.pretty ? JSON.stringify(output, null, 2) : JSON.stringify(output));
     return;
   }
 
@@ -496,11 +798,15 @@ function printResult({ result, entityType, options }) {
   console.log("");
 
   for (const item of result) {
-    console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${item.key}`);
+    const composition = entityType === "variable" && item.compose ? " (composed)" : "";
+    console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${item.key}${composition}`);
   }
 
   console.log("");
-  console.log(CLI_FORMAT_GREEN, `Found ${result.length} ${entityType}s.`);
+  console.log(
+    CLI_FORMAT_GREEN,
+    `Found ${result.length} ${entityType}${result.length === 1 ? "" : "s"}.`,
+  );
 }
 
 function getDatafileSizeParts(size: number): { value: string; unit: string; color: number } {
@@ -614,28 +920,69 @@ function printDatafiles({ result, options }: { result: DatafileFile[]; options: 
   }
 
   console.log("");
-  console.log(CLI_FORMAT_GREEN, `Found ${sortedResult.length} datafiles.`);
+  console.log(
+    CLI_FORMAT_GREEN,
+    `Found ${sortedResult.length} datafile${sortedResult.length === 1 ? "" : "s"}.`,
+  );
 }
 
 const listSelectors = [
   "datafiles",
   "features",
   "segments",
-  "groups",
   "schemas",
   "attributes",
   "tests",
   "targets",
   "variables",
+  "scenarios",
 ] as const;
 
-function assertListOptions(options: Record<string, any>) {
+function toFlag(option: string) {
+  return `--${option.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
+}
+
+function assertListEnvironmentOptions(
+  options: Record<string, any>,
+  environments: ProjectConfig["environments"],
+) {
+  for (const option of ["enabledIn", "disabledIn"]) {
+    const environment = options[option];
+    if (typeof environment === "undefined") continue;
+
+    if (!Array.isArray(environments)) {
+      const replacement = option === "enabledIn" ? "--enabled" : "--disabled";
+      throw new FeaturevisorCLIError(
+        `This project does not configure environments. Use ${replacement} instead of ${toFlag(option)}.`,
+        { code: "invalid_environment", details: { option, environment, available: [] } },
+      );
+    }
+
+    if (!environments.includes(environment)) {
+      throw new FeaturevisorCLIError(
+        `Unknown environment "${environment}" for ${toFlag(option)}. Available environments: ${environments.join(", ")}.`,
+        { code: "invalid_environment", details: { option, environment, available: environments } },
+      );
+    }
+  }
+
+  for (const option of ["enabled", "disabled"]) {
+    if (typeof options[option] === "undefined" || !Array.isArray(environments)) continue;
+
+    throw new FeaturevisorCLIError(
+      `This project configures environments. Use ${toFlag(`${option}In`)}=<environment> instead of --${option}.`,
+      { code: "invalid_environment", details: { option, available: environments } },
+    );
+  }
+}
+
+function assertListOptions(options: Record<string, any>, projectConfig?: ProjectConfig) {
   const selected = listSelectors.filter((selector) => options[selector]);
 
   if (selected.length !== 1) {
     throw new FeaturevisorCLIError(
       selected.length === 0
-        ? "Select one entity type to list."
+        ? `Select one entity type to list: ${listSelectors.map((selector) => `--${selector}`).join(", ")}.`
         : `Select only one entity type to list. Received: ${selected.join(", ")}.`,
       {
         code: "invalid_list_selection",
@@ -645,6 +992,7 @@ function assertListOptions(options: Record<string, any>) {
   }
 
   const opposingOptions = [
+    ["enabled", "disabled"],
     ["withTests", "withoutTests"],
     ["withVariables", "withoutVariables"],
     ["withVariations", "withoutVariations"],
@@ -652,7 +1000,7 @@ function assertListOptions(options: Record<string, any>) {
   for (const [positive, negative] of opposingOptions) {
     if (options[positive] && options[negative]) {
       throw new FeaturevisorCLIError(
-        `Options --${positive} and --${negative} cannot be combined.`,
+        `Options ${toFlag(positive)} and ${toFlag(negative)} cannot be combined.`,
         {
           code: "conflicting_cli_options",
           details: { options: [positive, negative] },
@@ -663,7 +1011,9 @@ function assertListOptions(options: Record<string, any>) {
 
   const selector = selected[0];
   const featureOnly = [
+    "disabled",
     "disabledIn",
+    "enabled",
     "enabledIn",
     "variable",
     "variation",
@@ -672,22 +1022,33 @@ function assertListOptions(options: Record<string, any>) {
     "withVariations",
     "withoutVariations",
   ];
-  const testOnly = ["entityType", "applyMatrix", "assertionPattern"];
+  const testOnly = [
+    "entityType",
+    "applyMatrix",
+    "assertionPattern",
+    "executionMetadata",
+    "executionProtocol",
+    "case",
+  ];
 
   for (const option of ["target", "tag"]) {
     if (!["features", "variables"].includes(selector) && typeof options[option] !== "undefined") {
       throw new FeaturevisorCLIError(
-        `Option --${option} can only be used with --features or --variables.`,
+        `Option ${toFlag(option)} can only be used with --features or --variables.`,
         { code: "incompatible_cli_options", details: { selector, option } },
       );
     }
+  }
+
+  if (selector === "features") {
+    assertListEnvironmentOptions(options, projectConfig?.environments);
   }
 
   if (selector !== "features") {
     const unsupported = featureOnly.filter((option) => typeof options[option] !== "undefined");
     if (unsupported.length > 0) {
       throw new FeaturevisorCLIError(
-        `Option --${unsupported[0]} can only be used with --features.`,
+        `Option ${toFlag(unsupported[0])} can only be used with --features.`,
         { code: "incompatible_cli_options", details: { selector, option: unsupported[0] } },
       );
     }
@@ -696,10 +1057,13 @@ function assertListOptions(options: Record<string, any>) {
   if (selector !== "tests") {
     const unsupported = testOnly.filter((option) => typeof options[option] !== "undefined");
     if (unsupported.length > 0) {
-      throw new FeaturevisorCLIError(`Option --${unsupported[0]} can only be used with --tests.`, {
-        code: "incompatible_cli_options",
-        details: { selector, option: unsupported[0] },
-      });
+      throw new FeaturevisorCLIError(
+        `Option ${toFlag(unsupported[0])} can only be used with --tests.`,
+        {
+          code: "incompatible_cli_options",
+          details: { selector, option: unsupported[0] },
+        },
+      );
     }
   }
 
@@ -708,7 +1072,7 @@ function assertListOptions(options: Record<string, any>) {
     (options.withTests || options.withoutTests)
   ) {
     throw new FeaturevisorCLIError(
-      "Options --withTests and --withoutTests can only be used with --features, --segments, or --variables.",
+      "Options --with-tests and --without-tests can only be used with --features, --segments, or --variables.",
       { code: "incompatible_cli_options", details: { selector } },
     );
   }
@@ -727,16 +1091,19 @@ function assertListOptions(options: Record<string, any>) {
     const entityFilters = ["keyPattern", "description", "promotable"];
     const unsupported = entityFilters.find((option) => typeof options[option] !== "undefined");
     if (unsupported) {
-      throw new FeaturevisorCLIError(`Option --${unsupported} cannot be used with --datafiles.`, {
-        code: "incompatible_cli_options",
-        details: { selector, option: unsupported },
-      });
+      throw new FeaturevisorCLIError(
+        `Option ${toFlag(unsupported)} cannot be used with --datafiles.`,
+        {
+          code: "incompatible_cli_options",
+          details: { selector, option: unsupported },
+        },
+      );
     }
   }
 
   if (selector === "tests" && typeof options.description !== "undefined") {
     throw new FeaturevisorCLIError(
-      "Option --description cannot be used with --tests. Use --assertionPattern instead.",
+      "Option --description cannot be used with --tests. Use --assertion-pattern instead.",
       {
         code: "incompatible_cli_options",
         details: { selector, option: "description" },
@@ -745,10 +1112,25 @@ function assertListOptions(options: Record<string, any>) {
   }
 }
 
-export async function listProject(deps: Dependencies) {
-  const { options } = deps;
+function getExecutionOptions(options: Dependencies["options"]) {
+  return options.executionProtocol
+    ? { ...options, json: true, applyMatrix: true, executionMetadata: true }
+    : options;
+}
 
-  assertListOptions(options);
+export async function listProject(deps: Dependencies) {
+  const options = getExecutionOptions(deps.options);
+  deps = { ...deps, options };
+
+  assertListOptions(options, deps.projectConfig);
+
+  if (options.scenarios) {
+    return printResult({
+      result: await listEntities(deps, "scenario"),
+      entityType: "scenario",
+      options,
+    });
+  }
 
   // datafiles
   if (options.datafiles) {
@@ -777,13 +1159,6 @@ export async function listProject(deps: Dependencies) {
       entityType: "segment",
       options,
     });
-  }
-
-  // groups
-  if (options.groups) {
-    const result = await listEntities<Group>(deps, "group");
-
-    return printResult({ result, entityType: "group", options });
   }
 
   // schemas
@@ -834,26 +1209,32 @@ export async function listProject(deps: Dependencies) {
 
 export const listPlugin: Plugin = {
   command: "list",
+  description: "List project entities or built datafiles",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
+    const options = getExecutionOptions(parsed);
+    assertProjectSetJsonSelection(projectConfig, options.set, options.json);
 
-    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
+    const executions = await getProjectSetExecutions(projectConfig, datasource, options.set);
 
     for (const execution of executions) {
-      printSetHeader(projectConfig, execution.set, parsed.json);
+      printSetHeader(projectConfig, execution.set, options.json);
 
       await listProject({
         rootDirectoryPath,
         projectConfig: execution.projectConfig,
         datasource: execution.datasource,
-        options: parsed,
+        options,
       });
     }
   },
   examples: [
     {
-      command: "list",
-      description: "list entities",
+      command: "list --features",
+      description: "List features",
+    },
+    {
+      command: "list --tests",
+      description: "List tests",
     },
   ],
 };

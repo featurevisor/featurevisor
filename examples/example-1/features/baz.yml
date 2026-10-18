@@ -10,11 +10,11 @@ bucketBy:
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 80
 
 expose:

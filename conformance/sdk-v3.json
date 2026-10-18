@@ -1,6 +1,41 @@
 {
-  "version": 6,
-  "description": "Featurevisor v3 cross SDK compatibility contracts",
+  "version": 15,
+  "description": "Featurevisor SDK compatibility contracts, including evaluated variable requirements",
+  "requiredFeatureGroupInputs": [
+    { "a": false, "b": false },
+    { "a": false, "b": true },
+    { "a": true, "b": false },
+    { "a": true, "b": true }
+  ],
+  "requiredFeatureGroups": [
+    { "name": "implicit AND", "requirements": ["a", "b"], "results": [false, false, false, true] },
+    {
+      "name": "explicit AND",
+      "requirements": [{ "and": ["a", "b"] }],
+      "results": [false, false, false, true]
+    },
+    { "name": "OR", "requirements": [{ "or": ["a", "b"] }], "results": [false, true, true, true] },
+    {
+      "name": "NOT means not all",
+      "requirements": [{ "not": ["a", "b"] }],
+      "results": [true, true, true, false]
+    },
+    {
+      "name": "NOT OR means neither",
+      "requirements": [{ "not": [{ "or": ["a", "b"] }] }],
+      "results": [true, false, false, false]
+    },
+    {
+      "name": "disabled leaf in OR",
+      "requirements": [{ "or": [{ "feature": "a", "enabled": false }, "b"] }],
+      "results": [true, true, false, true]
+    },
+    {
+      "name": "empty NOT defensive fallback",
+      "requirements": [{ "not": [] }],
+      "results": [false, false, false, false]
+    }
+  ],
   "bucketing": {
     "minimum": 0,
     "maximum": 100000,
@@ -237,25 +272,25 @@
         "name": "required unmet with disabled value",
         "key": "requiredDisabled",
         "expectedValue": "disabled",
-        "expectedReason": "required_features_unmet"
+        "expectedReason": "conditions_unmet"
       },
       {
         "name": "required unmet without value",
         "key": "requiredMissingValue",
-        "expectedReason": "required_features_unmet"
+        "expectedReason": "conditions_unmet"
       },
       {
         "name": "required unmet with caller default",
         "key": "requiredMissingValue",
         "defaultVariableValue": "caller",
         "expectedValue": "caller",
-        "expectedReason": "required_features_unmet"
+        "expectedReason": "conditions_unmet"
       },
       {
         "name": "required unmet using variable default",
         "key": "requiredUsesDefault",
         "expectedValue": "default",
-        "expectedReason": "required_features_unmet"
+        "expectedReason": "conditions_unmet"
       },
       {
         "name": "required variation matched",
@@ -583,11 +618,30 @@
         "unmetMultipleRequirements": {
           "bucketBy": "userId",
           "requiredFeatures": ["enabledFeature", { "feature": "disabledFeature", "enabled": true }],
+          "variablesSchema": { "message": { "type": "string", "defaultValue": "ready" } },
           "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
         },
-        "canonicalPrecedence": {
+        "unmetWithDisabledValues": {
           "bucketBy": "userId",
-          "required": ["disabledFeature"],
+          "requiredFeatures": ["disabledFeature"],
+          "disabledVariationValue": "off",
+          "variablesSchema": {
+            "message": { "type": "string", "defaultValue": "ready", "disabledValue": "blocked" },
+            "fallback": {
+              "type": "string",
+              "defaultValue": "ready",
+              "useDefaultWhenDisabled": true
+            }
+          },
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "unmetVariableRequirement": {
+          "bucketBy": "userId",
+          "conditions": [{ "variable": "gate", "operator": "equals", "value": true }],
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "canonicalRequirement": {
+          "bucketBy": "userId",
           "requiredFeatures": ["enabledFeature"],
           "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
         },
@@ -617,6 +671,21 @@
               }
             }
           ]
+        }
+      },
+      "variables": {
+        "gate": { "type": "boolean", "defaultValue": false },
+        "featureGatedMessage": {
+          "type": "string",
+          "defaultValue": "ready",
+          "disabledValue": "blocked",
+          "requiredFeatures": ["disabledFeature"]
+        },
+        "variableGatedMessage": {
+          "type": "string",
+          "defaultValue": "ready",
+          "disabledValue": "blocked",
+          "conditions": [{ "variable": "gate", "operator": "equals", "value": true }]
         }
       }
     },
@@ -657,9 +726,68 @@
         "expectedEnabled": false
       },
       {
-        "name": "requiredFeatures takes precedence over required",
-        "feature": "canonicalPrecedence",
+        "name": "canonical requiredFeatures",
+        "feature": "canonicalRequirement",
         "expectedEnabled": true
+      }
+    ],
+    "evaluationCases": [
+      {
+        "name": "feature flag uses the canonical unmet feature reason",
+        "type": "flag",
+        "feature": "unmetMultipleRequirements",
+        "expected": { "reason": "conditions_unmet", "enabled": false }
+      },
+      {
+        "name": "variation retains its disabled reason",
+        "type": "variation",
+        "feature": "unmetMultipleRequirements",
+        "expected": { "reason": "disabled" }
+      },
+      {
+        "name": "feature variable retains its disabled reason",
+        "type": "variable",
+        "feature": "unmetMultipleRequirements",
+        "variable": "message",
+        "expected": { "reason": "disabled" }
+      },
+      {
+        "name": "variation retains its disabled value policy",
+        "type": "variation",
+        "feature": "unmetWithDisabledValues",
+        "expected": { "reason": "variation_disabled", "variationValue": "off", "enabled": false }
+      },
+      {
+        "name": "feature variable retains its explicit disabled value",
+        "type": "variable",
+        "feature": "unmetWithDisabledValues",
+        "variable": "message",
+        "expected": { "reason": "variable_disabled", "variableValue": "blocked", "enabled": false }
+      },
+      {
+        "name": "feature variable retains its disabled default policy",
+        "type": "variable",
+        "feature": "unmetWithDisabledValues",
+        "variable": "fallback",
+        "expected": { "reason": "variable_default", "variableValue": "ready", "enabled": false }
+      },
+      {
+        "name": "global variable uses the canonical unmet feature reason",
+        "type": "variable",
+        "variable": "featureGatedMessage",
+        "expected": { "reason": "conditions_unmet", "variableValue": "blocked" }
+      },
+      {
+        "name": "feature flag keeps the distinct unmet variable reason",
+        "type": "flag",
+        "feature": "unmetVariableRequirement",
+        "expected": { "reason": "conditions_unmet", "enabled": false }
+      },
+      {
+        "name": "global variable keeps the distinct unmet variable reason",
+        "type": "variable",
+        "variable": "variableGatedMessage",
+        "expected": { "reason": "conditions_unmet", "variableValue": "blocked" }
       }
     ],
     "featureVariableCase": {
@@ -688,6 +816,7 @@
   "portableConditions": {
     "regexFlags": ["g", "i", "m", "s"],
     "rejectedRegexFlags": ["d", "u", "v", "y"],
+    "regexEngineLimits": "Portable shorthand cases cover ASCII digit and word classes, their negations on BMP characters, escaped literals, and case insensitive word shorthand outside character classes. Astral and other UTF-16 code unit distinctions, case insensitive word shorthand inside character classes, and broader regular expression engine equivalence are not guaranteed. Whitespace shorthand retains each native engine's current behaviour.",
     "dateFormat": "ISO 8601 with an explicit timezone",
     "dates": [
       "2024-01-01T00:00:00Z",
@@ -700,6 +829,1286 @@
     "invalidSemanticVersionDiagnosticCode": "condition_match_error"
   },
   "conditionCases": [
+    {
+      "name": "notEquals: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "notEquals", "value": 1.0 },
+      "context": { "values": 1 },
+      "expected": false
+    },
+    {
+      "name": "notEquals: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "notEquals", "value": 1 },
+      "context": { "values": 1.0 },
+      "expected": false
+    },
+    {
+      "name": "in: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "in", "value": [1.0] },
+      "context": { "values": 1 },
+      "expected": true
+    },
+    {
+      "name": "in: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "in", "value": [1] },
+      "context": { "values": 1.0 },
+      "expected": true
+    },
+    {
+      "name": "notIn: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "notIn", "value": [1.0] },
+      "context": { "values": 1 },
+      "expected": false
+    },
+    {
+      "name": "notIn: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "notIn", "value": [1] },
+      "context": { "values": 1.0 },
+      "expected": false
+    },
+    {
+      "name": "greaterThan: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "greaterThan", "value": 1.0 },
+      "context": { "values": 1 },
+      "expected": false
+    },
+    {
+      "name": "greaterThan: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "greaterThan", "value": 1 },
+      "context": { "values": 1.0 },
+      "expected": false
+    },
+    {
+      "name": "greaterThanOrEquals: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "greaterThanOrEquals", "value": 1.0 },
+      "context": { "values": 1 },
+      "expected": true
+    },
+    {
+      "name": "greaterThanOrEquals: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "greaterThanOrEquals", "value": 1 },
+      "context": { "values": 1.0 },
+      "expected": true
+    },
+    {
+      "name": "lessThan: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "lessThan", "value": 1.0 },
+      "context": { "values": 1 },
+      "expected": false
+    },
+    {
+      "name": "lessThan: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "lessThan", "value": 1 },
+      "context": { "values": 1.0 },
+      "expected": false
+    },
+    {
+      "name": "lessThanOrEquals: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "lessThanOrEquals", "value": 1.0 },
+      "context": { "values": 1 },
+      "expected": true
+    },
+    {
+      "name": "lessThanOrEquals: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "lessThanOrEquals", "value": 1 },
+      "context": { "values": 1.0 },
+      "expected": true
+    },
+    {
+      "name": "equals: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "equals", "value": 1.0 },
+      "context": { "values": 1 },
+      "expected": true
+    },
+    {
+      "name": "equals: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "equals", "value": 1 },
+      "context": { "values": 1.0 },
+      "expected": true
+    },
+    {
+      "name": "includes: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "includes", "value": 1.0 },
+      "context": { "values": [1] },
+      "expected": true
+    },
+    {
+      "name": "includes: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "includes", "value": 1 },
+      "context": { "values": [1.0] },
+      "expected": true
+    },
+    {
+      "name": "includesAny: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "includesAny", "value": [1.0] },
+      "context": { "values": [1] },
+      "expected": true
+    },
+    {
+      "name": "includesAny: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "includesAny", "value": [1] },
+      "context": { "values": [1.0] },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: integer actual and floating candidate",
+      "condition": { "attribute": "values", "operator": "notIncludesAny", "value": [1.0] },
+      "context": { "values": [1] },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: floating actual and integer candidate",
+      "condition": { "attribute": "values", "operator": "notIncludesAny", "value": [1] },
+      "context": { "values": [1.0] },
+      "expected": false
+    },
+    {
+      "name": "equals: large finite numbers",
+      "condition": { "attribute": "values", "operator": "equals", "value": 1e30 },
+      "context": { "values": 1e30 },
+      "expected": true
+    },
+    {
+      "name": "includes: large finite numbers",
+      "condition": { "attribute": "values", "operator": "includes", "value": 1e30 },
+      "context": { "values": [1e30] },
+      "expected": true
+    },
+    {
+      "name": "includesAny: large finite numbers",
+      "condition": { "attribute": "values", "operator": "includesAny", "value": [1e30] },
+      "context": { "values": [1e30] },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: large finite numbers",
+      "condition": { "attribute": "values", "operator": "notIncludesAny", "value": [1e30] },
+      "context": { "values": [1e30] },
+      "expected": false
+    },
+    {
+      "name": "includes: large actual before a string match",
+      "condition": { "attribute": "values", "operator": "includes", "value": "write" },
+      "context": { "values": [1e30, "write"] },
+      "expected": true
+    },
+    {
+      "name": "includesAny: large actual before a string match",
+      "condition": { "attribute": "values", "operator": "includesAny", "value": ["write"] },
+      "context": { "values": [1e30, "write"] },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: large actual before a string match",
+      "condition": { "attribute": "values", "operator": "notIncludesAny", "value": ["write"] },
+      "context": { "values": [1e30, "write"] },
+      "expected": false
+    },
+    {
+      "name": "includesAny: large candidate before a string match",
+      "condition": { "attribute": "values", "operator": "includesAny", "value": [1e30, "write"] },
+      "context": { "values": ["write"] },
+      "expected": true
+    },
+    {
+      "name": "equals: tiny finite values do not equal zero",
+      "condition": { "attribute": "values", "operator": "equals", "value": 1e-100 },
+      "context": { "values": 0 },
+      "expected": false
+    },
+    {
+      "name": "equals: tiny finite values",
+      "condition": { "attribute": "values", "operator": "equals", "value": 1e-100 },
+      "context": { "values": 1e-100 },
+      "expected": true
+    },
+    {
+      "name": "includes: tiny finite values do not equal zero",
+      "condition": { "attribute": "values", "operator": "includes", "value": 1e-100 },
+      "context": { "values": [0] },
+      "expected": false
+    },
+    {
+      "name": "includesAny: tiny finite values do not equal zero",
+      "condition": { "attribute": "values", "operator": "includesAny", "value": [1e-100] },
+      "context": { "values": [0] },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: tiny finite values do not equal zero",
+      "condition": { "attribute": "values", "operator": "notIncludesAny", "value": [1e-100] },
+      "context": { "values": [0] },
+      "expected": true
+    },
+    {
+      "name": "lessThan: zero is less than a tiny finite value",
+      "condition": { "attribute": "values", "operator": "lessThan", "value": 1e-100 },
+      "context": { "values": 0 },
+      "expected": true
+    },
+    {
+      "name": "greaterThan: tiny finite values exceed zero",
+      "condition": { "attribute": "values", "operator": "greaterThan", "value": 0 },
+      "context": { "values": 1e-100 },
+      "expected": true
+    },
+    {
+      "name": "includesAny: roles hit",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["admin", "owner"]
+      },
+      "context": {
+        "values": ["member", "owner"]
+      },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: roles hit",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["admin", "owner"]
+      },
+      "context": {
+        "values": ["member", "owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: roles miss",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["admin", "owner"]
+      },
+      "context": {
+        "values": ["viewer"]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: roles miss",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["admin", "owner"]
+      },
+      "context": {
+        "values": ["viewer"]
+      },
+      "expected": true
+    },
+    {
+      "name": "includesAny: empty actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": []
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: empty actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": []
+      },
+      "expected": true
+    },
+    {
+      "name": "includesAny: empty candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": []
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: empty candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": []
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": true
+    },
+    {
+      "name": "includesAny: both arrays empty",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": []
+      },
+      "context": {
+        "values": []
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: both arrays empty",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": []
+      },
+      "context": {
+        "values": []
+      },
+      "expected": true
+    },
+    {
+      "name": "includesAny: numeric fractional match",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": [1.5]
+      },
+      "context": {
+        "values": [0, 1.5]
+      },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: numeric fractional match",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": [1.5]
+      },
+      "context": {
+        "values": [0, 1.5]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: numeric string distinction",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["1"]
+      },
+      "context": {
+        "values": [1]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: numeric string distinction",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["1"]
+      },
+      "context": {
+        "values": [1]
+      },
+      "expected": true
+    },
+    {
+      "name": "includesAny: boolean match",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": [false]
+      },
+      "context": {
+        "values": [true, false]
+      },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: boolean match",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": [false]
+      },
+      "context": {
+        "values": [true, false]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: boolean is not one",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": [1]
+      },
+      "context": {
+        "values": [true]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: boolean is not one",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": [1]
+      },
+      "context": {
+        "values": [true]
+      },
+      "expected": true
+    },
+    {
+      "name": "includesAny: false is not zero",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": [0]
+      },
+      "context": {
+        "values": [false]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: false is not zero",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": [0]
+      },
+      "context": {
+        "values": [false]
+      },
+      "expected": true
+    },
+    {
+      "name": "includesAny: null element",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": [null]
+      },
+      "context": {
+        "values": [null, "owner"]
+      },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: null element",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": [null]
+      },
+      "context": {
+        "values": [null, "owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: null differs from empty text",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": [""]
+      },
+      "context": {
+        "values": [null]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: null differs from empty text",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": [""]
+      },
+      "context": {
+        "values": [null]
+      },
+      "expected": true
+    },
+    {
+      "name": "includesAny: duplicates and order",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["absent", "owner", "owner"]
+      },
+      "context": {
+        "values": ["owner", "owner"]
+      },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: duplicates and order",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["absent", "owner", "owner"]
+      },
+      "context": {
+        "values": ["owner", "owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: structured actual elements ignored",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": [
+          {
+            "role": "owner"
+          }
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: structured actual elements ignored",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": [
+          {
+            "role": "owner"
+          }
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "includesAny: structured and primitive actual elements",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": [
+          {
+            "role": "owner"
+          },
+          "owner"
+        ]
+      },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: structured and primitive actual elements",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": [
+          {
+            "role": "owner"
+          },
+          "owner"
+        ]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: mixed primitive arrays",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["missing", null]
+      },
+      "context": {
+        "values": [true, 1, "1", null]
+      },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: mixed primitive arrays",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["missing", null]
+      },
+      "context": {
+        "values": [true, 1, "1", null]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: case sensitive",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": ["Owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: case sensitive",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": ["Owner"]
+      },
+      "expected": true
+    },
+    {
+      "name": "includesAny: null actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": null
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: null actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": null
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: missing actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["owner"]
+      },
+      "context": {},
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: missing actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["owner"]
+      },
+      "context": {},
+      "expected": false
+    },
+    {
+      "name": "includesAny: string actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": "owner"
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: string actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": "owner"
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: number actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": [1]
+      },
+      "context": {
+        "values": 1
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: number actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": [1]
+      },
+      "context": {
+        "values": 1
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: boolean actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": [false]
+      },
+      "context": {
+        "values": false
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: boolean actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": [false]
+      },
+      "context": {
+        "values": false
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: object actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": {
+          "owner": true
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: object actual",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "values": {
+          "owner": true
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: null candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": null
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: null candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": null
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: missing candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny"
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: missing candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny"
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: scalar candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": "owner"
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: scalar candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": "owner"
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: object candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": {
+          "owner": true
+        }
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: object candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": {
+          "owner": true
+        }
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: nested array candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": [["owner"]]
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: nested array candidates",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": [["owner"]]
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: malformed candidates after a match",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": ["owner", {}]
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: malformed candidates after a match",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": ["owner", {}]
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: malformed candidates before a match",
+      "condition": {
+        "attribute": "values",
+        "operator": "includesAny",
+        "value": [[], "owner"]
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "notIncludesAny: malformed candidates before a match",
+      "condition": {
+        "attribute": "values",
+        "operator": "notIncludesAny",
+        "value": [[], "owner"]
+      },
+      "context": {
+        "values": ["owner"]
+      },
+      "expected": false
+    },
+    {
+      "name": "includesAny: nested object path",
+      "condition": {
+        "attribute": "account.permissions",
+        "operator": "includesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "account": {
+          "permissions": ["owner"]
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "notIncludesAny: nested object path",
+      "condition": {
+        "attribute": "account.permissions",
+        "operator": "notIncludesAny",
+        "value": ["owner"]
+      },
+      "context": {
+        "account": {
+          "permissions": ["owner"]
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "empty: empty string",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": ""
+      },
+      "expected": true
+    },
+    {
+      "name": "notEmpty: empty string",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": ""
+      },
+      "expected": false
+    },
+    {
+      "name": "empty: whitespace",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": " \t"
+      },
+      "expected": false
+    },
+    {
+      "name": "notEmpty: whitespace",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": " \t"
+      },
+      "expected": true
+    },
+    {
+      "name": "empty: text",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": "hello"
+      },
+      "expected": false
+    },
+    {
+      "name": "notEmpty: text",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": "hello"
+      },
+      "expected": true
+    },
+    {
+      "name": "empty: empty array",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": []
+      },
+      "expected": true
+    },
+    {
+      "name": "notEmpty: empty array",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": []
+      },
+      "expected": false
+    },
+    {
+      "name": "empty: array containing null",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": [null]
+      },
+      "expected": false
+    },
+    {
+      "name": "notEmpty: array containing null",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": [null]
+      },
+      "expected": true
+    },
+    {
+      "name": "empty: array containing empty array",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": [[]]
+      },
+      "expected": false
+    },
+    {
+      "name": "notEmpty: array containing empty array",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": [[]]
+      },
+      "expected": true
+    },
+    {
+      "name": "empty: empty object",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": {}
+      },
+      "expected": true
+    },
+    {
+      "name": "notEmpty: empty object",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": {}
+      },
+      "expected": false
+    },
+    {
+      "name": "empty: object containing null",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": {
+          "value": null
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "notEmpty: object containing null",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": {
+          "value": null
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "empty: object containing empty object",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": {
+          "nested": {}
+        }
+      },
+      "expected": false
+    },
+    {
+      "name": "notEmpty: object containing empty object",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": {
+          "nested": {}
+        }
+      },
+      "expected": true
+    },
+    {
+      "name": "empty: null",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": null
+      },
+      "expected": false
+    },
+    {
+      "name": "notEmpty: null",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": null
+      },
+      "expected": false
+    },
+    {
+      "name": "empty: zero",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": 0
+      },
+      "expected": false
+    },
+    {
+      "name": "notEmpty: zero",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": 0
+      },
+      "expected": false
+    },
+    {
+      "name": "empty: false",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {
+        "value": false
+      },
+      "expected": false
+    },
+    {
+      "name": "notEmpty: false",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {
+        "value": false
+      },
+      "expected": false
+    },
+    {
+      "name": "empty: missing",
+      "condition": {
+        "attribute": "value",
+        "operator": "empty"
+      },
+      "context": {},
+      "expected": false
+    },
+    {
+      "name": "notEmpty: missing",
+      "condition": {
+        "attribute": "value",
+        "operator": "notEmpty"
+      },
+      "context": {},
+      "expected": false
+    },
     {
       "name": "strict primitive equality",
       "condition": {
@@ -751,6 +2160,474 @@
       },
       "context": { "date": "2024-01-01T01:00:00.250+01:00" },
       "expected": true
+    },
+    {
+      "name": "date rejects February 30",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-03-01T00:00:00Z" },
+      "context": { "date": "2024-02-30T00:00:00Z" },
+      "expected": false
+    },
+    {
+      "name": "date rejects non leap century",
+      "condition": { "attribute": "date", "operator": "before", "value": "1900-03-01T00:00:00Z" },
+      "context": { "date": "1900-02-29T00:00:00Z" },
+      "expected": false
+    },
+    {
+      "name": "date accepts leap century",
+      "condition": { "attribute": "date", "operator": "before", "value": "2000-03-01T00:00:00Z" },
+      "context": { "date": "2000-02-29T23:59:59Z" },
+      "expected": true
+    },
+    {
+      "name": "date rejects non ISO form",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-03-01T00:00:00Z" },
+      "context": { "date": "2024-02-29 23:59:59Z" },
+      "expected": false
+    },
+    {
+      "name": "date rejects date only",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-03-01T00:00:00Z" },
+      "context": { "date": "2024-02-29" },
+      "expected": false
+    },
+    {
+      "name": "date rejects trailing text",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-03-01T00:00:00Z" },
+      "context": { "date": "2024-02-29T00:00:00Zextra" },
+      "expected": false
+    },
+    {
+      "name": "date rejects 24 hour rollover",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-03-01T00:00:01Z" },
+      "context": { "date": "2024-02-29T24:00:00Z" },
+      "expected": false
+    },
+    {
+      "name": "date rejects leap second",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-03-01T00:00:01Z" },
+      "context": { "date": "2024-02-29T23:59:60Z" },
+      "expected": false
+    },
+    {
+      "name": "date accepts four fractional digits",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-01-01T00:00:01Z" },
+      "context": { "date": "2024-01-01T00:00:00.1234Z" },
+      "expected": true
+    },
+    {
+      "name": "date truncates 4 digits before",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.124Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.1234+00:00"
+      },
+      "expected": true
+    },
+    {
+      "name": "date truncates 4 digits after",
+      "condition": {
+        "attribute": "date",
+        "operator": "after",
+        "value": "2024-01-01T00:00:00.123Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.1234+00:00"
+      },
+      "expected": false
+    },
+    {
+      "name": "date accepts 4 digit expected operand",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.1234Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.122Z"
+      },
+      "expected": true
+    },
+    {
+      "name": "date truncates 6 digits before",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.124Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.123456+00:00"
+      },
+      "expected": true
+    },
+    {
+      "name": "date truncates 6 digits after",
+      "condition": {
+        "attribute": "date",
+        "operator": "after",
+        "value": "2024-01-01T00:00:00.123Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.123456+00:00"
+      },
+      "expected": false
+    },
+    {
+      "name": "date accepts 6 digit expected operand",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.123456Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.122Z"
+      },
+      "expected": true
+    },
+    {
+      "name": "date truncates 7 digits before",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.124Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.1234567+00:00"
+      },
+      "expected": true
+    },
+    {
+      "name": "date truncates 7 digits after",
+      "condition": {
+        "attribute": "date",
+        "operator": "after",
+        "value": "2024-01-01T00:00:00.123Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.1234567+00:00"
+      },
+      "expected": false
+    },
+    {
+      "name": "date accepts 7 digit expected operand",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.1234567Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.122Z"
+      },
+      "expected": true
+    },
+    {
+      "name": "date truncates 9 digits before",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.124Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.123456789+00:00"
+      },
+      "expected": true
+    },
+    {
+      "name": "date truncates 9 digits after",
+      "condition": {
+        "attribute": "date",
+        "operator": "after",
+        "value": "2024-01-01T00:00:00.123Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.123456789+00:00"
+      },
+      "expected": false
+    },
+    {
+      "name": "date accepts 9 digit expected operand",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.123456789Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.122Z"
+      },
+      "expected": true
+    },
+    {
+      "name": "date truncates pre epoch fractions without rounding",
+      "condition": {
+        "attribute": "date",
+        "operator": "after",
+        "value": "1969-12-31T23:59:59.999Z"
+      },
+      "context": {
+        "date": "1969-12-31T23:59:59.999999999Z"
+      },
+      "expected": false
+    },
+    {
+      "name": "date rejects ten fractional digits",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:01Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:00.1234567890Z"
+      },
+      "expected": false
+    },
+    {
+      "name": "date rejects ten digit expected fraction",
+      "condition": {
+        "attribute": "date",
+        "operator": "after",
+        "value": "2024-01-01T00:00:00.1234567890Z"
+      },
+      "context": {
+        "date": "2024-01-01T00:00:01Z"
+      },
+      "expected": false
+    },
+    {
+      "name": "date rejects Unicode digits",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2025-01-01T00:00:00Z"
+      },
+      "context": {
+        "date": "٢٠٢٤-01-01T00:00:00Z"
+      },
+      "expected": false
+    },
+    {
+      "name": "date accepts one fractional digit",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.101Z"
+      },
+      "context": { "date": "2024-01-01T00:00:00.1Z" },
+      "expected": true
+    },
+    {
+      "name": "date compares at millisecond precision",
+      "condition": {
+        "attribute": "date",
+        "operator": "before",
+        "value": "2024-01-01T00:00:00.100Z"
+      },
+      "context": { "date": "2024-01-01T00:00:00.1Z" },
+      "expected": false
+    },
+    {
+      "name": "date rejects offset above fourteen hours",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-03-01T00:00:00Z" },
+      "context": { "date": "2024-02-29T00:00:00+14:01" },
+      "expected": false
+    },
+    {
+      "name": "date accepts positive fourteen hour offset",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-01-01T00:00:01Z" },
+      "context": { "date": "2024-01-01T14:00:00+14:00" },
+      "expected": true
+    },
+    {
+      "name": "date accepts negative fourteen hour offset",
+      "condition": { "attribute": "date", "operator": "after", "value": "2024-01-01T13:59:59Z" },
+      "context": { "date": "2024-01-01T00:00:00-14:00" },
+      "expected": true
+    },
+    {
+      "name": "date rejects offset minute rollover",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-03-01T00:00:00Z" },
+      "context": { "date": "2024-02-29T00:00:00+01:60" },
+      "expected": false
+    },
+    {
+      "name": "date rejects year zero",
+      "condition": { "attribute": "date", "operator": "before", "value": "0001-01-01T00:00:01Z" },
+      "context": { "date": "0000-12-31T23:59:59Z" },
+      "expected": false
+    },
+    {
+      "name": "date rejects year zero even when UTC is year one",
+      "condition": { "attribute": "date", "operator": "before", "value": "0001-01-01T00:00:01Z" },
+      "context": { "date": "0000-12-31T23:00:00-01:00" },
+      "expected": false
+    },
+    {
+      "name": "date rejects offset crossing minimum UTC year",
+      "condition": { "attribute": "date", "operator": "before", "value": "0001-01-01T00:00:01Z" },
+      "context": { "date": "0001-01-01T00:00:00+01:00" },
+      "expected": false
+    },
+    {
+      "name": "date accepts maximum UTC year",
+      "condition": { "attribute": "date", "operator": "after", "value": "9999-12-31T23:59:58Z" },
+      "context": { "date": "9999-12-31T23:59:59.999Z" },
+      "expected": true
+    },
+    {
+      "name": "date rejects offset crossing maximum UTC year",
+      "condition": { "attribute": "date", "operator": "after", "value": "9999-12-31T23:59:58Z" },
+      "context": { "date": "9999-12-31T23:59:59-00:01" },
+      "expected": false
+    },
+    {
+      "name": "date rejects trailing newline",
+      "condition": { "attribute": "date", "operator": "before", "value": "2024-03-01T00:00:00Z" },
+      "context": { "date": "2024-02-29T00:00:00Z\n" },
+      "expected": false
+    },
+    {
+      "name": "regex digit is ASCII only",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^\\d+$" },
+      "context": { "value": "٣" },
+      "expected": false
+    },
+    {
+      "name": "regex nondigit accepts Arabic digit",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^\\D+$" },
+      "context": { "value": "٣" },
+      "expected": true
+    },
+    {
+      "name": "regex word is ASCII only",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^\\w+$" },
+      "context": { "value": "é" },
+      "expected": false
+    },
+    {
+      "name": "regex nonword accepts accented letter",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^\\W+$" },
+      "context": { "value": "é" },
+      "expected": true
+    },
+    {
+      "name": "regex digit class is ASCII only",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[\\d]+$" },
+      "context": { "value": "٣" },
+      "expected": false
+    },
+    {
+      "name": "regex word class is ASCII only",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[\\w]+$" },
+      "context": { "value": "é" },
+      "expected": false
+    },
+    {
+      "name": "regex nondigit class accepts Arabic digit",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[\\D]+$" },
+      "context": { "value": "٣" },
+      "expected": true
+    },
+    {
+      "name": "regex nonword class accepts accented letter",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[\\W]+$" },
+      "context": { "value": "é" },
+      "expected": true
+    },
+    {
+      "name": "regex single nondigit accepts Arabic digit",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^\\D$" },
+      "context": { "value": "٣" },
+      "expected": true
+    },
+    {
+      "name": "regex single nonword accepts accented letter",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^\\W$" },
+      "context": { "value": "é" },
+      "expected": true
+    },
+    {
+      "name": "regex single nondigit class accepts Arabic digit",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[\\D]$" },
+      "context": { "value": "٣" },
+      "expected": true
+    },
+    {
+      "name": "regex single nonword class accepts accented letter",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[\\W]$" },
+      "context": { "value": "é" },
+      "expected": true
+    },
+    {
+      "name": "regex negated nondigit class accepts ASCII digit",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[^\\D]$" },
+      "context": { "value": "5" },
+      "expected": true
+    },
+    {
+      "name": "regex negated nondigit class rejects Arabic digit",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[^\\D]$" },
+      "context": { "value": "٣" },
+      "expected": false
+    },
+    {
+      "name": "regex negated nonword class accepts ASCII letter",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[^\\W]$" },
+      "context": { "value": "A" },
+      "expected": true
+    },
+    {
+      "name": "regex negated nonword class rejects accented letter",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[^\\W]$" },
+      "context": { "value": "é" },
+      "expected": false
+    },
+    {
+      "name": "regex escaped backslash inside class is not digit shorthand",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[\\\\d]$" },
+      "context": { "value": "3" },
+      "expected": false
+    },
+    {
+      "name": "regex escaped backslash inside class remains literal",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^[\\\\d]$" },
+      "context": { "value": "\\" },
+      "expected": true
+    },
+    {
+      "name": "regex escaped literal backslash remains literal",
+      "condition": { "attribute": "value", "operator": "matches", "value": "^\\\\d$" },
+      "context": { "value": "\\d" },
+      "expected": true
+    },
+    {
+      "name": "regex notMatches respects ASCII word",
+      "condition": { "attribute": "value", "operator": "notMatches", "value": "^\\w+$" },
+      "context": { "value": "é" },
+      "expected": true
+    },
+    {
+      "name": "regex word ignores Kelvin sign under i",
+      "condition": {
+        "attribute": "value",
+        "operator": "matches",
+        "value": "^\\w+$",
+        "regexFlags": "i"
+      },
+      "context": { "value": "K" },
+      "expected": false
+    },
+    {
+      "name": "regex word ignores long s under i",
+      "condition": {
+        "attribute": "value",
+        "operator": "matches",
+        "value": "^\\w+$",
+        "regexFlags": "i"
+      },
+      "context": { "value": "ſ" },
+      "expected": false
     }
   ],
   "childInstances": {
@@ -833,14 +2710,10 @@
   },
   "modulePipeline": {
     "featureOrder": [
-      "before:first",
-      "before:second",
       "beforeEvaluation:first",
       "beforeEvaluation:second",
       "afterEvaluation:first",
-      "afterEvaluation:second",
-      "after:first",
-      "after:second"
+      "afterEvaluation:second"
     ],
     "globalOrder": [
       "beforeEvaluation:first",
@@ -858,9 +2731,264 @@
     "stickyVariableDiagnostic": "sticky_variables_set",
     "diagnosticBeforeEvent": true
   },
+  "requiredVariables": {
+    "datafile": {
+      "schemaVersion": "2",
+      "revision": "required-variables",
+      "segments": {},
+      "features": {
+        "sourceFeature": {
+          "bucketBy": "userId",
+          "variablesSchema": {
+            "profile": {
+              "type": "object",
+              "defaultValue": { "plan": { "name": "free" } }
+            }
+          },
+          "force": [{ "segments": "*", "enabled": true }],
+          "traffic": []
+        },
+        "gated": {
+          "bucketBy": "userId",
+          "conditions": [
+            {
+              "variable": "policy",
+              "path": ["access", "enabled"],
+              "operator": "equals",
+              "value": true
+            },
+            {
+              "feature": "sourceFeature",
+              "variable": "profile",
+              "path": ["plan", "name"],
+              "operator": "equals",
+              "value": "pro"
+            }
+          ],
+          "traffic": [{ "key": "all", "segments": "*", "percentage": 100000 }]
+        },
+        "featureOverride": {
+          "bucketBy": "userId",
+          "variablesSchema": {
+            "message": { "type": "string", "defaultValue": "default" }
+          },
+          "traffic": [
+            {
+              "key": "all",
+              "segments": "*",
+              "percentage": 100000,
+              "variableOverrides": {
+                "message": [
+                  {
+                    "key": "required",
+                    "conditions": [
+                      {
+                        "variable": "policy",
+                        "path": ["access", "enabled"],
+                        "operator": "equals",
+                        "value": true
+                      },
+                      {
+                        "feature": "sourceFeature",
+                        "variable": "profile",
+                        "path": ["plan", "name"],
+                        "operator": "equals",
+                        "value": "pro"
+                      }
+                    ],
+                    "value": "matched"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "variables": {
+        "policy": {
+          "type": "object",
+          "defaultValue": { "access": { "enabled": false } }
+        },
+        "malformed": { "type": "json", "defaultValue": "{" },
+        "nullGate": {
+          "type": "string",
+          "defaultValue": "matched",
+          "disabledValue": "default",
+          "conditions": [{ "variable": "malformed", "operator": "isNull" }]
+        },
+        "root": {
+          "type": "string",
+          "defaultValue": "matched",
+          "disabledValue": "default",
+          "conditions": [
+            {
+              "variable": "policy",
+              "path": ["access", "enabled"],
+              "operator": "equals",
+              "value": true
+            },
+            {
+              "feature": "sourceFeature",
+              "variable": "profile",
+              "path": ["plan", "name"],
+              "operator": "equals",
+              "value": "pro"
+            }
+          ]
+        },
+        "override": {
+          "type": "string",
+          "defaultValue": "default",
+          "overrides": [
+            {
+              "key": "required",
+              "conditions": [
+                {
+                  "variable": "policy",
+                  "path": ["access", "enabled"],
+                  "operator": "equals",
+                  "value": true
+                },
+                {
+                  "feature": "sourceFeature",
+                  "variable": "profile",
+                  "path": ["plan", "name"],
+                  "operator": "equals",
+                  "value": "pro"
+                }
+              ],
+              "value": "matched"
+            }
+          ]
+        },
+        "accumulated": {
+          "type": "object",
+          "defaultValue": {},
+          "overrideProgram": [
+            {
+              "key": "global",
+              "keyPath": ["global"],
+              "conditions": [
+                {
+                  "variable": "policy",
+                  "path": ["access", "enabled"],
+                  "operator": "equals",
+                  "value": true
+                }
+              ],
+              "operations": [{ "op": "set", "path": ["global"], "value": true }],
+              "onMatch": 1,
+              "onMiss": 1
+            },
+            {
+              "key": "feature",
+              "keyPath": ["feature"],
+              "conditions": [
+                {
+                  "feature": "sourceFeature",
+                  "variable": "profile",
+                  "path": ["plan", "name"],
+                  "operator": "equals",
+                  "value": "pro"
+                }
+              ],
+              "operations": [{ "op": "set", "path": ["feature"], "value": true }],
+              "onMatch": 2,
+              "onMiss": 2
+            }
+          ]
+        }
+      }
+    },
+    "stickyCases": [
+      {
+        "name": "no sticky sources",
+        "stickyVariables": {},
+        "stickyFeatures": {},
+        "matched": false,
+        "accumulated": {}
+      },
+      {
+        "name": "only global source",
+        "stickyVariables": { "policy": { "access": { "enabled": true } } },
+        "stickyFeatures": {},
+        "matched": false,
+        "accumulated": { "global": true }
+      },
+      {
+        "name": "only feature source",
+        "stickyVariables": {},
+        "stickyFeatures": {
+          "sourceFeature": {
+            "enabled": true,
+            "variables": { "profile": { "plan": { "name": "pro" } } }
+          }
+        },
+        "matched": false,
+        "accumulated": { "feature": true }
+      },
+      {
+        "name": "mixed global and feature sources",
+        "stickyVariables": { "policy": { "access": { "enabled": true } } },
+        "stickyFeatures": {
+          "sourceFeature": {
+            "enabled": true,
+            "variables": { "profile": { "plan": { "name": "pro" } } }
+          }
+        },
+        "matched": true,
+        "accumulated": { "global": true, "feature": true }
+      }
+    ],
+    "groupInputs": [
+      { "a": false, "b": false },
+      { "a": false, "b": true },
+      { "a": true, "b": false },
+      { "a": true, "b": true }
+    ],
+    "groups": [
+      {
+        "name": "implicit AND",
+        "requirements": ["a", "b"],
+        "results": [false, false, false, true]
+      },
+      {
+        "name": "explicit AND",
+        "requirements": [{ "and": ["a", "b"] }],
+        "results": [false, false, false, true]
+      },
+      {
+        "name": "OR",
+        "requirements": [{ "or": ["a", "b"] }],
+        "results": [false, true, true, true]
+      },
+      {
+        "name": "NOT means not all",
+        "requirements": [{ "not": ["a", "b"] }],
+        "results": [true, true, true, false]
+      },
+      {
+        "name": "NOT OR means neither",
+        "requirements": [{ "not": [{ "or": ["a", "b"] }] }],
+        "results": [true, false, false, false]
+      },
+      {
+        "name": "empty NOT defensive fallback",
+        "requirements": [{ "not": [] }],
+        "results": [false, false, false, false]
+      }
+    ],
+    "expected": {
+      "matchedValue": "matched",
+      "defaultValue": "default",
+      "accumulated": { "global": true, "feature": true },
+      "unmetReason": "conditions_unmet",
+      "nullGetterValue": null
+    }
+  },
   "openFeature": {
     "reasonMappings": {
-      "required_features_unmet": "DISABLED"
+      "conditions_unmet": "DISABLED"
     }
   },
   "diagnosticCase": {

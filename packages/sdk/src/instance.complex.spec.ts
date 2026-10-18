@@ -91,7 +91,7 @@ describe("Featurevisor public API: complex evaluation", () => {
     expect(sdk.getVariableString("experiment", "count", context)).toBeNull();
     expect(sdk.getVariableBoolean("experiment", "count", context)).toBeNull();
     expect(sdk.getVariableInteger("experiment", "greeting", context)).toBeNull();
-    expect(sdk.getVariableDouble("experiment", "greeting", context)).toBeNull();
+    expect(sdk.getVariableNumber("experiment", "greeting", context)).toBeNull();
   });
 
   it("enforces required flags and required variations recursively", () => {
@@ -99,7 +99,7 @@ describe("Featurevisor public API: complex evaluation", () => {
 
     expect(sdk.isEnabled("dependent", { userId: "control", bucket: 1000 })).toBe(false);
     expect(sdk.evaluateFlag("dependent", { userId: "control", bucket: 1000 }).reason).toBe(
-      "required",
+      "conditions_unmet",
     );
     expect(sdk.isEnabled("dependent", { userId: "ready", bucket: 75000 })).toBe(true);
     expect(sdk.isEnabled("dependent", { userId: "blocked", role: "blocked", bucket: 75000 })).toBe(
@@ -117,13 +117,13 @@ describe("Featurevisor public API: complex evaluation", () => {
     expect(sdk.getVariableString("disabledFallbacks", "absent")).toBeNull();
   });
 
-  it("enforces mutex ranges with inclusive start and exclusive end", () => {
+  it("ignores legacy Group ranges in a full rollout", () => {
     const sdk = createComplexSdk();
 
-    expect(sdk.isEnabled("mutex", { userId: "a", bucket: 19999 })).toBe(false);
+    expect(sdk.isEnabled("mutex", { userId: "a", bucket: 19999 })).toBe(true);
     expect(sdk.isEnabled("mutex", { userId: "a", bucket: 20000 })).toBe(true);
     expect(sdk.isEnabled("mutex", { userId: "a", bucket: 39999 })).toBe(true);
-    expect(sdk.isEnabled("mutex", { userId: "a", bucket: 40000 })).toBe(false);
+    expect(sdk.isEnabled("mutex", { userId: "a", bucket: 40000 })).toBe(true);
   });
 
   it("returns all typed variable defaults and rejects mismatched getter types", () => {
@@ -132,7 +132,7 @@ describe("Featurevisor public API: complex evaluation", () => {
 
     expect(sdk.getVariableString("experiment", "greeting", context)).toBe("Hello");
     expect(sdk.getVariableInteger("experiment", "count", context)).toBe(1);
-    expect(sdk.getVariableDouble("experiment", "ratio", context)).toBe(1.5);
+    expect(sdk.getVariableNumber("experiment", "ratio", context)).toBe(1.5);
     expect(sdk.getVariableBoolean("experiment", "enabledCopy", context)).toBe(false);
     expect(sdk.getVariableArray("experiment", "items", context)).toEqual(["default"]);
     expect(sdk.getVariableObject("experiment", "config", context)).toEqual({ source: "default" });
@@ -162,7 +162,6 @@ describe("Featurevisor public API: complex evaluation", () => {
       expect.objectContaining({
         reason: "sticky",
         stickyFeature: sticky.experiment,
-        sticky: sticky.experiment,
       }),
     );
     expect(sdk.getVariation("experiment", context)).toBe("treatment");

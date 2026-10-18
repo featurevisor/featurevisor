@@ -1,16 +1,8 @@
 feature: <featureKey>
 assertions:
-  - key: catch-all-staging
-    description: Catch-all is enabled in staging
-    environment: staging
-    at: 99
-    context:
-      userId: "test-user-1"
-    expectedToBeEnabled: true
-
-  - key: production-gated
-    description: Production is gated for everyone at 0% rollout
-    environment: production
+  - key: rollout-gated
+    description: Everyone is gated at 0% rollout
+    # Add environment: production only when that environment is configured.
     at: 99
     context:
       userId: "test-user-1"
@@ -18,9 +10,9 @@ assertions:
 
   # If the feature has variations, assert each by picking `at` in their weight band.
   # Variation weights of 50/50 → control covers ~[0,50), treatment ~[50,100).
-  # - key: treatment-production
-  #   description: Treatment variation in production
-  #   environment: production
+  # Enable the feature's rollout before asserting a variation.
+  # - key: treatment
+  #   description: Treatment variation
   #   at: 75
   #   context:
   #     userId: 'test-user-1'
@@ -35,7 +27,6 @@ assertions:
   #     country: [nl, de, us]
   #     at: [10, 50, 90]
   #   description: At ${{ at }}% in ${{ country }}
-  #   environment: production
   #   at: ${{ at }}
   #   context:
   #     userId: 'test-user-1'

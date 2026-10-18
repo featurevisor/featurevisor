@@ -1,138 +1,99 @@
-import type {
-  Condition,
-  AndCondition,
-  OrCondition,
-  NotCondition,
-  Context,
-} from "@featurevisor/types";
+import type { Condition, Conditions, Context } from "@featurevisor/types";
 import { allConditionsAreMatched } from "@featurevisor/sdk";
 import type { Featurevisor } from "@featurevisor/sdk";
+import { parseConditions } from "../datasource/conditions";
+
+type PartialResult = { value: boolean | undefined; conditions: Conditions };
+const constant = (value: boolean): PartialResult => ({
+  value,
+  conditions: value ? "*" : { or: [] },
+});
+
+/** Resolve supplied context only. Dependencies remain runtime expressions. */
+function specialize(
+  featurevisor: Pick<Featurevisor, "getSegment"> | undefined,
+  input: Conditions,
+  context: Context | undefined,
+  visiting = new Set<string>(),
+): PartialResult {
+  const conditions = parseConditions(input);
+  if (conditions === "*") return constant(true);
+  if (typeof conditions === "string") {
+    if (!featurevisor || visiting.has(conditions)) return { value: undefined, conditions };
+    const segment = featurevisor.getSegment(conditions);
+    if (!segment) return { value: undefined, conditions };
+    const next = new Set(visiting);
+    next.add(conditions);
+    const result = specialize(featurevisor, segment.conditions, context, next);
+    return result.value === undefined ? { value: undefined, conditions } : constant(result.value);
+  }
+  const group = Array.isArray(conditions)
+    ? "array"
+    : "and" in conditions
+      ? "and"
+      : "or" in conditions
+        ? "or"
+        : "not" in conditions
+          ? "not"
+          : undefined;
+  if (group) {
+    const entries: Condition[] = Array.isArray(conditions)
+      ? conditions
+      : group === "and" && "and" in conditions
+        ? conditions.and
+        : group === "or" && "or" in conditions
+          ? conditions.or
+          : "not" in conditions
+            ? conditions.not
+            : [];
+    // Empty expressions are false, even NOT, matching the runtime contract.
+    if (!entries.length) return constant(false);
+    const results = entries.map((entry) => specialize(featurevisor, entry, context, visiting));
+    const decisive = group === "or";
+    const boundary = results.findIndex((result) => result.value === decisive);
+    const prefix = boundary === -1 ? results : results.slice(0, boundary);
+    const children = prefix
+      .filter((result) => result.value === undefined)
+      .map((result) => result.conditions as Condition);
+    if (boundary !== -1) {
+      // Earlier unknown leaves may evaluate dependencies and invoke modules.
+      // Keep those reads before the decisive constant, but not skipped branches.
+      if (!children.length) return constant(group === "not" ? !decisive : decisive);
+      children.push(constant(decisive).conditions as Condition);
+    } else if (!children.length) return constant(group !== "not" && group !== "or");
+    return {
+      value: undefined,
+      conditions:
+        group === "array"
+          ? children
+          : group === "or"
+            ? { or: children }
+            : group === "not"
+              ? { not: children }
+              : { and: children },
+    };
+  }
+  if (typeof conditions !== "object" || !("attribute" in conditions) || !context)
+    return { value: undefined, conditions };
+  let value: unknown = context;
+  // Missing paths are unknown because a Target supplies only part of the context.
+  for (const key of conditions.attribute.split(".")) {
+    if (!value || typeof value !== "object" || !Object.prototype.hasOwnProperty.call(value, key))
+      return { value: undefined, conditions };
+    value = (value as Record<string, unknown>)[key];
+  }
+  return constant(allConditionsAreMatched(conditions, context));
+}
 
 export function applyContextToConditions(
   featurevisor: Featurevisor,
-  conditions: Condition | Condition[],
+  conditions: Conditions,
   context: Context,
-): Condition | Condition[] {
-  const withContextApplied = applyContextToCondition(featurevisor, conditions, context);
-  const removed = removeRedundantConditions(withContextApplied);
-
-  return removed;
+): Conditions {
+  return specialize(featurevisor, conditions, context).conditions;
 }
-
-export function removeRedundantConditions(
-  conditions: Condition | Condition[],
-): Condition | Condition[] {
-  if (conditions === "*") {
-    return conditions;
-  }
-
-  if (Array.isArray(conditions)) {
-    // Recursively process each condition
-    const processed = conditions.map((c) => removeRedundantConditions(c)) as Condition[];
-
-    // Filter out "*" values
-    const filtered = processed.filter((c) => c !== "*");
-
-    // If all were "*", return "*"
-    if (filtered.length === 0) {
-      return "*";
-    }
-
-    return filtered;
-  }
-
-  if (typeof conditions === "object") {
-    if ("and" in conditions) {
-      const processed = conditions.and.map((c) => removeRedundantConditions(c)) as Condition[];
-      const filtered = processed.filter((c) => c !== "*");
-
-      // If all were "*", return "*"
-      if (filtered.length === 0) {
-        return "*";
-      }
-
-      return {
-        and: filtered,
-      } as AndCondition;
-    }
-
-    if ("or" in conditions) {
-      const processed = conditions.or.map((c) => removeRedundantConditions(c)) as Condition[];
-
-      // `or` is true as soon as any child is true.
-      if (processed.indexOf("*") !== -1) {
-        return "*";
-      }
-
-      return {
-        or: processed,
-      } as OrCondition;
-    }
-
-    if ("not" in conditions) {
-      const processed = conditions.not.map((c) => removeRedundantConditions(c)) as Condition[];
-      const filtered = processed.filter((c) => c !== "*");
-
-      // `not` negates the implicit AND of its children. Matched children are true
-      // and can be removed: not(true && X) becomes not(X). If every child was
-      // true, keep not("*") so it remains an always-false expression.
-      if (filtered.length === 0) {
-        return {
-          not: ["*"],
-        } as NotCondition;
-      }
-
-      return {
-        not: filtered,
-      } as NotCondition;
-    }
-  }
-
-  return conditions;
+export function removeRedundantConditions(conditions: Conditions): Conditions {
+  return specialize(undefined, conditions, undefined).conditions;
 }
-
-export function applyContextToCondition(
-  featurevisor: Featurevisor,
-  condition: Condition | Condition[],
-  context: Context,
-): Condition | Condition[] {
-  if (condition === "*") {
-    return condition;
-  }
-
-  if (Array.isArray(condition)) {
-    return condition.map((c) => applyContextToCondition(featurevisor, c, context)) as Condition[];
-  }
-
-  if (typeof condition === "object") {
-    // plain condition
-    if ("attribute" in condition) {
-      const matched = allConditionsAreMatched(condition, context);
-
-      if (matched) {
-        return "*";
-      }
-    }
-
-    // AND, OR, NOT conditions
-    if ("and" in condition) {
-      return {
-        and: condition.and.map((c) => applyContextToCondition(featurevisor, c, context)),
-      } as AndCondition;
-    }
-
-    if ("or" in condition) {
-      return {
-        or: condition.or.map((c) => applyContextToCondition(featurevisor, c, context)),
-      } as OrCondition;
-    }
-
-    if ("not" in condition) {
-      return {
-        not: condition.not.map((c) => applyContextToCondition(featurevisor, c, context)),
-      } as NotCondition;
-    }
-  }
-
-  return condition;
-}
+/** Transitional internal name. */
+export const applyContextToCondition = applyContextToConditions;

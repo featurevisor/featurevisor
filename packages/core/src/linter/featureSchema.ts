@@ -1,19 +1,49 @@
-import type { ParsedFeature, Schema, SchemaType } from "@featurevisor/types";
+import type {
+  ParsedFeature,
+  ParsedVariable,
+  Schema,
+  SchemaType,
+  VariableMutations,
+  VariableValue,
+} from "@featurevisor/types";
 import { z } from "zod";
+import {
+  formatValueMessage,
+  isRemovedSchemaType,
+  refineRemovedSchemaType,
+  valueMatchesFormat,
+} from "./schemaFormats";
 
 import { DEFAULT_RESERVED_KEYS, ProjectConfig } from "../config";
-import { isMutationKey, validateMutationKey } from "./mutationNotation";
+import { getMutationPath, isMutationKey, validateMutationKey } from "./mutationNotation";
+import { compileVariableMutation } from "../builder/variableOverrideProgram";
+import { mutationEntries, mutationEntryPath } from "../builder/mutationEntries";
+import { getMutationSchema } from "./mutationSchema";
+import { withMutationResultPaths } from "./mutationResultPaths";
 import {
+  resolveMutationsForMultipleVariables,
+  resolveMutationsForSingleVariable,
+  rootVariableFromOverrideKey,
+} from "../builder/mutateVariables";
+import {
+  countZodSchema,
   valueZodSchema,
   propertyTypeEnum,
   getSchemaZodSchema,
   refineEnumMatchesType,
   refineMinimumMaximum,
   refineStringLengthPattern,
+  refineSchemaFormat,
+  schemaFormatZodSchema,
   refineArrayItems,
 } from "./schema";
-import { refineWithMessage } from "./zodHelpers";
-import { getRequiredFeaturesZodSchema } from "./requiredFeaturesSchema";
+import { refineWithMessage, UNKNOWN_REFERENCE } from "./zodHelpers";
+import { suggestKey } from "./diagnostics";
+import {
+  removedConditionFields,
+  refineRemovedConditionFields,
+  refineRequiredConditions,
+} from "./removedConditionFields";
 
 function isArrayOfStrings(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
@@ -56,6 +86,7 @@ export function resolveVariableSchema(
     minLength?: number;
     maxLength?: number;
     pattern?: string;
+    format?: string;
     minItems?: number;
     maxItems?: number;
     uniqueItems?: boolean;
@@ -75,12 +106,19 @@ export function resolveVariableSchema(
   minLength?: number;
   maxLength?: number;
   pattern?: string;
+  format?: string;
   minItems?: number;
   maxItems?: number;
   uniqueItems?: boolean;
 } | null {
   if (variableSchema.schema) {
-    return schemasByKey?.[variableSchema.schema] ?? null;
+    const referenced = schemasByKey?.[variableSchema.schema];
+    return referenced
+      ? (resolveSchemaRefs(
+          referenced as { schema?: string; [k: string]: unknown },
+          schemasByKey,
+        ) as Schema)
+      : null;
   }
   return variableSchema as {
     type?: string;
@@ -96,6 +134,7 @@ export function resolveVariableSchema(
     minLength?: number;
     maxLength?: number;
     pattern?: string;
+    format?: string;
     minItems?: number;
     maxItems?: number;
     uniqueItems?: boolean;
@@ -116,11 +155,34 @@ function resolveSchemaRefs(
   return schema;
 }
 
+function schemaUsesTimestampFormat(
+  schema: { [k: string]: unknown },
+  schemasByKey?: Record<string, Schema>,
+  seen = new Set<unknown>(),
+): boolean {
+  if (seen.has(schema)) return false;
+  seen.add(schema);
+  const resolved = resolveSchemaRefs(schema, schemasByKey);
+  // Literal values are checked against every format, not only timestamps.
+  if (resolved.format !== undefined) return true;
+  const children = [
+    resolved.items,
+    resolved.additionalProperties,
+    ...Object.values((resolved.properties as Record<string, unknown>) || {}),
+    ...((resolved.oneOf as unknown[]) || []),
+  ];
+  return children.some((child) =>
+    child && typeof child === "object"
+      ? schemaUsesTimestampFormat(child as { [k: string]: unknown }, schemasByKey, seen)
+      : false,
+  );
+}
+
 /**
  * Returns true if the value matches the given schema (const, enum, type, object properties, array items, or exactly one of oneOf).
  * Used for oneOf validation: value must match exactly one branch.
  */
-function valueMatchesSchema(
+export function valueMatchesSchema(
   schema: { [k: string]: unknown },
   value: unknown,
   schemasByKey?: Record<string, Schema>,
@@ -139,6 +201,7 @@ function valueMatchesSchema(
     minLength?: number;
     maxLength?: number;
     pattern?: string;
+    format?: string;
     minItems?: number;
     maxItems?: number;
     uniqueItems?: boolean;
@@ -152,11 +215,13 @@ function valueMatchesSchema(
   }
 
   if (resolved.const !== undefined) {
-    return valueDeepEqual(value, resolved.const);
+    if (!valueDeepEqual(value, resolved.const)) return false;
+    if (!schemaUsesTimestampFormat(resolved, schemasByKey)) return true;
   }
 
   if (resolved.enum !== undefined && Array.isArray(resolved.enum)) {
-    return resolved.enum.some((e) => valueDeepEqual(value, e));
+    if (!resolved.enum.some((e) => valueDeepEqual(value, e))) return false;
+    if (!schemaUsesTimestampFormat(resolved, schemasByKey)) return true;
   }
 
   const type = resolved.type;
@@ -164,6 +229,7 @@ function valueMatchesSchema(
 
   if (type === "string") {
     if (typeof value !== "string") return false;
+    if (!valueMatchesFormat(resolved.format, value)) return false;
     const s = value as string;
     if (resolved.minLength !== undefined && s.length < resolved.minLength) return false;
     if (resolved.maxLength !== undefined && s.length > resolved.maxLength) return false;
@@ -183,7 +249,7 @@ function valueMatchesSchema(
     if (resolved.maximum !== undefined && (value as number) > resolved.maximum) return false;
     return true;
   }
-  if (type === "double") {
+  if (type === "number") {
     if (typeof value !== "number") return false;
     if (resolved.minimum !== undefined && (value as number) < resolved.minimum) return false;
     if (resolved.maximum !== undefined && (value as number) > resolved.maximum) return false;
@@ -384,6 +450,66 @@ function typeOfValue(value: unknown): string {
   return typeof value;
 }
 
+/** Authored identity kept separately from schema lookup and diagnostic locations. */
+export interface MutationValueContext {
+  variableKey: string;
+  path: string;
+  /** Item operations validate the inserted or removed item, not the array at `path`. */
+  operation?: string;
+  /** Location inside that item, for nested values. */
+  itemPath?: string;
+}
+
+const itemOperationLabels: Record<string, string> = {
+  append: "Item appended to",
+  appendUnique: "Item appended to",
+  prepend: "Item prepended to",
+  removeValue: "Item removed from",
+  before: "Item inserted before",
+  after: "Item inserted after",
+};
+
+function appendPath(path: string, child: string | number): string {
+  return typeof child === "number" ? `${path}[${child}]` : `${path ? `${path}.` : ""}${child}`;
+}
+
+export function childMutationValueContext(
+  context: MutationValueContext | undefined,
+  child: string | number,
+): MutationValueContext | undefined {
+  if (!context) return undefined;
+  if (context.operation && itemOperationLabels[context.operation])
+    return { ...context, itemPath: appendPath(context.itemPath || "", child) };
+  return { ...context, path: appendPath(context.path, child) };
+}
+
+export function mutationSubject(mutation: MutationValueContext): string {
+  const variable = `variable "${mutation.variableKey}"`;
+  const label = mutation.operation && itemOperationLabels[mutation.operation];
+  if (!label)
+    return mutation.path ? `Value at "${mutation.path}" in ${variable}` : `Value of ${variable}`;
+  const item = `${label} ${mutation.path ? `"${mutation.path}" in ${variable}` : variable}`;
+  return mutation.itemPath
+    ? `Value at "${mutation.itemPath}" in the ${item.charAt(0).toLowerCase()}${item.slice(1)}`
+    : item;
+}
+
+function valueSubject(
+  variableSchema: unknown,
+  variableKey: string | undefined,
+  path: (string | number)[],
+  mutation?: MutationValueContext,
+): string {
+  return mutation
+    ? mutationSubject(mutation)
+    : `Variable "${getVariableLabel(variableSchema, variableKey, path)}"`;
+}
+
+/** The authored mutation subject already names its schema, so the type aside is omitted. */
+function typedSubject(subject: string, type: string, mutation?: MutationValueContext): string {
+  return mutation ? subject : `${subject} (type ${type})`;
+}
+
 /**
  * Validates a variable value against an array schema. Recursively validates each item
  * when the schema defines `items` (nested arrays/objects use the same refinement).
@@ -403,22 +529,23 @@ function refineVariableValueArray(
   ctx: z.RefinementCtx,
   variableKey?: string,
   schemasByKey?: Record<string, Schema>,
+  mutation?: MutationValueContext,
 ): void {
-  const label = getVariableLabel(variableSchema, variableKey, path);
+  const subject = valueSubject(variableSchema, variableKey, path, mutation);
   const minItems = variableSchema.minItems;
   const maxItems = variableSchema.maxItems;
   const uniqueItems = variableSchema.uniqueItems;
   if (minItems !== undefined && variableValue.length < minItems) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `Variable "${label}" (type array) length (${variableValue.length}) is less than \`minItems\` (${minItems}).`,
+      message: `${typedSubject(subject, "array", mutation)} must have at least ${minItems} items (\`minItems\`), but has ${variableValue.length}.`,
       path,
     });
   }
   if (maxItems !== undefined && variableValue.length > maxItems) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `Variable "${label}" (type array) length (${variableValue.length}) is greater than \`maxItems\` (${maxItems}).`,
+      message: `${typedSubject(subject, "array", mutation)} must have at most ${maxItems} items (\`maxItems\`), but has ${variableValue.length}.`,
       path,
     });
   }
@@ -428,7 +555,7 @@ function refineVariableValueArray(
         if (valueDeepEqual(variableValue[i], variableValue[j])) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Variable "${label}" (type array) has duplicate items at indices ${i} and ${j} but \`uniqueItems\` is true.`,
+            message: `${typedSubject(subject, "array", mutation)} has duplicate items at indices ${i} and ${j} but \`uniqueItems\` is true.`,
             path,
           });
           break;
@@ -448,13 +575,14 @@ function refineVariableValueArray(
         ctx,
         variableKey,
         schemasByKey,
+        childMutationValueContext(mutation, index),
       );
     });
   } else {
     if (!isArrayOfStrings(variableValue)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type array): when \`items\` is not set, array must contain only strings; found non-string element.`,
+        message: `${typedSubject(subject, "array", mutation)}: when \`items\` is not set, array must contain only strings; found non-string element.`,
         path,
       });
     }
@@ -465,7 +593,7 @@ function refineVariableValueArray(
     if (stringified.length > projectConfig.maxVariableArrayStringifiedLength) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" array is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableArrayStringifiedLength}`,
+        message: `${subject} array is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableArrayStringifiedLength}`,
         path,
       });
     }
@@ -489,24 +617,26 @@ function refineVariableValueObject(
   ctx: z.RefinementCtx,
   variableKey?: string,
   schemasByKey?: Record<string, Schema>,
+  mutation?: MutationValueContext,
 ): void {
-  const label = getVariableLabel(variableSchema, variableKey, path);
+  const subject = valueSubject(variableSchema, variableKey, path, mutation);
   const schemaProperties = variableSchema.properties;
   const additionalProperties = variableSchema.additionalProperties;
 
   if (schemaProperties && typeof schemaProperties === "object") {
-    const requiredKeys =
-      variableSchema.required && variableSchema.required.length > 0
-        ? variableSchema.required.filter((k) =>
-            Object.prototype.hasOwnProperty.call(schemaProperties, k),
-          )
-        : Object.keys(schemaProperties);
+    // As in JSON Schema, only keys listed in `required` must be present.
+    // Without the list every property is optional, matching generated types.
+    const requiredKeys = (variableSchema.required || []).filter((k) =>
+      Object.prototype.hasOwnProperty.call(schemaProperties, k),
+    );
 
     for (const key of requiredKeys) {
       if (!Object.prototype.hasOwnProperty.call(variableValue, key)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Missing required property "${key}" in variable "${label}"`,
+          message: mutation
+            ? `${subject} is missing required property "${key}".`
+            : `Missing required property "${key}" in variable "${getVariableLabel(variableSchema, variableKey, path)}"`,
           path: [...path, key],
         });
       }
@@ -523,11 +653,14 @@ function refineVariableValueObject(
           ctx,
           key,
           schemasByKey,
+          childMutationValueContext(mutation, key),
         );
       } else if (!propSchema) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Unknown property "${key}" in variable "${label}" (not in schema)`,
+          message: mutation
+            ? `${subject} has unknown property "${key}" (not in schema).`
+            : `Unknown property "${key}" in variable "${getVariableLabel(variableSchema, variableKey, path)}" (not in schema)`,
           path: [...path, key],
         });
       } else {
@@ -539,6 +672,7 @@ function refineVariableValueObject(
           ctx,
           key,
           schemasByKey,
+          childMutationValueContext(mutation, key),
         );
       }
     }
@@ -552,6 +686,7 @@ function refineVariableValueObject(
         ctx,
         key,
         schemasByKey,
+        childMutationValueContext(mutation, key),
       );
     }
   } else {
@@ -560,7 +695,7 @@ function refineVariableValueObject(
       if (!isFlatObjectValue(propValue)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Variable "${label}" is a flat object (no \`properties\` in schema); property "${key}" must be a primitive (string, number, boolean, or null), got: ${typeof propValue}`,
+          message: `${subject} is a flat object (no \`properties\` in schema); property "${key}" must be a primitive (string, number, boolean, or null), got: ${typeof propValue}`,
           path: [...path, key],
         });
       }
@@ -572,7 +707,7 @@ function refineVariableValueObject(
     if (stringified.length > projectConfig.maxVariableObjectStringifiedLength) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" object is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableObjectStringifiedLength}`,
+        message: `${subject} object is too long (${stringified.length} characters), max length is ${projectConfig.maxVariableObjectStringifiedLength}`,
         path,
       });
     }
@@ -593,15 +728,18 @@ export function superRefineVariableValue(
   ctx: z.RefinementCtx,
   variableKey?: string,
   schemasByKey?: Record<string, Schema>,
+  mutation?: MutationValueContext,
 ): void {
-  const label = getVariableLabel(variableSchema, variableKey, path);
+  const subject = valueSubject(variableSchema, variableKey, path, mutation);
 
   if (!variableSchema) {
     const variableName =
       path.length > 0 && typeof path[path.length - 1] === "string"
         ? String(path[path.length - 1])
         : "variable";
-    const message = `Variable "${variableName}" is used but not defined in variablesSchema. Define it under variablesSchema first, then use it here.`;
+    const message = mutation
+      ? `${subject} cannot be validated because its schema is not defined.`
+      : `Variable "${variableName}" is used but not defined in variablesSchema. Define it under variablesSchema first, then use it here.`;
 
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -616,7 +754,9 @@ export function superRefineVariableValue(
   if (variableSchema.schema && effectiveSchema === null) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `Schema "${variableSchema.schema}" could not be loaded for value validation.`,
+      message: mutation
+        ? `${subject} cannot be validated because schema "${variableSchema.schema}" could not be loaded.`
+        : `Schema "${variableSchema.schema}" could not be loaded for value validation.`,
       path,
     });
     return;
@@ -634,13 +774,13 @@ export function superRefineVariableValue(
     if (matchCount === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" must match exactly one of the \`oneOf\` schemas (got ${JSON.stringify(variableValue)}; matched none).`,
+        message: `${subject} must match exactly one of the \`oneOf\` schemas (got ${JSON.stringify(variableValue)}; matched none).`,
         path,
       });
     } else if (matchCount > 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" must match exactly one of the \`oneOf\` schemas (matched ${matchCount}).`,
+        message: `${subject} must match exactly one of the \`oneOf\` schemas (matched ${matchCount}).`,
         path,
       });
     }
@@ -652,11 +792,11 @@ export function superRefineVariableValue(
     if (!valueDeepEqual(variableValue, effectiveConst)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" must equal the constant value defined in schema (got ${JSON.stringify(variableValue)}).`,
+        message: `${subject} must equal the constant value defined in schema (got ${JSON.stringify(variableValue)}).`,
         path,
       });
     }
-    return;
+    if (!schemaUsesTimestampFormat(effectiveSchema, schemasByKey)) return;
   }
 
   const effectiveEnum = (effectiveSchema as { enum?: unknown[] }).enum;
@@ -665,18 +805,18 @@ export function superRefineVariableValue(
     if (!allowed) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" must be one of the allowed enum values (got ${JSON.stringify(variableValue)}).`,
+        message: `${subject} must be one of the allowed enum values (got ${JSON.stringify(variableValue)}).`,
         path,
       });
     }
-    return;
+    if (!schemaUsesTimestampFormat(effectiveSchema, schemasByKey)) return;
   }
 
   // Require a value (no undefined) for every variable usage
   if (variableValue === undefined) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `Variable "${label}" value is required (got undefined).`,
+      message: `${subject} is required.`,
       path,
     });
     return;
@@ -684,32 +824,46 @@ export function superRefineVariableValue(
 
   const expectedType = effectiveSchema.type;
   const gotType = typeOfValue(variableValue);
+  const receivedType =
+    gotType === "null" || gotType === "undefined"
+      ? gotType
+      : `${/^[aeiou]/.test(gotType) ? "an" : "a"} ${gotType}`;
 
   // string — only string allowed; schema minLength/maxLength/pattern applied when set
   if (expectedType === "string") {
     if (typeof variableValue !== "string") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type string) must be a string; got ${gotType}.`,
+        message: `${typedSubject(subject, "string", mutation)} must be a string, but got ${receivedType}.`,
         path,
       });
       return;
     }
 
     const strMinLen = (effectiveSchema as { minLength?: number }).minLength;
+    if (!valueMatchesFormat(effectiveSchema.format, variableValue)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          effectiveSchema.format === "date-time"
+            ? `${subject} is not a valid portable timestamp for format: date-time. Use YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm.`
+            : `${subject} is not valid for format: ${effectiveSchema.format}. ${formatValueMessage(effectiveSchema.format)}`,
+        path,
+      });
+    }
     const strMaxLen = (effectiveSchema as { maxLength?: number }).maxLength;
     const strPattern = (effectiveSchema as { pattern?: string }).pattern;
     if (strMinLen !== undefined && variableValue.length < strMinLen) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type string) length (${variableValue.length}) is less than \`minLength\` (${strMinLen}).`,
+        message: `${typedSubject(subject, "string", mutation)} must be at least ${strMinLen} characters long (\`minLength\`), but has ${variableValue.length}.`,
         path,
       });
     }
     if (strMaxLen !== undefined && variableValue.length > strMaxLen) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type string) length (${variableValue.length}) is greater than \`maxLength\` (${strMaxLen}).`,
+        message: `${typedSubject(subject, "string", mutation)} must be at most ${strMaxLen} characters long (\`maxLength\`), but has ${variableValue.length}.`,
         path,
       });
     }
@@ -718,7 +872,7 @@ export function superRefineVariableValue(
         if (!new RegExp(strPattern).test(variableValue)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Variable "${label}" (type string) does not match \`pattern\`.`,
+            message: `${typedSubject(subject, "string", mutation)} does not match \`pattern\`.`,
             path,
           });
         }
@@ -733,7 +887,7 @@ export function superRefineVariableValue(
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" value is too long (${variableValue.length} characters), max length is ${projectConfig.maxVariableStringLength}`,
+        message: `${subject} is ${variableValue.length} characters long, but the project allows at most ${projectConfig.maxVariableStringLength} (maxVariableStringLength).`,
         path,
       });
     }
@@ -746,7 +900,7 @@ export function superRefineVariableValue(
     if (typeof variableValue !== "number") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type integer) must be a number; got ${gotType}.`,
+        message: `${typedSubject(subject, "integer", mutation)} must be a number, but got ${receivedType}.`,
         path,
       });
       return;
@@ -754,7 +908,7 @@ export function superRefineVariableValue(
     if (!Number.isFinite(variableValue)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type integer) must be a finite number; got ${variableValue}.`,
+        message: `${typedSubject(subject, "integer", mutation)} must be a finite number, but got ${variableValue}.`,
         path,
       });
       return;
@@ -762,7 +916,7 @@ export function superRefineVariableValue(
     if (!Number.isInteger(variableValue)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type integer) must be an integer; got ${variableValue}.`,
+        message: `${typedSubject(subject, "integer", mutation)} must be an integer, but got ${variableValue}.`,
         path,
       });
       return;
@@ -772,26 +926,26 @@ export function superRefineVariableValue(
     if (intMin !== undefined && variableValue < intMin) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type integer) must be >= minimum (${intMin}); got ${variableValue}.`,
+        message: `${typedSubject(subject, "integer", mutation)} must be >= minimum (${intMin}), but got ${variableValue}.`,
         path,
       });
     }
     if (intMax !== undefined && variableValue > intMax) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type integer) must be <= maximum (${intMax}); got ${variableValue}.`,
+        message: `${typedSubject(subject, "integer", mutation)} must be <= maximum (${intMax}), but got ${variableValue}.`,
         path,
       });
     }
     return;
   }
 
-  // double — only finite number allowed
-  if (expectedType === "double") {
+  // number — only finite number allowed
+  if (expectedType === "number") {
     if (typeof variableValue !== "number") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type double) must be a number; got ${gotType}.`,
+        message: `${typedSubject(subject, "number", mutation)} must be a number, but got ${receivedType}.`,
         path,
       });
       return;
@@ -799,24 +953,24 @@ export function superRefineVariableValue(
     if (!Number.isFinite(variableValue)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type double) must be a finite number; got ${variableValue}.`,
+        message: `${typedSubject(subject, "number", mutation)} must be a finite number, but got ${variableValue}.`,
         path,
       });
       return;
     }
-    const doubleMin = (effectiveSchema as { minimum?: number }).minimum;
-    const doubleMax = (effectiveSchema as { maximum?: number }).maximum;
-    if (doubleMin !== undefined && variableValue < doubleMin) {
+    const numberMin = (effectiveSchema as { minimum?: number }).minimum;
+    const numberMax = (effectiveSchema as { maximum?: number }).maximum;
+    if (numberMin !== undefined && variableValue < numberMin) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type double) must be >= minimum (${doubleMin}); got ${variableValue}.`,
+        message: `${typedSubject(subject, "number", mutation)} must be >= minimum (${numberMin}), but got ${variableValue}.`,
         path,
       });
     }
-    if (doubleMax !== undefined && variableValue > doubleMax) {
+    if (numberMax !== undefined && variableValue > numberMax) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type double) must be <= maximum (${doubleMax}); got ${variableValue}.`,
+        message: `${typedSubject(subject, "number", mutation)} must be <= maximum (${numberMax}), but got ${variableValue}.`,
         path,
       });
     }
@@ -828,7 +982,7 @@ export function superRefineVariableValue(
     if (typeof variableValue !== "boolean") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type boolean) must be a boolean; got ${gotType}.`,
+        message: `${typedSubject(subject, "boolean", mutation)} must be a boolean, but got ${receivedType}.`,
         path,
       });
     }
@@ -840,7 +994,7 @@ export function superRefineVariableValue(
     if (!Array.isArray(variableValue)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type array) must be an array; got ${gotType}.`,
+        message: `${typedSubject(subject, "array", mutation)} must be an array, but got ${receivedType}.`,
         path,
       });
       return;
@@ -859,6 +1013,7 @@ export function superRefineVariableValue(
       ctx,
       variableKey,
       schemasByKey,
+      mutation,
     );
     return;
   }
@@ -872,7 +1027,7 @@ export function superRefineVariableValue(
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type object) must be a plain object; got ${gotType}.`,
+        message: `${typedSubject(subject, "object", mutation)} must be a plain object, but got ${receivedType}.`,
         path,
       });
       return;
@@ -889,6 +1044,7 @@ export function superRefineVariableValue(
       ctx,
       variableKey,
       schemasByKey,
+      mutation,
     );
     return;
   }
@@ -898,7 +1054,7 @@ export function superRefineVariableValue(
     if (typeof variableValue !== "string") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type json) must be a string (JSON string); got ${gotType}.`,
+        message: `${typedSubject(subject, "json", mutation)} must be a string (JSON string), but got ${receivedType}.`,
         path,
       });
       return;
@@ -910,7 +1066,7 @@ export function superRefineVariableValue(
         if (variableValue.length > projectConfig.maxVariableJSONStringifiedLength) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Variable "${label}" JSON is too long (${variableValue.length} characters), max length is ${projectConfig.maxVariableJSONStringifiedLength}`,
+            message: `${subject} JSON is too long (${variableValue.length} characters), max length is ${projectConfig.maxVariableJSONStringifiedLength}`,
             path,
           });
         }
@@ -919,7 +1075,7 @@ export function superRefineVariableValue(
     } catch (e) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Variable "${label}" (type json) must be a valid JSON string; parse failed.`,
+        message: `${typedSubject(subject, "json", mutation)} must be a valid JSON string; parse failed.`,
         path,
       });
     }
@@ -927,10 +1083,13 @@ export function superRefineVariableValue(
     return;
   }
 
+  // A removed type already reports its migration at `type`.
+  if (isRemovedSchemaType(expectedType)) return;
+
   // Unknown variable type — schema is invalid or unsupported
   ctx.addIssue({
     code: z.ZodIssueCode.custom,
-    message: `Variable "${label}" has unknown or unsupported type "${String(expectedType)}" in variablesSchema.`,
+    message: `${subject} has unknown or unsupported type "${String(expectedType)}" in variablesSchema.`,
     path,
   });
 }
@@ -948,7 +1107,14 @@ function refineVariableEntry(
   ctx: z.RefinementCtx,
   schemasByKey?: Record<string, Schema>,
 ): void {
-  if (isMutationKey(variableKey)) {
+  const variableSchema = variableSchemaByKey[variableKey];
+  if (!variableSchema && isMutationKey(variableKey)) {
+    try {
+      compileVariableMutation(variableKey, variableValue);
+    } catch (error) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: (error as Error).message, path });
+      return;
+    }
     const validation = validateMutationKey(
       variableKey,
       variableSchemaByKey as Record<string, Schema>,
@@ -969,13 +1135,17 @@ function refineVariableEntry(
         variableValue,
         path,
         ctx,
-        variableKey,
+        validation.rootKey,
         schemasByKey,
+        {
+          variableKey: validation.rootKey,
+          path: getMutationPath(variableKey).slice(validation.rootKey.length).replace(/^\./, ""),
+          operation: validation.operation,
+        },
       );
     }
     return;
   }
-  const variableSchema = variableSchemaByKey[variableKey];
   if (!variableSchema) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -995,6 +1165,70 @@ function refineVariableEntry(
   );
 }
 
+function refineResolvedVariableValues(
+  values: Record<string, unknown> | undefined,
+  variableSchemaByKey: Record<string, unknown>,
+  path: (string | number)[],
+  projectConfig: ProjectConfig,
+  ctx: z.RefinementCtx,
+  schemasByKey?: Record<string, Schema>,
+) {
+  const validValues: Record<string, unknown> = {};
+  const invalidRoots = new Set<string>();
+  const mutatedRoots = new Set<string>();
+  for (const [key, value] of Object.entries(values || {})) {
+    const root = rootVariableFromOverrideKey(key, variableSchemaByKey);
+    let invalid = false;
+    refineVariableEntry(
+      projectConfig,
+      variableSchemaByKey,
+      key,
+      value,
+      [...path, key],
+      {
+        ...ctx,
+        addIssue(issue) {
+          invalid = true;
+          ctx.addIssue(issue);
+        },
+      },
+      schemasByKey,
+    );
+    if (invalid) invalidRoots.add(root);
+    else validValues[key] = value;
+    if (key !== root) mutatedRoots.add(root);
+  }
+  // Do not resolve a partially valid assignment or cascade from an invalid parent.
+  for (const key of Object.keys(validValues)) {
+    if (invalidRoots.has(rootVariableFromOverrideKey(key, variableSchemaByKey))) {
+      delete validValues[key];
+    }
+  }
+  try {
+    const resolved = resolveMutationsForMultipleVariables(
+      variableSchemaByKey as Parameters<typeof resolveMutationsForMultipleVariables>[0],
+      validValues as Parameters<typeof resolveMutationsForMultipleVariables>[1],
+    );
+    for (const [key, value] of Object.entries(resolved || {})) {
+      // Direct values were validated above. Only mutations need a result check.
+      if (!mutatedRoots.has(key)) continue;
+      superRefineVariableValue(
+        projectConfig,
+        variableSchemaByKey[key] as Schema,
+        value,
+        [...path, key],
+        ctx,
+        key,
+        schemasByKey,
+      );
+    }
+    return resolved;
+  } catch (error) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: (error as Error).message, path });
+    return undefined;
+  }
+}
+
 function refineVariableOverrides({
   ctx,
   variableSchemaByKey,
@@ -1002,16 +1236,19 @@ function refineVariableOverrides({
   pathPrefix,
   projectConfig,
   schemasByKey,
+  baseValues,
 }: {
   ctx: z.RefinementCtx;
   variableSchemaByKey: Record<string, unknown>;
-  variableOverrides: Record<string, Array<{ value?: unknown; mutate?: Record<string, unknown> }>>;
+  variableOverrides: Record<string, Array<{ value?: unknown; mutate?: VariableMutations }>>;
   pathPrefix: (string | number)[];
   projectConfig: ProjectConfig;
   schemasByKey?: Record<string, Schema>;
+  baseValues?: ReturnType<typeof resolveMutationsForMultipleVariables>;
 }) {
   for (const variableKey of Object.keys(variableOverrides)) {
-    if (isMutationKey(variableKey)) {
+    const variableSchema = variableSchemaByKey[variableKey];
+    if (!variableSchema && isMutationKey(variableKey)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
@@ -1022,7 +1259,6 @@ function refineVariableOverrides({
       continue;
     }
 
-    const variableSchema = variableSchemaByKey[variableKey];
     if (!variableSchema) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1066,10 +1302,10 @@ function refineVariableOverrides({
       if (
         typeof overrideValue === "object" &&
         overrideValue !== null &&
-        !Array.isArray(overrideValue)
+        (!Array.isArray(overrideValue) || usesExplicitMutation)
       ) {
-        const pathMap = overrideValue as Record<string, unknown>;
-        const pathKeys = Object.keys(pathMap);
+        const pathEntries = mutationEntries(overrideValue as VariableMutations);
+        const pathKeys = pathEntries.map(([key]) => key);
         const hasStructuredObjectSchema =
           resolvedVariableSchema?.type === "object" &&
           (Boolean(resolvedVariableSchema.properties) ||
@@ -1080,33 +1316,50 @@ function refineVariableOverrides({
           (hasStructuredObjectSchema && pathKeys.length > 0);
 
         if (treatAsPathMap) {
-          for (const pathKey of pathKeys) {
-            const composedMutationKey = `${variableKey}.${pathKey}`;
+          let invalidOperand = false;
+          const operandContext: z.RefinementCtx = {
+            ...ctx,
+            addIssue(issue) {
+              invalidOperand = true;
+              ctx.addIssue(issue);
+            },
+          };
+          for (const [entryIndex, [pathKey, mutationValue]] of pathEntries.entries()) {
+            const mutationPath = [
+              ...valuePath,
+              ...mutationEntryPath(overrideValue as VariableMutations, entryIndex, pathKey),
+            ];
+            const validationRootKey = "variable";
+            const composedMutationKey = `${validationRootKey}${pathKey.startsWith("[") || pathKey.startsWith(":") ? "" : "."}${pathKey}`;
+            try {
+              compileVariableMutation(pathKey, mutationValue);
+            } catch (error) {
+              operandContext.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: (error as Error).message,
+                path: mutationPath,
+              });
+              continue;
+            }
             const validation = validateMutationKey(
               composedMutationKey,
-              variableSchemaByKey as Record<string, Schema>,
+              { [validationRootKey]: variableSchema as Schema },
               schemasByKey,
+              { variableKey, path: pathKey },
             );
 
             if (!validation.valid) {
-              ctx.addIssue({
+              operandContext.addIssue({
                 code: z.ZodIssueCode.custom,
                 message:
                   validation.error ??
                   `Invalid mutation path "${pathKey}" in variableOverride for "${variableKey}".`,
-                path: [...valuePath, pathKey],
+                path: mutationPath,
               });
               continue;
             }
 
             if (validation.operation === "remove") {
-              if (pathMap[pathKey] !== null) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message: `Mutation "${pathKey}:remove" must use \`null\` as value.`,
-                  path: [...valuePath, pathKey],
-                });
-              }
               continue;
             }
 
@@ -1125,12 +1378,46 @@ function refineVariableOverrides({
             superRefineVariableValue(
               projectConfig,
               valueSchema,
-              pathMap[pathKey],
-              [...valuePath, pathKey],
-              ctx,
-              pathKey,
+              mutationValue,
+              mutationPath,
+              operandContext,
+              variableKey,
+              schemasByKey,
+              { variableKey, path: getMutationPath(pathKey), operation: validation.operation },
+            );
+          }
+          if (invalidOperand) return;
+          try {
+            const resolved = resolveMutationsForSingleVariable(
+              variableSchemaByKey as Parameters<typeof resolveMutationsForSingleVariable>[0],
+              variableKey,
+              overrideValue as Parameters<typeof resolveMutationsForSingleVariable>[2],
+              baseValues?.[variableKey],
+              usesExplicitMutation,
+            );
+            superRefineVariableValue(
+              projectConfig,
+              variableSchema as Schema,
+              resolved,
+              valuePath,
+              withMutationResultPaths(
+                ctx,
+                override.mutate,
+                valuePath,
+                baseValues?.[variableKey] === undefined
+                  ? (variableSchema as Schema & { defaultValue?: VariableValue }).defaultValue
+                  : baseValues[variableKey],
+                variableKey,
+              ),
+              variableKey,
               schemasByKey,
             );
+          } catch (error) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: (error as Error).message,
+              path: valuePath,
+            });
           }
         } else {
           superRefineVariableValue(
@@ -1182,17 +1469,14 @@ function refineForce({
 
     // force[n].variables[key]
     if (f.variables) {
-      Object.keys(f.variables).forEach((variableKey) => {
-        refineVariableEntry(
-          projectConfig,
-          variableSchemaByKey,
-          variableKey,
-          f.variables[variableKey],
-          pathPrefix.concat([fN, "variables", variableKey]),
-          ctx,
-          schemasByKey,
-        );
-      });
+      refineResolvedVariableValues(
+        f.variables,
+        variableSchemaByKey,
+        [...pathPrefix, fN, "variables"],
+        projectConfig,
+        ctx,
+        schemasByKey,
+      );
     }
   });
 }
@@ -1208,27 +1492,21 @@ function refineRules({
   schemasByKey,
 }) {
   rules.forEach((rule, ruleN) => {
-    // rules[n].variables[key]
-    if (rule.variables) {
-      Object.keys(rule.variables).forEach((variableKey) => {
-        refineVariableEntry(
-          projectConfig,
-          variableSchemaByKey,
-          variableKey,
-          rule.variables[variableKey],
-          pathPrefix.concat([ruleN, "variables", variableKey]),
-          ctx,
-          schemasByKey,
-        );
-      });
-    }
-
     // rules[n].variableOverrides[key][].value (path-map or full value)
+    const baseValues = refineResolvedVariableValues(
+      rule.variables,
+      variableSchemaByKey,
+      [...pathPrefix, ruleN, "variables"],
+      projectConfig,
+      ctx,
+      schemasByKey,
+    );
     if (rule.variableOverrides) {
       refineVariableOverrides({
         ctx,
         variableSchemaByKey,
         variableOverrides: rule.variableOverrides,
+        baseValues,
         pathPrefix: [...pathPrefix, ruleN, "variableOverrides"],
         projectConfig,
         schemasByKey,
@@ -1310,8 +1588,9 @@ export function getFeatureZodSchema(
   availableSchemaKeys: string[] = [],
   schemasByKey: Record<string, Schema> = {},
   featuresByKey: Record<string, ParsedFeature> = {},
+  variablesByKey: Record<string, ParsedVariable> = {},
 ) {
-  const schemaZodSchema = getSchemaZodSchema(availableSchemaKeys);
+  const schemaZodSchema = getSchemaZodSchema(availableSchemaKeys, schemasByKey);
   const variableValueZodSchema = valueZodSchema;
   const variableValueOrNullZodSchema = z.union([valueZodSchema, z.null()]);
   const overridePathMapValueZodSchema = z.record(z.string(), variableValueOrNullZodSchema);
@@ -1322,71 +1601,22 @@ export function getFeatureZodSchema(
 
   const variationValueZodSchema = z.string().min(1);
 
-  const plainGroupSegment = refineWithMessage(
-    z.string(),
-    (value) => value === "*" || availableSegmentKeys.includes(value),
-    (value) => `Unknown segment key "${value}"`,
-  );
-
-  const andOrNotGroupSegment = z.union([
-    z
-      .object({
-        and: z.array(z.lazy(() => groupSegmentZodSchema)).min(1),
-      })
-      .strict(),
-    z
-      .object({
-        or: z.array(z.lazy(() => groupSegmentZodSchema)).min(1),
-      })
-      .strict(),
-    z
-      .object({
-        not: z.array(z.lazy(() => groupSegmentZodSchema)).min(1),
-      })
-      .strict(),
-  ]);
-
-  const groupSegmentZodSchema = z.union([andOrNotGroupSegment, plainGroupSegment]);
-
-  const groupSegmentsZodSchema = z.union([z.array(groupSegmentZodSchema), groupSegmentZodSchema]);
-  const requiredFeaturesZodSchema = getRequiredFeaturesZodSchema(
-    featuresByKey,
-    availableFeatureKeys,
-  ).optional();
+  conditionsZodSchema =
+    conditionsZodSchema.withEntities?.(featuresByKey, variablesByKey, availableSegmentKeys) ||
+    conditionsZodSchema;
   const featureVariableOverrideSchema = z
     .object({
       key: z.string().min(1).optional(),
       description: z.string().optional(),
       promotable: z.boolean().optional(),
       conditions: conditionsZodSchema.optional(),
-      segments: groupSegmentsZodSchema.optional(),
-      requiredFeatures: requiredFeaturesZodSchema,
+      ...removedConditionFields,
       value: overrideValueZodSchema.optional(),
-      mutate: overridePathMapValueZodSchema.optional(),
+      mutate: getMutationSchema(overridePathMapValueZodSchema).optional(),
     })
     .strict()
     .superRefine((override, ctx) => {
-      if (
-        typeof override.conditions === "undefined" &&
-        typeof override.segments === "undefined" &&
-        typeof override.requiredFeatures === "undefined"
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message:
-            "A variable override must define `conditions`, `segments`, or `requiredFeatures`.",
-          path: ["segments"],
-        });
-      }
-
-      if (typeof override.conditions !== "undefined" && typeof override.segments !== "undefined") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "A variable override cannot define both `conditions` and `segments`.",
-          path: ["segments"],
-        });
-      }
-
+      refineRequiredConditions(override, ctx);
       const hasValue = Object.prototype.hasOwnProperty.call(override, "value");
       const hasMutate = Object.prototype.hasOwnProperty.call(override, "mutate");
       if (hasValue === hasMutate) {
@@ -1451,7 +1681,8 @@ export function getFeatureZodSchema(
           key: z.string(),
           description: z.string().optional(),
           promotable: z.boolean().optional(),
-          segments: groupSegmentsZodSchema,
+          conditions: conditionsZodSchema.optional(),
+          ...removedConditionFields,
           percentage: z.number().min(0).max(100),
 
           enabled: z.boolean().optional(),
@@ -1460,7 +1691,8 @@ export function getFeatureZodSchema(
           variableOverrides: z.record(z.string(), featureVariableOverridesSchema).optional(),
           variationWeights: z.record(z.string(), z.number().min(0).max(100)).optional(),
         })
-        .strict(),
+        .strict()
+        .superRefine(refineRequiredConditions),
     )
 
     // must have at least one rule
@@ -1475,13 +1707,19 @@ export function getFeatureZodSchema(
 
     // duplicate rules
     .superRefine((value, ctx) => {
-      const keys = value.map((v) => v.key);
-      if (keys.length !== new Set(keys).size) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Duplicate rule keys found: " + value.map((v) => v.key).join(", "),
-        });
-      }
+      const seen = new Set<string>();
+      const reported = new Set<string>();
+      value.forEach((rule, index) => {
+        if (seen.has(rule.key) && !reported.has(rule.key)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Duplicate rule key "${rule.key}". Each rule key must be unique.`,
+            path: [index, "key"],
+          });
+          reported.add(rule.key);
+        }
+        seen.add(rule.key);
+      });
     })
 
     // enforce catch-all rule
@@ -1490,48 +1728,35 @@ export function getFeatureZodSchema(
         return;
       }
 
-      const hasCatchAllAsLastRule = value[value.length - 1].segments === "*";
+      const hasCatchAllAsLastRule = value[value.length - 1]?.conditions === "*";
       if (!hasCatchAllAsLastRule) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Missing catch-all rule with \`segments: "*"\` at the end`,
+          message: `Missing catch-all rule with \`conditions: "*"\` at the end`,
         });
       }
     });
 
   const forceSchema = z
     .array(
-      z.union([
-        z
-          .object({
-            segments: groupSegmentsZodSchema,
-            enabled: z.boolean().optional(),
-            variation: variationValueZodSchema.optional(),
-            variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
-          })
-          .strict(),
-        z
-          .object({
-            conditions: conditionsZodSchema,
-            enabled: z.boolean().optional(),
-            variation: variationValueZodSchema.optional(),
-            variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
-          })
-          .strict(),
-      ]),
+      z
+        .object({
+          conditions: conditionsZodSchema.optional(),
+          ...removedConditionFields,
+          enabled: z.boolean().optional(),
+          variation: variationValueZodSchema.optional(),
+          variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
+        })
+        .strict()
+        .superRefine(refineRequiredConditions),
     )
     .optional();
 
   const attributeKeyZodSchema = refineWithMessage(
     z.string(),
     (value) => value === "*" || availableAttributeKeys.includes(value),
-    (value) => `Unknown attribute "${value}"`,
-  );
-
-  const featureKeyZodSchema = refineWithMessage(
-    z.string(),
-    (value) => availableFeatureKeys.includes(value),
-    (value) => `Unknown feature "${value}"`,
+    (value) => `Unknown attribute "${value}".${suggestKey(value, availableAttributeKeys)}`,
+    () => UNKNOWN_REFERENCE,
   );
 
   const environmentKeys = Array.isArray(projectConfig.environments)
@@ -1554,33 +1779,22 @@ export function getFeatureZodSchema(
           ),
         )
         .superRefine((value, ctx) => {
-          if (value.length !== new Set(value).size) {
+          const duplicates = value.filter((tag, index) => value.indexOf(tag) !== index);
+          for (const tag of new Set(duplicates)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              message: "Duplicate tags found: " + value.join(", "),
+              message: `Duplicate tag "${tag}".`,
+              params: { code: "duplicate_tag" },
+              path: [value.lastIndexOf(tag)],
             });
           }
         })
         .optional(),
 
-      required: z
-        .array(
-          z.union([
-            featureKeyZodSchema,
-            z
-              .object({
-                key: featureKeyZodSchema,
-                variation: z.string().optional(),
-              })
-              .strict(),
-          ]),
-        )
-        .optional(),
+      required: z.unknown().optional(),
 
-      requiredFeatures: getRequiredFeaturesZodSchema(
-        featuresByKey,
-        availableFeatureKeys,
-      ).optional(),
+      conditions: conditionsZodSchema.optional(),
+      ...removedConditionFields,
 
       bucketBy: z.union([
         attributeKeyZodSchema,
@@ -1617,11 +1831,12 @@ export function getFeatureZodSchema(
               oneOf: z.array(schemaZodSchema).min(1).optional(),
               minimum: z.number().optional(),
               maximum: z.number().optional(),
-              minLength: z.number().optional(),
-              maxLength: z.number().optional(),
+              minLength: countZodSchema.optional(),
+              maxLength: countZodSchema.optional(),
               pattern: z.string().optional(),
-              minItems: z.number().optional(),
-              maxItems: z.number().optional(),
+              format: schemaFormatZodSchema.optional(),
+              minItems: countZodSchema.optional(),
+              maxItems: countZodSchema.optional(),
               uniqueItems: z.boolean().optional(),
 
               description: z.string().optional(),
@@ -1632,6 +1847,10 @@ export function getFeatureZodSchema(
               useDefaultWhenDisabled: z.boolean().optional(),
             })
             .strict()
+            .superRefine((variableSchema, ctx) => refineRemovedSchemaType(variableSchema, ctx))
+            .superRefine((variableSchema, ctx) =>
+              refineSchemaFormat(variableSchema, [], ctx, schemasByKey),
+            )
             .superRefine((variableSchema, ctx) => {
               const hasRef = "schema" in variableSchema && variableSchema.schema != null;
               const hasInline =
@@ -1757,32 +1976,26 @@ export function getFeatureZodSchema(
     })
     .strict()
     .superRefine((value, ctx) => {
-      if (value.required && value.requiredFeatures) {
+      refineRemovedConditionFields(value, ctx);
+      if (Object.prototype.hasOwnProperty.call(value, "required")) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "A feature cannot define both `required` and `requiredFeatures`.",
-          path: ["requiredFeatures"],
+          message:
+            "Feature `required` has been removed. Use `conditions` and rename each `{ key: ... }` entry to `{ feature: ... }`. Schema property `required` is unchanged.",
+          path: ["required"],
         });
       }
 
       // disabledVariationValue
-      if (value.disabledVariationValue) {
-        if (!value.variations) {
+      if (value.disabledVariationValue !== undefined && value.variations?.length) {
+        const variationValues = value.variations.map((v) => v.value);
+
+        if (variationValues.indexOf(value.disabledVariationValue) === -1) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Disabled variation value is set, but no variations are present in feature.",
+            message: `Disabled variation value "${value.disabledVariationValue}" is not one of the defined variations: ${variationValues.join(", ")}`,
             path: ["disabledVariationValue"],
           });
-        } else {
-          const variationValues = value.variations.map((v) => v.value);
-
-          if (variationValues.indexOf(value.disabledVariationValue) === -1) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: `Disabled variation value "${value.disabledVariationValue}" is not one of the defined variations: ${variationValues.join(", ")}`,
-              path: ["disabledVariationValue"],
-            });
-          }
         }
       }
 
@@ -1897,27 +2110,21 @@ export function getFeatureZodSchema(
       // variations: validate variation.variables and variation.variableOverrides (each value against its variable schema)
       if (value.variations) {
         value.variations.forEach((variation, variationN) => {
-          // variations[n].variables[key]
-          if (variation.variables) {
-            for (const variableKey of Object.keys(variation.variables)) {
-              refineVariableEntry(
-                projectConfig,
-                variableSchemaByKey,
-                variableKey,
-                variation.variables[variableKey],
-                ["variations", variationN, "variables", variableKey],
-                ctx,
-                schemasByKey,
-              );
-            }
-          }
-
           // variations[n].variableOverrides[key][].value (path-map or full value)
+          const baseValues = refineResolvedVariableValues(
+            variation.variables,
+            variableSchemaByKey,
+            ["variations", variationN, "variables"],
+            projectConfig,
+            ctx,
+            schemasByKey,
+          );
           if (variation.variableOverrides) {
             refineVariableOverrides({
               ctx,
               variableSchemaByKey,
               variableOverrides: variation.variableOverrides,
+              baseValues,
               pathPrefix: ["variations", variationN, "variableOverrides"],
               projectConfig,
               schemasByKey,
@@ -1990,5 +2197,54 @@ export function getFeatureZodSchema(
       }
     });
 
-  return featureZodSchema;
+  const editorConditions = conditionsZodSchema.editorSchema || conditionsZodSchema;
+  const editorOverride = z
+    .object({
+      ...featureVariableOverrideSchema.shape,
+      conditions: editorConditions,
+    })
+    .omit({ segments: true, requiredFeatures: true, requiredVariables: true })
+    .strict();
+  const editorOverrides = z.record(z.string(), z.array(editorOverride));
+  const editorRule = z
+    .object({
+      ...rulesSchema.element.shape,
+      conditions: editorConditions,
+      variableOverrides: editorOverrides.optional(),
+    })
+    .omit({ segments: true, requiredFeatures: true, requiredVariables: true })
+    .strict();
+  const editorForce = z
+    .object({
+      conditions: editorConditions,
+      enabled: z.boolean().optional(),
+      variation: variationValueZodSchema.optional(),
+      variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
+    })
+    .strict();
+  const editorVariation = z
+    .object({
+      ...featureZodSchema.shape.variations.unwrap().element.shape,
+      variableOverrides: editorOverrides.optional(),
+    })
+    .strict();
+  const editorSchema = z
+    .object({
+      ...featureZodSchema.shape,
+      conditions: editorConditions.optional(),
+      variations: z.array(editorVariation).optional(),
+      rules: !Array.isArray(projectConfig.environments)
+        ? z.array(editorRule).min(1)
+        : z.partialRecord(
+            z.enum(environmentKeys as [string, ...string[]]),
+            z.array(editorRule).min(1),
+          ),
+      force: (!Array.isArray(projectConfig.environments)
+        ? z.array(editorForce)
+        : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), z.array(editorForce))
+      ).optional(),
+    })
+    .omit({ segments: true, requiredFeatures: true, requiredVariables: true })
+    .strict();
+  return Object.assign(featureZodSchema, { editorSchema });
 }

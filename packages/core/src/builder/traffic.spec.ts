@@ -23,7 +23,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 80,
         },
       ],
@@ -35,7 +35,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 80000,
         allocation: [
           {
@@ -65,7 +65,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 80,
         },
       ],
@@ -77,7 +77,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 80000,
         allocation: [
           // should be filtered out automatically
@@ -113,7 +113,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 100,
         },
       ],
@@ -148,7 +148,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 100000,
         allocation: [
           // should be filtered out automatically
@@ -184,7 +184,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 80,
         },
       ],
@@ -219,7 +219,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 80000,
         allocation: [
           // should be filtered out automatically
@@ -255,7 +255,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 80,
         },
       ],
@@ -290,7 +290,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 80000,
         allocation: [
           {
@@ -324,7 +324,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 80,
         },
       ],
@@ -336,7 +336,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 80000,
         allocation: [
           {
@@ -374,7 +374,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 100,
         },
       ],
@@ -386,7 +386,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 100000,
         allocation: [
           {
@@ -424,7 +424,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 90,
         },
       ],
@@ -463,7 +463,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 90000,
         allocation: [
           // existing
@@ -508,7 +508,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 70,
         },
       ],
@@ -547,7 +547,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 70000,
         allocation: [
           {
@@ -585,7 +585,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 90,
         },
       ],
@@ -624,7 +624,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 90000,
         allocation: [
           {
@@ -670,7 +670,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 100,
         },
       ],
@@ -709,7 +709,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 100000,
         allocation: [
           {
@@ -751,7 +751,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 100,
         },
       ],
@@ -806,7 +806,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 100000,
         allocation: [
           {
@@ -840,7 +840,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 80,
         },
       ],
@@ -895,7 +895,7 @@ describe("core: Traffic", function () {
     expect(result).toEqual([
       {
         key: "1",
-        segments: "*",
+        conditions: "*",
         percentage: 80000,
         allocation: [
           {
@@ -915,7 +915,7 @@ describe("core: Traffic", function () {
     const variableOverrides = {
       config: [
         {
-          segments: "mobile",
+          conditions: "mobile",
           value: {
             "layout.width": 900,
           },
@@ -933,7 +933,7 @@ describe("core: Traffic", function () {
       [
         {
           key: "1",
-          segments: "*",
+          conditions: "*",
           percentage: 100,
           variableOverrides,
         },

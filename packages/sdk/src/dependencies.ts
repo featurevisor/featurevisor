@@ -1,216 +1,174 @@
 import type {
+  Conditions,
   DatafileContent,
-  DatafileVariable,
-  Feature,
   FeatureKey,
-  GlobalVariableKey,
-  GroupSegment,
-  Required,
-  RequiredFeature,
   SegmentKey,
+  VariableKey,
 } from "@featurevisor/types";
 
 export interface DatafileDependencyIndex {
   segmentFeatures: Record<SegmentKey, FeatureKey[]>;
   featureDependents: Record<FeatureKey, FeatureKey[]>;
-  segmentVariables: Record<SegmentKey, GlobalVariableKey[]>;
-  featureVariables: Record<FeatureKey, GlobalVariableKey[]>;
+  segmentVariables: Record<SegmentKey, VariableKey[]>;
+  featureVariables: Record<FeatureKey, VariableKey[]>;
+  variableFeatures: Record<VariableKey, FeatureKey[]>;
+  variableVariables: Record<VariableKey, VariableKey[]>;
+  segmentSegments: Record<SegmentKey, SegmentKey[]>;
+  featureSegments: Record<FeatureKey, SegmentKey[]>;
+  variableSegments: Record<VariableKey, SegmentKey[]>;
 }
 
-function addDependent<TValue extends string>(
-  map: Record<string, TValue[]>,
-  dependency: string,
-  dependent: TValue,
+function lookup(): Record<string, string[]> {
+  return Object.create(null);
+}
+
+function add(map: Record<string, string[]>, dependency: string, dependent: string) {
+  const values = map[dependency] || (map[dependency] = []);
+  // An entity is visited uninterrupted. Only the last dependent can be repeated.
+  if (values[values.length - 1] !== dependent) values.push(dependent);
+}
+
+function visit(
+  conditions: Conditions | undefined,
+  dependent: string,
+  segmentMap: Record<string, string[]>,
+  featureMap: Record<string, string[]>,
+  variableMap: Record<string, string[]>,
 ) {
-  const dependents = map[dependency] || (map[dependency] = []);
-  if (dependents.indexOf(dependent) === -1) dependents.push(dependent);
-}
-
-function getRequiredFeatureKey(required: Required | RequiredFeature): FeatureKey {
-  if (typeof required === "string") return required;
-  return "feature" in required ? required.feature : required.key;
-}
-
-function addSegmentKeys(segments: GroupSegment | GroupSegment[] | string, result: Set<SegmentKey>) {
-  if (typeof segments === "string") {
-    if (segments === "*") return;
-
-    if (segments[0] === "{" || segments[0] === "[") {
+  if (!conditions || conditions === "*") return;
+  if (typeof conditions === "string") {
+    if (/^\s*[{[\"]/.test(conditions)) {
       try {
-        addSegmentKeys(JSON.parse(segments), result);
+        visit(JSON.parse(conditions), dependent, segmentMap, featureMap, variableMap);
       } catch {
-        // Invalid generated datafiles are rejected by project linting. Avoid
-        // treating malformed serialized expressions as segment keys here.
+        // The owning getter reports malformed selectors on first read.
       }
       return;
     }
-
-    result.add(segments);
+    add(segmentMap, conditions, dependent);
     return;
   }
-
-  if (Array.isArray(segments)) {
-    for (const segment of segments) addSegmentKeys(segment, result);
-    return;
-  }
-
-  if (segments && typeof segments === "object") {
-    if ("and" in segments) addSegmentKeys(segments.and, result);
-    if ("or" in segments) addSegmentKeys(segments.or, result);
-    if ("not" in segments) addSegmentKeys(segments.not, result);
-  }
-}
-
-function getFeatureSegmentKeys(feature: Feature): Set<SegmentKey> {
-  const result = new Set<SegmentKey>();
-
-  for (const traffic of feature.traffic) {
-    addSegmentKeys(traffic.segments, result);
-
-    const trafficVariableOverrides = traffic.variableOverrides || {};
-    for (const variableKey of Object.keys(trafficVariableOverrides)) {
-      const overrides = trafficVariableOverrides[variableKey];
-      for (const override of overrides) {
-        if (override.segments) addSegmentKeys(override.segments, result);
-      }
-    }
-  }
-
-  for (const force of feature.force || []) {
-    if (force.segments) addSegmentKeys(force.segments, result);
-  }
-
-  for (const variation of feature.variations || []) {
-    const variationVariableOverrides = variation.variableOverrides || {};
-    for (const variableKey of Object.keys(variationVariableOverrides)) {
-      const overrides = variationVariableOverrides[variableKey];
-      for (const override of overrides) {
-        if (override.segments) addSegmentKeys(override.segments, result);
-      }
-    }
-  }
-
-  return result;
-}
-
-function indexFeature(index: DatafileDependencyIndex, featureKey: FeatureKey, feature: Feature) {
-  for (const segmentKey of getFeatureSegmentKeys(feature)) {
-    addDependent(index.segmentFeatures, segmentKey, featureKey);
-  }
-
-  if (feature.requiredFeatures) {
-    for (const required of feature.requiredFeatures) {
-      addDependent(index.featureDependents, getRequiredFeatureKey(required), featureKey);
-    }
-  } else {
-    for (const required of feature.required || []) {
-      addDependent(index.featureDependents, getRequiredFeatureKey(required), featureKey);
-    }
-  }
-
-  for (const traffic of feature.traffic) {
-    const variableOverrides = traffic.variableOverrides || {};
-    for (const variableKey of Object.keys(variableOverrides)) {
-      const overrides = variableOverrides[variableKey];
-      for (const override of overrides) {
-        const requirements = override.requiredFeatures;
-        if (!requirements) continue;
-        for (const required of Array.isArray(requirements) ? requirements : [requirements]) {
-          addDependent(index.featureDependents, getRequiredFeatureKey(required), featureKey);
-        }
-      }
-    }
-  }
-
-  for (const variation of feature.variations || []) {
-    const variableOverrides = variation.variableOverrides || {};
-    for (const variableKey of Object.keys(variableOverrides)) {
-      const overrides = variableOverrides[variableKey];
-      for (const override of overrides) {
-        const requirements = override.requiredFeatures;
-        if (!requirements) continue;
-        for (const required of Array.isArray(requirements) ? requirements : [requirements]) {
-          addDependent(index.featureDependents, getRequiredFeatureKey(required), featureKey);
-        }
-      }
-    }
+  if (typeof conditions !== "object") return;
+  if ("variable" in conditions) {
+    add(
+      conditions.feature === undefined ? variableMap : featureMap,
+      conditions.feature === undefined ? conditions.variable : conditions.feature,
+      dependent,
+    );
+  } else if ("feature" in conditions) add(featureMap, conditions.feature, dependent);
+  else if (!("attribute" in conditions)) {
+    const children = Array.isArray(conditions)
+      ? conditions
+      : "and" in conditions
+        ? conditions.and
+        : "or" in conditions
+          ? conditions.or
+          : conditions.not;
+    if (Array.isArray(children))
+      for (const child of children) visit(child, dependent, segmentMap, featureMap, variableMap);
   }
 }
 
-function indexVariable(
-  index: DatafileDependencyIndex,
-  variableKey: GlobalVariableKey,
-  variable: DatafileVariable,
-) {
-  for (const required of variable.requiredFeatures || []) {
-    addDependent(index.featureVariables, getRequiredFeatureKey(required), variableKey);
-  }
-
-  for (const override of variable.overrides || []) {
-    if (override.segments) {
-      const segmentKeys = new Set<SegmentKey>();
-      addSegmentKeys(override.segments, segmentKeys);
-      for (const segmentKey of segmentKeys) {
-        addDependent(index.segmentVariables, segmentKey, variableKey);
-      }
-    }
-
-    for (const required of override.requiredFeatures || []) {
-      addDependent(index.featureVariables, getRequiredFeatureKey(required), variableKey);
-    }
-  }
-}
-
+/** Stored v3 definitions are already converted; v4 conditions may still be stringified. */
 export function createDatafileDependencyIndex(datafile: DatafileContent): DatafileDependencyIndex {
   const index: DatafileDependencyIndex = {
-    segmentFeatures: {},
-    featureDependents: {},
-    segmentVariables: {},
-    featureVariables: {},
+    segmentFeatures: lookup(),
+    featureDependents: lookup(),
+    segmentVariables: lookup(),
+    featureVariables: lookup(),
+    variableFeatures: lookup(),
+    variableVariables: lookup(),
+    segmentSegments: lookup(),
+    featureSegments: lookup(),
+    variableSegments: lookup(),
   };
-
-  for (const featureKey of Object.keys(datafile.features)) {
-    indexFeature(index, featureKey, datafile.features[featureKey]);
+  for (const key of Object.keys(datafile.segments))
+    visit(
+      datafile.segments[key].conditions,
+      key,
+      index.segmentSegments,
+      index.featureSegments,
+      index.variableSegments,
+    );
+  for (const key of Object.keys(datafile.features)) {
+    const feature = datafile.features[key];
+    const conditions = (entry: { conditions?: Conditions }) => {
+      visit(
+        entry.conditions,
+        key,
+        index.segmentFeatures,
+        index.featureDependents,
+        index.variableFeatures,
+      );
+    };
+    conditions(feature);
+    for (const force of feature.force || []) conditions(force);
+    for (const entry of [...(feature.traffic || []), ...(feature.variations || [])]) {
+      if ("conditions" in entry) conditions(entry);
+      for (const variable of Object.keys(entry.variableOverrides || {}))
+        for (const override of entry.variableOverrides![variable]) conditions(override);
+    }
   }
-
-  for (const variableKey of Object.keys(datafile.variables || {})) {
-    indexVariable(index, variableKey, datafile.variables![variableKey]);
+  for (const key of Object.keys(datafile.variables || {})) {
+    const variable = datafile.variables![key];
+    visit(
+      variable.conditions,
+      key,
+      index.segmentVariables,
+      index.featureVariables,
+      index.variableVariables,
+    );
+    if (typeof variable.compose === "string") add(index.variableVariables, variable.compose, key);
+    else
+      for (const entry of variable.compose || [])
+        add(
+          entry.feature === undefined ? index.variableVariables : index.featureVariables,
+          entry.feature === undefined ? entry.variable! : entry.feature,
+          key,
+        );
+    for (const override of variable.overrideProgram || variable.overrides || []) {
+      visit(
+        override.conditions,
+        key,
+        index.segmentVariables,
+        index.featureVariables,
+        index.variableVariables,
+      );
+    }
   }
-
   return index;
 }
 
 export function addDatafileDependencyChanges(
   features: FeatureKey[],
-  variables: GlobalVariableKey[],
+  variables: VariableKey[],
   changedSegments: SegmentKey[],
   index: DatafileDependencyIndex,
 ) {
-  const affectedFeatures = new Set(features);
-  const affectedVariables = new Set(variables);
-  const featureQueue = [...features];
-
-  const addFeature = (featureKey: FeatureKey) => {
-    if (affectedFeatures.has(featureKey)) return;
-    affectedFeatures.add(featureKey);
-    featureQueue.push(featureKey);
-  };
-
-  for (const segmentKey of changedSegments) {
-    for (const featureKey of index.segmentFeatures[segmentKey] || []) addFeature(featureKey);
-    for (const variableKey of index.segmentVariables[segmentKey] || []) {
-      affectedVariables.add(variableKey);
+  const affected = [new Set(features), new Set(variables), new Set(changedSegments)];
+  const queues = [[...features], [...variables], [...changedSegments]];
+  const cursors = [0, 0, 0];
+  const maps = [
+    [index.featureDependents, index.featureVariables, index.featureSegments],
+    [index.variableFeatures, index.variableVariables, index.variableSegments],
+    [index.segmentFeatures, index.segmentVariables, index.segmentSegments],
+  ];
+  // A changed segment can reveal feature and variable changes and vice versa.
+  for (;;) {
+    let advanced = false;
+    for (let source = 0; source < 3; source++) {
+      if (cursors[source] >= queues[source].length) continue;
+      advanced = true;
+      const key = queues[source][cursors[source]++];
+      for (let target = 0; target < 3; target++)
+        for (const dependent of maps[source][target][key] || []) {
+          if (affected[target].has(dependent)) continue;
+          affected[target].add(dependent);
+          queues[target].push(dependent);
+        }
     }
+    if (!advanced) break;
   }
-
-  for (let cursor = 0; cursor < featureQueue.length; cursor++) {
-    const featureKey = featureQueue[cursor];
-    for (const dependent of index.featureDependents[featureKey] || []) addFeature(dependent);
-    for (const variableKey of index.featureVariables[featureKey] || []) {
-      affectedVariables.add(variableKey);
-    }
-  }
-
-  features.splice(0, features.length, ...affectedFeatures);
-  variables.splice(0, variables.length, ...affectedVariables);
+  features.splice(0, features.length, ...affected[0]);
+  variables.splice(0, variables.length, ...affected[1]);
 }

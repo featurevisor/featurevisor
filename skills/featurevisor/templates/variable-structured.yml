@@ -1,0 +1,36 @@
+description: Checkout settings
+
+type: object
+
+properties:
+  currency:
+    type: string
+  paymentMethods:
+    type: array
+    items:
+      type: string
+
+defaultValue:
+  currency: EUR
+  paymentMethods: [card]
+
+overrides:
+  # mutate changes paths and keeps the rest of the value
+  - key: netherlands
+    conditions:
+      - attribute: country
+        operator: equals
+        value: nl
+    mutate:
+      paymentMethods: [ideal, paypal]
+
+    # A child is checked only after its parent matches,
+    # and starts from the parent's value.
+    overrides:
+      - key: amsterdam
+        conditions:
+          - attribute: city
+            operator: equals
+            value: amsterdam
+        mutate:
+          "paymentMethods:appendUnique": cash

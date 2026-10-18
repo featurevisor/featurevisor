@@ -40,7 +40,7 @@ type ExpectedType = "boolean" | "string" | "number" | "object";
 const errorReasons = new Set(["feature_not_found", "variable_not_found", "no_variations", "error"]);
 
 const targetingReasons = new Set([
-  "required",
+  "variable_composed",
   "forced",
   "sticky",
   "rule",
@@ -60,7 +60,13 @@ function normalizeContextValue(value: unknown): unknown {
   if (value && typeof value === "object") {
     const result: Record<string, unknown> = {};
     Object.keys(value).forEach((key) => {
-      result[key] = normalizeContextValue((value as Record<string, unknown>)[key]);
+      // JSON keys are data, including the legacy prototype setter name.
+      Object.defineProperty(result, key, {
+        value: normalizeContextValue((value as Record<string, unknown>)[key]),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
     });
     return result;
   }
@@ -70,22 +76,30 @@ function normalizeContextValue(value: unknown): unknown {
 
 function asContext(context: EvaluationContext, targetingKeyField: string): Context {
   const result = normalizeContextValue(context) as Context;
-  if (context.targetingKey) {
-    result[targetingKeyField] = context.targetingKey;
+  if (
+    Object.prototype.hasOwnProperty.call(context, "targetingKey") &&
+    (typeof context.targetingKey === "string" ||
+      (typeof context.targetingKey === "number" && Number.isFinite(context.targetingKey)))
+  ) {
+    Object.defineProperty(result, targetingKeyField, {
+      value: context.targetingKey,
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
   }
   return result;
 }
 
 function reasonFor(evaluation: Evaluation): string {
-  if (errorReasons.has(evaluation.reason)) return StandardResolutionReasons.ERROR;
-  if (targetingReasons.has(evaluation.reason)) return StandardResolutionReasons.TARGETING_MATCH;
-  if (evaluation.reason === "allocated") return StandardResolutionReasons.SPLIT;
-  if (evaluation.reason === "required_features_unmet") return StandardResolutionReasons.DISABLED;
-  if (
-    evaluation.reason === "disabled" ||
-    evaluation.reason === "variation_disabled" ||
-    evaluation.reason === "variable_disabled"
-  ) {
+  const reason: string = evaluation.reason;
+  if (errorReasons.has(reason)) return StandardResolutionReasons.ERROR;
+  if (targetingReasons.has(reason)) return StandardResolutionReasons.TARGETING_MATCH;
+  if (reason === "allocated") return StandardResolutionReasons.SPLIT;
+  if (reason === "conditions_unmet") {
+    return StandardResolutionReasons.DISABLED;
+  }
+  if (reason === "disabled" || reason === "variation_disabled" || reason === "variable_disabled") {
     return StandardResolutionReasons.DISABLED;
   }
   return StandardResolutionReasons.DEFAULT;
@@ -148,6 +162,7 @@ export class FeaturevisorProvider {
   private readonly onTrack?: FeaturevisorProviderTrackingHandler;
   private readonly ownsFeaturevisor: boolean;
   private datafileError?: string;
+  private readonly unsubscribe: Array<() => void>;
 
   constructor(options: FeaturevisorProviderOptions = {}) {
     const {
@@ -159,20 +174,6 @@ export class FeaturevisorProvider {
       onTrack,
       ...featurevisorOptions
     } = options;
-    this.ownsFeaturevisor = !featurevisor;
-    if (featurevisor) {
-      this.featurevisor = featurevisor;
-    } else {
-      const onDiagnostic = featurevisorOptions.onDiagnostic;
-      this.featurevisor = createFeaturevisor({
-        ...featurevisorOptions,
-        onDiagnostic: (diagnostic) => {
-          if (diagnostic.code === "invalid_datafile") this.datafileError = diagnostic.message;
-          if (diagnostic.code === "datafile_set") this.datafileError = undefined;
-          onDiagnostic?.(diagnostic);
-        },
-      });
-    }
     this.targetingKeyField = targetingKeyField || "userId";
     this.keySeparator = keySeparator || ":";
     this.variationKey = variationKey || "variation";
@@ -180,7 +181,34 @@ export class FeaturevisorProvider {
     if (this.globalVariablePrefix.indexOf(this.keySeparator) !== -1) {
       throw new Error("globalVariablePrefix cannot contain keySeparator");
     }
+    this.ownsFeaturevisor = !featurevisor;
+    if (featurevisor) {
+      this.featurevisor = featurevisor;
+    } else {
+      this.featurevisor = createFeaturevisor({
+        ...featurevisorOptions,
+        // Attach health listeners before accepting the initial datafile. Module
+        // setup still runs before that datafile, as in ordinary SDK creation.
+        datafile: undefined,
+        onDiagnostic: featurevisorOptions.onDiagnostic || (() => {}),
+      });
+    }
     this.onTrack = onTrack;
+    this.unsubscribe = [
+      this.featurevisor.on("error", ({ diagnostic }) => {
+        if (diagnostic.code === "invalid_datafile") this.datafileError = diagnostic.message;
+      }),
+      this.featurevisor.on("datafile_set", () => {
+        this.datafileError = undefined;
+      }),
+    ];
+    if (this.ownsFeaturevisor && featurevisorOptions.datafile !== undefined) {
+      this.featurevisor.setDatafile(featurevisorOptions.datafile, true);
+    }
+  }
+
+  getDatafileError(): string | undefined {
+    return this.datafileError;
   }
 
   resolve<T>(
@@ -208,7 +236,9 @@ export class FeaturevisorProvider {
 
     if (featureKey === this.globalVariablePrefix && selector) {
       evaluation = this.featurevisor.evaluateVariable(selector, featurevisorContext);
-      value = this.normalizeGlobalVariable(evaluation);
+      value = evaluation.variable?.compose
+        ? evaluation.variableValue
+        : this.normalizeVariable(evaluation.variableValue, evaluation.variable?.type);
     } else if (!selector) {
       if (expectedType !== "boolean") return this.typeMismatch(flagKey, defaultValue, expectedType);
       evaluation = this.featurevisor.evaluateFlag(featureKey, featurevisorContext);
@@ -252,6 +282,7 @@ export class FeaturevisorProvider {
   }
 
   async close(): Promise<void> {
+    for (const unsubscribe of this.unsubscribe.splice(0)) unsubscribe();
     if (this.ownsFeaturevisor) await this.featurevisor.close();
   }
 
@@ -264,10 +295,6 @@ export class FeaturevisorProvider {
       }
     }
     return value;
-  }
-
-  private normalizeGlobalVariable(evaluation: Evaluation): unknown {
-    return this.normalizeVariable(evaluation.variableValue, evaluation.variable?.type);
   }
 
   private typeMismatch<T>(

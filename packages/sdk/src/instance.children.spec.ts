@@ -70,9 +70,6 @@ describe("Featurevisor public API: child instances", () => {
     expect(parent.isEnabled("flag")).toBe(true);
     expect(offChild.isEnabled("flag")).toBe(false);
     expect(childWithoutSticky.isEnabled("flag")).toBe(true);
-    expect(offChild.isEnabled("flag", {}, { sticky: { flag: { enabled: true } } } as any)).toBe(
-      false,
-    );
     expect(offChild.isEnabled("flag")).toBe(false);
   });
 
@@ -94,18 +91,6 @@ describe("Featurevisor public API: child instances", () => {
       flag: child.isEnabled("flag"),
       setting: child.getVariable("setting"),
     }).toEqual(testCase.expectedChildWithoutStickyOptions);
-  });
-
-  it("prefers child stickyFeatures over the deprecated sticky option", () => {
-    const child = createFeaturevisor({ logLevel: "fatal" }).spawn(
-      {},
-      {
-        stickyFeatures: { flag: { enabled: true } },
-        sticky: { flag: { enabled: false } },
-      },
-    );
-
-    expect(child.isEnabled("flag")).toBe(true);
   });
 
   it("emits child sticky feature events with merge and replacement semantics", () => {
@@ -188,16 +173,13 @@ describe("Featurevisor public API: child instances", () => {
     expect(child.getVariable("experiment", "greeting")).toBe("Welcome");
     expect(child.getVariableString("experiment", "greeting")).toBe("Welcome");
     expect(child.getVariableInteger("experiment", "count")).toBe(2);
-    expect(child.getVariableDouble("experiment", "ratio")).toBe(2.5);
+    expect(child.getVariableNumber("experiment", "ratio")).toBe(2.5);
     expect(child.getVariableBoolean("experiment", "enabledCopy")).toBe(true);
     expect(child.getVariableArray("experiment", "items")).toEqual(["default"]);
     expect(child.getVariableObject("experiment", "config")).toEqual({ source: "default" });
     expect(child.getVariableJSON("experiment", "jsonConfig")).toEqual({ source: "json" });
     expect(child.getFeatureEvaluations({}, ["experiment"]).experiment).toEqual(
       expect.objectContaining({ enabled: true, variation: "treatment" }),
-    );
-    expect(child.getAllEvaluations({}, ["experiment"])).toEqual(
-      child.getFeatureEvaluations({}, ["experiment"]),
     );
   });
 
@@ -238,7 +220,7 @@ describe("Featurevisor public API: child instances", () => {
     expect(child.getVariableString("message")).toBe("Hallo");
     expect(child.getVariableBoolean("enabled")).toBe(true);
     expect(child.getVariableInteger("count")).toBe(2);
-    expect(child.getVariableDouble("ratio")).toBe(2.5);
+    expect(child.getVariableNumber("ratio")).toBe(2.5);
     expect(child.getVariableArray("items")).toEqual(["one", "two"]);
     expect(child.getVariableObject("config")).toEqual({ colour: "blue" });
     expect(child.getVariableJSON("json")).toEqual({ colour: "green" });

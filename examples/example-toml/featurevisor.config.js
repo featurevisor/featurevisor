@@ -8,7 +8,13 @@ module.exports = {
   parser: {
     extension: "toml",
     parse: (content) =>
-      require("toml").parse(content),
+      require("smol-toml").parse(
+        content,
+      ),
+    stringify: (content) =>
+      require("smol-toml").stringify(
+        content,
+      ),
   },
   prettyState: true,
 };

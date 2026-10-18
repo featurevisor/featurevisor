@@ -1,4 +1,5 @@
-description: <Human-readable description of who this segment targets>
+description: <Who this segment targets>
+
 conditions:
   - attribute: country
     operator: equals

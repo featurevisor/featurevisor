@@ -1,7 +1,8 @@
 {
   "name": "@featurevisor/vue",
+  "sideEffects": false,
   "version": "3.8.0",
-  "description": "Vue.js package for Featurevisor",
+  "description": "Vue functions for Featurevisor flags, variations and configuration",
   "main": "cjs/index.js",
   "module": "esm/index.js",
   "types": "cjs/index.d.ts",
@@ -43,6 +44,7 @@
     "vue"
   ],
   "repository": {
+    "directory": "packages/vue",
     "type": "git",
     "url": "https://github.com/featurevisor/featurevisor.git"
   },
@@ -66,6 +68,6 @@
     "@vue/test-utils": "^2.4.11",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
-    "vue": "^3.5.38"
+    "vue": "^3.5.44"
   }
 }

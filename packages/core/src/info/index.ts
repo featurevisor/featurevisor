@@ -70,10 +70,9 @@ export async function showProjectInfo(deps: Dependencies) {
   const attributes = await datasource.listAttributes();
   const segments = await datasource.listSegments();
   const features = await datasource.listFeatures();
-  const groups = await datasource.listGroups();
   const schemas = await datasource.listSchemas();
   const targets = await datasource.listTargets();
-  const globalVariables = await datasource.listVariables();
+  const variables = await datasource.listVariables();
 
   let variablesCount = 0;
   for (const featureKey of features) {
@@ -87,9 +86,8 @@ export async function showProjectInfo(deps: Dependencies) {
   printInfoLine("Total attributes", attributes.length);
   printInfoLine("Total segments", segments.length);
   printInfoLine("Total features", features.length);
-  printInfoLine("Total Variables", globalVariables.length);
+  printInfoLine("Total Variables", variables.length);
   printInfoLine("Total Variables (in features)", variablesCount);
-  printInfoLine("Total groups", groups.length);
   printInfoLine("Total schemas", schemas.length);
   printInfoLine("Total targets", targets.length);
 
@@ -113,6 +111,17 @@ export async function showProjectInfo(deps: Dependencies) {
   }
 
   printInfoLine("Total assertions", assertionsCount);
+
+  const scenarios = await datasource.listScenarios();
+  printInfoLine("Total scenario specs", scenarios.length);
+
+  let scenarioCasesCount = 0;
+  for (const key of scenarios) {
+    const scenario = await datasource.readScenario(key);
+    scenarioCasesCount += scenario.matrix ? getMatrixCombinations(scenario.matrix).length : 1;
+  }
+
+  printInfoLine("Total scenario cases", scenarioCasesCount);
 }
 
 export const infoPlugin: Plugin = {
@@ -134,7 +143,7 @@ export const infoPlugin: Plugin = {
   examples: [
     {
       command: "info",
-      description: "show various stats for the project",
+      description: "Show project statistics",
     },
   ],
 };

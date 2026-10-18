@@ -1,0 +1,5 @@
+description: The Netherlands
+conditions:
+  - attribute: country
+    operator: equals
+    value: nl

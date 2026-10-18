@@ -23,12 +23,12 @@ variations:
     variableOverrides:
       theme:
         - value: dark
-          segments: premiumUsers
+          conditions: premiumUsers
         - value: auto
-          segments: chromeUsers
+          conditions: chromeUsers
       fontSize:
         - value: 16
-          segments: premiumUsers
+          conditions: premiumUsers
 
   - value: treatment
     weight: 50
@@ -38,37 +38,37 @@ variations:
     variableOverrides:
       theme:
         - value: light
-          segments: premiumUsers
+          conditions: premiumUsers
       fontSize:
         - value: 18
-          segments: premiumChromeUsers
+          conditions: premiumChromeUsers
 
 rules:
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: premium-chrome
-      segments: premiumChromeUsers
+      conditions: premiumChromeUsers
       percentage: 100
 
     - key: premium-only
-      segments: premiumUsers
+      conditions: premiumUsers
       percentage: 80
 
     - key: chrome-only
-      segments: chromeUsers
+      conditions: chromeUsers
       percentage: 60
 
     - key: everyone-else
-      segments: "*"
+      conditions: "*"
       percentage: 30
 
 force:
   production:
-    - segments: adminUsers
+    - conditions: adminUsers
       enabled: true
       variation: treatment
       variables:

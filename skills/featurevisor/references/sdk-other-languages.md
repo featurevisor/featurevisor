@@ -1,112 +1,92 @@
 # SDKs in other languages
 
-Full index: <https://featurevisor.com/docs/sdks>
+Full index: <https://featurevisor.com/docs/sdks/>
 
-Featurevisor SDKs exist for many runtimes. They all consume the **same datafiles**, expose the same concepts, and are held to a shared cross-SDK contract — so a user bucketed into `treatment` on the web gets `treatment` on the backend and on mobile.
+Every Featurevisor SDK reads the **same datafiles**, buckets identically and evaluates the same conditions, so a user in `treatment` on the web is in `treatment` on the backend and on mobile. The concepts in [sdk-javascript.md](sdk-javascript.md) (context, evaluation types, sticky values, child instances, datafile updates, modules, diagnostics) apply to every language. Only naming and packaging differ.
 
-For JavaScript/TypeScript specifics read [sdk-javascript.md](sdk-javascript.md) — the concepts there (context, evaluation types, sticky, child instances, datafile refresh, modules, diagnostics) transfer to every language; only syntax and packaging differ.
+| Language                  | Install                                                    | Docs                                         |
+| ------------------------- | ---------------------------------------------------------- | -------------------------------------------- |
+| JavaScript and TypeScript | `npm install @featurevisor/sdk@^4.0.0`                     | [sdk-javascript.md](sdk-javascript.md)       |
+| Go                        | `go get github.com/featurevisor/featurevisor-go/v4@v4.0.0` | <https://featurevisor.com/docs/sdks/go/>     |
+| Python                    | `pip install 'featurevisor>=4.0.0,<5.0.0'`                 | <https://featurevisor.com/docs/sdks/python/> |
+| PHP                       | `composer require featurevisor/featurevisor-php:^4.0.0`    | <https://featurevisor.com/docs/sdks/php/>    |
+| Ruby                      | `gem install featurevisor -v '~> 4.0'`                     | <https://featurevisor.com/docs/sdks/ruby/>   |
+| Java and Kotlin           | Maven or Gradle, from GitHub Packages                      | <https://featurevisor.com/docs/sdks/java/>   |
+| Swift                     | Swift Package Manager                                      | <https://featurevisor.com/docs/sdks/swift/>  |
+| Rust                      | `cargo add featurevisor@2.0.0`                             | <https://featurevisor.com/docs/sdks/rust/>   |
+| Elixir                    | Mix                                                        | <https://featurevisor.com/docs/sdks/elixir/> |
 
-| Platform                      | Docs                                                    |
-| ----------------------------- | ------------------------------------------------------- |
-| JavaScript / TypeScript       | <https://featurevisor.com/docs/sdks/javascript>         |
-| Node.js                       | <https://featurevisor.com/docs/sdks/nodejs>             |
-| Browser                       | <https://featurevisor.com/docs/sdks/browser>            |
-| React / React Native          | [sdk-react.md](sdk-react.md)                            |
-| Vue                           | [sdk-vue.md](sdk-vue.md)                                |
-| Go                            | <https://featurevisor.com/docs/sdks/go>                 |
-| Python                        | <https://featurevisor.com/docs/sdks/python>             |
-| Ruby                          | <https://featurevisor.com/docs/sdks/ruby>               |
-| Java                          | <https://featurevisor.com/docs/sdks/java>               |
-| Kotlin / Android              | <https://featurevisor.com/docs/sdks/kotlin>             |
-| Swift                         | <https://featurevisor.com/docs/sdks/swift>              |
-| PHP                           | <https://featurevisor.com/docs/sdks/php>                |
-| OpenFeature (multi-language)  | [openfeature.md](openfeature.md)                        |
+Major versions differ by language: Rust and Elixir start v4 support at 2.0.0, and Java at 5.0.0. The [compatibility matrix](https://featurevisor.com/docs/sdks/compatibility/) lists the first release of each with v4 support and with each later capability.
 
-Framework guides (Next.js, Express, Fastify, Astro, Nuxt): <https://featurevisor.com/docs/frameworks>
-
-**Don't guess an API you can't see.** When helping with a language this skill doesn't detail, fetch its docs page rather than transliterating JavaScript — factory names and idioms differ (v3 uses `createFeaturevisor` in JS/Go/Swift/Java, `create_featurevisor` in Python/Ruby, `Featurevisor::createFeaturevisor` in PHP). Upgrading an app from v2 SDK names: [upgrading-to-v3.md](upgrading-to-v3.md#other-languages).
-
-## Kotlin and Android
-
-**There is no separate Kotlin SDK. The Java SDK is the Kotlin SDK**, used through normal JVM interop. Don't go looking for a `featurevisor-kotlin` package.
-
-It ships via **GitHub Packages**, not Maven Central, so the repository has to be declared in `settings.gradle.kts` with credentials (a GitHub username plus a token carrying `read:packages`, kept in `~/.gradle/gradle.properties`, never in the repo). That authentication step is the usual reason a build fails to resolve `com.featurevisor:featurevisor-java`, so check it before debugging anything else.
-
-```kotlin
-implementation("com.featurevisor:featurevisor-java:3.0.0")
-```
-
-```kotlin
-val datafile = DatafileContent.fromJson(datafileJson)
-val f = Featurevisor.createFeaturevisor(
-    Featurevisor.FeaturevisorOptions().datafile(datafile),
-)
-
-val enabled: Boolean = f.isEnabled("my_feature", mapOf("userId" to "123"))
-val variation: String? = f.getVariation("my_feature")   // instance context when omitted
-```
-
-On Android: fetch and parse the datafile **off the main thread**, hold one instance for the owning lifecycle rather than per evaluation, and call `f.close()` when that lifecycle ends. The full API (typed variables, datafile updates, diagnostics, events, modules, sticky, child instances) is the Java SDK's, documented at <https://featurevisor.com/docs/sdks/java>. Example app: <https://github.com/featurevisor/featurevisor-example-android>.
-
-## What every SDK guarantees
-
-The monorepo keeps a machine-readable contract at [`conformance/sdk-v3.json`](https://github.com/featurevisor/featurevisor/blob/main/conformance/sdk-v3.json) that all v3 SDKs are verified against. The practically important guarantees:
-
-- **Identical bucketing** — same feature key + same `bucketBy` value ⇒ same bucket, in every language.
-- **Portable conditions** — the regex subset and ISO 8601 date format described in [operators.md](operators.md) are exactly what every SDK supports. This is *why* those authoring restrictions exist: a pattern that only works in JavaScript would silently diverge elsewhere.
-- **Same child-instance context model** — snapshot the parent keys present at spawn, inherit parent keys added later, child keys win ([sdk-javascript.md](sdk-javascript.md#child-instances-server-side)).
-- **Presence-based defaults** — `""`, `0`, `false`, and `null` are valid explicit defaults everywhere, never treated as "missing".
-- **Same diagnostics shape** — level, code, message, object-shaped details.
-
-When a user reports "it evaluates differently in our Go service than in the browser", the cause is nearly always **different context** or a **different datafile revision** — not the SDKs. Compare those two first.
+**Do not guess an API you cannot see.** Fetch the language's docs page rather than transliterating JavaScript. Factory names differ: `createFeaturevisor` in JavaScript and Swift, `CreateFeaturevisor` in Go, `Featurevisor.createFeaturevisor` in Java, `create_featurevisor` in Python and Rust, `Featurevisor.create_featurevisor` in Ruby and Elixir, and `Featurevisor::createFeaturevisor` in PHP.
 
 ## Global variables
 
-[Global variables](global-variables.md) live in the same datafile as features and evaluate identically in every v3 SDK. Only the **spelling of the call** differs, because the JavaScript API distinguishes a feature variable from a global one by argument count:
+The JavaScript API tells a global variable from a feature variable by the number of arguments. Other languages:
 
-| Language                              | Global variable read                             |
-| ------------------------------------- | ------------------------------------------------ |
-| JavaScript/TypeScript, Java, Swift    | `getVariable(variableKey, context)` (overloaded) |
-| Python, Ruby, PHP                     | `get_variable` / `getVariable` with the shorter argument list, dispatched at runtime |
-| Go, Rust, Elixir                      | `GetGlobalVariable` / `get_global_variable`      |
+| Language                | Global variable read                                           |
+| ----------------------- | -------------------------------------------------------------- |
+| JavaScript, Java, Swift | `getVariable(variableKey, context)`, overloaded                |
+| Python, Ruby, PHP       | `get_variable` or `getVariable` with the shorter argument list |
+| Go, Rust, Elixir        | `GetGlobalVariable` or `get_global_variable`                   |
 
-Typed accessors follow the same rule: `getVariableString(key, context)` in the first two groups, `GetGlobalVariableString` / `get_global_variable_string` in the third. Listing works the same way, with `getVariableKeys()` (no feature key) returning global variable keys and `getVariableKeys(featureKey)` returning that feature's own.
+Typed getters follow the same split. `getVariableKeys()` without a feature key lists global variables.
 
-Two consequences worth stating to anyone porting code between services:
+## Number getters
 
-- **A global variable key and a feature key can collide** only if the project allows it (`allowFeatureAndGlobalVariableKeyCollisions`, see [configuration.md](configuration.md)). In the overload-based languages a collision makes the call ambiguous to a reader even when the compiler is happy, which is why the default is to forbid it.
-- **`requiredFeatures` gating is evaluated inside the SDK**, so an unmet requirement returns `disabledValue` and `reason: required_features_unmet` in every language, with no application-side branching.
+`number` variables are read with `getVariableNumber` in JavaScript and PHP, `get_variable_number` in Python, Ruby and Elixir (with `getVariableNumber` also in Python), and `getVariableDouble` or its language's spelling in Java, Kotlin, Swift, Go, Rust, Dart and .NET, named after the double they return.
 
-## Verifying your project against a specific SDK
+## Kotlin and Android
 
-Every non-JavaScript SDK ships a CLI that runs **your project's own test specs** through that language's implementation. This is the highest-value trick in this file: it proves the features you authored behave identically in the language your application actually uses.
+There is no separate Kotlin SDK: **the Java SDK is the Kotlin SDK**, used through JVM interop. It ships from **GitHub Packages**, which needs credentials even for public packages: a GitHub username and a token with `read:packages`, kept in `~/.gradle/gradle.properties`, never in the repository. A build failing to resolve `com.featurevisor:featurevisor-java` is almost always this.
+
+On Android, fetch and parse the datafile off the main thread, hold one instance for the owning lifecycle, and call `close()` when it ends. Example app: <https://github.com/featurevisor/featurevisor-example-android>.
+
+## Shared guarantees
+
+- **Identical bucketing**: the same feature key and `bucketBy` values give the same bucket in every language.
+- **Portable conditions**: the date, version and regular expression rules in [operators.md](operators.md) are exactly what every SDK supports. That is why lint enforces them.
+- **Same child context model**: a child snapshots the parent context at spawn time, inherits parent keys added later, and its own keys win.
+- **Presence based defaults**: `""`, `0`, `false` and `null` are valid explicit defaults everywhere.
+- **Every v4 SDK reads v3 datafiles**, so applications can upgrade before the project does.
+
+When "it evaluates differently in our Go service than in the browser", the cause is nearly always a **different context** or a **different datafile revision**. Compare those first.
+
+## Run the project's specs through another SDK
+
+Each non JavaScript SDK ships a CLI that runs the project's own specs through that language's engine. This proves the definitions behave the same in the language the application uses:
 
 ```bash
 # Python
-python -m featurevisor test
+python -m featurevisor test --project-directory-path=/path/to/featurevisor-project
 
-# Go
-go run cmd/main.go test --projectDirectoryPath="/absolute/path/to/project"
+# Go, after: go build -o featurevisor ./cmd
+./featurevisor test --project-directory-path=/path/to/featurevisor-project
 
 # Ruby
-bundle exec featurevisor test --projectDirectoryPath="/absolute/path/to/project"
+bundle exec featurevisor test --project-directory-path=/path/to/featurevisor-project
 
 # PHP
-vendor/bin/featurevisor test --projectDirectoryPath="/absolute/path/to/project"
+vendor/bin/featurevisor test --project-directory-path=/path/to/featurevisor-project
 
 # Swift
-swift run featurevisor test --projectDirectoryPath="/absolute/path/to/project"
+swift run featurevisor test --project-directory-path=/path/to/featurevisor-project
 
 # Java
-mvn exec:java -Dexec.mainClass="com.featurevisor.cli.CLI" \
-  -Dexec.args="test --projectDirectoryPath=/absolute/path/to/project"
+mvn -q -pl featurevisor-sdk exec:java -Dexec.mainClass=com.featurevisor.cli.CLI \
+  -Dexec.args="test --project-directory-path=/path/to/featurevisor-project"
+
+# Rust, after: cargo install featurevisor --version "^2.0" --features cli
+featurevisor test --project-directory-path=/path/to/featurevisor-project
+
+# Elixir, after: mix escript.build
+./featurevisor test --project-directory-path=/path/to/featurevisor-project
 ```
 
-All of them also support `benchmark` and `assess-distribution`, the familiar filters (`--keyPattern`, `--assertionPattern`, `--onlyFailures`, `--quiet`, `--showDatafile`), and repeatable `--target=<target>` selection with the same semantics as the Node.js CLI ([cli.md](cli.md)).
+They also accept `--key-pattern`, `--assertion-pattern`, `--only-failures`, `--quiet`, `--show-datafile` and repeatable `--target`, and provide `benchmark` and `assess-distribution`. Options are kebab case.
 
-Two things to remember before suggesting these:
+- They rely on the Node.js CLI: `npx featurevisor` must work in the project, which needs `@featurevisor/cli` 4 and Node.js 24 or later. Node.js lists specs, expands matrices and builds datafiles. The native SDK evaluates.
+- Point `--project-directory-path` at the Featurevisor project, not the application.
+- Checks and scenarios need a runner version that supports them: check the compatibility matrix.
 
-- They **rely on the Node.js CLI** (`npx featurevisor`) being available in the project: definitions, test specs, target discovery, and datafile generation always come from there. The language CLI supplies only the evaluation engine.
-- They run against the project directory, so point `--projectDirectoryPath` at the Featurevisor project repo, not the application repo.
-
-Suggest this when a team's production traffic is served by a non-JavaScript SDK, when someone suspects a cross-language discrepancy, or when a polyglot org wants CI proof that one project behaves the same everywhere.
+Suggest this when production traffic runs on a non JavaScript SDK, when someone suspects a cross language difference, or when a polyglot organization wants CI proof that one project behaves the same everywhere.

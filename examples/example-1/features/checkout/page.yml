@@ -22,12 +22,12 @@ variablesSchema:
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
 
   production:
     - key: "1"
-      segments: countries.netherlands
+      conditions: countries.netherlands
       percentage: 100
       variables:
         paymentMethods:
@@ -35,7 +35,7 @@ rules:
           - paypal
 
     - key: "2"
-      segments: countries.germany
+      conditions: countries.germany
       percentage: 100
       variables:
         paymentMethods:
@@ -43,11 +43,11 @@ rules:
           - paypal
 
     - key: "ch"
-      segments: countries.switzerland
+      conditions: countries.switzerland
       percentage: 0
 
     - key: "3"
-      segments: "*"
+      conditions: "*"
       percentage: 100
       variables:
         showPayments: true

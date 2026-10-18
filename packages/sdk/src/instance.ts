@@ -1,3 +1,4 @@
+import { mergeContext } from "./context.js";
 import type {
   Context,
   Feature,
@@ -11,15 +12,13 @@ import type {
   VariationValue,
   VariableKey,
   DatafileContent,
+  DatafileVariable,
   Traffic,
-  Allocation,
-  GroupSegment,
   ObjectValue,
   Condition,
-  VariableType,
-  RequiredFeature,
+  Conditions,
+  VariableCondition,
   StickyVariables,
-  GlobalVariableKey,
   EvaluatedVariables,
 } from "@featurevisor/types";
 
@@ -28,21 +27,17 @@ import type {
   FeaturevisorModuleApi,
   FeaturevisorModuleUnsubscribe,
 } from "./modules.js";
-import { evaluateWithModules } from "./evaluate.js";
+import { evaluateWithModules, beforeEvaluation, afterEvaluation } from "./evaluate.js";
 import type {
   Evaluation,
   EvaluateDependencies,
   ForceResult,
-  GlobalVariableEvaluateOptions,
+  VariableEvaluateOptions,
 } from "./evaluate.js";
 import { FeaturevisorChildInstance } from "./child.js";
+import { applyVariableOperations, copyVariableObject } from "./mutations.js";
 import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
-import {
-  allConditionsAreMatched,
-  allSegmentsAreMatched,
-  parseConditionsIfStringified,
-  parseSegmentsIfStringified,
-} from "./conditions.js";
+import { allConditionsAreMatched, valueIsMatched } from "./conditions.js";
 import type {
   FeaturevisorDiagnostic,
   FeaturevisorDiagnosticHandler,
@@ -60,6 +55,27 @@ import {
   createDatafileDependencyIndex,
   type DatafileDependencyIndex,
 } from "./dependencies.js";
+import { getValueByType, type VariableGetter } from "./variable.js";
+import { getStickyChangeKeys } from "./keys.js";
+import { matchGroup } from "./groups.js";
+import {
+  entityKinds,
+  invalidConditions,
+  normalizeDatafile,
+  normalizeEntity,
+  type DatafileEntity,
+} from "./normalize.js";
+import {
+  beginEvaluation,
+  endEvaluation,
+  inheritEvaluation,
+  evaluateDependency,
+  trackEvaluationState,
+  refreshEvaluationState,
+  type StickyState,
+  DependencyError,
+  evaluateSegment,
+} from "./session.js";
 
 const emptyDatafile: DatafileContent = {
   schemaVersion: "2",
@@ -68,6 +84,44 @@ const emptyDatafile: DatafileContent = {
   features: {},
   variables: {},
 };
+
+function hasOwn(value: object, key: string | number): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+/**
+ * Traverse compiled variable paths consistently in evaluations and CLI probes.
+ * @internal Shared with the CLI, not a supported application API.
+ */
+export function getRequiredVariableValueAtPath(
+  value: unknown,
+  path: string | (string | number)[],
+): unknown {
+  if (!Array.isArray(path)) throw new Error("Variable requirement path must be compiled");
+  for (const part of path) {
+    if (part === "__proto__" || part === "prototype" || part === "constructor")
+      throw new Error("Unsafe variable requirement path");
+    value =
+      value !== null &&
+      typeof value === "object" &&
+      (typeof part !== "number" || (Array.isArray(value) && Number.isInteger(part) && part >= 0)) &&
+      hasOwn(value, part)
+        ? (value as Record<string | number, unknown>)[part]
+        : undefined;
+  }
+  return value;
+}
+
+function createLookup<TValue>(): Record<string, TValue> {
+  return Object.create(null) as Record<string, TValue>;
+}
+
+function mergeLookup<TValue>(
+  previous: Record<string, TValue> | undefined,
+  next: Record<string, TValue>,
+): Record<string, TValue> {
+  return Object.assign(createLookup<TValue>(), previous, next);
+}
 
 function assertDatafileContent(datafile: unknown): asserts datafile is DatafileContent {
   if (
@@ -92,37 +146,37 @@ function mergeStoredDatafile(
     schemaVersion: incoming.schemaVersion,
     revision: incoming.revision,
     featurevisorVersion: incoming.featurevisorVersion,
-    segments: {
-      ...(existing.segments || {}),
-      ...(incoming.segments || {}),
-    },
-    features: {
-      ...(existing.features || {}),
-      ...(incoming.features || {}),
-    },
-    variables: {
-      ...(existing.variables || {}),
-      ...(incoming.variables || {}),
-    },
+    segments: mergeLookup(existing.segments, incoming.segments),
+    features: mergeLookup(existing.features, incoming.features),
+    variables: mergeLookup(existing.variables, incoming.variables || {}),
   };
 }
 
-function getStickyChangeDetails(
-  previousStickyFeatures: StickyFeatures = {},
-  newStickyFeatures: StickyFeatures = {},
-  replace: boolean,
-  previousStickyVariables: StickyVariables = {},
-  newStickyVariables: StickyVariables = {},
-) {
-  const allKeys = [...Object.keys(previousStickyFeatures), ...Object.keys(newStickyFeatures)];
+function isEmptyLookup(value: object): boolean {
+  for (const key in value) if (hasOwn(value, key)) return false;
+  return true;
+}
 
-  return {
-    features: allKeys.filter((element, index) => allKeys.indexOf(element) === index),
-    variables: [...Object.keys(previousStickyVariables), ...Object.keys(newStickyVariables)].filter(
-      (element, index, keys) => keys.indexOf(element) === index,
-    ),
-    replaced: replace,
-  };
+function getChangedEntityKeys(
+  previous: Record<string, { hash?: string }>,
+  next: Record<string, { hash?: string }>,
+): string[] {
+  if (isEmptyLookup(previous)) return Object.keys(next);
+  const keys: string[] = [];
+  for (const key of Object.keys(previous)) {
+    if (
+      !hasOwn(next, key) ||
+      !previous[key]?.hash ||
+      !next[key]?.hash ||
+      previous[key].hash !== next[key].hash
+    ) {
+      keys.push(key);
+    }
+  }
+  for (const key of Object.keys(next)) {
+    if (!hasOwn(previous, key)) keys.push(key);
+  }
+  return keys;
 }
 
 function getDatafileSetEventDetails(
@@ -131,59 +185,14 @@ function getDatafileSetEventDetails(
   replace = false,
 ) {
   const previousRevision = previousDatafile.revision;
-  const previousFeatureKeys = Object.keys(previousDatafile.features);
   const newRevision = newDatafile.revision;
-  const newFeatureKeys = Object.keys(newDatafile.features);
-  const features: FeatureKey[] = [];
-  const previousVariableKeys = Object.keys(previousDatafile.variables || {});
-  const newVariableKeys = Object.keys(newDatafile.variables || {});
-  const variables: GlobalVariableKey[] = [];
-
-  for (const previousFeatureKey of previousFeatureKeys) {
-    if (newFeatureKeys.indexOf(previousFeatureKey) === -1) {
-      features.push(previousFeatureKey);
-      continue;
-    }
-
-    if (
-      !previousDatafile.features[previousFeatureKey]?.hash ||
-      !newDatafile.features[previousFeatureKey]?.hash ||
-      previousDatafile.features[previousFeatureKey].hash !==
-        newDatafile.features[previousFeatureKey].hash
-    ) {
-      features.push(previousFeatureKey);
-    }
-  }
-
-  for (const newFeatureKey of newFeatureKeys) {
-    if (
-      previousFeatureKeys.indexOf(newFeatureKey) === -1 &&
-      features.indexOf(newFeatureKey) === -1
-    ) {
-      features.push(newFeatureKey);
-    }
-  }
-
-  for (const variableKey of previousVariableKeys) {
-    if (
-      !newDatafile.variables?.[variableKey] ||
-      !previousDatafile.variables?.[variableKey]?.hash ||
-      !newDatafile.variables[variableKey].hash ||
-      previousDatafile.variables?.[variableKey]?.hash !== newDatafile.variables[variableKey].hash
-    ) {
-      variables.push(variableKey);
-    }
-  }
-  for (const variableKey of newVariableKeys) {
-    if (previousVariableKeys.indexOf(variableKey) === -1) variables.push(variableKey);
-  }
 
   return {
     revision: newRevision,
     previousRevision,
     revisionChanged: previousRevision !== newRevision,
-    features,
-    variables,
+    features: getChangedEntityKeys(previousDatafile.features, newDatafile.features),
+    variables: getChangedEntityKeys(previousDatafile.variables || {}, newDatafile.variables || {}),
     replaced: replace,
   };
 }
@@ -201,31 +210,6 @@ function hasUnreportedKey(
   );
 }
 
-function getValueByType(value: VariableValue, fieldType: string | VariableType): VariableValue {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  switch (fieldType) {
-    case "string":
-      return typeof value === "string" ? value : null;
-    case "integer": {
-      return typeof value === "number" && Number.isInteger(value) ? value : null;
-    }
-    case "double": {
-      return typeof value === "number" && Number.isFinite(value) ? value : null;
-    }
-    case "boolean":
-      return typeof value === "boolean" ? value : null;
-    case "array":
-      return Array.isArray(value) ? value : null;
-    case "object":
-      return typeof value === "object" && !Array.isArray(value) ? value : null;
-    default:
-      return value;
-  }
-}
-
 export interface OverrideOptions {
   defaultVariationValue?: VariationValue;
   defaultVariableValue?: VariableValue;
@@ -233,14 +217,13 @@ export interface OverrideOptions {
 
 export interface SpawnOptions {
   stickyFeatures?: StickyFeatures;
-  /** @deprecated Use `stickyFeatures`. */
-  sticky?: StickyFeatures;
   stickyVariables?: StickyVariables;
 }
 
 interface InternalOverrideOptions extends OverrideOptions {
   __featurevisorChildStickyFeatures?: StickyFeatures;
   __featurevisorChildStickyVariables?: StickyVariables;
+  __featurevisorReadStickyState?: () => StickyState;
 }
 
 export interface FeaturevisorOptions {
@@ -249,8 +232,6 @@ export interface FeaturevisorOptions {
   logLevel?: FeaturevisorLogLevel;
   onDiagnostic?: FeaturevisorDiagnosticHandler;
   stickyFeatures?: StickyFeatures;
-  /** @deprecated Use `stickyFeatures`. */
-  sticky?: StickyFeatures;
   stickyVariables?: StickyVariables;
   modules?: FeaturevisorModule[];
 }
@@ -277,8 +258,11 @@ export class Featurevisor {
 
   // internally created
   private datafile: DatafileContent = emptyDatafile;
+  private normalized: Array<Record<string, DatafileEntity>> = [];
   private dependencyIndex?: DatafileDependencyIndex;
+  private evaluationGeneration = 0;
   private regexCache: Record<string, RegExp> = {};
+  private attributeConditions = new WeakMap<object, boolean>();
   private modules: FeaturevisorModule[] = [];
   private moduleDiagnosticSubscriptions: FeaturevisorModuleDiagnosticSubscription[] = [];
   private listeners: Listeners = {};
@@ -289,7 +273,7 @@ export class Featurevisor {
     this.context = options.context || {};
     this.logLevel = options.logLevel || "info";
     this.onDiagnostic = options.onDiagnostic;
-    this.stickyFeatures = options.stickyFeatures || options.sticky;
+    this.stickyFeatures = options.stickyFeatures;
     this.stickyVariables = options.stickyVariables;
 
     (options.modules || []).forEach((module) => {
@@ -312,38 +296,71 @@ export class Featurevisor {
     this.logLevel = level;
   }
 
-  setDatafile(datafile: DatafileContent | string, replace = false) {
+  setDatafile(datafile: DatafileContent | string, replace = false): boolean {
     if (this.closed) {
-      return;
+      return false;
     }
 
     try {
-      const resolvedDatafile = typeof datafile === "string" ? JSON.parse(datafile) : datafile;
-      assertDatafileContent(resolvedDatafile);
+      const incoming = typeof datafile === "string" ? JSON.parse(datafile) : datafile;
+      assertDatafileContent(incoming);
+      const diagnostics: FeaturevisorDiagnostic[] = [];
+      const resolvedDatafile =
+        incoming.schemaVersion === "2"
+          ? normalizeDatafile(incoming, (diagnostic) => diagnostics.push(diagnostic))
+          : incoming;
 
       const storedDatafile = replace
         ? resolvedDatafile
         : mergeStoredDatafile(this.datafile, resolvedDatafile);
       const details = getDatafileSetEventDetails(this.datafile, storedDatafile, replace);
-      const segmentKeys = Object.keys(
-        replace
-          ? { ...this.datafile.segments, ...storedDatafile.segments }
-          : resolvedDatafile.segments,
-      );
-      const changedSegments = segmentKeys.filter(
-        (segmentKey) =>
-          JSON.stringify(this.datafile.segments[segmentKey]) !==
-          JSON.stringify(storedDatafile.segments[segmentKey]),
-      );
+      const segmentKeys = replace
+        ? Object.keys(this.datafile.segments).concat(Object.keys(storedDatafile.segments))
+        : Object.keys(resolvedDatafile.segments);
+      // The first datafile reports every entity, so it needs no comparisons or
+      // dependency index. The index is built on demand by the next update.
+      const previousIsEmpty =
+        isEmptyLookup(this.datafile.features) &&
+        isEmptyLookup(this.datafile.variables || {}) &&
+        isEmptyLookup(this.datafile.segments);
+      const changedSegments = previousIsEmpty
+        ? segmentKeys
+        : segmentKeys.filter((segmentKey) => {
+            const previousSegment = hasOwn(this.datafile.segments, segmentKey)
+              ? this.datafile.segments[segmentKey]
+              : undefined;
+            const nextSegment = hasOwn(storedDatafile.segments, segmentKey)
+              ? storedDatafile.segments[segmentKey]
+              : undefined;
+            return JSON.stringify(previousSegment) !== JSON.stringify(nextSegment);
+          });
 
-      if (!replace) {
+      if (previousIsEmpty) {
+        this.dependencyIndex = undefined;
+      } else if (!replace) {
         const hasFeatureDefinitions = Object.keys(resolvedDatafile.features).length > 0;
         const hasVariableDefinitions = Object.keys(resolvedDatafile.variables || {}).length > 0;
+        const hasUnreportedDefinitions =
+          (hasFeatureDefinitions &&
+            hasUnreportedKey({}, resolvedDatafile.features, details.features)) ||
+          (hasVariableDefinitions &&
+            hasUnreportedKey({}, resolvedDatafile.variables || {}, details.variables));
 
-        if (details.features.length > 0 || changedSegments.length > 0) {
-          if (!this.dependencyIndex || hasFeatureDefinitions || hasVariableDefinitions) {
-            this.dependencyIndex = createDatafileDependencyIndex(storedDatafile);
+        if (
+          details.features.length > 0 ||
+          details.variables.length > 0 ||
+          changedSegments.length > 0
+        ) {
+          if (hasUnreportedDefinitions) {
+            addDatafileDependencyChanges(
+              details.features,
+              details.variables,
+              changedSegments,
+              this.dependencyIndex || createDatafileDependencyIndex(this.datafile),
+            );
           }
+          // Segment updates can change edges even without incoming getter definitions.
+          this.dependencyIndex = createDatafileDependencyIndex(storedDatafile);
           addDatafileDependencyChanges(
             details.features,
             details.variables,
@@ -353,7 +370,11 @@ export class Featurevisor {
         } else if (hasFeatureDefinitions || hasVariableDefinitions) {
           this.dependencyIndex = undefined;
         }
-      } else if (details.features.length > 0 || changedSegments.length > 0) {
+      } else if (
+        details.features.length > 0 ||
+        details.variables.length > 0 ||
+        changedSegments.length > 0
+      ) {
         if (
           hasUnreportedKey(this.datafile.features, storedDatafile.features, details.features) ||
           hasUnreportedKey(
@@ -383,8 +404,21 @@ export class Featurevisor {
         this.dependencyIndex = undefined;
       }
 
+      if (replace) {
+        this.normalized = [];
+      } else {
+        for (let kind = 0; kind < 3; kind++) {
+          for (const key of Object.keys(incoming[entityKinds[kind]] || {})) {
+            if (this.normalized[kind]) delete this.normalized[kind][key];
+          }
+        }
+      }
       this.datafile = storedDatafile;
+      this.evaluationGeneration++;
       this.regexCache = {};
+
+      // Report after storage so callbacks can read the newly accepted datafile.
+      for (const diagnostic of diagnostics) this.reportDiagnostic(diagnostic);
 
       this.reportDiagnostic({
         level: "info",
@@ -393,6 +427,7 @@ export class Featurevisor {
         details,
       });
       this.trigger("datafile_set", details);
+      return true;
     } catch (e) {
       this.reportDiagnostic({
         level: "error",
@@ -401,6 +436,7 @@ export class Featurevisor {
         originalError: e,
         details: {},
       });
+      return false;
     }
   }
 
@@ -410,17 +446,13 @@ export class Featurevisor {
     }
 
     const previousStickyFeatures = this.stickyFeatures || {};
+    this.stickyFeatures = mergeLookup(replace ? undefined : this.stickyFeatures, stickyFeatures);
+    this.evaluationGeneration++;
 
-    if (replace) {
-      this.stickyFeatures = { ...stickyFeatures };
-    } else {
-      this.stickyFeatures = {
-        ...this.stickyFeatures,
-        ...stickyFeatures,
-      };
-    }
-
-    const details = getStickyChangeDetails(previousStickyFeatures, this.stickyFeatures, replace);
+    const details = {
+      features: getStickyChangeKeys(previousStickyFeatures, this.stickyFeatures),
+      replaced: replace,
+    };
 
     this.reportDiagnostic({
       level: "info",
@@ -428,32 +460,19 @@ export class Featurevisor {
       message: "Sticky features set",
       details,
     });
-    this.trigger("sticky_features_set", {
-      features: details.features,
-      replaced: replace,
-    });
-    this.trigger("sticky_set", details);
-  }
-
-  /** @deprecated Use `setStickyFeatures`. */
-  setSticky(stickyFeatures: StickyFeatures, replace = false) {
-    this.setStickyFeatures(stickyFeatures, replace);
+    this.trigger("sticky_features_set", details);
   }
 
   setStickyVariables(stickyVariables: StickyVariables, replace = false) {
     if (this.closed) return;
 
     const previousStickyVariables = this.stickyVariables || {};
-    this.stickyVariables = replace
-      ? { ...stickyVariables }
-      : { ...this.stickyVariables, ...stickyVariables };
-    const details = getStickyChangeDetails(
-      {},
-      {},
-      replace,
-      previousStickyVariables,
-      this.stickyVariables,
-    );
+    this.stickyVariables = mergeLookup(replace ? undefined : this.stickyVariables, stickyVariables);
+    this.evaluationGeneration++;
+    const details = {
+      variables: getStickyChangeKeys(previousStickyVariables, this.stickyVariables),
+      replaced: replace,
+    };
 
     this.reportDiagnostic({
       level: "info",
@@ -461,11 +480,7 @@ export class Featurevisor {
       message: "Sticky variables set",
       details,
     });
-    this.trigger("sticky_variables_set", {
-      variables: details.variables,
-      replaced: replace,
-    });
-    this.trigger("sticky_set", details);
+    this.trigger("sticky_variables_set", details);
   }
 
   getRevision(): string {
@@ -477,19 +492,24 @@ export class Featurevisor {
   }
 
   getSegment(segmentKey: SegmentKey): Segment | undefined {
-    const segment = this.datafile.segments[segmentKey];
-
-    if (!segment) {
-      return undefined;
-    }
-
-    segment.conditions = parseConditionsIfStringified(segment.conditions, this.reportDiagnostic);
-
-    return segment;
+    return this.readEntity(1, segmentKey) as Segment | undefined;
   }
 
   getFeature(featureKey: string): Feature | undefined {
-    return this.datafile.features[featureKey];
+    return this.readEntity(0, featureKey) as Feature | undefined;
+  }
+
+  private readEntity(kind: number, key: string): DatafileEntity | undefined {
+    const cache = this.normalized[kind] || (this.normalized[kind] = createLookup());
+    const cached = cache[key];
+    if (cached) return cached;
+    const definitions = this.datafile[entityKinds[kind]];
+    if (!definitions || !hasOwn(definitions, key)) return undefined;
+    const result = normalizeEntity(kind, key, definitions[key]);
+    // Cache before callbacks so diagnostic handlers can safely reenter getters.
+    cache[key] = result.value;
+    for (const diagnostic of result.errors || []) this.reportDiagnostic(diagnostic);
+    return result.value;
   }
 
   getFeatureKeys(): string[] {
@@ -497,7 +517,7 @@ export class Featurevisor {
   }
 
   /** Returns global variable keys when called without a feature key. */
-  getVariableKeys(): GlobalVariableKey[];
+  getVariableKeys(): VariableKey[];
   /** Returns the variable keys owned by a feature. */
   getVariableKeys(featureKey: FeatureKey): VariableKey[];
   getVariableKeys(featureKey?: FeatureKey): string[] {
@@ -547,46 +567,97 @@ export class Featurevisor {
     );
   }
 
-  private allSegmentsAreMatched(
-    groupSegments: GroupSegment | GroupSegment[] | "*",
-    context: Context,
+  private isAttributeOnly(conditions: Conditions): boolean {
+    if (typeof conditions !== "object" || conditions === null) return false;
+    const cached = this.attributeConditions.get(conditions);
+    if (cached !== undefined) return cached;
+    const result =
+      "attribute" in conditions ||
+      ((Array.isArray(conditions)
+        ? conditions
+        : "and" in conditions
+          ? conditions.and
+          : "or" in conditions
+            ? conditions.or
+            : "not" in conditions
+              ? conditions.not
+              : []
+      ).every((condition) => this.isAttributeOnly(condition)) &&
+        !("feature" in conditions || "variable" in conditions));
+    this.attributeConditions.set(conditions, result);
+    return result;
+  }
+
+  private conditionsAreMatched(
+    conditions: Conditions,
+    dependencies: EvaluateDependencies,
   ): boolean {
-    return allSegmentsAreMatched(
-      groupSegments,
-      context,
-      (segmentKey) => this.getSegment(segmentKey),
-      (regexString, regexFlags) => this.getRegex(regexString, regexFlags),
-      this.reportDiagnostic,
+    try {
+      return this.matchConditions(conditions, dependencies);
+    } catch (error) {
+      if (error === invalidConditions) return false;
+      throw error;
+    }
+  }
+
+  private matchConditions(conditions: Conditions, dependencies: EvaluateDependencies): boolean {
+    if (conditions === invalidConditions) throw invalidConditions;
+    if (conditions === "*") return true;
+    if (!conditions) return false;
+    if (typeof conditions === "string") {
+      const segment = this.getSegment(conditions);
+      if (segment?.conditions === invalidConditions) throw invalidConditions;
+      if (segment && this.isAttributeOnly(segment.conditions))
+        return this.allConditionsAreMatched(segment.conditions, dependencies.context);
+      return (
+        !!segment &&
+        evaluateSegment(dependencies, conditions, () =>
+          this.matchConditions(segment.conditions, dependencies),
+        )
+      );
+    }
+    // Attribute expressions never allocate or enter the dependency session.
+    if (this.isAttributeOnly(conditions))
+      return this.allConditionsAreMatched(conditions, dependencies.context);
+    if ("variable" in conditions) {
+      try {
+        let value: unknown = this.evaluateRequiredVariable(conditions, dependencies);
+        if (conditions.path !== undefined)
+          value = getRequiredVariableValueAtPath(value, conditions.path);
+        return valueIsMatched(value, conditions, (pattern, flags) => this.getRegex(pattern, flags));
+      } catch (error) {
+        throw error instanceof DependencyError ? error : new DependencyError(String(error));
+      }
+    }
+    if ("feature" in conditions) {
+      const enabled =
+        this.evaluateRequiredFeature("flag", conditions.feature, dependencies).enabled === true;
+      if (enabled !== (conditions.enabled ?? true)) return false;
+      return (
+        conditions.variation === undefined ||
+        this.evaluateRequiredFeature("variation", conditions.feature, dependencies)
+          .variationValue === conditions.variation
+      );
+    }
+    return matchGroup(
+      conditions as Condition[] | { and?: Condition[]; or?: Condition[]; not?: Condition[] },
+      (condition: Condition) => this.matchConditions(condition, dependencies),
     );
   }
 
-  private getMatchedTraffic(traffic: Traffic[], context: Context): Traffic | undefined {
-    return traffic.find((t) => {
-      if (!this.allSegmentsAreMatched(parseSegmentsIfStringified(t.segments), context)) {
-        return false;
-      }
-
-      return true;
-    });
+  private getMatchedTraffic(
+    traffic: Traffic[],
+    dependencies: EvaluateDependencies,
+  ): Traffic | undefined {
+    return traffic.find(
+      (t) => t.conditions !== undefined && this.conditionsAreMatched(t.conditions, dependencies),
+    );
   }
 
-  private getMatchedAllocation(traffic: Traffic, bucketValue: number): Allocation | undefined {
-    if (!traffic.allocation) {
-      return undefined;
-    }
-
-    for (const allocation of traffic.allocation) {
-      const [start, end] = allocation.range;
-
-      if (allocation.range && start <= bucketValue && end >= bucketValue) {
-        return allocation;
-      }
-    }
-
-    return undefined;
-  }
-
-  private getMatchedForce(featureKey: FeatureKey | Feature, context: Context): ForceResult {
+  private getMatchedForce(
+    featureKey: FeatureKey | Feature,
+    dependencies: EvaluateDependencies,
+  ): ForceResult {
     const result: ForceResult = {
       force: undefined,
       forceIndex: undefined,
@@ -603,19 +674,7 @@ export class Featurevisor {
 
       if (
         currentForce.conditions &&
-        this.allConditionsAreMatched(
-          parseConditionsIfStringified(currentForce.conditions, this.reportDiagnostic),
-          context,
-        )
-      ) {
-        result.force = currentForce;
-        result.forceIndex = i;
-        break;
-      }
-
-      if (
-        currentForce.segments &&
-        this.allSegmentsAreMatched(parseSegmentsIfStringified(currentForce.segments), context)
+        this.conditionsAreMatched(currentForce.conditions, dependencies)
       ) {
         result.force = currentForce;
         result.forceIndex = i;
@@ -674,11 +733,13 @@ export class Featurevisor {
 
       return;
     }
-    this.modules.push(module);
+    this.modules = this.modules.concat(module);
+    this.evaluationGeneration++;
 
     return async () => {
       const moduleExists = this.modules.indexOf(module) !== -1;
       this.modules = this.modules.filter((existingModule) => existingModule !== module);
+      this.evaluationGeneration++;
       this.clearModuleDiagnosticSubscriptions(module);
 
       if (moduleExists) {
@@ -695,6 +756,7 @@ export class Featurevisor {
     const removedModules = this.modules.filter((module) => module.name === name);
 
     this.modules = this.modules.filter((module) => module.name !== name);
+    this.evaluationGeneration++;
     for (const module of removedModules) {
       this.clearModuleDiagnosticSubscriptions(module);
       await this.closeModule(module);
@@ -757,6 +819,7 @@ export class Featurevisor {
     }
 
     this.closed = true;
+    this.evaluationGeneration++;
     const modules = this.modules.slice();
     this.modules = [];
 
@@ -883,8 +946,9 @@ export class Featurevisor {
     if (replace) {
       this.context = context;
     } else {
-      this.context = { ...this.context, ...context };
+      this.context = mergeContext(this.context, context);
     }
+    this.evaluationGeneration++;
 
     this.trigger("context_set", {
       context: this.context,
@@ -902,19 +966,14 @@ export class Featurevisor {
   }
 
   getContext(context?: Context): Context {
-    return context
-      ? {
-          ...this.context,
-          ...context,
-        }
-      : this.context;
+    return context ? mergeContext(this.context, context) : this.context;
   }
 
   spawn(context: Context = {}, options: SpawnOptions = {}): FeaturevisorChildInstance {
     return new FeaturevisorChildInstance({
       parent: this,
       context: this.getContext(context),
-      stickyFeatures: options.stickyFeatures || options.sticky,
+      stickyFeatures: options.stickyFeatures,
       stickyVariables: options.stickyVariables,
     });
   }
@@ -922,196 +981,313 @@ export class Featurevisor {
   /**
    * Flag
    */
-  private getEvaluationDependencies(
-    context: Context,
-    options: InternalOverrideOptions = {},
-  ): EvaluateDependencies {
-    return {
-      context: this.getContext(context),
+  private getEvaluationDependencies<
+    T extends {
+      type: "flag" | "variation" | "variable";
+      featureKey?: string;
+      variableKey?: string;
+    },
+  >(context: Context, options: InternalOverrideOptions = {}, params: T): EvaluateDependencies & T {
+    const dependencies = Object.assign(
+      {
+        context: this.getContext(context),
 
-      reportDiagnostic: this.reportDiagnostic,
-      modules: this.modules,
-      // The evaluator only needs this small datafile/matching adapter shape.
-      // The methods are private on the instance, so TypeScript needs this
-      // internal cast; avoid widening these helpers into public instance APIs.
-      datafile: this as unknown as InstanceEvaluationDataProvider,
+        reportDiagnostic: this.reportDiagnostic,
+        modules: this.modules,
+        // The evaluator only needs this small datafile/matching adapter shape.
+        // The methods are private on the instance, so TypeScript needs this
+        // internal cast; avoid widening these helpers into public instance APIs.
+        datafile: this as unknown as InstanceEvaluationDataProvider,
 
-      stickyFeatures: options.__featurevisorChildStickyFeatures || this.stickyFeatures,
-      defaultVariationValue: options.defaultVariationValue,
-      defaultVariableValue: options.defaultVariableValue,
-    };
+        stickyFeatures: options.__featurevisorChildStickyFeatures || this.stickyFeatures,
+        stickyVariables: options.__featurevisorChildStickyVariables || this.stickyVariables,
+        defaultVariationValue: options.defaultVariationValue,
+        defaultVariableValue: options.defaultVariableValue,
+      },
+      params,
+    );
+    return this.modules.length || this.onDiagnostic
+      ? trackEvaluationState(
+          dependencies,
+          options.__featurevisorReadStickyState || this.readStickyState,
+        )
+      : dependencies;
   }
+
+  private readStickyState = (): StickyState => ({
+    stickyFeatures: this.stickyFeatures,
+    stickyVariables: this.stickyVariables,
+  });
 
   private evaluateRequiredFeature(
     type: "flag" | "variation",
     featureKey: FeatureKey,
     dependencies: EvaluateDependencies,
+    borrowed = false,
   ): Evaluation {
-    const { context, reportDiagnostic, modules, datafile, stickyFeatures } = dependencies;
-
-    return evaluateWithModules({
+    const options = Object.assign({}, dependencies, {
       type,
       featureKey,
-      context,
-      reportDiagnostic,
-      modules,
-      datafile,
-      stickyFeatures,
+      variableKey: undefined,
+      modules: this.modules,
+      defaultVariableValue: undefined,
+      defaultVariationValue: undefined,
     });
+    return evaluateDependency(
+      dependencies,
+      options,
+      () => this.evaluationGeneration,
+      () => {
+        const evaluation = evaluateWithModules(options);
+        if (evaluation.error instanceof DependencyError) throw evaluation.error;
+        return {
+          type,
+          featureKey,
+          reason: evaluation.reason,
+          enabled: evaluation.enabled === true,
+          variationValue:
+            typeof evaluation.variationValue !== "undefined"
+              ? evaluation.variationValue
+              : evaluation.variation?.value,
+        };
+      },
+      borrowed,
+    );
   }
 
-  private requiredFeaturesAreMatched(
-    requiredFeatures: RequiredFeature[] | undefined,
-    context: Context,
-    options: InternalOverrideOptions,
-  ): boolean {
-    const dependencies = this.getEvaluationDependencies(context, options);
-
-    return (requiredFeatures || []).every((required) => {
-      const featureKey = typeof required === "string" ? required : required.feature;
-      const expectedEnabled = typeof required === "string" ? true : (required.enabled ?? true);
-
-      const flagEvaluation = this.evaluateRequiredFeature("flag", featureKey, dependencies);
-      if ((flagEvaluation.enabled === true) !== expectedEnabled) return false;
-
-      if (typeof required === "string" || typeof required.variation === "undefined") return true;
-
-      const variationEvaluation = this.evaluateRequiredFeature(
-        "variation",
-        featureKey,
-        dependencies,
-      );
-      const variationValue =
-        typeof variationEvaluation.variationValue !== "undefined"
-          ? variationEvaluation.variationValue
-          : variationEvaluation.variation?.value;
-      return variationValue === required.variation;
+  private evaluateRequiredVariable(
+    required: Pick<VariableCondition, "feature" | "variable">,
+    dependencies: EvaluateDependencies,
+    borrowed = false,
+  ): VariableValue | null {
+    const options = Object.assign({}, dependencies, {
+      type: "variable" as const,
+      featureKey: required.feature,
+      variableKey: required.variable,
+      modules: this.modules,
+      defaultVariableValue: undefined,
+      defaultVariationValue: undefined,
     });
+    return evaluateDependency(
+      dependencies,
+      options,
+      () => this.evaluationGeneration,
+      () => {
+        const evaluation =
+          required.feature === undefined
+            ? this.evaluateVariableWithoutFeature(options)
+            : evaluateWithModules(options as typeof options & { featureKey: FeatureKey });
+        if (evaluation.error instanceof DependencyError) throw evaluation.error;
+        const value = evaluation.variableValue;
+        if (value === undefined) return null;
+        if (
+          (evaluation.variableSchema?.type === "json" || evaluation.variable?.type === "json") &&
+          typeof value === "string" &&
+          !evaluation.variable?.compose
+        ) {
+          try {
+            return JSON.parse(value) as VariableValue;
+          } catch (error) {
+            this.reportDiagnostic({
+              level: "error",
+              code: "evaluation_error",
+              message: "getVariable failed",
+              originalError: error,
+              details: { featureKey: required.feature, variableKey: required.variable },
+            });
+            return null;
+          }
+        }
+        return value;
+      },
+      borrowed,
+    );
   }
 
   private evaluateVariableWithoutFeature(
-    variableKey: GlobalVariableKey,
-    context: Context = {},
-    options: InternalOverrideOptions = {},
+    initialOptions: VariableEvaluateOptions & EvaluateDependencies,
   ): Evaluation {
-    let evaluationOptions: GlobalVariableEvaluateOptions = {
-      type: "variable",
-      variableKey,
-      context: this.getContext(context),
-      defaultVariableValue: options.defaultVariableValue,
-    };
+    let evaluationOptions = initialOptions;
+    let moduleOptions: VariableEvaluateOptions | undefined;
 
     try {
-      for (const module of this.modules) {
-        if (module.beforeEvaluation) {
-          evaluationOptions = module.beforeEvaluation(evaluationOptions);
-        }
+      if (this.modules.length) {
+        if (this.modules.some((module) => module.beforeEvaluation)) beginEvaluation(initialOptions);
+        moduleOptions = {
+          type: "variable" as const,
+          variableKey: initialOptions.variableKey,
+          context: initialOptions.context,
+          defaultVariableValue: initialOptions.defaultVariableValue,
+        };
+        if (initialOptions.dependencyOf) moduleOptions.dependencyOf = initialOptions.dependencyOf;
+        if (initialOptions.dependencyPurpose)
+          moduleOptions.dependencyPurpose = initialOptions.dependencyPurpose;
+        moduleOptions = beforeEvaluation(
+          this.modules,
+          inheritEvaluation(initialOptions, moduleOptions),
+        );
+        evaluationOptions = Object.assign(initialOptions, moduleOptions);
+        refreshEvaluationState(evaluationOptions);
       }
 
       const resolvedVariableKey = evaluationOptions.variableKey;
-      const variable = this.datafile.variables?.[resolvedVariableKey];
+      const variable = this.readEntity(2, resolvedVariableKey) as DatafileVariable | undefined;
       let evaluation: Evaluation = {
         type: "variable",
         variableKey: resolvedVariableKey,
         reason: "variable_not_found",
       };
-      const stickyVariables =
-        options.__featurevisorChildStickyVariables || this.stickyVariables || {};
+      const stickyVariables = evaluationOptions.stickyVariables || {};
 
-      if (Object.prototype.hasOwnProperty.call(stickyVariables, resolvedVariableKey)) {
-        evaluation = {
-          ...evaluation,
-          reason: "sticky",
-          variable,
-          variableValue: stickyVariables[resolvedVariableKey],
-        };
+      if (hasOwn(stickyVariables, resolvedVariableKey)) {
+        evaluation.reason = "sticky";
+        evaluation.variable = variable;
+        evaluation.variableValue = stickyVariables[resolvedVariableKey];
       } else if (variable) {
         if (
-          !this.requiredFeaturesAreMatched(
-            variable.requiredFeatures,
-            evaluationOptions.context,
-            options,
-          )
+          variable.conditions !== undefined &&
+          !this.conditionsAreMatched(variable.conditions, evaluationOptions)
         ) {
-          evaluation = {
-            ...evaluation,
-            reason: "required_features_unmet",
-            variable,
-            variableValue: variable.useDefaultWhenDisabled
+          evaluation.reason = "conditions_unmet";
+          evaluation.conditions = variable.conditions;
+          evaluation.variable = variable;
+          evaluation.variableValue =
+            !variable.compose && variable.useDefaultWhenDisabled
               ? variable.defaultValue
-              : variable.disabledValue,
-          };
-        } else {
-          const overrides = variable.overrides || [];
-          for (let index = 0; index < overrides.length; index++) {
-            const override = overrides[index];
-            if (
-              !this.requiredFeaturesAreMatched(
-                override.requiredFeatures,
-                evaluationOptions.context,
-                options,
-              )
-            ) {
-              continue;
+              : variable.compose
+                ? (variable.disabledValue ?? null)
+                : variable.disabledValue;
+          if (Array.isArray(variable.compose) && evaluation.variableValue !== null)
+            evaluation.variableValue = copyVariableObject(
+              evaluation.variableValue as Record<string, VariableValue>,
+            );
+        } else if (variable.compose) {
+          let value: VariableValue;
+          if (typeof variable.compose === "string") {
+            value = this.evaluateRequiredVariable(
+              { variable: variable.compose },
+              evaluationOptions,
+              true,
+            );
+          } else {
+            const members: Record<string, VariableValue | null> = {};
+            for (const entry of variable.compose) {
+              if (["__proto__", "prototype", "constructor"].indexOf(entry.key) !== -1)
+                throw new DependencyError("Invalid composition property");
+              members[entry.key] =
+                entry.variable !== undefined
+                  ? this.evaluateRequiredVariable(
+                      { feature: entry.feature, variable: entry.variable },
+                      evaluationOptions,
+                      true,
+                    )
+                  : entry.variation
+                    ? (this.evaluateRequiredFeature(
+                        "variation",
+                        entry.feature!,
+                        evaluationOptions,
+                        true,
+                      ).variationValue ?? null)
+                    : this.evaluateRequiredFeature("flag", entry.feature!, evaluationOptions, true)
+                        .enabled === true;
             }
-            const segmentsMatch =
-              !override.segments ||
-              this.allSegmentsAreMatched(
-                parseSegmentsIfStringified(override.segments),
-                evaluationOptions.context,
-              );
-            const conditionsMatch =
-              !override.conditions ||
-              this.allConditionsAreMatched(
-                parseConditionsIfStringified(override.conditions, this.reportDiagnostic),
-                evaluationOptions.context,
-              );
-            if (!segmentsMatch || !conditionsMatch) continue;
-
-            evaluation = {
-              ...evaluation,
-              reason: "variable_override_rule",
-              variable,
-              variableValue: override.value,
-              variableOverrideIndex: index,
-              variableOverrideKey: override.key,
-              variableOverridePath: override.keyPath,
-            };
-            break;
+            value = members;
+          }
+          evaluation.reason = "variable_composed";
+          evaluation.variable = variable;
+          evaluation.variableValue = value;
+        }
+        if (
+          evaluation.reason === "variable_not_found" ||
+          (evaluation.reason === "variable_composed" && variable.overrideProgram)
+        ) {
+          const program = variable.overrideProgram;
+          const overrides = program || variable.overrides || [];
+          const appliedPaths: string[][] | undefined = program ? [] : undefined;
+          let accumulatedValue: VariableValue = variable.compose
+            ? evaluation.variableValue!
+            : variable.defaultValue!;
+          for (let index = 0; index < overrides.length; ) {
+            const override = overrides[index];
+            const matched =
+              override.conditions === undefined ||
+              this.conditionsAreMatched(override.conditions, evaluationOptions);
+            if (matched) {
+              if (program) {
+                accumulatedValue = applyVariableOperations(
+                  accumulatedValue,
+                  program[index].operations,
+                );
+                // Map compositions own their outer object. String compositions
+                // retain the ordinary getter ownership of their source.
+                if (
+                  variable.compose &&
+                  typeof variable.compose !== "string" &&
+                  program[index].operations.some((op) => op.op === "set" && op.path.length === 0)
+                ) {
+                  accumulatedValue = copyVariableObject(
+                    accumulatedValue as Record<string, VariableValue>,
+                  );
+                }
+                appliedPaths!.push(override.keyPath || [override.key]);
+              }
+              // No callbacks observe intermediate matches. Keep one result while
+              // accumulating, then publish it after the complete program succeeds.
+              evaluation.reason = "variable_override_rule";
+              evaluation.variable = variable;
+              evaluation.variableValue = program
+                ? accumulatedValue
+                : variable.overrides![index].value;
+              evaluation.variableOverrideIndex = index;
+              evaluation.variableOverrideKey = override.key;
+              evaluation.variableOverridePath = override.keyPath;
+              if (program) evaluation.variableOverridePaths = appliedPaths;
+              if (!program) break;
+            }
+            const next = program
+              ? matched
+                ? program[index].onMatch
+                : program[index].onMiss
+              : index + 1;
+            if (program && (!Number.isInteger(next) || next <= index || next > overrides.length)) {
+              throw new Error("Invalid variable override program jump");
+            }
+            index = next;
           }
 
           if (evaluation.reason === "variable_not_found") {
-            evaluation = {
-              ...evaluation,
-              reason: "variable_default",
-              variable,
-              variableValue: variable.defaultValue,
-            };
+            evaluation.reason = "variable_default";
+            evaluation.variable = variable;
+            evaluation.variableValue = variable.defaultValue;
           }
         }
-
         if (variable.deprecated) {
           this.reportDiagnostic({
             level: "warn",
-            code: "variable_deprecated",
+            code: "deprecated_variable",
             message: `Variable "${resolvedVariableKey}" is deprecated`,
             details: { variableKey: resolvedVariableKey, evaluation },
           });
         }
       }
 
-      if (
-        typeof evaluation.variableValue === "undefined" &&
-        typeof evaluationOptions.defaultVariableValue !== "undefined"
-      ) {
-        evaluation.variableValue = evaluationOptions.defaultVariableValue;
-      }
-
-      for (const module of this.modules) {
-        if (module.afterEvaluation) {
-          evaluation = module.afterEvaluation(evaluation, evaluationOptions) as Evaluation;
-        }
-      }
+      evaluation = afterEvaluation(
+        this.modules,
+        evaluation,
+        moduleOptions ||
+          (this.modules.length
+            ? {
+                type: "variable",
+                variableKey: evaluationOptions.variableKey,
+                context: evaluationOptions.context,
+                defaultVariableValue: evaluationOptions.defaultVariableValue,
+                ...(evaluationOptions.dependencyOf && {
+                  dependencyOf: evaluationOptions.dependencyOf,
+                  dependencyPurpose: evaluationOptions.dependencyPurpose,
+                }),
+              }
+            : evaluationOptions),
+      );
 
       this.reportDiagnostic({
         level: "debug",
@@ -1127,14 +1303,19 @@ export class Featurevisor {
         reason: "error",
         error: error instanceof Error ? error : new Error(String(error)),
       };
-      this.reportDiagnostic({
-        level: "error",
-        code: "evaluation_error",
-        message: "Global variable evaluation failed",
-        originalError: error,
-        details: { ...evaluation },
-      });
+      // Nested getters rethrow dependency failures, so only the public call reports them.
+      if (!(error instanceof DependencyError && evaluationOptions.dependencyOf)) {
+        this.reportDiagnostic({
+          level: "error",
+          code: "evaluation_error",
+          message: "Global variable evaluation failed",
+          originalError: error,
+          details: { ...evaluation },
+        });
+      }
       return evaluation;
+    } finally {
+      endEvaluation(evaluationOptions);
     }
   }
 
@@ -1143,11 +1324,12 @@ export class Featurevisor {
     context: Context = {},
     options: OverrideOptions = {},
   ): Evaluation {
-    return evaluateWithModules({
-      ...this.getEvaluationDependencies(context, options),
-      type: "flag",
-      featureKey,
-    });
+    return evaluateWithModules(
+      this.getEvaluationDependencies(context, options, {
+        type: "flag",
+        featureKey,
+      }),
+    );
   }
 
   isEnabled(featureKey: FeatureKey, context: Context = {}, options: OverrideOptions = {}): boolean {
@@ -1176,11 +1358,12 @@ export class Featurevisor {
     context: Context = {},
     options: OverrideOptions = {},
   ): Evaluation {
-    return evaluateWithModules({
-      ...this.getEvaluationDependencies(context, options),
-      type: "variation",
-      featureKey,
-    });
+    return evaluateWithModules(
+      this.getEvaluationDependencies(context, options, {
+        type: "variation",
+        featureKey,
+      }),
+    );
   }
 
   /**
@@ -1227,30 +1410,36 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): Evaluation;
   evaluateVariable(
-    variableKey: GlobalVariableKey,
+    variableKey: VariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): Evaluation;
   evaluateVariable(
-    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+    featureKeyOrVariableKey: FeatureKey | VariableKey,
     variableKeyOrContext: VariableKey | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): Evaluation {
     if (typeof variableKeyOrContext !== "string") {
       return this.evaluateVariableWithoutFeature(
-        featureKeyOrVariableKey,
-        variableKeyOrContext,
-        contextOrOptions as InternalOverrideOptions,
+        this.getEvaluationDependencies(
+          variableKeyOrContext,
+          contextOrOptions as InternalOverrideOptions,
+          {
+            type: "variable",
+            variableKey: featureKeyOrVariableKey,
+          },
+        ),
       );
     }
 
-    return evaluateWithModules({
-      ...this.getEvaluationDependencies(contextOrOptions as Context, options),
-      type: "variable",
-      featureKey: featureKeyOrVariableKey,
-      variableKey: variableKeyOrContext,
-    });
+    return evaluateWithModules(
+      this.getEvaluationDependencies(contextOrOptions as Context, options, {
+        type: "variable",
+        featureKey: featureKeyOrVariableKey,
+        variableKey: variableKeyOrContext,
+      }),
+    );
   }
 
   /**
@@ -1269,12 +1458,12 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): TValue | null;
   getVariable<TValue = VariableValue>(
-    variableKey: GlobalVariableKey,
+    variableKey: VariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): TValue | null;
   getVariable<TValue = VariableValue>(
-    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+    featureKeyOrVariableKey: FeatureKey | VariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
@@ -1293,7 +1482,8 @@ export class Featurevisor {
       if (typeof evaluation.variableValue !== "undefined") {
         if (
           (evaluation.variableSchema?.type === "json" || evaluation.variable?.type === "json") &&
-          typeof evaluation.variableValue === "string"
+          typeof evaluation.variableValue === "string" &&
+          !evaluation.variable?.compose
         ) {
           return JSON.parse(evaluation.variableValue) as TValue;
         }
@@ -1329,29 +1519,22 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): boolean | null;
   getVariableBoolean(
-    variableKey: GlobalVariableKey,
+    variableKey: VariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): boolean | null;
   getVariableBoolean(
-    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+    featureKeyOrVariableKey: FeatureKey | VariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): boolean | null {
-    const variableValue =
-      typeof variableKeyOrContext === "string"
-        ? this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as Context,
-            options,
-          )
-        : this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as OverrideOptions,
-          );
+    const variableValue = (this.getVariable as VariableGetter<OverrideOptions>)(
+      featureKeyOrVariableKey,
+      variableKeyOrContext,
+      contextOrOptions,
+      options,
+    );
 
     return getValueByType(variableValue, "boolean") as boolean | null;
   }
@@ -1363,29 +1546,22 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): string | null;
   getVariableString(
-    variableKey: GlobalVariableKey,
+    variableKey: VariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): string | null;
   getVariableString(
-    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+    featureKeyOrVariableKey: FeatureKey | VariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): string | null {
-    const variableValue =
-      typeof variableKeyOrContext === "string"
-        ? this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as Context,
-            options,
-          )
-        : this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as OverrideOptions,
-          );
+    const variableValue = (this.getVariable as VariableGetter<OverrideOptions>)(
+      featureKeyOrVariableKey,
+      variableKeyOrContext,
+      contextOrOptions,
+      options,
+    );
 
     return getValueByType(variableValue, "string") as string | null;
   }
@@ -1397,101 +1573,81 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): number | null;
   getVariableInteger(
-    variableKey: GlobalVariableKey,
+    variableKey: VariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): number | null;
   getVariableInteger(
-    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+    featureKeyOrVariableKey: FeatureKey | VariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): number | null {
-    const variableValue =
-      typeof variableKeyOrContext === "string"
-        ? this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as Context,
-            options,
-          )
-        : this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as OverrideOptions,
-          );
+    const variableValue = (this.getVariable as VariableGetter<OverrideOptions>)(
+      featureKeyOrVariableKey,
+      variableKeyOrContext,
+      contextOrOptions,
+      options,
+    );
 
     return getValueByType(variableValue, "integer") as number | null;
   }
 
-  getVariableDouble(
+  /** Returns a number variable after runtime type checking, whole or fractional. */
+  getVariableNumber(
     featureKey: FeatureKey,
     variableKey: string,
     context?: Context,
     options?: OverrideOptions,
   ): number | null;
-  getVariableDouble(
-    variableKey: GlobalVariableKey,
+  getVariableNumber(
+    variableKey: VariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): number | null;
-  getVariableDouble(
-    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+  getVariableNumber(
+    featureKeyOrVariableKey: FeatureKey | VariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): number | null {
-    const variableValue =
-      typeof variableKeyOrContext === "string"
-        ? this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as Context,
-            options,
-          )
-        : this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as OverrideOptions,
-          );
+    const variableValue = (this.getVariable as VariableGetter<OverrideOptions>)(
+      featureKeyOrVariableKey,
+      variableKeyOrContext,
+      contextOrOptions,
+      options,
+    );
 
-    return getValueByType(variableValue, "double") as number | null;
+    return getValueByType(variableValue, "number") as number | null;
   }
 
   /**
-   * Returns an array variable after runtime type checking. The item type defaults
-   * to string for compatibility. Pass it explicitly for other array item types.
+   * Returns an array variable after runtime type checking. Pass an item type
+   * explicitly when its structure is known; otherwise items have type unknown.
    */
-  getVariableArray<T = string>(
+  getVariableArray<T = unknown>(
     featureKey: FeatureKey,
     variableKey: string,
     context?: Context,
     options?: OverrideOptions,
   ): T[] | null;
-  getVariableArray<T = string>(
-    variableKey: GlobalVariableKey,
+  getVariableArray<T = unknown>(
+    variableKey: VariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): T[] | null;
-  getVariableArray<T = string>(
-    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+  getVariableArray<T = unknown>(
+    featureKeyOrVariableKey: FeatureKey | VariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): T[] | null {
-    const variableValue =
-      typeof variableKeyOrContext === "string"
-        ? this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as Context,
-            options,
-          )
-        : this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as OverrideOptions,
-          );
+    const variableValue = (this.getVariable as VariableGetter<OverrideOptions>)(
+      featureKeyOrVariableKey,
+      variableKeyOrContext,
+      contextOrOptions,
+      options,
+    );
 
     return getValueByType(variableValue, "array") as T[] | null;
   }
@@ -1504,29 +1660,22 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): T | null;
   getVariableObject<T = ObjectValue>(
-    variableKey: GlobalVariableKey,
+    variableKey: VariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): T | null;
   getVariableObject<T = ObjectValue>(
-    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+    featureKeyOrVariableKey: FeatureKey | VariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): T | null {
-    const variableValue =
-      typeof variableKeyOrContext === "string"
-        ? this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as Context,
-            options,
-          )
-        : this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as OverrideOptions,
-          );
+    const variableValue = (this.getVariable as VariableGetter<OverrideOptions>)(
+      featureKeyOrVariableKey,
+      variableKeyOrContext,
+      contextOrOptions,
+      options,
+    );
 
     return getValueByType(variableValue, "object") as T | null;
   }
@@ -1539,29 +1688,22 @@ export class Featurevisor {
     options?: OverrideOptions,
   ): T | null;
   getVariableJSON<T = VariableValue>(
-    variableKey: GlobalVariableKey,
+    variableKey: VariableKey,
     context?: Context,
     options?: OverrideOptions,
   ): T | null;
   getVariableJSON<T = VariableValue>(
-    featureKeyOrVariableKey: FeatureKey | GlobalVariableKey,
+    featureKeyOrVariableKey: FeatureKey | VariableKey,
     variableKeyOrContext: string | Context = {},
     contextOrOptions: Context | OverrideOptions = {},
     options: OverrideOptions = {},
   ): T | null {
-    const variableValue =
-      typeof variableKeyOrContext === "string"
-        ? this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as Context,
-            options,
-          )
-        : this.getVariable(
-            featureKeyOrVariableKey,
-            variableKeyOrContext,
-            contextOrOptions as OverrideOptions,
-          );
+    const variableValue = (this.getVariable as VariableGetter<OverrideOptions>)(
+      featureKeyOrVariableKey,
+      variableKeyOrContext,
+      contextOrOptions,
+      options,
+    );
 
     return getValueByType(variableValue, "json") as T | null;
   }
@@ -1572,7 +1714,7 @@ export class Featurevisor {
     featureKeys: string[] = [],
     options: OverrideOptions = {},
   ): EvaluatedFeatures {
-    const result: EvaluatedFeatures = {};
+    const result = createLookup<EvaluatedFeature>() as EvaluatedFeatures;
 
     const keys = featureKeys.length > 0 ? featureKeys : this.getFeatureKeys();
     for (const featureKey of keys) {
@@ -1593,7 +1735,7 @@ export class Featurevisor {
       // variables
       const variableKeys = this.getVariableKeys(featureKey);
       if (variableKeys.length > 0) {
-        evaluatedFeature.variables = {};
+        evaluatedFeature.variables = createLookup();
 
         for (const variableKey of variableKeys) {
           evaluatedFeature.variables[variableKey] = this.getVariable(
@@ -1614,10 +1756,10 @@ export class Featurevisor {
   /** Returns evaluated global variable values for all or selected variable keys. */
   getVariableEvaluations(
     context: Context = {},
-    variableKeys: GlobalVariableKey[] = [],
+    variableKeys: VariableKey[] = [],
     options: OverrideOptions = {},
   ): EvaluatedVariables {
-    const result: EvaluatedVariables = {};
+    const result = createLookup<VariableValue | null>() as EvaluatedVariables;
     const keys = variableKeys.length > 0 ? variableKeys : this.getVariableKeys();
 
     for (const variableKey of keys) {
@@ -1625,15 +1767,6 @@ export class Featurevisor {
     }
 
     return result;
-  }
-
-  /** @deprecated Use `getFeatureEvaluations`. */
-  getAllEvaluations(
-    context: Context = {},
-    featureKeys: string[] = [],
-    options: OverrideOptions = {},
-  ): EvaluatedFeatures {
-    return this.getFeatureEvaluations(context, featureKeys, options);
   }
 }
 

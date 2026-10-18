@@ -32,6 +32,10 @@ function printVersions() {
   console.log(`  - @featurevisor/core: ${corePackage.version}`);
 }
 
+function getRunningCLIVersion(): string {
+  return JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8")).version;
+}
+
 async function main() {
   let args = process.argv.slice(2);
 
@@ -55,7 +59,11 @@ async function main() {
     : process.cwd();
   const command = getCLICommand(args);
   const wantsHelp = args.some((argument) => argument === "--help" || argument === "-h");
-  const json = hasBooleanArgument(args, "json");
+  const json =
+    hasBooleanArgument(args, "json") ||
+    (command === "list" &&
+      (hasBooleanArgument(args, "execution-protocol") ||
+        hasBooleanArgument(args, "executionProtocol")));
   const pretty = hasBooleanArgument(args, "pretty");
   const projectRootDirectoryPath =
     command === "init" ? undefined : findProjectRootDirectoryPath(requestedDirectoryPath);
@@ -63,7 +71,7 @@ async function main() {
   if (!projectRootDirectoryPath) {
     if (command && command !== "init" && !wantsHelp) {
       const error = new FeaturevisorCLIError(
-        `No Featurevisor project found from ${requestedDirectoryPath}. Run this command inside a project or pass --rootDirectoryPath=<path>.`,
+        `No Featurevisor project found from ${requestedDirectoryPath}. Run this command inside a project or pass --root-directory-path=<path>.`,
         {
           code: "project_not_found",
           details: { directoryPath: requestedDirectoryPath },
@@ -76,6 +84,7 @@ async function main() {
 
     await runCLI({
       rootDirectoryPath: requestedDirectoryPath,
+      cliVersion: command === "init" ? getRunningCLIVersion() : undefined,
       includeProjectCommands: command !== "init",
     });
     return;

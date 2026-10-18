@@ -7,15 +7,15 @@ bucketBy: userId
 rules:
   staging:
     - key: "1"
-      segments:
+      conditions:
         - not:
             - version_5_5
       percentage: 100
 
     - key: "2"
-      segments: "*"
+      conditions: "*"
       percentage: 0
   production:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 80

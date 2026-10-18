@@ -33,7 +33,7 @@ export const validateAndParse = (version: string) => {
     throw new TypeError("Invalid argument expected string");
   }
   const match = version.match(semver);
-  if (!match) {
+  if (!match || match[0] !== version) {
     throw new Error(`Invalid argument not valid semver ('${version}' received)`);
   }
   match.shift();
@@ -42,31 +42,47 @@ export const validateAndParse = (version: string) => {
 
 const isWildcard = (s: string) => s === "*" || s === "x" || s === "X";
 
-const forceType = (a: string | number, b: string | number) =>
-  typeof a !== typeof b ? [String(a), String(b)] : [a, b];
-
-const tryParse = (v: string) => {
-  const n = parseInt(v, 10);
-  return isNaN(n) ? v : n;
-};
-
-const compareStrings = (a: string, b: string) => {
-  if (isWildcard(a) || isWildcard(b)) return 0;
-  const [ap, bp] = forceType(tryParse(a), tryParse(b));
-  if (ap > bp) return 1;
-  if (ap < bp) return -1;
+const compareStrings = (a: string, b: string, prerelease: boolean) => {
+  if (!prerelease && (isWildcard(a) || isWildcard(b))) return 0;
+  const an = /^[0-9]+$/.test(a);
+  const bn = /^[0-9]+$/.test(b);
+  if (an && bn) {
+    // Compare decimal strings without the host language's integer limits.
+    a = a.replace(/^0+/, "") || "0";
+    b = b.replace(/^0+/, "") || "0";
+    if (a.length !== b.length) return a.length > b.length ? 1 : -1;
+  } else if (prerelease && an !== bn) {
+    return an ? -1 : 1;
+  }
+  if (a > b) return 1;
+  if (a < b) return -1;
   return 0;
 };
 
 export const compareSegments = (
   a: string | string[] | RegExpMatchArray,
   b: string | string[] | RegExpMatchArray,
+  prerelease = false,
 ) => {
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const r = compareStrings(a[i] || "0", b[i] || "0");
+    if (prerelease && (i === a.length || i === b.length)) {
+      return a.length > b.length ? 1 : -1;
+    }
+    const r = compareStrings(a[i] || "0", b[i] || "0", prerelease);
     if (r !== 0) return r;
   }
   return 0;
+};
+
+/** True when the version operators can compare the value, for lint and tooling. */
+export const isValidVersion = (version: unknown): boolean => {
+  if (typeof version !== "string") return false;
+  try {
+    compareVersions(version, version);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 export const compareVersions = (v1: string, v2: string) => {
@@ -74,7 +90,7 @@ export const compareVersions = (v1: string, v2: string) => {
   const n1 = validateAndParse(v1);
   const n2 = validateAndParse(v2);
 
-  // pop off the patch
+  // Separate the prerelease from the four optional core components.
   const p1 = n1.pop();
   const p2 = n2.pop();
 
@@ -84,7 +100,7 @@ export const compareVersions = (v1: string, v2: string) => {
 
   // validate pre-release
   if (p1 && p2) {
-    return compareSegments(p1.split("."), p2.split("."));
+    return compareSegments(p1.split("."), p2.split("."), true);
   } else if (p1 || p2) {
     return p1 ? -1 : 1;
   }

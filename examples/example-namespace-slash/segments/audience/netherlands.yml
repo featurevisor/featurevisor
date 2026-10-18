@@ -1,5 +1,5 @@
 description: Users in the Netherlands
 conditions:
-  - attribute: user/country
+  - attribute: user.country
     operator: equals
     value: nl

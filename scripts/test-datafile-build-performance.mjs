@@ -11,11 +11,14 @@ import {
   Datasource,
   getProjectConfig,
 } from "../packages/core/lib/index.js";
+import { generateHashForFeature, getSegmentHashes } from "../packages/core/lib/builder/hashes.js";
 
 const FEATURE_COUNT = 1_200;
 const GLOBAL_VARIABLE_COUNT = 2_000;
 const SHARED_DEPENDENCY_DEPTH = 20;
 const MAX_BUILD_DURATION_MS = 60_000;
+const FIBONACCI_DEPENDENCY_NODE_COUNT = 24;
+const MAX_GRAPH_HASH_DURATION_MS = 1_000;
 
 function writeFile(filePath, contents) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -48,12 +51,12 @@ function createProject() {
       "bucketBy: userId",
     ];
     if (index % 10 === 0) {
-      lines.push("rules:", "  - key: eligible", "    segments: eligible", "    percentage: 100");
+      lines.push("rules:", "  - key: eligible", "    conditions: eligible", "    percentage: 100");
     } else {
       lines.push("rules: []");
     }
     if (index > 0 && index < SHARED_DEPENDENCY_DEPTH) {
-      lines.push(`requiredFeatures: feature${index - 1}`);
+      lines.push(`conditions:\n  feature: feature${index - 1}`);
     }
     writeFile(path.join(root, "features", `feature${index}.yml`), `${lines.join("\n")}\n`);
   }
@@ -67,7 +70,7 @@ function createProject() {
         `  - ${index % 2 === 0 ? "selected" : "other"}`,
         "type: string",
         `defaultValue: value-${index}`,
-        `requiredFeatures: feature${SHARED_DEPENDENCY_DEPTH - 1}`,
+        `conditions:\n  feature: feature${SHARED_DEPENDENCY_DEPTH - 1}`,
         "overrides:",
         "  - key: generated",
         "    conditions:",
@@ -77,7 +80,7 @@ function createProject() {
         `    value: override-${index}`,
         "    overrides:",
         "      - key: eligible",
-        "        segments: eligible",
+        "        conditions: eligible",
         `        value: nested-${index}`,
       ].join("\n") + "\n",
     );
@@ -98,7 +101,51 @@ async function measure(label, operation) {
   return result;
 }
 
+function createFibonacciDependencyGraph() {
+  const features = {};
+  for (let index = 0; index < FIBONACCI_DEPENDENCY_NODE_COUNT; index++) {
+    features[`node${index}`] = {
+      bucketBy: index === 0 ? "userId" : "accountId",
+      traffic: [],
+      ...(index < 2
+        ? {}
+        : { conditions: [{ feature: `node${index - 1}` }, { feature: `node${index - 2}` }] }),
+    };
+  }
+  return features;
+}
+
+function verifyGraphHashPerformance() {
+  const features = createFibonacciDependencyGraph();
+  const segmentHashes = getSegmentHashes({});
+  const startedAt = performance.now();
+  let rootHash;
+  for (const featureKey of Object.keys(features)) {
+    rootHash = generateHashForFeature(featureKey, features, segmentHashes);
+  }
+  const duration = performance.now() - startedAt;
+
+  assert.equal(typeof rootHash, "string");
+  assert.ok(rootHash.length > 0);
+  assert.ok(
+    duration < MAX_GRAPH_HASH_DURATION_MS,
+    `Hashing the ${FIBONACCI_DEPENDENCY_NODE_COUNT}-node shared dependency graph took ${duration.toFixed(2)}ms, above the ${MAX_GRAPH_HASH_DURATION_MS}ms guard`,
+  );
+
+  features.node0.bucketBy = "organizationId";
+  const changedHash = generateHashForFeature(
+    `node${FIBONACCI_DEPENDENCY_NODE_COUNT - 1}`,
+    features,
+    getSegmentHashes({}),
+  );
+  assert.notEqual(changedHash, rootHash);
+  console.log(
+    `Hash shared ${FIBONACCI_DEPENDENCY_NODE_COUNT}-node dependency graph: ${duration.toFixed(2)}ms`,
+  );
+}
+
 async function main() {
+  verifyGraphHashPerformance();
   const root = createProject();
 
   try {

@@ -1,11 +1,114 @@
 import { describeDefinitionChanges, formatDetails } from "./details";
 
-const rule = (key: string, percentage = 100) => ({ key, segments: "*", percentage });
+const rule = (key: string, percentage = 100) => ({ key, conditions: "*", percentage });
 const feature = (rules: unknown) => ({ rules });
 const report = (before: unknown, after: unknown, entity = "feature") =>
   formatDetails(describeDefinitionChanges(entity, before, after)).join("\n");
 
 describe("core: Featurevisor diff details", () => {
+  it("reports exact alias source changes and switches between alias and member forms", () => {
+    const before = { compose: "policy/eu.current" };
+    const after = { compose: "policy/us.current" };
+    const output = report(before, after, "variable");
+    expect(output).toContain("Compose");
+    expect(output).toContain('"policy/eu.current"');
+    expect(output).toContain('"policy/us.current"');
+    const map = { compose: { policy: { variable: "policy/eu.current" } } };
+    expect(report(before, map, "variable")).toContain("Compose");
+    expect(report(map, before, "variable")).toContain("Compose");
+    expect(report(before, before, "variable")).toBe("");
+    expect(output).not.toContain("defaultValue");
+  });
+  it("reports changed composition references without inventing defaults", () => {
+    const output = report(
+      { compose: { enabled: { feature: "old" } } },
+      { compose: { enabled: { feature: "new" }, policy: { variable: "policy" } } },
+      "variable",
+    );
+    expect(output).toContain("Compose");
+    expect(output).toContain("old");
+    expect(output).toContain("new");
+    expect(output).toContain("policy");
+    expect(output).not.toContain("defaultValue");
+  });
+  const mutated = (mutate: unknown) => ({ overrides: [{ conditions: "*", key: "all", mutate }] });
+
+  it("reports ordered mutation item changes, additions and removals by position", () => {
+    const before = mutated([{ "items:append": "a" }, { "items:append": "b" }]);
+    const output = report(
+      before,
+      mutated([{ "items:append": "a" }, { "items:append": "c" }, { count: 1 }]),
+      "variable",
+    );
+    expect(output).toContain('Mutation at position 2: {"items:append":"b"} → {"items:append":"c"}');
+    expect(output).toContain("Mutation at position 3 added");
+    expect(output).not.toContain("position 1");
+    expect(report(mutated([{ count: 1 }]), mutated([]), "variable")).toContain(
+      "Mutation at position 1 removed",
+    );
+  });
+
+  it("detects a mutation reorder including repeated paths and identical repeated items", () => {
+    const before = mutated([
+      { "items:append": "a" },
+      { "items:append": "b" },
+      { "items:append": "a" },
+    ]);
+    const after = mutated([
+      { "items:append": "a" },
+      { "items:append": "a" },
+      { "items:append": "b" },
+    ]);
+    expect(report(before, after, "variable")).toContain("Item order (reordered)");
+    expect(report(before, before, "variable")).toBe("");
+  });
+
+  it.each([
+    [{ count: 1 }, [{ count: 1 }]],
+    [[], {}],
+  ])("identifies mutation form switches explicitly: %j", (before, after) => {
+    expect(report(mutated(before), mutated(after), "variable")).toContain("Form:");
+    expect(report(mutated(before), mutated(after), "variable")).toContain("Entries:");
+  });
+
+  it("reports list mutations in feature rule and variation overrides and nested global overrides", () => {
+    const overrides = (value: number) => [
+      { conditions: "*", key: "all", mutate: [{ count: value }] },
+    ];
+    for (const field of ["rules", "variations"]) {
+      const definition = (value: number) => ({
+        [field]: [
+          {
+            conditions: "*",
+            key: "all",
+            value: "control",
+            variableOverrides: { payload: overrides(value) },
+          },
+        ],
+      });
+      expect(report(definition(1), definition(2))).toContain(
+        'Mutation at position 1: {"count":1} → {"count":2}',
+      );
+    }
+    const nested = (value: number) => ({
+      overrides: { production: [{ conditions: "*", key: "parent", overrides: overrides(value) }] },
+    });
+    expect(report(nested(1), nested(2), "variable")).toContain(
+      'Mutation at position 1: {"count":1} → {"count":2}',
+    );
+  });
+
+  it("keeps arbitrary payload fields named mutate outside authored mutation handling", () => {
+    const output = report(
+      { defaultValue: { mutate: { count: 1 } } },
+      { defaultValue: { mutate: [{ count: 1 }] } },
+      "variable",
+    );
+    expect(output).not.toContain("Form:");
+    expect(output).toContain('"mutate":');
+    expect(report({}, mutated([]), "variable")).not.toBe("");
+  });
+
   it("identifies updated rules by key within their environment", () => {
     const output = report(
       feature({ production: [rule("rollout", 10)] }),
@@ -70,9 +173,10 @@ describe("core: Featurevisor diff details", () => {
       overrides: {
         production: [
           {
+            conditions: "*",
             key: "netherlands",
             value: {},
-            overrides: [{ key: "amsterdam", mutate: { "cta.title": title } }],
+            overrides: [{ conditions: "*", key: "amsterdam", mutate: { "cta.title": title } }],
           },
         ],
       },
@@ -86,7 +190,7 @@ describe("core: Featurevisor diff details", () => {
   });
 
   it("reports global override additions, removals and reordering", () => {
-    const override = (key: string) => ({ key, segments: "*", value: key });
+    const override = (key: string) => ({ key, conditions: "*", value: key });
     const output = report(
       { overrides: [override("a"), override("b"), override("c")] },
       { overrides: [override("c"), override("new"), override("a")] },
@@ -102,7 +206,7 @@ describe("core: Featurevisor diff details", () => {
     const variation = (value: string, text: string) => ({
       value,
       variableOverrides: {
-        banner: [{ key: "mobile", segments: "mobile", value: text }],
+        banner: [{ key: "mobile", conditions: "mobile", value: text }],
       },
     });
     const output = report(
@@ -122,7 +226,7 @@ describe("core: Featurevisor diff details", () => {
         {
           ...rule("all"),
           variableOverrides: {
-            retries: [{ key: "mobile", segments: "mobile", value }],
+            retries: [{ key: "mobile", conditions: "mobile", value }],
           },
         },
       ]);
@@ -147,8 +251,8 @@ describe("core: Featurevisor diff details", () => {
   it.each([
     [{ value: 1 }, { value: 2 }],
     [
-      { key: "duplicate", value: 1 },
-      { key: "duplicate", value: 2 },
+      { conditions: "*", key: "duplicate", value: 1 },
+      { conditions: "*", key: "duplicate", value: 2 },
     ],
   ])("uses an explicit positional fallback for missing or duplicate keys: %j", (...items) => {
     const before = { overrides: items };

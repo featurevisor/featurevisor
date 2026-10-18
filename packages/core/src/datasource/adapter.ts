@@ -29,6 +29,15 @@ export abstract class Adapter {
   abstract readEntity<T>(entityType: EntityType, entityKey: string): Promise<T>;
   abstract writeEntity<T>(entityType: EntityType, entityKey: string, entity: T): Promise<T>;
   abstract deleteEntity(entityType: EntityType, entityKey: string): Promise<void>;
+  getScenarioSourcePath?(scenarioKey: string): string;
+  getTestSourcePath?(testKey: string): string;
+  getEntityPath?(entityType: EntityType, entityKey: string): string;
+  /**
+   * A cheap identity for an entity's source, which changes whenever its parsed value can.
+   * Long running processes such as Catalog watch mode reuse parsed entities while it is
+   * unchanged. Adapters that cannot promise this leave it out, and nothing is reused.
+   */
+  getEntityFingerprint?(entityType: EntityType, entityKey: string): Promise<string | undefined>;
 
   // state
   abstract readState(environment: EnvironmentKey | false): Promise<ExistingState>;
@@ -44,7 +53,7 @@ export abstract class Adapter {
 
   // revision
   abstract readRevision(): Promise<string>;
-  abstract writeRevision(revision: string): Promise<void>;
+  abstract writeRevision(revision: string, datafilesDir?: string): Promise<void>;
 
   // history
   abstract listHistoryEntries(entityType?: EntityType, entityKey?: string): Promise<HistoryEntry[]>;

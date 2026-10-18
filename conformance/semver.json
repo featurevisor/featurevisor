@@ -1,0 +1,76 @@
+{
+  "kind": "featurevisor.semver",
+  "version": 1,
+  "description": "Expected ordering is -1, 0 or 1, or null for invalid input. Exercise all six operators in both operand directions through conditions, required variables and CLI checks. Invalid conditions are false; invalid requirements and checks are errors.",
+  "cases": [
+    { "name": "equal", "left": "1.2.3", "right": "1.2.3", "order": 0 },
+    { "name": "major", "left": "2.0.0", "right": "1.9.9", "order": 1 },
+    { "name": "minor", "left": "1.10.0", "right": "1.9.9", "order": 1 },
+    { "name": "patch", "left": "1.0.10", "right": "1.0.9", "order": 1 },
+    { "name": "short major", "left": "1", "right": "1.0.0", "order": 0 },
+    { "name": "short minor", "left": "1.0", "right": "1.0.0", "order": 0 },
+    { "name": "fourth component", "left": "1.2.3.4", "right": "1.2.3.5", "order": -1 },
+    { "name": "missing fourth", "left": "1.2.3", "right": "1.2.3.0", "order": 0 },
+    { "name": "prefix", "left": "v1.2.3", "right": "1.2.3", "order": 0 },
+    { "name": "comparison prefix", "left": ">=1.2.3", "right": "1.2.3", "order": 0 },
+    { "name": "tilde prefix", "left": "~1.2.3", "right": "1.2.3", "order": 0 },
+    { "name": "caret prefix", "left": "^1.2.3", "right": "1.2.3", "order": 0 },
+    { "name": "core wildcard", "left": "1.x.3", "right": "1.9.3", "order": 0 },
+    { "name": "uppercase wildcard", "left": "1.X.3", "right": "1.9.3", "order": 0 },
+    { "name": "star wildcard", "left": "1.2.*", "right": "1.2.42", "order": 0 },
+    { "name": "wildcard keeps later comparison", "left": "1.x.3", "right": "1.9.4", "order": -1 },
+    { "name": "metadata", "left": "1.2.3+build.1", "right": "1.2.3+other.2", "order": 0 },
+    { "name": "leading zeroes", "left": "01.002.0003", "right": "1.2.3", "order": 0 },
+    {
+      "name": "large integers",
+      "left": "9007199254740993.0.0",
+      "right": "9007199254740992.0.0",
+      "order": 1
+    },
+    {
+      "name": "integer overflow",
+      "left": "999999999999999999999.0.0",
+      "right": "1000000000000000000000.0.0",
+      "order": -1
+    },
+    { "name": "release precedence", "left": "1.0.0-alpha", "right": "1.0.0", "order": -1 },
+    { "name": "zero prerelease", "left": "1.0.0-0", "right": "1.0.0", "order": -1 },
+    { "name": "numeric leading identifiers", "left": "1.0.0-1a", "right": "1.0.0-1b", "order": -1 },
+    { "name": "numeric prerelease", "left": "1.0.0-10", "right": "1.0.0-2", "order": 1 },
+    {
+      "name": "numeric before textual prerelease",
+      "left": "1.0.0-10",
+      "right": "1.0.0-1a",
+      "order": -1
+    },
+    { "name": "prerelease length", "left": "1.0.0-alpha", "right": "1.0.0-alpha.0", "order": -1 },
+    { "name": "prerelease zero normalization", "left": "1.0.0-01", "right": "1.0.0-1", "order": 0 },
+    {
+      "name": "prerelease integer overflow",
+      "left": "1.0.0-999999999999999999999",
+      "right": "1.0.0-1000000000000000000000",
+      "order": -1
+    },
+    { "name": "prerelease x is literal", "left": "1.0.0-x", "right": "1.0.0-alpha", "order": 1 },
+    { "name": "prerelease case", "left": "1.0.0-A", "right": "1.0.0-a", "order": -1 },
+    { "name": "fourth with prerelease", "left": "1.2.3.4-alpha", "right": "1.2.3.4", "order": -1 },
+    { "name": "empty", "left": "", "right": "1.0.0", "order": null },
+    { "name": "unicode digit", "left": "٢.0.0", "right": "1.0.0", "order": null },
+    { "name": "unicode prerelease digit", "left": "1.0.0-٢", "right": "1.0.0", "order": null },
+    { "name": "unicode case folding", "left": "1.0.0-K", "right": "1.0.0-k", "order": null },
+    { "name": "multiline", "left": "junk\n1.0.0\njunk", "right": "1.0.0", "order": null },
+    { "name": "trailing newline", "left": "1.0.0\n", "right": "1.0.0", "order": null },
+    { "name": "trailing carriage return", "left": "1.0.0\r\n", "right": "1.0.0", "order": null },
+    { "name": "leading whitespace", "left": " 1.0.0", "right": "1.0.0", "order": null },
+    { "name": "trailing whitespace", "left": "1.0.0 ", "right": "1.0.0", "order": null },
+    { "name": "fifth component", "left": "1.2.3.4.5", "right": "1.0.0", "order": null },
+    { "name": "empty prerelease", "left": "1.0.0-", "right": "1.0.0", "order": null },
+    {
+      "name": "empty prerelease identifier",
+      "left": "1.0.0-a..b",
+      "right": "1.0.0",
+      "order": null
+    },
+    { "name": "short prerelease", "left": "1.0-alpha", "right": "1.0.0", "order": null }
+  ]
+}

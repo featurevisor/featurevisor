@@ -1,25 +1,27 @@
-# React SDK
+# React
 
-Full docs: <https://featurevisor.com/docs/react> · React Native: <https://featurevisor.com/docs/react-native>
+Full docs: <https://featurevisor.com/docs/react/>. React Native: <https://featurevisor.com/docs/react-native/>
 
-`@featurevisor/react` wraps the [JavaScript SDK](sdk-javascript.md) with a provider and reactive hooks. Read sdk-javascript.md first for instance creation, context, datafile refresh, and events — this package only adds the React layer.
+`@featurevisor/react` wraps the [JavaScript SDK](sdk-javascript.md) with a provider and hooks. Instance creation, context, datafile refresh and events work as described there.
 
 ```bash
-npm install --save @featurevisor/react
+npm install --save @featurevisor/sdk @featurevisor/react
 ```
 
-## Provider setup
+## Provider
 
-Create the SDK instance once, outside the component tree, and pass it to `FeaturevisorProvider`:
+Create the instance once, outside the component tree:
 
 ```jsx
 import { createFeaturevisor } from '@featurevisor/sdk'
 import { FeaturevisorProvider } from '@featurevisor/react'
 
-const datafile = await fetch(DATAFILE_URL).then((res) => res.json())
+const response = await fetch(DATAFILE_URL)
 
-const f = createFeaturevisor({ datafile })
-f.setContext({ userId: '123' })
+const f = createFeaturevisor({
+  datafile: await response.json(),
+  context: { userId: '8f2a' },
+})
 
 root.render(
   <FeaturevisorProvider instance={f}>
@@ -28,50 +30,46 @@ root.render(
 )
 ```
 
-## Reactive hooks
-
-These render the component again when the evaluated **value changes**. Datafile subscriptions include direct changes and changes caused by segment or required feature dependencies. Unrelated datafile updates are ignored, and an unchanged evaluated value does not render the component again.
+## Hooks
 
 ```jsx
 import { useFlag, useVariation, useVariable } from '@featurevisor/react'
 
 function Checkout() {
-  const isEnabled = useFlag('checkout')
-  const variation = useVariation('checkout')            // string | null
-  const methods = useVariable('checkout', 'paymentMethods')
+  const enabled = useFlag('checkout')
+  const variation = useVariation('pricing') // string or null
+  const label = useVariable('buyButton', 'label')
+  const supportEmail = useVariable('supportEmail') // global variable
 
-  if (!isEnabled) return <OldCheckout />
-  return variation === 'treatment' ? <NewCheckout methods={methods} /> : <OldCheckout />
+  if (!enabled) return <OldCheckout />
+
+  return <NewCheckout variation={variation} label={label} support={supportEmail} />
 }
 ```
 
-All three accept optional component-level context as the last argument: `useFlag('checkout', { country: 'nl' })`. Beware of passing a fresh object literal on every render — memoize the context object (`useMemo`) or the hooks' effect re-runs each render.
+These hooks render again when their **evaluated value** changes after a datafile update, a context change or new sticky values, including changes through segments, conditions and compositions. Unrelated updates and unchanged values do not render again.
 
-## Non-reactive access
+Each hook takes an optional context as its last argument: `useFlag('checkout', { country: 'nl' })`. Memoize that object with `useMemo`, because a new object on every render re-subscribes every time.
+
+## Without re-rendering
 
 ```jsx
 import { useFeaturevisor, useSdk } from '@featurevisor/react'
 
-function MyComponent() {
-  // bound methods (isEnabled, getVariation, getVariable*, setContext, setStickyFeatures, …)
-  const { isEnabled, setContext } = useFeaturevisor()
-
-  // or the raw instance
-  const f = useSdk()
+function SignIn() {
+  const { setContext, isEnabled } = useFeaturevisor() // bound methods
+  const f = useSdk() // the raw instance
 }
 ```
 
-These do **not** trigger re-renders on datafile/context changes — use them for event handlers (e.g. call `setContext` after login) or one-shot reads, not for render-time branching.
+These do **not** re-render on changes. Use them in event handlers, for example `setContext({ userId })` after sign in, not for render time branching. `onFeatureChange(sdk, featureKey, callback)` and `onVariableChange(sdk, variableKey, callback)` subscribe outside hooks.
 
-`onFeatureChange(sdk, featureKey, callback)` is also exported for custom subscriptions outside hooks.
+## Server rendering
 
-## SSR and hydration (Next.js etc.)
-
-Evaluating on the server and again on the client can disagree (different context timing, datafile revisions) — causing hydration mismatches or visible flag "flicker". The fix is the [SSR handoff](sdk-javascript.md#ssr-handoff) pattern: evaluate once per request on the server with `spawn`, `getFeatureEvaluations`, and `getVariableEvaluations`. Serialize both maps into the page, then initialize the client instance with `stickyFeatures` and `stickyVariables` so the first render matches the server. Framework-specific guides (Next.js, Astro, Nuxt, Express, Fastify): <https://featurevisor.com/docs/frameworks>.
+Evaluating separately on server and client can disagree and cause hydration mismatches or flicker. Evaluate once per request on the server with a child instance, serialize `getFeatureEvaluations()` and `getVariableEvaluations()` into the page, and start the client instance with them as `stickyFeatures` and `stickyVariables` ([SSR handoff](sdk-javascript.md#ssr-handoff)). See the [Next.js guide](https://featurevisor.com/docs/frameworks/nextjs/).
 
 ## Guidance
 
-- Evaluations are cheap but not free; for hot components memoize derived values rather than calling hooks in tight loops.
-- Typed hooks (compile-time-checked feature/variable keys) can be generated from the project with `generate-code --react` — see [code-generation.md](code-generation.md).
-- **React Native** uses the same `@featurevisor/react` package and hooks; only the datafile fetching/caching strategy differs. The usual shape: create the instance at module scope with initial `context`, fetch the datafile in a root-component `useEffect`, call `setDatafile(datafile, true)`, and render the provider once loading settles (see the React Native docs link above).
+- Typed hooks with checked keys come from `generate-code --react` ([code-generation.md](code-generation.md)).
+- React Native uses the same package. Create the instance at module scope, fetch the datafile in a root `useEffect`, call `setDatafile(datafile, true)`, and render once loading settles.
 - Example app: <https://github.com/featurevisor/featurevisor-example-react>

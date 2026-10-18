@@ -2,6 +2,7 @@ import type { Context, DatafileContent, GroupSegment } from "@featurevisor/types
 
 import { allSegmentsAreMatched } from "./conditions";
 import { createFeaturevisor } from "./instance";
+import { normalizeDatafile } from "./normalize";
 
 interface Group {
   key: string;
@@ -87,7 +88,7 @@ describe("sdk: instance datafile methods", function () {
     expect((featurevisor.getSegment("germany") as any).conditions[0].value).toEqual("de");
     expect(featurevisor.getSegment("belgium")).toEqual(undefined);
 
-    expect(featurevisor.getFeature("test")).toEqual(datafileJson.features.test);
+    expect(featurevisor.getFeature("test")).toEqual(normalizeDatafile(datafileJson).features.test);
     expect(featurevisor.getVariableKeys("test")).toEqual([]);
     expect(featurevisor.getFeature("test2")).toEqual(undefined);
     expect(featurevisor.getVariableKeys("test2")).toEqual([]);

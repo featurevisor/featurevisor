@@ -1,7 +1,8 @@
 {
   "name": "@featurevisor/types",
+  "sideEffects": false,
   "version": "3.8.0",
-  "description": "Common Typescript types for Featurevisor",
+  "description": "Shared TypeScript types for Featurevisor definitions, datafiles and context",
   "main": "src/index.js",
   "module": "src/index.js",
   "types": "src/index.d.ts",
@@ -39,6 +40,7 @@
     "experiments"
   ],
   "repository": {
+    "directory": "packages/types",
     "type": "git",
     "url": "https://github.com/featurevisor/featurevisor.git"
   },

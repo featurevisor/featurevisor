@@ -4,6 +4,10 @@ tags:
 
 bucketBy: userId
 
+conditions:
+  - feature: experimentAllocation
+    variation: bar
+
 variablesSchema:
   color:
     type: string
@@ -27,7 +31,7 @@ variations:
         alignment: center for B
     variableOverrides:
       hero:
-        - segments:
+        - conditions:
             or:
               - countries.germany
               - countries.switzerland
@@ -39,11 +43,12 @@ variations:
     weight: 34
 
 rules:
+  # New rule keys deliberately reset allocations from the former Group.
   staging:
-    - key: "1"
-      segments: "*"
-      percentage: 50
+    - key: allocated
+      conditions: "*"
+      percentage: 100
   production:
-    - key: "1"
-      segments: "*"
-      percentage: 50
+    - key: allocated
+      conditions: "*"
+      percentage: 100

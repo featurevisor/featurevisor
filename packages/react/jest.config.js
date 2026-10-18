@@ -18,5 +18,6 @@ module.exports = {
   },
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1",
+    "^@featurevisor/sdk$": "<rootDir>/../sdk/src",
   },
 };

@@ -1,18 +1,11 @@
 description: <Short human-readable description>
-tags:
-  - all # must exist in featurevisor.config.js -> tags
 
-# Pick the attribute that uniquely identifies the audience for this feature.
-# Signed-in surface: userId. Anonymous: deviceId. Ask the user if unclear.
+# The attribute that identifies who keeps a stable result.
+# Signed-in surfaces: userId. Anonymous: deviceId. Ask the user if unclear.
 bucketBy: userId
 
+# With environments configured, nest this list under each environment key.
 rules:
-  staging:
-    - key: everyone
-      segments: "*"
-      percentage: 100
-
-  production:
-    - key: everyone
-      segments: "*"
-      percentage: 0 # ramp this up over time; do NOT rename the key
+  - key: everyone
+    conditions: "*"
+    percentage: 0 # raise over time, and never rename the key

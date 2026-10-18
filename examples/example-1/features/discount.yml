@@ -5,20 +5,21 @@ tags:
 
 bucketBy: userId
 
-requiredFeatures: sidebar
+conditions:
+  feature: sidebar
 
 rules:
   staging:
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: "2"
       description: "Black Friday Weekend rule here"
-      segments:
+      conditions:
         - blackFridayWeekend
       percentage: 100
 
     - key: "1"
-      segments: "*"
+      conditions: "*"
       percentage: 0

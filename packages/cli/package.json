@@ -1,7 +1,10 @@
 {
   "name": "@featurevisor/cli",
   "version": "3.11.0",
-  "description": "CLI package of Featurevisor",
+  "description": "Command line tool to lint, test and build Featurevisor projects",
+  "engines": {
+    "node": ">=24"
+  },
   "main": "bin.js",
   "types": "lib/index.d.ts",
   "files": [
@@ -31,6 +34,7 @@
     "experiments"
   ],
   "repository": {
+    "directory": "packages/cli",
     "type": "git",
     "url": "https://github.com/featurevisor/featurevisor.git"
   },

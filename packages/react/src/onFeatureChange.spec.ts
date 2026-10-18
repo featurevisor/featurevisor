@@ -137,7 +137,7 @@ describe("react: onFeatureChange", function () {
     expect(calls).toBe(1);
   });
 
-  test("should not invoke callback on sticky_features_set when another feature is listed", function () {
+  test("should conservatively invoke callback when another sticky feature changes", function () {
     const sdk = createFeaturevisor({ datafile: datafileWithTwoFeatures() });
     let calls = 0;
     onFeatureChange(sdk, "test", () => {
@@ -147,7 +147,18 @@ describe("react: onFeatureChange", function () {
     sdk.setStickyFeatures({
       other: { enabled: true },
     });
-    expect(calls).toBe(0);
+    expect(calls).toBe(1);
+  });
+
+  test("should conservatively invoke callback when a sticky variable changes", function () {
+    const sdk = createFeaturevisor({ datafile: datafileForTestFeature() });
+    let calls = 0;
+    onFeatureChange(sdk, "test", () => {
+      calls += 1;
+    });
+
+    sdk.setStickyVariables({ country: "nl" });
+    expect(calls).toBe(1);
   });
 
   test("unsubscribe should remove all listeners", function () {
@@ -162,6 +173,7 @@ describe("react: onFeatureChange", function () {
     sdk.setContext({ x: 1 });
     sdk.setDatafile(datafileForTestFeature("2"));
     sdk.setStickyFeatures({ test: { enabled: false } }, true);
+    sdk.setStickyVariables({ country: "nl" });
 
     expect(calls).toBe(0);
   });

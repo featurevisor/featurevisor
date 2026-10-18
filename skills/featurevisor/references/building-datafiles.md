@@ -2,135 +2,88 @@
 
 Full docs:
 
-- Building: <https://featurevisor.com/docs/building-datafiles>
-- Deployment: <https://featurevisor.com/docs/deployment>
-- State files: <https://featurevisor.com/docs/state-files>
+- Building: <https://featurevisor.com/docs/building-datafiles/>
+- Deployment: <https://featurevisor.com/docs/deployment/>
+- State files: <https://featurevisor.com/docs/state-files/>
 
-Datafiles are the static JSON artifacts the SDKs consume. They contain selected features and global variables with their dependencies. They are produced per environment × target and generated with `schemaVersion: "2"`.
+Datafiles are the static JSON files SDKs load. The CLI builds one per target, and per environment when environments are configured. Each contains the target's selected features and global variables plus everything they reference, with `schemaVersion: "4"`. Only v4 SDKs read v4 datafiles correctly ([upgrading-to-v4.md](upgrading-to-v4.md)).
 
 ## Two kinds of build
 
-Bare `npx featurevisor build` is a **CI command**: besides writing datafiles, it increments `.featurevisor/REVISION` and updates `.featurevisor/existing-state-*.json`, which CI commits back — that state is how the _next_ build preserves consistent bucketing.
+Bare `npx featurevisor build` is the **CI command**. Besides writing datafiles, it increments `.featurevisor/REVISION` and updates the state files that keep variation allocations stable between builds. The deploying pipeline commits them.
 
-**Local development builds should default to `--no-state-files`:**
+**Every local build, yours and the user's, uses `--no-state-files`:**
 
 ```bash
 npx featurevisor build --no-state-files
 ```
 
-You get the exact same datafile output and the same success/failure confirmation — only the REVISION and state files stay untouched. That's what a local build is for: verifying the project builds cleanly, inspecting output, previewing a datafile — not producing the canonical revision. This applies to the user building locally just as much as to you; if they run bare `build` by habit, point out the `--no-state-files` default and that local state changes shouldn't be committed.
+It writes the same datafiles and reports the same errors, without touching revision or state. If the user runs bare `build` by habit, point out the difference and that local state changes should not be committed.
 
-Output lands in `<datafilesDirectoryPath>` (default `datafiles/`):
+## Output
 
 ```
 datafiles/
-├── staging/
-│   └── featurevisor-all.json
-└── production/
-    └── featurevisor-all.json
+└── featurevisor-all.json
 ```
 
-With multiple targets, you'll see one `featurevisor-<target>.json` file per target and environment. Without `--target`, every configured target is built.
+That is the default scaffold. Each target adds `featurevisor-<target>.json`. Environments add a directory per environment, such as `datafiles/production/featurevisor-web.json`. Sets add a directory per set before that. `datafilesDirectoryPath` and `datafileNamePattern` in the configuration change the location and names.
 
-A Target without selectors includes every active feature and global variable. Tag selectors apply to both kinds. `includeFeatures` and `excludeFeatures` filter feature keys, while `includeVariables` and `excludeVariables` filter global variable keys. When tag and key selectors are present, an entity must satisfy both.
+## Options
 
-## Build options
+| Option                                | Effect                                                                      |
+| ------------------------------------- | --------------------------------------------------------------------------- |
+| `--no-state-files`                    | leave `REVISION` and state files untouched                                  |
+| `--target=<target>`                   | build only this target. Repeat for several                                  |
+| `--environment=<env>`                 | build one configured environment. Rejected in projects without environments |
+| `--set=<set>`                         | build one set                                                               |
+| `--print`                             | print one datafile to stdout instead of writing files                       |
+| `--pretty`                            | format printed JSON                                                         |
+| `--feature=<key>`, `--variable=<key>` | build only that definition and what it references, typically with `--print` |
+| `--revision=<value>`                  | stamp a chosen revision                                                     |
+| `--revision-from-hash`                | derive each datafile's revision from its content                            |
+| `--datafiles-dir=<dir>`               | write somewhere else for this run                                           |
 
-| Flag                   | Effect                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------ |
-| `--no-state-files`     | Don't touch `.featurevisor/REVISION` or existing-state-\*.json                                   |
-| `--revision <value>`   | Stamp a custom revision into every datafile (e.g. git SHA)                                       |
-| `--revision-from-hash` | Use a content hash per datafile — unchanged content = unchanged revision (great for CDN caching) |
-| `--feature=<key>`      | Print one feature's datafile entry to stdout instead of writing                                  |
-| `--variable=<key>`     | Print one global variable and its dependencies to stdout                                         |
-| `--environment=<env>`  | Limit to one environment                                                                         |
-| `--target=<target>`    | Build only this target; repeat to build several                                                  |
-| `--pretty`             | Pretty-print the output                                                                          |
-| `--print`              | Print full datafile to stdout (no files written)                                                 |
-| `--datafilesDir=<dir>` | Write elsewhere than `datafilesDirectoryPath` for this run                                       |
-| `--set=<set>`          | Sets projects — build one set ([sets-promotions.md](sets-promotions.md))                         |
+`--print` and `--json` emit one datafile, so they take at most one target. In a project with environments, `--print` also needs `--environment`.
 
-When debugging the shape of a datafile entry, prefer `--feature=<key> --print` over reading the full file.
-
-`--json` and `--print` accept at most one target because they emit one datafile to standard output.
-
-## State files
-
-Live under `<stateDirectoryPath>` (default `.featurevisor/`):
-
-- `REVISION` — integer, incremented per successful build.
-- `existing-state-<environment>.json` (or `existing-state.json` in projects without environments) — traffic allocation snapshots that let the _next_ build maintain [consistent bucketing](bucketing.md) when percentages change.
-- In sets projects, both live per set under `.featurevisor/sets/<set>/` — see [sets-promotions.md](sets-promotions.md).
-
-Authoring rules:
-
-- **CI**: builds without `--no-state-files`; commits the updated state files back with `[skip ci]`.
-- **Local / agent**: builds **with** `--no-state-files`; never commit state changes from local.
-
-The user usually has `datafiles/` (or wherever `datafilesDirectoryPath` points) ignored in `.gitignore`, and `.featurevisor/` _tracked_. Don't fight that layout.
-
-## Deployment (CI pipeline)
-
-The recommended CI sequence on merge to main:
+To see exactly what ships for one feature:
 
 ```bash
-# 1. validate
-npx featurevisor lint
-npx featurevisor test
-
-# 2. build (state files allowed in CI)
-npx featurevisor build
-
-# 3. commit incremented state back to repo
-git add .featurevisor/
-git commit -m "[skip ci] Revision $(cat .featurevisor/REVISION)"
-git push origin main
-
-# 4. upload datafiles/ to CDN
-#    (provider-specific: aws s3 sync, wrangler pages deploy, gh-pages, etc.)
+npx featurevisor build --print --pretty --feature=checkout
 ```
 
-When the user asks you to set this up:
+## Run lint and tests first
 
-- Don't run `git commit`/`git push` from an agent without explicit confirmation.
-- Don't run a full `build` (without `--no-state-files`) without explicit confirmation — state changes are intended to be CI-managed.
+Build does not run full lint. It catches broken references and dependency cycles, but can silently drop a removed v3 field or accept a malformed date. CI must run lint and tests before building:
 
-Step-by-step hosting guides exist for common providers — fetch the matching one instead of improvising:
+```bash
+npx featurevisor lint
+npx featurevisor test
+npx featurevisor build
+```
 
-- GitHub Actions: <https://featurevisor.com/docs/integrations/github-actions>
-- Cloudflare Pages: <https://featurevisor.com/docs/integrations/cloudflare-pages>
-- GitHub Pages: <https://featurevisor.com/docs/integrations/github-pages>
-- PartyKit: <https://featurevisor.com/docs/integrations/partykit>
-- General deployment guidance: <https://featurevisor.com/docs/deployment>
+## Deployment
 
-## Consuming the deployed datafile
+The usual pipeline on merge to the main branch:
 
-Once hosted (e.g. `https://cdn.example.com/production/featurevisor-web.json`), SDK init looks like:
+1. Lint and test.
+2. Build, with state files.
+3. Commit the updated `.featurevisor/` back, typically with `[skip ci]` in the message.
+4. Upload `datafiles/` to a CDN or static host.
+
+Do not run `git commit`, `git push` or a bare `build` on the user's behalf without explicit confirmation. Most projects ignore `datafiles/` in Git and track `.featurevisor/`, so keep that layout.
+
+Hosting guides: [GitHub Actions](https://featurevisor.com/docs/integrations/github-actions/), [Cloudflare Pages](https://featurevisor.com/docs/integrations/cloudflare-pages/), [GitHub Pages](https://featurevisor.com/docs/integrations/github-pages/) and [general deployment](https://featurevisor.com/docs/deployment/). Fetch the matching one rather than improvising.
+
+A build with `--environment` writes only that environment while advancing the shared revision. Build every environment before publishing the whole output directory.
+
+## Consuming datafiles
 
 ```js
 import { createFeaturevisor } from '@featurevisor/sdk'
 
-const datafile = await fetch(url).then(r => r.json())
-const f = createFeaturevisor({ datafile })
+const response = await fetch('https://cdn.yoursite.com/featurevisor-all.json')
+const f = createFeaturevisor({ datafile: await response.json() })
 ```
 
-For full SDK integration (context, evaluation, refresh, React/Vue, server-side), read [sdk-javascript.md](sdk-javascript.md).
-
-## Refreshing in production
-
-Two common patterns:
-
-- **Polling** — the application refetches the datafile periodically (e.g. every 5 minutes) and calls `setDatafile` again.
-- **Push** — your deploy pipeline broadcasts a "refresh now" signal (websocket/SSE) to running apps.
-
-Both are application-side concerns — see [sdk-javascript.md](sdk-javascript.md#keeping-the-datafile-fresh).
-
-## Inspecting a datafile entry
-
-To see what gets compiled for a specific feature without writing files:
-
-```bash
-npx featurevisor build --feature=myFeature --environment=production --print --pretty
-```
-
-This is the right tool when the user asks "what's actually in the production datafile for X?" — beats opening the JSON.
+Applications refresh by polling or on a push signal, and call `setDatafile` with the new content ([sdk-javascript.md](sdk-javascript.md#set-and-refresh-the-datafile)). A change goes live after merge, build, upload and each application's next refresh.

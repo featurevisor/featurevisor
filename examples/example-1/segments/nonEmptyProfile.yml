@@ -1,0 +1,9 @@
+description: Users whose shallow profile fields are all populated
+conditions:
+  and:
+    - attribute: phone
+      operator: notEmpty
+    - attribute: interests
+      operator: notEmpty
+    - attribute: preferences
+      operator: notEmpty

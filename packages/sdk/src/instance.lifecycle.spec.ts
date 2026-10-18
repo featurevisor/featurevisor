@@ -45,7 +45,10 @@ describe("Featurevisor public API: lifecycle and state", () => {
     const events: any[] = [];
     const sdk = createFeaturevisor({
       logLevel: "fatal",
-      stickyFeatures: { a: { enabled: true }, shared: { enabled: true, variation: "control" } },
+    });
+    sdk.setStickyFeatures({
+      a: { enabled: true },
+      shared: { enabled: true, variation: "control" },
     });
     sdk.on("sticky_features_set", (event) => events.push(event));
 
@@ -61,28 +64,21 @@ describe("Featurevisor public API: lifecycle and state", () => {
     ]);
   });
 
-  it("keeps deprecated sticky feature options, methods, and events working", () => {
-    const events: any[] = [];
-    const sdk = createFeaturevisor({ sticky: { flag: { enabled: false } } });
-    sdk.on("sticky_set", (event) => events.push(event));
+  it("removes legacy sticky and aggregate evaluation aliases from the root instance", () => {
+    const sdk = createFeaturevisor();
 
-    expect(sdk.isEnabled("flag")).toBe(false);
-    sdk.setSticky({ flag: { enabled: true } }, true);
-    expect(sdk.isEnabled("flag")).toBe(true);
-    sdk.setStickyVariables({ variable: "value" });
-    expect(events).toEqual([
-      { features: ["flag"], variables: [], replaced: true },
-      { features: [], variables: ["variable"], replaced: false },
-    ]);
-  });
-
-  it("prefers stickyFeatures when both option names are supplied", () => {
-    const sdk = createFeaturevisor({
-      stickyFeatures: { flag: { enabled: true } },
-      sticky: { flag: { enabled: false } },
-    });
-
-    expect(sdk.isEnabled("flag")).toBe(true);
+    expect("setSticky" in sdk).toBe(false);
+    expect("getAllEvaluations" in sdk).toBe(false);
+    if (false) {
+      // @ts-expect-error Legacy sticky constructor options are removed.
+      createFeaturevisor({ sticky: { flag: { enabled: false } } });
+      // @ts-expect-error Legacy sticky setter is removed.
+      sdk.setSticky({ flag: { enabled: true } });
+      // @ts-expect-error Legacy sticky event is removed.
+      sdk.on("sticky_set", () => undefined);
+      // @ts-expect-error Legacy aggregate evaluation getter is removed.
+      sdk.getAllEvaluations();
+    }
   });
 
   it("reports distinct sticky feature and variable diagnostics", () => {
@@ -129,11 +125,10 @@ describe("Featurevisor public API: lifecycle and state", () => {
     const sdk = createFeaturevisor({
       logLevel: "fatal",
       datafile: createDatafile({ features: { flag: createFeature() } }),
-      sticky: { flag: { enabled: false } },
     });
+    sdk.setStickyFeatures({ flag: { enabled: false } });
 
     expect(sdk.isEnabled("flag")).toBe(false);
-    expect(sdk.isEnabled("flag", {}, { sticky: { flag: { enabled: true } } } as any)).toBe(false);
   });
 
   it("returns raw evaluations with stable reasons and details", () => {
@@ -235,19 +230,6 @@ describe("Featurevisor public API: lifecycle and state", () => {
       enabled: false,
       variation: "",
     });
-  });
-
-  it("keeps getAllEvaluations as a deprecated feature evaluations alias", () => {
-    const sdk = createFeaturevisor({
-      logLevel: "fatal",
-      datafile: createComplexDatafile(),
-      modules: [deterministicBucketModule()],
-    });
-    const context = { userId: "a", bucket: 75000 };
-
-    expect(sdk.getAllEvaluations(context, ["experiment"])).toEqual(
-      sdk.getFeatureEvaluations(context, ["experiment"]),
-    );
   });
 
   it("updates diagnostic filtering at runtime", () => {

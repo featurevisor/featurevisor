@@ -1,40 +1,818 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$defs": {
-    "value": {
-      "oneOf": [
-        { "type": "boolean" },
-        { "type": "string" },
-        { "type": "number" },
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "archived": { "type": "boolean" },
+        "deprecated": { "type": "boolean" },
+        "promotable": { "type": "boolean" },
+        "description": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "conditions": {
+          "anyOf": [
+            { "type": "string", "const": "*" },
+            { "$ref": "#/definitions/plain___schema0" },
+            { "minItems": 1, "type": "array", "items": { "$ref": "#/definitions/plain___schema0" } }
+          ]
+        },
+        "bucketBy": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } },
+            {
+              "type": "object",
+              "properties": { "or": { "type": "array", "items": { "type": "string" } } },
+              "required": ["or"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "variablesSchema": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "deprecated": { "type": "boolean" },
+              "schema": { "type": "string" },
+              "type": {
+                "anyOf": [
+                  { "type": "string", "const": "json" },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "boolean",
+                      "string",
+                      "integer",
+                      "number",
+                      "object",
+                      "array",
+                      "double",
+                      "date",
+                      "semver"
+                    ]
+                  }
+                ]
+              },
+              "items": { "allOf": [{ "$ref": "#/definitions/plain___schema1" }] },
+              "properties": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": { "$ref": "#/definitions/plain___schema1" }
+              },
+              "additionalProperties": { "allOf": [{ "$ref": "#/definitions/plain___schema1" }] },
+              "required": { "type": "array", "items": { "type": "string" } },
+              "enum": { "type": "array", "items": { "$ref": "#/definitions/plain___schema2" } },
+              "const": { "allOf": [{ "$ref": "#/definitions/plain___schema2" }] },
+              "oneOf": {
+                "minItems": 1,
+                "type": "array",
+                "items": { "$ref": "#/definitions/plain___schema1" }
+              },
+              "minimum": { "type": "number" },
+              "maximum": { "type": "number" },
+              "minLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "maxLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "pattern": { "type": "string" },
+              "format": { "type": "string", "enum": ["date-time", "semver"] },
+              "minItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "maxItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "uniqueItems": { "type": "boolean" },
+              "description": { "type": "string" },
+              "defaultValue": { "$ref": "#/definitions/plain___schema2" },
+              "disabledValue": { "allOf": [{ "$ref": "#/definitions/plain___schema2" }] },
+              "useDefaultWhenDisabled": { "type": "boolean" }
+            },
+            "required": ["defaultValue"],
+            "additionalProperties": false
+          }
+        },
+        "disabledVariationValue": { "type": "string", "minLength": 1 },
+        "variations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "value": { "type": "string", "minLength": 1 },
+              "weight": { "type": "number", "minimum": 0, "maximum": 100 },
+              "variables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "anyOf": [{ "$ref": "#/definitions/plain___schema2" }, { "type": "null" }]
+                }
+              },
+              "variableOverrides": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": { "type": "string", "minLength": 1 },
+                      "description": { "type": "string" },
+                      "promotable": { "type": "boolean" },
+                      "conditions": {
+                        "anyOf": [
+                          { "type": "string", "const": "*" },
+                          { "$ref": "#/definitions/plain___schema0" },
+                          {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": { "$ref": "#/definitions/plain___schema0" }
+                          }
+                        ]
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "anyOf": [
+                              { "$ref": "#/definitions/plain___schema2" },
+                              { "type": "null" }
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "propertyNames": { "type": "string" },
+                            "additionalProperties": {
+                              "anyOf": [
+                                { "$ref": "#/definitions/plain___schema2" },
+                                { "type": "null" }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "mutate": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "$comment": "Mutation values depend on the declared variable type. Run Featurevisor lint."
+                            }
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "$comment": "Mutation values depend on the declared variable type. Run Featurevisor lint."
+                              },
+                              "minProperties": 1,
+                              "maxProperties": 1
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": ["conditions"]
+                  }
+                }
+              }
+            },
+            "required": ["value", "weight"],
+            "additionalProperties": false
+          }
+        },
+        "expose": {
+          "anyOf": [{ "type": "boolean" }, { "type": "array", "items": { "type": "string" } }]
+        },
+        "force": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "conditions": {
+                "anyOf": [
+                  { "type": "string", "const": "*" },
+                  { "$ref": "#/definitions/plain___schema0" },
+                  {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/plain___schema0" }
+                  }
+                ]
+              },
+              "enabled": { "type": "boolean" },
+              "variation": { "type": "string", "minLength": 1 },
+              "variables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "anyOf": [{ "$ref": "#/definitions/plain___schema2" }, { "type": "null" }]
+                }
+              }
+            },
+            "additionalProperties": false,
+            "required": ["conditions"]
+          }
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": { "type": "string" },
+              "description": { "type": "string" },
+              "promotable": { "type": "boolean" },
+              "conditions": {
+                "anyOf": [
+                  { "type": "string", "const": "*" },
+                  { "$ref": "#/definitions/plain___schema0" },
+                  {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/plain___schema0" }
+                  }
+                ]
+              },
+              "percentage": { "type": "number", "minimum": 0, "maximum": 100 },
+              "enabled": { "type": "boolean" },
+              "variation": { "type": "string", "minLength": 1 },
+              "variables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "anyOf": [{ "$ref": "#/definitions/plain___schema2" }, { "type": "null" }]
+                }
+              },
+              "variableOverrides": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": { "type": "string", "minLength": 1 },
+                      "description": { "type": "string" },
+                      "promotable": { "type": "boolean" },
+                      "conditions": {
+                        "anyOf": [
+                          { "type": "string", "const": "*" },
+                          { "$ref": "#/definitions/plain___schema0" },
+                          {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": { "$ref": "#/definitions/plain___schema0" }
+                          }
+                        ]
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "anyOf": [
+                              { "$ref": "#/definitions/plain___schema2" },
+                              { "type": "null" }
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "propertyNames": { "type": "string" },
+                            "additionalProperties": {
+                              "anyOf": [
+                                { "$ref": "#/definitions/plain___schema2" },
+                                { "type": "null" }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "mutate": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "$comment": "Mutation values depend on the declared variable type. Run Featurevisor lint."
+                            }
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "$comment": "Mutation values depend on the declared variable type. Run Featurevisor lint."
+                              },
+                              "minProperties": 1,
+                              "maxProperties": 1
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": ["conditions"]
+                  }
+                }
+              },
+              "variationWeights": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": { "type": "number", "minimum": 0, "maximum": 100 }
+              }
+            },
+            "required": ["key", "percentage", "conditions"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["description", "bucketBy", "rules"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "archived": { "type": "boolean" },
+        "deprecated": { "type": "boolean" },
+        "promotable": { "type": "boolean" },
+        "description": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "conditions": {
+          "anyOf": [
+            { "type": "string", "const": "*" },
+            { "$ref": "#/definitions/environment___schema0" },
+            {
+              "minItems": 1,
+              "type": "array",
+              "items": { "$ref": "#/definitions/environment___schema0" }
+            }
+          ]
+        },
+        "bucketBy": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } },
+            {
+              "type": "object",
+              "properties": { "or": { "type": "array", "items": { "type": "string" } } },
+              "required": ["or"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "variablesSchema": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "deprecated": { "type": "boolean" },
+              "schema": { "type": "string" },
+              "type": {
+                "anyOf": [
+                  { "type": "string", "const": "json" },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "boolean",
+                      "string",
+                      "integer",
+                      "number",
+                      "object",
+                      "array",
+                      "double",
+                      "date",
+                      "semver"
+                    ]
+                  }
+                ]
+              },
+              "items": { "allOf": [{ "$ref": "#/definitions/environment___schema1" }] },
+              "properties": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": { "$ref": "#/definitions/environment___schema1" }
+              },
+              "additionalProperties": {
+                "allOf": [{ "$ref": "#/definitions/environment___schema1" }]
+              },
+              "required": { "type": "array", "items": { "type": "string" } },
+              "enum": {
+                "type": "array",
+                "items": { "$ref": "#/definitions/environment___schema2" }
+              },
+              "const": { "allOf": [{ "$ref": "#/definitions/environment___schema2" }] },
+              "oneOf": {
+                "minItems": 1,
+                "type": "array",
+                "items": { "$ref": "#/definitions/environment___schema1" }
+              },
+              "minimum": { "type": "number" },
+              "maximum": { "type": "number" },
+              "minLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "maxLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "pattern": { "type": "string" },
+              "format": { "type": "string", "enum": ["date-time", "semver"] },
+              "minItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "maxItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+              "uniqueItems": { "type": "boolean" },
+              "description": { "type": "string" },
+              "defaultValue": { "$ref": "#/definitions/environment___schema2" },
+              "disabledValue": { "allOf": [{ "$ref": "#/definitions/environment___schema2" }] },
+              "useDefaultWhenDisabled": { "type": "boolean" }
+            },
+            "required": ["defaultValue"],
+            "additionalProperties": false
+          }
+        },
+        "disabledVariationValue": { "type": "string", "minLength": 1 },
+        "variations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "value": { "type": "string", "minLength": 1 },
+              "weight": { "type": "number", "minimum": 0, "maximum": 100 },
+              "variables": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "anyOf": [{ "$ref": "#/definitions/environment___schema2" }, { "type": "null" }]
+                }
+              },
+              "variableOverrides": {
+                "type": "object",
+                "propertyNames": { "type": "string" },
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": { "type": "string", "minLength": 1 },
+                      "description": { "type": "string" },
+                      "promotable": { "type": "boolean" },
+                      "conditions": {
+                        "anyOf": [
+                          { "type": "string", "const": "*" },
+                          { "$ref": "#/definitions/environment___schema0" },
+                          {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": { "$ref": "#/definitions/environment___schema0" }
+                          }
+                        ]
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "anyOf": [
+                              { "$ref": "#/definitions/environment___schema2" },
+                              { "type": "null" }
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "propertyNames": { "type": "string" },
+                            "additionalProperties": {
+                              "anyOf": [
+                                { "$ref": "#/definitions/environment___schema2" },
+                                { "type": "null" }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "mutate": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "$comment": "Mutation values depend on the declared variable type. Run Featurevisor lint."
+                            }
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "$comment": "Mutation values depend on the declared variable type. Run Featurevisor lint."
+                              },
+                              "minProperties": 1,
+                              "maxProperties": 1
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": ["conditions"]
+                  }
+                }
+              }
+            },
+            "required": ["value", "weight"],
+            "additionalProperties": false
+          }
+        },
+        "expose": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "anyOf": [{ "type": "boolean" }, { "type": "array", "items": { "type": "string" } }]
+          }
+        },
+        "force": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "conditions": {
+                  "anyOf": [
+                    { "type": "string", "const": "*" },
+                    { "$ref": "#/definitions/environment___schema0" },
+                    {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": { "$ref": "#/definitions/environment___schema0" }
+                    }
+                  ]
+                },
+                "enabled": { "type": "boolean" },
+                "variation": { "type": "string", "minLength": 1 },
+                "variables": {
+                  "type": "object",
+                  "propertyNames": { "type": "string" },
+                  "additionalProperties": {
+                    "anyOf": [{ "$ref": "#/definitions/environment___schema2" }, { "type": "null" }]
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": ["conditions"]
+            }
+          }
+        },
+        "rules": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": { "type": "string" },
+                "description": { "type": "string" },
+                "promotable": { "type": "boolean" },
+                "conditions": {
+                  "anyOf": [
+                    { "type": "string", "const": "*" },
+                    { "$ref": "#/definitions/environment___schema0" },
+                    {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": { "$ref": "#/definitions/environment___schema0" }
+                    }
+                  ]
+                },
+                "percentage": { "type": "number", "minimum": 0, "maximum": 100 },
+                "enabled": { "type": "boolean" },
+                "variation": { "type": "string", "minLength": 1 },
+                "variables": {
+                  "type": "object",
+                  "propertyNames": { "type": "string" },
+                  "additionalProperties": {
+                    "anyOf": [{ "$ref": "#/definitions/environment___schema2" }, { "type": "null" }]
+                  }
+                },
+                "variableOverrides": {
+                  "type": "object",
+                  "propertyNames": { "type": "string" },
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": { "type": "string", "minLength": 1 },
+                        "description": { "type": "string" },
+                        "promotable": { "type": "boolean" },
+                        "conditions": {
+                          "anyOf": [
+                            { "type": "string", "const": "*" },
+                            { "$ref": "#/definitions/environment___schema0" },
+                            {
+                              "minItems": 1,
+                              "type": "array",
+                              "items": { "$ref": "#/definitions/environment___schema0" }
+                            }
+                          ]
+                        },
+                        "value": {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                { "$ref": "#/definitions/environment___schema2" },
+                                { "type": "null" }
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "propertyNames": { "type": "string" },
+                              "additionalProperties": {
+                                "anyOf": [
+                                  { "$ref": "#/definitions/environment___schema2" },
+                                  { "type": "null" }
+                                ]
+                              }
+                            }
+                          ]
+                        },
+                        "mutate": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": {
+                                "$comment": "Mutation values depend on the declared variable type. Run Featurevisor lint."
+                              }
+                            },
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "$comment": "Mutation values depend on the declared variable type. Run Featurevisor lint."
+                                },
+                                "minProperties": 1,
+                                "maxProperties": 1
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": ["conditions"]
+                    }
+                  }
+                },
+                "variationWeights": {
+                  "type": "object",
+                  "propertyNames": { "type": "string" },
+                  "additionalProperties": { "type": "number", "minimum": 0, "maximum": 100 }
+                }
+              },
+              "required": ["key", "percentage", "conditions"],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "required": ["description", "bucketBy", "rules"],
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "plain___schema0": {
+      "anyOf": [
         {
           "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/value" }
-        },
-        {
-          "type": "array",
-          "items": { "$ref": "#/$defs/value" }
-        }
-      ]
-    },
-    "value_or_null": {
-      "oneOf": [{ "$ref": "#/$defs/value" }, { "type": "null" }]
-    },
-    "variation_value": {
-      "type": "string",
-      "minLength": 1
-    },
-    "group_segment": {
-      "oneOf": [
-        {
-          "type": "string",
-          "description": "Segment key or *"
+          "properties": {
+            "attribute": { "type": "string" },
+            "operator": {
+              "type": "string",
+              "enum": [
+                "equals",
+                "notEquals",
+                "greaterThan",
+                "greaterThanOrEquals",
+                "lessThan",
+                "lessThanOrEquals",
+                "contains",
+                "notContains",
+                "startsWith",
+                "endsWith",
+                "matches",
+                "notMatches",
+                "semverEquals",
+                "semverNotEquals",
+                "semverGreaterThan",
+                "semverGreaterThanOrEquals",
+                "semverLessThan",
+                "semverLessThanOrEquals",
+                "before",
+                "after",
+                "in",
+                "notIn",
+                "includes",
+                "notIncludes",
+                "includesAny",
+                "notIncludesAny",
+                "exists",
+                "notExists",
+                "isNull",
+                "notNull",
+                "empty",
+                "notEmpty"
+              ]
+            },
+            "value": {
+              "anyOf": [
+                { "type": "string" },
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      { "type": "string" },
+                      { "type": "number" },
+                      { "type": "boolean" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                { "type": "number" },
+                { "type": "boolean" },
+                { "type": "null" }
+              ]
+            },
+            "regexFlags": { "type": "string" },
+            "compareTo": { "not": {} }
+          },
+          "required": ["attribute", "operator"],
+          "additionalProperties": false
         },
         {
           "type": "object",
           "properties": {
+            "feature": { "type": "string", "minLength": 1 },
+            "enabled": { "type": "boolean" },
+            "variation": { "type": "string", "minLength": 1 }
+          },
+          "required": ["feature"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "feature": { "type": "string", "minLength": 1 },
+            "variable": { "type": "string", "minLength": 1 },
+            "path": {
+              "anyOf": [
+                { "type": "string" },
+                {
+                  "type": "array",
+                  "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                }
+              ]
+            },
+            "operator": {
+              "type": "string",
+              "enum": [
+                "equals",
+                "notEquals",
+                "greaterThan",
+                "greaterThanOrEquals",
+                "lessThan",
+                "lessThanOrEquals",
+                "contains",
+                "notContains",
+                "startsWith",
+                "endsWith",
+                "matches",
+                "notMatches",
+                "semverEquals",
+                "semverNotEquals",
+                "semverGreaterThan",
+                "semverGreaterThanOrEquals",
+                "semverLessThan",
+                "semverLessThanOrEquals",
+                "before",
+                "after",
+                "in",
+                "notIn",
+                "includes",
+                "notIncludes",
+                "includesAny",
+                "notIncludesAny",
+                "exists",
+                "notExists",
+                "isNull",
+                "notNull",
+                "empty",
+                "notEmpty"
+              ]
+            },
+            "value": {
+              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+            },
+            "regexFlags": { "type": "string", "pattern": "^[gims]+$" }
+          },
+          "required": ["variable", "operator"],
+          "additionalProperties": false
+        },
+        { "type": "string", "minLength": 1, "pattern": "^(?!\\*$).+" },
+        {
+          "type": "object",
+          "properties": {
             "and": {
+              "minItems": 1,
               "type": "array",
-              "items": { "$ref": "#/$defs/group_segment" }
+              "items": { "$ref": "#/definitions/plain___schema0" }
             }
           },
           "required": ["and"],
@@ -44,8 +822,9 @@
           "type": "object",
           "properties": {
             "or": {
+              "minItems": 1,
               "type": "array",
-              "items": { "$ref": "#/$defs/group_segment" }
+              "items": { "$ref": "#/definitions/plain___schema0" }
             }
           },
           "required": ["or"],
@@ -55,8 +834,9 @@
           "type": "object",
           "properties": {
             "not": {
+              "minItems": 1,
               "type": "array",
-              "items": { "$ref": "#/$defs/group_segment" }
+              "items": { "$ref": "#/definitions/plain___schema0" }
             }
           },
           "required": ["not"],
@@ -64,331 +844,281 @@
         }
       ]
     },
-    "group_segments": {
-      "oneOf": [
-        { "$ref": "#/$defs/group_segment" },
-        {
+    "plain___schema1": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "promotable": { "type": "boolean" },
+        "type": {
+          "type": "string",
+          "enum": ["boolean", "string", "integer", "number", "object", "array"]
+        },
+        "enum": { "type": "array", "items": { "$ref": "#/definitions/plain___schema2" } },
+        "const": { "allOf": [{ "$ref": "#/definitions/plain___schema2" }] },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "minLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "maxLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "pattern": { "type": "string" },
+        "format": { "type": "string", "enum": ["date-time", "semver"] },
+        "items": { "allOf": [{ "$ref": "#/definitions/plain___schema1" }] },
+        "minItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "maxItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uniqueItems": { "type": "boolean" },
+        "required": { "type": "array", "items": { "type": "string" } },
+        "properties": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/plain___schema1" }
+        },
+        "additionalProperties": { "allOf": [{ "$ref": "#/definitions/plain___schema1" }] },
+        "schema": { "type": "string" },
+        "oneOf": {
+          "minItems": 2,
           "type": "array",
-          "items": { "$ref": "#/$defs/group_segment" }
+          "items": { "$ref": "#/definitions/plain___schema1" }
         }
+      },
+      "additionalProperties": false
+    },
+    "plain___schema2": {
+      "anyOf": [
+        { "type": "boolean" },
+        { "type": "string" },
+        { "type": "number" },
+        {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/plain___schema2" }
+        },
+        { "type": "array", "items": { "$ref": "#/definitions/plain___schema2" } }
       ]
     },
-    "bucket_by": {
-      "oneOf": [
-        { "type": "string" },
+    "environment___schema0": {
+      "anyOf": [
         {
-          "type": "array",
-          "items": { "type": "string" }
+          "type": "object",
+          "properties": {
+            "attribute": { "type": "string" },
+            "operator": {
+              "type": "string",
+              "enum": [
+                "equals",
+                "notEquals",
+                "greaterThan",
+                "greaterThanOrEquals",
+                "lessThan",
+                "lessThanOrEquals",
+                "contains",
+                "notContains",
+                "startsWith",
+                "endsWith",
+                "matches",
+                "notMatches",
+                "semverEquals",
+                "semverNotEquals",
+                "semverGreaterThan",
+                "semverGreaterThanOrEquals",
+                "semverLessThan",
+                "semverLessThanOrEquals",
+                "before",
+                "after",
+                "in",
+                "notIn",
+                "includes",
+                "notIncludes",
+                "includesAny",
+                "notIncludesAny",
+                "exists",
+                "notExists",
+                "isNull",
+                "notNull",
+                "empty",
+                "notEmpty"
+              ]
+            },
+            "value": {
+              "anyOf": [
+                { "type": "string" },
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      { "type": "string" },
+                      { "type": "number" },
+                      { "type": "boolean" },
+                      { "type": "null" }
+                    ]
+                  }
+                },
+                { "type": "number" },
+                { "type": "boolean" },
+                { "type": "null" }
+              ]
+            },
+            "regexFlags": { "type": "string" },
+            "compareTo": { "not": {} }
+          },
+          "required": ["attribute", "operator"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "feature": { "type": "string", "minLength": 1 },
+            "enabled": { "type": "boolean" },
+            "variation": { "type": "string", "minLength": 1 }
+          },
+          "required": ["feature"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "feature": { "type": "string", "minLength": 1 },
+            "variable": { "type": "string", "minLength": 1 },
+            "path": {
+              "anyOf": [
+                { "type": "string" },
+                {
+                  "type": "array",
+                  "items": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+                }
+              ]
+            },
+            "operator": {
+              "type": "string",
+              "enum": [
+                "equals",
+                "notEquals",
+                "greaterThan",
+                "greaterThanOrEquals",
+                "lessThan",
+                "lessThanOrEquals",
+                "contains",
+                "notContains",
+                "startsWith",
+                "endsWith",
+                "matches",
+                "notMatches",
+                "semverEquals",
+                "semverNotEquals",
+                "semverGreaterThan",
+                "semverGreaterThanOrEquals",
+                "semverLessThan",
+                "semverLessThanOrEquals",
+                "before",
+                "after",
+                "in",
+                "notIn",
+                "includes",
+                "notIncludes",
+                "includesAny",
+                "notIncludesAny",
+                "exists",
+                "notExists",
+                "isNull",
+                "notNull",
+                "empty",
+                "notEmpty"
+              ]
+            },
+            "value": {
+              "$comment": "Any JSON value is structurally allowed here. Run Featurevisor lint."
+            },
+            "regexFlags": { "type": "string", "pattern": "^[gims]+$" }
+          },
+          "required": ["variable", "operator"],
+          "additionalProperties": false
+        },
+        { "type": "string", "minLength": 1, "pattern": "^(?!\\*$).+" },
+        {
+          "type": "object",
+          "properties": {
+            "and": {
+              "minItems": 1,
+              "type": "array",
+              "items": { "$ref": "#/definitions/environment___schema0" }
+            }
+          },
+          "required": ["and"],
+          "additionalProperties": false
         },
         {
           "type": "object",
           "properties": {
             "or": {
+              "minItems": 1,
               "type": "array",
-              "items": { "type": "string" }
+              "items": { "$ref": "#/definitions/environment___schema0" }
             }
           },
           "required": ["or"],
           "additionalProperties": false
-        }
-      ]
-    },
-    "required_dependency": {
-      "oneOf": [
-        { "type": "string" },
+        },
         {
           "type": "object",
           "properties": {
-            "key": { "type": "string" },
-            "variation": { "type": "string" }
-          },
-          "required": ["key"],
-          "additionalProperties": false
-        }
-      ]
-    },
-    "schema_node": {
-      "type": "object",
-      "properties": {
-        "description": { "type": "string" },
-        "schema": { "type": "string" },
-        "type": {
-          "type": "string",
-          "enum": ["boolean", "string", "integer", "double", "object", "array"]
-        },
-        "enum": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/value" }
-        },
-        "const": { "$ref": "#/$defs/value" },
-        "minimum": { "type": "number" },
-        "maximum": { "type": "number" },
-        "minLength": { "type": "number" },
-        "maxLength": { "type": "number" },
-        "pattern": { "type": "string" },
-        "items": { "$ref": "#/$defs/schema_node" },
-        "minItems": { "type": "number" },
-        "maxItems": { "type": "number" },
-        "uniqueItems": { "type": "boolean" },
-        "required": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "properties": {
-          "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/schema_node" }
-        },
-        "additionalProperties": { "$ref": "#/$defs/schema_node" },
-        "oneOf": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/schema_node" }
-        }
-      },
-      "additionalProperties": false
-    },
-    "variable_schema_entry": {
-      "type": "object",
-      "properties": {
-        "deprecated": { "type": "boolean" },
-        "schema": { "type": "string" },
-        "type": {
-          "type": "string",
-          "enum": ["json", "boolean", "string", "integer", "double", "object", "array"]
-        },
-        "items": { "$ref": "#/$defs/schema_node" },
-        "properties": {
-          "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/schema_node" }
-        },
-        "additionalProperties": { "$ref": "#/$defs/schema_node" },
-        "required": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "enum": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/value" }
-        },
-        "const": { "$ref": "#/$defs/value" },
-        "oneOf": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/schema_node" }
-        },
-        "minimum": { "type": "number" },
-        "maximum": { "type": "number" },
-        "minLength": { "type": "number" },
-        "maxLength": { "type": "number" },
-        "pattern": { "type": "string" },
-        "minItems": { "type": "number" },
-        "maxItems": { "type": "number" },
-        "uniqueItems": { "type": "boolean" },
-        "description": { "type": "string" },
-        "defaultValue": { "$ref": "#/$defs/value" },
-        "disabledValue": { "$ref": "#/$defs/value" },
-        "useDefaultWhenDisabled": { "type": "boolean" }
-      },
-      "required": ["defaultValue"],
-      "additionalProperties": false
-    },
-    "variation_override": {
-      "type": "object",
-      "properties": {
-        "conditions": {
-          "oneOf": [
-            { "$ref": "segment.json#/$defs/multiple_conditions" },
-            { "$ref": "segment.json#/$defs/complex_condition" },
-            { "$ref": "segment.json#/$defs/plain_condition" }
-          ]
-        },
-        "segments": { "$ref": "#/$defs/group_segments" },
-        "value": { "$ref": "#/$defs/value" }
-      },
-      "required": ["value"],
-      "additionalProperties": false
-    },
-    "variation": {
-      "type": "object",
-      "properties": {
-        "description": { "type": "string" },
-        "value": { "$ref": "#/$defs/variation_value" },
-        "weight": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "variables": {
-          "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/value_or_null" }
-        },
-        "variableOverrides": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": { "$ref": "#/$defs/variation_override" }
-          }
-        }
-      },
-      "required": ["value", "weight"],
-      "additionalProperties": false
-    },
-    "rule": {
-      "type": "object",
-      "properties": {
-        "key": { "type": "string" },
-        "description": { "type": "string" },
-        "segments": { "$ref": "#/$defs/group_segments" },
-        "percentage": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "enabled": { "type": "boolean" },
-        "variation": { "$ref": "#/$defs/variation_value" },
-        "variables": {
-          "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/value_or_null" }
-        },
-        "variationWeights": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100
-          }
-        }
-      },
-      "required": ["key", "segments", "percentage"],
-      "additionalProperties": false
-    },
-    "force_item": {
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "segments": { "$ref": "#/$defs/group_segments" },
-            "enabled": { "type": "boolean" },
-            "variation": { "$ref": "#/$defs/variation_value" },
-            "variables": {
-              "type": "object",
-              "additionalProperties": { "$ref": "#/$defs/value_or_null" }
+            "not": {
+              "minItems": 1,
+              "type": "array",
+              "items": { "$ref": "#/definitions/environment___schema0" }
             }
           },
-          "required": ["segments"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "conditions": {
-              "oneOf": [
-                { "$ref": "segment.json#/$defs/multiple_conditions" },
-                { "$ref": "segment.json#/$defs/complex_condition" },
-                { "$ref": "segment.json#/$defs/plain_condition" }
-              ]
-            },
-            "enabled": { "type": "boolean" },
-            "variation": { "$ref": "#/$defs/variation_value" },
-            "variables": {
-              "type": "object",
-              "additionalProperties": { "$ref": "#/$defs/value_or_null" }
-            }
-          },
-          "required": ["conditions"],
+          "required": ["not"],
           "additionalProperties": false
         }
       ]
     },
-    "expose_value": {
-      "oneOf": [
+    "environment___schema1": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "promotable": { "type": "boolean" },
+        "type": {
+          "type": "string",
+          "enum": ["boolean", "string", "integer", "number", "object", "array"]
+        },
+        "enum": { "type": "array", "items": { "$ref": "#/definitions/environment___schema2" } },
+        "const": { "allOf": [{ "$ref": "#/definitions/environment___schema2" }] },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "minLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "maxLength": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "pattern": { "type": "string" },
+        "format": { "type": "string", "enum": ["date-time", "semver"] },
+        "items": { "allOf": [{ "$ref": "#/definitions/environment___schema1" }] },
+        "minItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "maxItems": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uniqueItems": { "type": "boolean" },
+        "required": { "type": "array", "items": { "type": "string" } },
+        "properties": {
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/environment___schema1" }
+        },
+        "additionalProperties": { "allOf": [{ "$ref": "#/definitions/environment___schema1" }] },
+        "schema": { "type": "string" },
+        "oneOf": {
+          "minItems": 2,
+          "type": "array",
+          "items": { "$ref": "#/definitions/environment___schema1" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "environment___schema2": {
+      "anyOf": [
         { "type": "boolean" },
+        { "type": "string" },
+        { "type": "number" },
         {
-          "type": "array",
-          "items": { "type": "string" }
-        }
-      ]
-    },
-    "rules_container": {
-      "oneOf": [
-        {
-          "type": "array",
-          "items": { "$ref": "#/$defs/rule" }
+          "type": "object",
+          "propertyNames": { "type": "string" },
+          "additionalProperties": { "$ref": "#/definitions/environment___schema2" }
         },
-        {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": { "$ref": "#/$defs/rule" }
-          }
-        }
-      ]
-    },
-    "force_container": {
-      "oneOf": [
-        {
-          "type": "array",
-          "items": { "$ref": "#/$defs/force_item" }
-        },
-        {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": { "$ref": "#/$defs/force_item" }
-          }
-        }
-      ]
-    },
-    "expose_container": {
-      "oneOf": [
-        { "$ref": "#/$defs/expose_value" },
-        {
-          "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/expose_value" }
-        }
+        { "type": "array", "items": { "$ref": "#/definitions/environment___schema2" } }
       ]
     }
-  },
-  "type": "object",
-  "properties": {
-    "archived": {
-      "type": "boolean",
-      "description": "Indicates whether the feature is archived or not."
-    },
-    "deprecated": {
-      "type": "boolean",
-      "description": "Indicates whether the feature is deprecated or not."
-    },
-    "description": {
-      "type": "string",
-      "description": "Human readable description of the feature for documentation purposes."
-    },
-    "tags": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Array of tags"
-    },
-    "required": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/required_dependency" }
-    },
-    "bucketBy": {
-      "$ref": "#/$defs/bucket_by"
-    },
-    "disabledVariationValue": {
-      "$ref": "#/$defs/variation_value"
-    },
-    "variablesSchema": {
-      "type": "object",
-      "additionalProperties": { "$ref": "#/$defs/variable_schema_entry" }
-    },
-    "variations": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/variation" }
-    },
-    "expose": { "$ref": "#/$defs/expose_container" },
-    "force": { "$ref": "#/$defs/force_container" },
-    "rules": { "$ref": "#/$defs/rules_container" }
-  },
-  "required": ["description", "tags", "bucketBy", "rules"],
-  "additionalProperties": false,
-  "description": "JSON Schema for creating Featurevisor feature, expressed in YAML"
+  }
 }
