@@ -71,14 +71,15 @@ afterEach(() => {
   fs.rmSync(workPath, { recursive: true, force: true });
 });
 
-test("extracts the selected example from the running CLI version tag", async () => {
-  const file = await archive("featurevisor-3.11.0", { yml: "tag", json: "other" });
+test("extracts the selected example from the main branch archive", async () => {
+  const file = await archive("featurevisor-main", { yml: "tag", json: "other" });
   get.mockResolvedValue({ data: fs.createReadStream(file) });
 
-  await expect(initProject(destinationPath, undefined, "3.11.0")).resolves.toBe(true);
-  expect(get).toHaveBeenCalledWith(expect.stringMatching(/\/tar\.gz\/v3\.11\.0$/));
+  await expect(initProject(destinationPath)).resolves.toBe(true);
+  expect(get).toHaveBeenCalledWith(EXAMPLES_TAR_URL);
+  expect(EXAMPLES_TAR_URL).toMatch(/\/tar\.gz\/main$/);
   expect(jest.mocked(global.fetch).mock.lastCall).toEqual([
-    expect.stringMatching(/\/tar\.gz\/v3\.11\.0$/),
+    EXAMPLES_TAR_URL,
     { signal: expect.any(AbortSignal) },
   ]);
   const manifest = JSON.parse(fs.readFileSync(path.join(destinationPath, "package.json"), "utf8"));
@@ -103,7 +104,7 @@ test("extracts the selected example from the running CLI version tag", async () 
 
 async function extractRealExample(example: string, destination: string) {
   const sourcePath = fs.mkdtempSync(path.join(workPath, "real-source-"));
-  const archiveRoot = "featurevisor-3.11.0";
+  const archiveRoot = "featurevisor-main";
   const files = execFileSync(
     "git",
     [
@@ -128,7 +129,7 @@ async function extractRealExample(example: string, destination: string) {
   const file = path.join(sourcePath, "real-example.tar.gz");
   await tar.c({ gzip: true, file, cwd: sourcePath }, [archiveRoot]);
   get.mockResolvedValueOnce({ data: fs.createReadStream(file) });
-  await initProject(destination, example === "yml" ? undefined : example, "3.11.0");
+  await initProject(destination, example === "yml" ? undefined : example);
 }
 
 test.each(["yml", "json", "toml", "no-environments", "targets"])(
@@ -165,9 +166,9 @@ test("README personalization preserves fenced headings and later sections", asyn
     "npm install",
     "",
   ].join("\r\n");
-  const file = await archive("featurevisor-3.11.0", { yml: "default" }, { "README.md": readme });
+  const file = await archive("featurevisor-main", { yml: "default" }, { "README.md": readme });
   get.mockResolvedValue({ data: fs.createReadStream(file) });
-  await initProject(destinationPath, undefined, "3.11.0");
+  await initProject(destinationPath);
   const result = fs.readFileSync(path.join(destinationPath, "README.md"), "utf8");
   expect(result).toBe(
     [
@@ -293,13 +294,13 @@ test("no environments and default scaffolds stay identical apart from metadata",
 });
 
 test("preserves the destination inode and unrelated .git entries", async () => {
-  const file = await archive("featurevisor-3.11.0", { yml: "tag" });
+  const file = await archive("featurevisor-main", { yml: "tag" });
   fs.mkdirSync(path.join(destinationPath, ".git"), { recursive: true });
   fs.writeFileSync(path.join(destinationPath, ".git", "config"), "keep");
   const inode = fs.statSync(destinationPath).ino;
   get.mockResolvedValue({ data: fs.createReadStream(file) });
 
-  await initProject(destinationPath, undefined, "3.11.0");
+  await initProject(destinationPath);
   expect(fs.statSync(destinationPath).ino).toBe(inode);
   expect(fs.readFileSync(path.join(destinationPath, ".git", "config"), "utf8")).toBe("keep");
   expect(
@@ -307,50 +308,24 @@ test("preserves the destination inode and unrelated .git entries", async () => {
   ).toBe("tag");
 });
 
-test("keeps the direct initProject default example and resolves the CLI package version", async () => {
-  const version = require("@featurevisor/cli/package.json").version;
-  const file = await archive(`featurevisor-${version}`, { yml: "default" });
+test("keeps the direct initProject default example", async () => {
+  const file = await archive("featurevisor-main", { yml: "default" });
   get.mockResolvedValue({ data: fs.createReadStream(file) });
 
   await initProject(destinationPath);
-  expect(get.mock.calls[0][0]).toBe(EXAMPLES_TAR_URL.replace(/main$/, `v${version}`));
+  expect(get.mock.calls[0][0]).toBe(EXAMPLES_TAR_URL);
   expect(
     JSON.parse(fs.readFileSync(path.join(destinationPath, "package.json"), "utf8")).marker,
   ).toBe("default");
 });
 
-test("uses main only for a confirmed missing tag", async () => {
-  const file = await archive("featurevisor-main", { json: "main" });
-  get.mockRejectedValueOnce({ response: { status: 404 } });
-  get.mockResolvedValueOnce({ data: fs.createReadStream(file) });
-
-  await expect(initProject(destinationPath, "json", "3.11.0")).resolves.toBe(true);
-  expect(get.mock.calls.map(([url]) => url)).toEqual([
-    expect.stringMatching(/\/v3\.11\.0$/),
-    expect.stringMatching(/\/main$/),
-  ]);
-  expect(
-    JSON.parse(fs.readFileSync(path.join(destinationPath, "package.json"), "utf8")).marker,
-  ).toBe("main");
-  expect(warn).toHaveBeenCalled();
-});
-
-test("uses main directly for an explicit development version", async () => {
-  const file = await archive("featurevisor-main", { yml: "development" });
-  get.mockResolvedValue({ data: fs.createReadStream(file) });
-
-  await initProject(destinationPath, undefined, "3.11.0-dev.1");
-  expect(get).toHaveBeenCalledTimes(1);
-  expect(get.mock.calls[0][0]).toMatch(/\/main$/);
-});
-
-test.each([401, 403, 500, undefined])(
-  "does not fall back for an HTTP or network error (%s)",
+test.each([401, 403, 404, 500, undefined])(
+  "reports an HTTP or network error without retrying (%s)",
   async (status) => {
     get.mockRejectedValue(status ? { response: { status } } : new Error("offline"));
 
-    await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow(
-      "Could not download the Featurevisor example archive (v3.11.0)",
+    await expect(initProject(destinationPath)).rejects.toThrow(
+      "Could not download the Featurevisor example archive (main)",
     );
     expect(get).toHaveBeenCalledTimes(1);
     expect(fs.existsSync(destinationPath)).toBe(false);
@@ -359,11 +334,11 @@ test.each([401, 403, 500, undefined])(
 );
 
 test("rejects a missing example without reporting success or leaving files", async () => {
-  const file = await archive("featurevisor-3.11.0", { yml: "tag", custom: "custom", json: "json" });
+  const file = await archive("featurevisor-main", { yml: "tag", custom: "custom", json: "json" });
   get.mockResolvedValue({ data: fs.createReadStream(file) });
 
-  await expect(initProject(destinationPath, "missing", "3.11.0")).rejects.toThrow(
-    'Example "missing" was not found in the Featurevisor archive (v3.11.0). Available documented examples: yml, json.',
+  await expect(initProject(destinationPath, "missing")).rejects.toThrow(
+    'Example "missing" was not found in the Featurevisor archive (main). Available documented examples: yml, json.',
   );
   expect(fs.existsSync(destinationPath)).toBe(false);
   expect(fs.readdirSync(workPath).some((name) => name.startsWith(".featurevisor-init-"))).toBe(
@@ -375,9 +350,9 @@ test("rejects a missing example without reporting success or leaving files", asy
 test.each(["custom", "1", "test-environments"])(
   "accepts the unlisted %s example from the archive",
   async (example) => {
-    const file = await archive("featurevisor-3.11.0", { [example]: "custom project" });
+    const file = await archive("featurevisor-main", { [example]: "custom project" });
     get.mockResolvedValue({ data: fs.createReadStream(file) });
-    await expect(initProject(destinationPath, example, "3.11.0")).resolves.toBe(true);
+    await expect(initProject(destinationPath, example)).resolves.toBe(true);
     expect(
       JSON.parse(fs.readFileSync(path.join(destinationPath, "package.json"), "utf8")).marker,
     ).toBe("custom project");
@@ -397,11 +372,11 @@ test("suggests documented targets without advertising the no environments alias"
     "targets",
   ];
   const file = await archive(
-    "featurevisor-3.11.0",
+    "featurevisor-main",
     Object.fromEntries([...names, "1", "test-environments"].map((name) => [name, name])),
   );
   get.mockResolvedValue({ data: fs.createReadStream(file) });
-  await expect(initProject(destinationPath, "missing", "3.11.0")).rejects.toThrow(
+  await expect(initProject(destinationPath, "missing")).rejects.toThrow(
     `Available documented examples: ${names.filter((name) => name !== "no-environments").join(", ")}. Other example names present in the archive are also accepted.`,
   );
 });
@@ -409,7 +384,7 @@ test("suggests documented targets without advertising the no environments alias"
 test("rejects extraction failures and cleans staging", async () => {
   get.mockResolvedValue({ data: Readable.from([Buffer.from("not a gzip archive")]) });
 
-  await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow(
+  await expect(initProject(destinationPath)).rejects.toThrow(
     "Could not extract the Featurevisor example archive",
   );
   expect(fs.existsSync(destinationPath)).toBe(false);
@@ -428,9 +403,7 @@ test("rejects a stream failure without fallback or partial output", async () => 
   );
   get.mockResolvedValue({ data: stream });
 
-  await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow(
-    "connection interrupted",
-  );
+  await expect(initProject(destinationPath)).rejects.toThrow("connection interrupted");
   expect(get).toHaveBeenCalledTimes(1);
   expect(fs.existsSync(destinationPath)).toBe(false);
   expect(fs.readdirSync(workPath).some((name) => name.startsWith(".featurevisor-init-"))).toBe(
@@ -440,12 +413,12 @@ test("rejects a stream failure without fallback or partial output", async () => 
 });
 
 test("rejects top-level collisions without overwriting existing entries", async () => {
-  const file = await archive("featurevisor-3.11.0", { yml: "new" });
+  const file = await archive("featurevisor-main", { yml: "new" });
   fs.mkdirSync(destinationPath);
   fs.writeFileSync(path.join(destinationPath, "package.json"), "keep");
   get.mockResolvedValue({ data: fs.createReadStream(file) });
 
-  await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow(
+  await expect(initProject(destinationPath)).rejects.toThrow(
     "existing entries would be overwritten: package.json",
   );
   expect(fs.readFileSync(path.join(destinationPath, "package.json"), "utf8")).toBe("keep");
@@ -458,7 +431,7 @@ test("suggests Node proxy support when a proxy is configured", async () => {
   process.env.HTTPS_PROXY = "http://proxy.invalid:8080";
   delete process.env.NODE_USE_ENV_PROXY;
   try {
-    await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow(
+    await expect(initProject(destinationPath)).rejects.toThrow(
       "offline. Set NODE_USE_ENV_PROXY=1 so Node uses your proxy settings.",
     );
   } finally {
@@ -474,7 +447,6 @@ test("the init handler rejects download failure for CLI error handling", async (
     initPlugin.handler({
       rootDirectoryPath: destinationPath,
       parsed: { _: [] },
-      cliVersion: "3.11.0",
     } as any),
   ).rejects.toThrow("Could not download");
   expect(log).not.toHaveBeenCalled();
@@ -482,17 +454,15 @@ test("the init handler rejects download failure for CLI error handling", async (
 
 test("rejects symlinks in the selected archive example", async () => {
   const sourcePath = fs.mkdtempSync(path.join(workPath, "source-"));
-  const examplePath = path.join(sourcePath, "featurevisor-3.11.0", "examples", "example-yml");
+  const examplePath = path.join(sourcePath, "featurevisor-main", "examples", "example-yml");
   fs.mkdirSync(examplePath, { recursive: true });
   fs.writeFileSync(path.join(examplePath, "package.json"), "safe");
   fs.symlinkSync("package.json", path.join(examplePath, "linked.json"));
   const archivePath = path.join(workPath, "links.tar.gz");
-  await tar.c({ gzip: true, file: archivePath, cwd: sourcePath }, ["featurevisor-3.11.0"]);
+  await tar.c({ gzip: true, file: archivePath, cwd: sourcePath }, ["featurevisor-main"]);
   get.mockResolvedValue({ data: fs.createReadStream(archivePath) });
 
-  await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow(
-    "Unsafe example archive entry",
-  );
+  await expect(initProject(destinationPath)).rejects.toThrow("Unsafe example archive entry");
   expect(fs.existsSync(destinationPath)).toBe(false);
 });
 
@@ -507,23 +477,21 @@ test("stages inside the destination and cleans up after a failed download", asyn
     expect(fs.readdirSync(workPath)).toEqual(["project"]);
     throw new Error("offline");
   });
-  await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow(
-    "Could not download",
-  );
+  await expect(initProject(destinationPath)).rejects.toThrow("Could not download");
   expect(fs.readdirSync(destinationPath)).toEqual(["README.md"]);
   expect(fs.readFileSync(path.join(destinationPath, "README.md"), "utf8")).toBe("keep");
 });
 
 const permissionTest = process.platform !== "win32" && process.getuid?.() !== 0 ? test : test.skip;
 permissionTest("works in a writable directory under a read only parent", async () => {
-  const file = await archive("featurevisor-3.11.0", { yml: "tag" });
+  const file = await archive("featurevisor-main", { yml: "tag" });
   const parent = path.join(workPath, "locked");
   destinationPath = path.join(parent, "project");
   fs.mkdirSync(destinationPath, { recursive: true });
   fs.chmodSync(parent, 0o555);
   get.mockResolvedValue({ data: fs.createReadStream(file) });
   try {
-    await expect(initProject(destinationPath, undefined, "3.11.0")).resolves.toBe(true);
+    await expect(initProject(destinationPath)).resolves.toBe(true);
     expect(fs.readdirSync(parent)).toEqual(["project"]);
     expect(fs.readdirSync(destinationPath)).toEqual(["package.json"]);
   } finally {
@@ -535,7 +503,7 @@ permissionTest("names the project requiring write access without downloading", a
   fs.mkdirSync(destinationPath);
   fs.chmodSync(destinationPath, 0o555);
   try {
-    await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow(
+    await expect(initProject(destinationPath)).rejects.toThrow(
       `Cannot initialize in ${destinationPath}: write access is required`,
     );
     expect(get).not.toHaveBeenCalled();
@@ -548,11 +516,11 @@ permissionTest("names the project requiring write access without downloading", a
 test.each(["README.md", ".gitignore"])(
   "preserves an existing %s and refuses partial scaffolding",
   async (name) => {
-    const file = await archive("featurevisor-3.11.0", { yml: "tag" }, { [name]: "template" });
+    const file = await archive("featurevisor-main", { yml: "tag" }, { [name]: "template" });
     fs.mkdirSync(destinationPath);
     fs.writeFileSync(path.join(destinationPath, name), "user contents");
     get.mockResolvedValue({ data: fs.createReadStream(file) });
-    await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow(
+    await expect(initProject(destinationPath)).rejects.toThrow(
       `existing entries would be overwritten: ${name}`,
     );
     expect(fs.readdirSync(destinationPath)).toEqual([name]);
@@ -561,11 +529,11 @@ test.each(["README.md", ".gitignore"])(
 );
 
 test("does not replace a user's changelog with the internal example history", async () => {
-  const file = await archive("featurevisor-3.11.0", { yml: "tag" });
+  const file = await archive("featurevisor-main", { yml: "tag" });
   fs.mkdirSync(destinationPath);
   fs.writeFileSync(path.join(destinationPath, "CHANGELOG.md"), "user history");
   get.mockResolvedValue({ data: fs.createReadStream(file) });
-  await initProject(destinationPath, undefined, "3.11.0");
+  await initProject(destinationPath);
   expect(fs.readFileSync(path.join(destinationPath, "CHANGELOG.md"), "utf8")).toBe("user history");
 });
 
@@ -574,10 +542,10 @@ test.each([
   ["...", "featurevisor-project"],
   ["Checkout", "checkout"],
 ])("normalizes destination %s into package name %s", async (directory, expected) => {
-  const file = await archive("featurevisor-3.11.0", { yml: "tag" });
+  const file = await archive("featurevisor-main", { yml: "tag" });
   destinationPath = path.join(workPath, directory);
   get.mockResolvedValue({ data: fs.createReadStream(file) });
-  await initProject(destinationPath, undefined, "3.11.0");
+  await initProject(destinationPath);
   const manifest = JSON.parse(fs.readFileSync(path.join(destinationPath, "package.json"), "utf8"));
   expect(manifest.name).toBe(expected);
   expect(manifest).not.toHaveProperty("version");
@@ -586,16 +554,16 @@ test.each([
 test.each(["not json", "null", "[]", '"text"'])(
   "rejects invalid package metadata %s without leaving a project",
   async (contents) => {
-    const file = await archive("featurevisor-3.11.0", { yml: "tag" }, { "package.json": contents });
+    const file = await archive("featurevisor-main", { yml: "tag" }, { "package.json": contents });
     get.mockResolvedValue({ data: fs.createReadStream(file) });
-    await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow();
+    await expect(initProject(destinationPath)).rejects.toThrow();
     expect(fs.existsSync(destinationPath)).toBe(false);
     expect(log).not.toHaveBeenCalled();
   },
 );
 
 test("rolls back installed entries and cleans staging if a later move fails", async () => {
-  const file = await archive("featurevisor-3.11.0", { yml: "tag" }, { "README.md": "template" });
+  const file = await archive("featurevisor-main", { yml: "tag" }, { "README.md": "template" });
   fs.mkdirSync(path.join(destinationPath, ".git"), { recursive: true });
   get.mockResolvedValue({ data: fs.createReadStream(file) });
   const promises = require("fs/promises") as typeof import("fs/promises");
@@ -605,7 +573,7 @@ test("rolls back installed entries and cleans staging if a later move fails", as
     .mockImplementationOnce(rename)
     .mockRejectedValueOnce(Object.assign(new Error("move denied"), { code: "EACCES" }));
   try {
-    await expect(initProject(destinationPath, undefined, "3.11.0")).rejects.toThrow(
+    await expect(initProject(destinationPath)).rejects.toThrow(
       `Cannot initialize in ${destinationPath}: write access is required`,
     );
     expect(fs.readdirSync(destinationPath)).toEqual([".git"]);

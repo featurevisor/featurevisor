@@ -27,12 +27,9 @@ export const EXAMPLES_BRANCH_NAME = "main";
 
 export const EXAMPLES_TAR_URL = `https://codeload.github.com/${EXAMPLES_ORG_NAME}/${EXAMPLES_REPO_NAME}/tar.gz/${EXAMPLES_BRANCH_NAME}`;
 
-function isDevelopmentVersion(version: string) {
-  return version === "0.0.0" || /(?:^|[.-])(?:dev|development)(?:[.-]|$)/i.test(version);
-}
-
-async function downloadArchive(ref: string): Promise<Readable | null> {
-  const url = EXAMPLES_TAR_URL.replace(/main$/, encodeURIComponent(ref));
+// Examples always come from main, whichever CLI version runs init.
+async function downloadArchive(): Promise<Readable> {
+  const ref = EXAMPLES_BRANCH_NAME;
   const proxied =
     !process.env.NODE_USE_ENV_PROXY &&
     ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"].some((name) => process.env[name]);
@@ -46,13 +43,12 @@ async function downloadArchive(ref: string): Promise<Readable | null> {
   const timeout = setTimeout(() => controller.abort(), 30_000);
   let response: Response;
   try {
-    response = await fetch(url, { signal: controller.signal });
+    response = await fetch(EXAMPLES_TAR_URL, { signal: controller.signal });
   } catch (error) {
     throw failure(error instanceof Error ? error.message : String(error));
   } finally {
     clearTimeout(timeout);
   }
-  if (response.status === 404 && ref !== EXAMPLES_BRANCH_NAME) return null;
   if (!response.ok || !response.body) throw failure(`HTTP ${response.status}`);
   return Readable.fromWeb(response.body as import("stream/web").ReadableStream);
 }
@@ -127,18 +123,7 @@ async function preparePackage(stagingPath: string, directoryPath: string) {
 export async function initProject(
   directoryPath: string,
   exampleName: string = DEFAULT_EXAMPLE,
-  cliVersion?: string,
 ): Promise<boolean> {
-  if (!cliVersion) {
-    try {
-      cliVersion = require("@featurevisor/cli/package.json").version;
-    } catch {
-      throw new Error("Cannot initialize a project without the running CLI package version.");
-    }
-  }
-  if (!cliVersion || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(cliVersion)) {
-    throw new Error("Cannot initialize a project without the running CLI package version.");
-  }
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(exampleName)) {
     throw new Error(`Invalid example name: ${exampleName}`);
   }
@@ -154,16 +139,10 @@ export async function initProject(
     }
     temporaryPath = await mkdtemp(path.join(directoryPath, ".featurevisor-init-"));
     const stagingPath = path.join(temporaryPath, "example");
-    const tag = `v${cliVersion}`;
-    let ref = isDevelopmentVersion(cliVersion) ? EXAMPLES_BRANCH_NAME : tag;
-    let archive = await downloadArchive(ref);
-    if (archive === null) {
-      console.warn(`No archive found for ${tag}; using ${EXAMPLES_BRANCH_NAME} examples.`);
-      ref = EXAMPLES_BRANCH_NAME;
-      archive = await downloadArchive(ref);
-    }
+    const ref = EXAMPLES_BRANCH_NAME;
+    const archive = await downloadArchive();
 
-    const archiveRoot = `${EXAMPLES_REPO_NAME}-${ref.startsWith("v") ? ref.slice(1) : ref}`;
+    const archiveRoot = `${EXAMPLES_REPO_NAME}-${ref}`;
     const examplePrefix = `${archiveRoot}/examples/example-${exampleName}/`;
     await mkdir(stagingPath);
     let filesExtracted = 0;
@@ -289,9 +268,9 @@ export async function initProject(
 export const initPlugin: Plugin = {
   command: "init",
   handler: async function (options) {
-    const { rootDirectoryPath, parsed, cliVersion } = options;
+    const { rootDirectoryPath, parsed } = options;
 
-    await initProject(rootDirectoryPath, parsed.example, cliVersion);
+    await initProject(rootDirectoryPath, parsed.example);
   },
   examples: [
     {
