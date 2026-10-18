@@ -53,11 +53,12 @@ jobs:
         run: make test
 
       - name: Bump version
-        # Force the initial v4 release, then recognise both ! headers and breaking footers.
+        # Conventional commits choose each bump: fix is a patch, feat a minor, and a ! header
+        # or a BREAKING CHANGE footer a major. Packages without changes keep their versions.
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor}}@users.noreply.github.com"
-          node scripts/release-version.mjs
+          npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
 
       - name: Publish
         # from-package publishes only versions missing from npm, so a partly failed
