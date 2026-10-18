@@ -6,14 +6,14 @@ Every Featurevisor SDK reads the **same datafiles**, buckets identically and eva
 
 | Language                  | Install                                                    | Docs                                         |
 | ------------------------- | ---------------------------------------------------------- | -------------------------------------------- |
-| JavaScript and TypeScript | `npm install @featurevisor/sdk@^4.0.0`                     | [sdk-javascript.md](sdk-javascript.md)       |
-| Go                        | `go get github.com/featurevisor/featurevisor-go/v4@v4.0.0` | <https://featurevisor.com/docs/sdks/go/>     |
-| Python                    | `pip install 'featurevisor>=4.0.0,<5.0.0'`                 | <https://featurevisor.com/docs/sdks/python/> |
-| PHP                       | `composer require featurevisor/featurevisor-php:^4.0.0`    | <https://featurevisor.com/docs/sdks/php/>    |
+| JavaScript and TypeScript | `npm install @featurevisor/sdk@4`                          | [sdk-javascript.md](sdk-javascript.md)       |
+| Go                        | `go get github.com/featurevisor/featurevisor-go/v4@latest` | <https://featurevisor.com/docs/sdks/go/>     |
+| Python                    | `pip install 'featurevisor>=4,<5'`                         | <https://featurevisor.com/docs/sdks/python/> |
+| PHP                       | `composer require featurevisor/featurevisor-php:^4`        | <https://featurevisor.com/docs/sdks/php/>    |
 | Ruby                      | `gem install featurevisor -v '~> 4.0'`                     | <https://featurevisor.com/docs/sdks/ruby/>   |
 | Java and Kotlin           | Maven or Gradle, from GitHub Packages                      | <https://featurevisor.com/docs/sdks/java/>   |
 | Swift                     | Swift Package Manager                                      | <https://featurevisor.com/docs/sdks/swift/>  |
-| Rust                      | `cargo add featurevisor@2.0.0`                             | <https://featurevisor.com/docs/sdks/rust/>   |
+| Rust                      | `cargo add featurevisor@2`                                 | <https://featurevisor.com/docs/sdks/rust/>   |
 | Elixir                    | Mix                                                        | <https://featurevisor.com/docs/sdks/elixir/> |
 
 Major versions differ by language: Rust and Elixir start v4 support at 2.0.0, and Java at 5.0.0. The [compatibility matrix](https://featurevisor.com/docs/sdks/compatibility/) lists the first release of each with v4 support and with each later capability.
