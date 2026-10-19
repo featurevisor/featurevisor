@@ -11,8 +11,8 @@ Examples omit environments. When the project configures them, add `--environment
 ## Setup
 
 ```bash
-npx @featurevisor/cli init
-npx @featurevisor/cli init --example=with-environments
+npx @featurevisor/cli@latest init
+npx @featurevisor/cli@latest init --example=with-environments
 npm install
 ```
 

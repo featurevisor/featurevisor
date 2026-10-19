@@ -8,7 +8,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
 ```sh
 mkdir my-featurevisor-project && cd my-featurevisor-project
-npx @featurevisor/cli init --example=targets
+npx @featurevisor/cli@latest init --example=targets
 ```
 
 ## Installation

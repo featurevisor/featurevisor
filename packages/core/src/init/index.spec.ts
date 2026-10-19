@@ -158,7 +158,7 @@ test("README personalization preserves fenced headings and later sections", asyn
     "## Initialize",
     "",
     "```sh",
-    "npx @featurevisor/cli init",
+    "npx @featurevisor/cli@latest init",
     "```",
     "",
     "## Installation",
@@ -245,7 +245,7 @@ test.each(["yml", "with-environments", "environments", "sets", "no-environments"
 test("the CLI README starts with init and its real scaffold passes local commands", async () => {
   const readme = fs.readFileSync(path.join(repositoryPath, "packages/cli/README.md"), "utf8");
   const setup = readme.split("## Create a project")[1].split("## Add to an existing project")[0];
-  expect(setup).toContain("npx @featurevisor/cli init\nnpm install\nnpx featurevisor lint");
+  expect(setup).toContain("npx @featurevisor/cli@latest init\nnpm install\nnpx featurevisor lint");
   await extractRealExample("yml", destinationPath);
   // Use the built local packages so this regression never downloads a released CLI.
   fs.symlinkSync(

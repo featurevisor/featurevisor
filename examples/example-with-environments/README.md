@@ -10,7 +10,7 @@ variable without requiring tags.
 Run in an empty directory:
 
 ```sh
-npx @featurevisor/cli init --example=with-environments
+npx @featurevisor/cli@latest init --example=with-environments
 npm install
 npm run lint
 npm test

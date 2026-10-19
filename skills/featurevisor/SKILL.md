@@ -39,7 +39,7 @@ Without a `featurevisor.config.js` in the working tree there is no Featurevisor 
 Scaffold in an empty directory, in its own repository, separate from application code:
 
 ```bash
-npx @featurevisor/cli init
+npx @featurevisor/cli@latest init
 npm install
 ```
 
