@@ -1205,6 +1205,27 @@ describe("core: list", function () {
     ).rejects.toThrow("cannot be combined");
   });
 
+  test("matches key patterns case sensitively, as lint does", async function () {
+    const datasource = {
+      listFeatures: async () => ["checkout", "checkoutView", "newCheckout"],
+      readFeature: async (key: string) => createFeatureFixture({ key }),
+    };
+    const list = (keyPattern: string) =>
+      listEntities<ParsedFeature>(
+        {
+          rootDirectoryPath: "",
+          projectConfig: {} as any,
+          datasource: datasource as any,
+          options: { keyPattern },
+        },
+        "feature",
+      ).then((features) => features.map((feature) => feature.key));
+
+    await expect(list("checkout")).resolves.toEqual(["checkout", "checkoutView"]);
+    await expect(list("Checkout")).resolves.toEqual(["newCheckout"]);
+    await expect(list("^checkout$")).resolves.toEqual(["checkout"]);
+  });
+
   test("reports invalid regular expression filters", async function () {
     const datasource = {
       listFeatures: async () => ["checkout"],
