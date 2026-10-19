@@ -113,7 +113,9 @@ async function benchmarkFeatureWithDatafile(
     options.feature ? "Benchmark Featurevisor feature" : "Benchmark Featurevisor variable",
   );
   if (options.feature) console.log(`  ${colorize("Feature", CLI_COLOR_CYAN)}: ${options.feature}`);
-  console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment || false}`);
+  // Only projects with environments select one. Without them there is nothing to show.
+  if (options.environment)
+    console.log(`  ${colorize("Environment", CLI_COLOR_CYAN)}: ${options.environment}`);
   if (target) console.log(`  ${colorize("Target", CLI_COLOR_CYAN)}: ${target}`);
   console.log(`  ${colorize("Iterations", CLI_COLOR_CYAN)}: ${options.n}`);
 
