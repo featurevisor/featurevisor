@@ -23,6 +23,8 @@ A spec cannot test or check an archived definition, or set a sticky value for on
 
 Give every assertion a stable `key`. Keys label failures, become permalinks in the Catalog (matrix cases as `<key>.1`, `<key>.2`), and are required for promotion protection in Sets.
 
+Write each `description` as the promise in plain words, such as "Dutch users are always in". A spec then reads as a record of who gets what, which a product manager reviewing the pull request can follow, and a failure says which promise broke.
+
 ## Run
 
 ```bash
@@ -37,7 +39,7 @@ npx featurevisor test --uncovered
 npx featurevisor test --coverage
 ```
 
-`--key-pattern` is a regular expression over the key a spec tests, so `checkout` also matches `checkoutPromoBanner`. Use `^checkout$` for one definition. `--assertion-pattern` matches assertion descriptions.
+`--key-pattern` is a regular expression over the key of the feature, segment or variable a spec tests, or a scenario's key, not the spec's file name. It is case sensitive, as in `lint`, and not anchored, so `checkout` also matches `checkoutPromoBanner` but not `newCheckout`. Use `^checkout$` for one definition. `--assertion-pattern` matches assertion descriptions.
 
 `test` does not run lint. Run `npx featurevisor lint` first: it validates specs against the project and warns with `context_value_mismatch` about contexts that do not fit attribute types.
 
@@ -96,7 +98,7 @@ assertions:
 
 - `at` is **required**: the bucket position from 0 to 100. It replaces searching for user IDs that land in a range. With a 25% rule, `at: 10` is inside and `at: 90` outside. With 50/50 variations, `at` below 50 gets the first variation.
 - `expectedToBeEnabled`, `expectedVariation` and `expectedVariables` check the three results. `expectedVariation` needs a feature with variations or a `disabledVariationValue`. Every key in `expectedVariables` must be declared in `variablesSchema`.
-- `expectedEvaluations` checks evaluation details: `{ flag: { reason: rule, ruleKey: nl }, variation: {…}, variables: { bgColor: {…} } }`.
+- `expectedEvaluations` checks evaluation details: `{ flag: { reason: rule, ruleKey: nl }, variation: {…}, variables: { colour: {…} } }`.
 - `stickyFeatures` supplies sticky feature results, as `f.setStickyFeatures()` would. `stickyVariables` supplies global variable values, as `f.setStickyVariables()` would, for features gated on a variable. Every kind of spec uses these two names. The v3 name `sticky` fails lint with `removed_test_field`.
 - `defaultVariationValue` and `defaultVariableValues` supply per call fallbacks.
 - `children` evaluate through `f.spawn()`, each with its own `context`, `stickyFeatures`, `stickyVariables`, expectations and an optional `description`. A child does not inherit its parent's sticky values.
@@ -276,12 +278,12 @@ With environments configured, every feature and global variable assertion needs 
 
 When creating or changing a feature, cover at least:
 
-- one context inside each targeted audience and one outside,
-- the catch-all rule at a bucket inside and outside its percentage,
-- each variation, using `at` inside its weight range,
-- variables a rule, variation or override changes, with the changed value,
-- force entries, with a context that matches them,
-- root conditions, met and unmet. Use a scenario when the gate reads a variable.
+- one context inside each targeted audience and one outside
+- the catch-all rule at a bucket inside and outside its percentage
+- each variation, using `at` inside its weight range
+- variables a rule, variation or override changes, with the changed value
+- force entries, with a context that matches them
+- root conditions, met and unmet, with `stickyVariables` when the gate reads a variable
 
 For global variables, cover each override, the default, and the gate. For compositions, assert the whole `expectedValue` for one context per interesting combination.
 

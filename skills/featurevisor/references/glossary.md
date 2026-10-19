@@ -31,7 +31,7 @@ Many "weird behaviour" reports come from mismatched vocabulary. Ground the user 
 | **Root conditions** | Optional `conditions` at the top of a feature or global variable, gating all of it. Unmet: `conditions_unmet`.         |
 | **Rule**            | A `conditions` and `percentage` entry in `rules`. The first match decides.                                             |
 | **Rule key**        | A rule's stable identifier. Saved variation ranges are stored per key, so renaming reallocates them.                   |
-| **Percentage**      | The share of matching users the rule enables, 0 to 100 with two decimals.                                              |
+| **Percentage**      | The share of matching users the rule enables, 0 to 100 with up to three decimals.                                      |
 | **Force**           | Entries that set a result for matching contexts before root conditions and rules, typically for QA.                    |
 | **Override**        | A conditional value: `variableOverrides` for feature variables, `overrides` for global variables.                      |
 | **Mutation**        | A partial change to an object or array value through `mutate` or a dotted variable key.                                |
@@ -51,6 +51,7 @@ Many "weird behaviour" reports come from mismatched vocabulary. Ground the user 
 | **Sticky**            | Results the application supplies before the datafile is evaluated.                                                                                                                                                                                      |
 | **Evaluation reason** | Why a result was returned: `sticky`, `forced`, `conditions_unmet`, `rule`, `allocated`, `no_match`, `disabled`, `feature_not_found`, `variable_override_rule`, `variable_composed`, `error` and others. Shown by `npx featurevisor evaluate --explain`. |
 | **Exposure**          | A user seeing an experiment's variation, usually sent to analytics from a module.                                                                                                                                                                       |
+| **Holdout**           | Users kept out of every experiment, so comparing them with everyone else shows the combined effect of the experiments.                                                                                                                                  |
 
 ## Datafiles
 
@@ -65,7 +66,7 @@ Many "weird behaviour" reports come from mismatched vocabulary. Ground the user 
 
 | Term                                                                                   | Where                                                                                    |
 | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Gradual rollout, kill switch, staged rollout, scheduled release, version gate, cleanup | [recipes.md](recipes.md)                                                                 |
+| Gradual rollout, kill switch, staged rollout, early access, scheduled release, cleanup | [recipes.md](recipes.md)                                                                 |
 | A/B and multivariate tests                                                             | [features.md](features.md#variations), [recipes.md](recipes.md)                          |
 | Mutually exclusive experiments                                                         | [mutual-exclusion.md](mutual-exclusion.md)                                               |
 | Remote configuration                                                                   | [global-variables.md](global-variables.md), [variables-schemas.md](variables-schemas.md) |

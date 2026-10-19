@@ -11,7 +11,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 ```sh
 mkdir my-featurevisor-project
 cd my-featurevisor-project
-npx @featurevisor/cli init --example=toml
+npx @featurevisor/cli@latest init --example=toml
 ```
 
 ## Installation

@@ -241,6 +241,9 @@ describe("CLI command examples and outcomes", () => {
     expect(output()).not.toMatch(/feature_not_found|variable_not_found|Value: undefined/);
     if (command.startsWith("evaluate")) expect(output()).toContain("Value: true");
     if (command.startsWith("benchmark")) expect(output()).toMatch(/Evaluated value.*true/);
+    // A project without environments has no environment to report.
+    if (/^(?:benchmark|assess-distribution)\b/.test(command))
+      expect(output()).not.toMatch(/Environment/);
     if (command.startsWith("build")) {
       expect(JSON.parse(output()).features).toHaveProperty("showCookieBanner");
     }
@@ -321,6 +324,8 @@ describe("CLI command examples and outcomes", () => {
       expect(examples[0].description).toMatch(/^With environments configured:/);
       expect(await run(parseExample(examples[0].command))).toEqual({ success: true, exitCode: 0 });
       expect(stderr).toBe("");
+      if (["benchmark", "assess-distribution"].includes(plugin.command))
+        expect(output()).toMatch(/Environment\S*: (?:staging|production)/);
     },
   );
 

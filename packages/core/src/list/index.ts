@@ -277,7 +277,7 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     ? parseRegexOption("--description", options.description, "i")
     : undefined;
   const keyRegex = options.keyPattern
-    ? parseRegexOption("--key-pattern", options.keyPattern, "i")
+    ? parseRegexOption("--key-pattern", options.keyPattern)
     : undefined;
   const assertionRegex = options.assertionPattern
     ? parseRegexOption("--assertion-pattern", options.assertionPattern, "i")

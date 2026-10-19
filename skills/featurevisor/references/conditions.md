@@ -42,7 +42,7 @@ conditions:
 
 A bare string is never a feature key. Lint catches the mistake: `Unknown segment "checkout". "checkout" is a feature: use { feature: checkout }.`
 
-Nested object attributes use dotted paths, such as `attribute: account.plan`. Each leaf object must be exactly one kind: an attribute leaf cannot carry `feature`, a feature leaf has no `operator`, and a variable leaf cannot carry `enabled` or `variation`.
+Nested object attributes use dotted paths, such as `attribute: account.seats`. Each leaf object must be exactly one kind: an attribute leaf cannot carry `feature`, a feature leaf has no `operator`, and a variable leaf cannot carry `enabled` or `variation`.
 
 ### Feature leaves
 
@@ -110,7 +110,7 @@ A single condition does not need a list. `conditions: netherlands` and `conditio
 
 Use `conditions: '*'` where a selector is required but should always match.
 
-v4 authors only `conditions`. The v3 fields `segments`, `requiredFeatures` and feature `required` are lint errors with a precise replacement, for example `removed_condition_field: Replace segments with conditions. Segment keys stay as strings.` Fix every lint error before building: build does not run full lint and can silently drop an old gate or selector.
+v4 authors only `conditions`. The v3 fields `segments`, `requiredFeatures` and feature `required` are lint errors with a precise replacement, for example `removed_condition_field: Replace segments with conditions. Segment keys stay as strings.` Fix every lint error before building: build does not run full lint. A rule that still uses `segments` builds without it and then matches nobody, switching the feature off for that audience with no error.
 
 ### Allowed condition kinds
 
@@ -183,7 +183,7 @@ The explanation prints each leaf with its value and pass or fail, keeping the `a
 To test a definition whose conditions depend on another feature or variable, fix the inputs instead of hunting for user IDs:
 
 - `at` fixes the bucket for every feature evaluation in the chain.
-- `stickyFeatures` and `stickyVariables` supply upstream results directly in segment and global variable assertions and in scenarios. Feature assertions name the first `sticky` and take `stickyVariables` too, so a feature gated on a kill switch is tested in its own spec.
+- `stickyFeatures` and `stickyVariables` supply upstream results directly. Every spec kind takes both, so a feature gated on a kill switch is tested in its own spec with `stickyVariables: { maintenanceMode: true }`.
 - A scenario checks several definitions together, for example that turning a kill switch on disables a feature and its banner. See [testing.md](testing.md#scenarios).
 
 ## Runtime behaviour worth knowing

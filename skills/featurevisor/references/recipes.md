@@ -2,7 +2,7 @@
 
 Patterns for what people most often build with Featurevisor. Each section stands alone: read the one that matches the request, then adapt it to the project's attribute names, segments and environments.
 
-Source guides: [Progressive delivery](https://featurevisor.com/docs/use-cases/progressive-delivery/), [Experiments](https://featurevisor.com/docs/use-cases/experiments/), [Remote configuration](https://featurevisor.com/docs/use-cases/remote-configuration/), [Entitlements](https://featurevisor.com/docs/use-cases/entitlements/), [Dependencies](https://featurevisor.com/docs/use-cases/dependencies/) and [Scheduled releases](https://featurevisor.com/docs/use-cases/scheduled-releases/).
+Source guides: [Progressive delivery](https://featurevisor.com/docs/use-cases/progressive-delivery/), [Experiments](https://featurevisor.com/docs/use-cases/experiments/), [Remote configuration](https://featurevisor.com/docs/use-cases/remote-configuration/), [Entitlements](https://featurevisor.com/docs/use-cases/entitlements/), [Dependencies](https://featurevisor.com/docs/use-cases/dependencies/), [Scheduled releases](https://featurevisor.com/docs/use-cases/scheduled-releases/), [Kill switches](https://featurevisor.com/docs/use-cases/kill-switches/) and [Early access](https://featurevisor.com/docs/use-cases/early-access/).
 
 Recipes use the default scaffold: direct lists for `rules`, `force` and `overrides`, and no `environment` in tests. With environments configured, put each list under its environment key.
 
@@ -19,6 +19,7 @@ Recipes use the default scaffold: direct lists for `rules`, `force` and `overrid
 | [Kill switch](#kill-switch)                                                 | switch something off during an incident              |
 | [Testing in production](#testing-in-production)                             | QA sees a feature real users do not                  |
 | [Staged rollout](#staged-rollout)                                           | employees, then beta users, then everyone            |
+| [Early access](#early-access)                                               | customers who opt in get features first              |
 | [Scheduled releases and time windows](#scheduled-releases-and-time-windows) | launch at a time, or for a period                    |
 | [App version gate](#app-version-gate)                                       | only builds that contain the code                    |
 | [Entitlements](#entitlements)                                               | capabilities per plan, with grants                   |
@@ -47,6 +48,7 @@ rules:
 
 - Raise `percentage` over time and keep the key. Users already in stay in.
 - Lowering it takes users out, so warn before doing so.
+- Suggest agreeing before the first step what to watch at each one, such as errors and completed orders, and what makes the team stop. Each later pull request is then a routine call.
 - To target an audience first, add a rule **above** the catch-all rather than changing it:
 
 ```yaml
@@ -97,6 +99,8 @@ if (variation === 'treatment') {
 
 Record exposure with a [tracking module](tracking.md). Do not rename variation values after launch, because analytics joins on them. Test each variation with `at` inside its weight range: `at: 25` for control, `at: 75` for treatment.
 
+Before it starts, help the user write down the outcome it should move and how long it runs, since deciding afterwards makes any difference easy to find and hard to trust. To let the people who wrote the copy see each version in production first, give a test device a `force` entry with `variation: treatment`. Forced results are not counted by the tracking module.
+
 ---
 
 ## Multivariate test
@@ -139,7 +143,7 @@ rules:
     percentage: 100
 ```
 
-The application reads `f.getVariable('hero', 'headline', context)` and `f.getVariable('hero', 'ctaText', context)` without branching on the variation.
+The application reads `f.getVariable('hero', 'headline', context)` and `f.getVariable('hero', 'ctaText', context)` without branching on the variation. The copy now lives in the feature, so its owner can change the words in a pull request without an application release. Change them between tests, not during one, or the results mix two versions.
 
 ---
 
@@ -160,12 +164,12 @@ Complete definitions, priority exclusion and tests: [mutual-exclusion.md](mutual
 ## Feature dependencies
 
 ```yaml
-description: Express shipping, only with one click checkout
+description: File upload inside chat
 
 bucketBy: userId
 
 conditions:
-  - feature: oneClickCheckout
+  - feature: liveChat
 
 rules:
   - key: everyone
@@ -173,7 +177,7 @@ rules:
     percentage: 100
 ```
 
-`expressShipping` is disabled whenever `oneClickCheckout` is, with reason `conditions_unmet`. Require a variation with `variation: treatment`, or require a feature to be off with `enabled: false`. Lint rejects cycles. Keep prerequisites exposed. See [conditions.md](conditions.md).
+`chatFileUpload` is disabled whenever `liveChat` is, with reason `conditions_unmet`, so switching `liveChat` off switches off both in one change. Require a variation with `variation: treatment`, or require a feature to be off with `enabled: false`. Lint rejects cycles. Keep prerequisites exposed. See [conditions.md](conditions.md).
 
 ---
 
@@ -272,6 +276,8 @@ Features cannot be renamed this way. A feature rename changes every bucket key a
 
 ## Kill switch
 
+Full guide: <https://featurevisor.com/docs/use-cases/kill-switches/>
+
 Two shapes. A **flag** around a risky path, normally at 100%:
 
 ```yaml
@@ -312,12 +318,13 @@ conditions:
     value: false
 ```
 
-Compare with `false` rather than wrapping `true` in `not`, so a missing value keeps the features on. Force entries still apply during maintenance, so QA keeps access. Test it in each feature's spec with `stickyVariables: { maintenanceMode: true }` and `expectedToBeEnabled: false`, or in one scenario that checks every affected feature ([testing.md](testing.md#scenarios)).
+Compare with `false` rather than wrapping `true` in `not`. A missing switch then keeps the features off rather than on, and lint refuses to archive the switch while a feature still depends on it. Force entries still apply during maintenance, so QA keeps access. To switch off one market only, give `maintenanceMode` an override such as `conditions: netherlands` with `value: true`. Test it in each feature's spec with `stickyVariables: { maintenanceMode: true }` and `expectedToBeEnabled: false`, or in one scenario that checks every affected feature ([testing.md](testing.md#scenarios)).
 
 - Keep kill switches boring: no variations or variables.
 - Lowering to 0 is fine here. The warnings about moving users protect experiments, and an infrastructure switch has no experience to preserve.
-- Propagation takes merge, CI build and deploy, then each application's next datafile refresh. If seconds matter, applications must refresh often ([sdk-javascript.md](sdk-javascript.md#set-and-refresh-the-datafile)).
+- Propagation takes merge, CI build and deploy, then the cache in front of the datafiles, then each application's next refresh. If minutes matter, keep the cache short and refresh often or when told by a deployment message ([sdk-javascript.md](sdk-javascript.md#set-and-refresh-the-datafile)). Mobile apps usually fetch when they open or return to the foreground.
 - State the emergency procedure in the `description`.
+- Suggest deciding in advance who can approve a switch out of hours, and rehearsing it in staging while timing how long it takes to land.
 
 ---
 
@@ -351,7 +358,7 @@ rules:
     percentage: 0
 ```
 
-Once QA signs off, raise the percentage. For one user, use an attribute leaf in the force `conditions` instead of a segment.
+Once QA signs off, raise the percentage. For one user, use an attribute leaf in the force `conditions` instead of a segment. Anyone who should see a launch before customers do, such as a product manager signing it off or a marketing team preparing its announcement, can use the same test accounts. Use dedicated test accounts, not employees' own, since a browser datafile shows the IDs listed.
 
 ---
 
@@ -384,7 +391,55 @@ conditions:
     value: '@yourcompany.com'
 ```
 
-Each stage has its own stable key, so ramping `everyone` never disturbs the earlier stages. `email` and `betaOptIn` must be declared attributes that the application passes.
+Each stage has its own stable key, so ramping `everyone` never disturbs the earlier stages. `email` and `betaOptIn` must be declared attributes that the application passes. For a customer programme on its own, see [Early access](#early-access).
+
+---
+
+## Early access
+
+Full guide: <https://featurevisor.com/docs/use-cases/early-access/>
+
+Customers who opt in, such as from a setting in their account, get features before everyone else:
+
+```yaml
+# attributes/earlyAccess.yml
+description: The user joined the early access programme
+
+type: boolean
+```
+
+```yaml
+# segments/earlyAdopters.yml
+description: Users in the early access programme
+
+conditions:
+  - attribute: earlyAccess
+    operator: equals
+    value: true
+```
+
+```yaml
+# features/wishlist.yml
+description: Add products to a wishlist
+
+bucketBy: userId
+
+rules:
+  - key: early-adopters
+    conditions: earlyAdopters
+    percentage: 100
+
+  - key: everyone
+    conditions: '*'
+    percentage: 0
+```
+
+- The application sets `earlyAccess` from the signed in user's profile, so members get it on every device.
+- Add the same rule to each feature in the programme. The segment changes in one place for all of them.
+- Grow it into a launch by raising `everyone`. Members keep the feature throughout. Remove the `early-adopters` rule once `everyone` reaches 100%.
+- A member who leaves falls through to `everyone`, and keeps the feature only if their bucket is inside its percentage.
+- Members chose to join, so their numbers are not a fair sample. Run an [A/B test](#ab-test) on users who did not choose to measure what a feature does.
+- A browser datafile shows the rule to anyone who looks, so treat a feature in the programme as announced.
 
 ---
 
@@ -414,7 +469,7 @@ conditions:
     value: '2026-11-30T00:00:00Z'
 ```
 
-Both operators are strict, so the start is one millisecond before launch to include the launch instant, and the end instant is excluded.
+Both operators are strict, so the start is one millisecond before launch to include the launch instant, and the end instant is excluded. `Z` means UTC. For midnight in Amsterdam, one hour ahead of UTC in November, write the offset instead: `'2026-11-26T23:59:59.999+01:00'`. Check daylight saving time for the date.
 
 ```yaml
 rules:
@@ -497,11 +552,11 @@ items:
 defaultValue: []
 
 overrides:
-  - key: premium
+  - key: paid
     conditions:
       attribute: plan
-      operator: equals
-      value: premium
+      operator: in
+      value: [paid, enterprise]
     continue: true
     value: [likePosts, commentOnPosts, createPosts]
 
@@ -513,11 +568,11 @@ overrides:
     continue: true
     value: [likePosts, commentOnPosts]
 
-  - key: premium-us
+  - key: paid-us
     conditions:
       - attribute: plan
-        operator: equals
-        value: premium
+        operator: in
+        value: [paid, enterprise]
       - attribute: country
         operator: equals
         value: us
@@ -545,8 +600,8 @@ assertions:
     context: { plan: free }
     expectedValue: [likePosts, commentOnPosts]
 
-  - key: premium-us
-    context: { plan: premium, country: us }
+  - key: paid-us
+    context: { plan: paid, country: us }
     expectedValue: [likePosts, commentOnPosts, createPosts, uploadVideos]
 
   - key: free-with-grant
@@ -651,6 +706,7 @@ Flags at 100% everywhere with no experiment are debt.
 3. **Deprecate it**, so remaining callers surface.
 4. **Remove the checks from application code**, including the dead branch. This is what pays the debt.
 5. **Archive** the feature and delete its specs, then lint and test.
+6. **Regenerate typed code** if the application uses [code generation](code-generation.md). Archived features drop out, so any call still naming one fails to compile.
 
 Offer this sweep when you see many long lived 100% flags.
 
@@ -711,4 +767,4 @@ With Sets as release lanes, a different team can own production:
 sets/production/    @yourorg/release-owners
 ```
 
-Pair it with branch protection that requires code owner review.
+Pair it with branch protection that requires code owner review. Owners need not be engineers: a marketing team that writes the checkout notices can own `variables/checkoutNotices.yml` and approve every change to it.

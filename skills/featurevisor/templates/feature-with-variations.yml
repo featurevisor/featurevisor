@@ -2,8 +2,9 @@ description: <Feature with A/B test>
 
 bucketBy: userId
 
-# Variation weights must sum to 100.
-# "control" / "treatment" are convention; any unique strings work.
+# Variation weights must sum to 100, with up to three decimals each.
+# Lint reports any other sum.
+# "control" and "treatment" are conventions. Any unique strings work.
 variations:
   - value: control
     description: Existing experience
@@ -20,4 +21,4 @@ variations:
 rules:
   - key: everyone
     conditions: "*"
-    percentage: 0 # ramp up; never rename the key
+    percentage: 0 # ramp up, and never rename the key

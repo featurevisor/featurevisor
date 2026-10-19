@@ -56,7 +56,7 @@ rejected:  '2026-11-27'            no time
 rejected:  '2026-11-27T00:00:00'   no timezone
 ```
 
-Lint message: `when operator is "before", use an ISO 8601 timestamp YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm and optional 1 to 9 fractional digits`.
+Lint message: `when operator is "before", use an ISO 8601 timestamp YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm and optional 1 to 9 fractional digits, for example 2026-11-27T00:00:00.123456Z`.
 
 - Both operators are strict. To include a launch at `2026-11-27T00:00:00Z`, use `after` with `'2026-11-26T23:59:59.999Z'`.
 - Fractions are truncated to milliseconds. Offsets cannot exceed 14 hours. Years run from 0001 to 9999.

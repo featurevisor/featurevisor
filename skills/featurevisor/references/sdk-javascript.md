@@ -2,7 +2,7 @@
 
 Full docs: <https://featurevisor.com/docs/sdks/javascript/>
 
-`@featurevisor/sdk` is universal: the same package runs in Node.js, browsers, edge runtimes and React Native. It evaluates a loaded [datafile](building-datafiles.md) locally. **No network call happens at evaluation time**, so evaluations are synchronous.
+`@featurevisor/sdk` is universal: the same package runs in Node.js, browsers, edge runtimes and React Native. It evaluates a loaded [datafile](building-datafiles.md) locally. **No network call happens at evaluation time**, so evaluations are synchronous. The SDK makes no network requests of its own at all: fetching datafiles is the application's job, and the context it passes never leaves it.
 
 Framework wrappers: [sdk-react.md](sdk-react.md) and [sdk-vue.md](sdk-vue.md). Other languages: [sdk-other-languages.md](sdk-other-languages.md). The vendor neutral alternative: [openfeature.md](openfeature.md). Upgrading an application from v3: [upgrading-to-v4.md](upgrading-to-v4.md#applications).
 
@@ -16,6 +16,7 @@ npm install --save @featurevisor/sdk
 import { createFeaturevisor } from '@featurevisor/sdk'
 
 const response = await fetch('https://cdn.yoursite.com/featurevisor-all.json')
+if (!response.ok) throw new Error(`HTTP ${response.status}`)
 const datafile = await response.json()
 
 const f = createFeaturevisor({ datafile })
@@ -63,7 +64,7 @@ Attribute names and types must match the project's `attributes/`. Check with `np
 
 - **Timestamps** for `format: date-time` attributes: pass a `Date` or a full ISO 8601 string with a timezone, such as `'2026-11-28T10:00:00Z'`. A date only string makes `before` and `after` false.
 - **Versions**: pass strings such as `'5.5.0'`.
-- **Objects**: pass the object, such as `account: { plan: 'paid' }`, for dotted attribute paths.
+- **Objects**: pass the object, such as `account: { seats: 60 }`, for dotted attribute paths such as `account.seats`.
 
 ## Evaluate
 
@@ -187,6 +188,7 @@ const f = createFeaturevisor({})
 
 async function load(target) {
   const response = await fetch(`https://cdn.yoursite.com/featurevisor-${target}.json`)
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
   f.setDatafile(await response.json())
 }
 
@@ -276,12 +278,14 @@ Evaluate once on the server and hand the results to the client as sticky values,
 const child = f.spawn({ userId: req.user.id })
 const stickyFeatures = child.getFeatureEvaluations()
 const stickyVariables = child.getVariableEvaluations()
-// serialize both into the page
+child.close()
+// pass both to the page through your framework's data mechanism,
+// not by writing them into a script element by hand
 
-// client, at startup
+// client, at startup, with the values the server passed
 const f = createFeaturevisor({
-  stickyFeatures: window.__FEATURES__,
-  stickyVariables: window.__VARIABLES__,
+  stickyFeatures: bootstrap.stickyFeatures,
+  stickyVariables: bootstrap.stickyVariables,
 })
 // once a datafile is loaded, clear the sticky maps to return to live rules
 ```
@@ -328,7 +332,7 @@ f.setLogLevel('warn')
 A throwing diagnostic handler never breaks evaluation. Codes worth knowing:
 
 - `deprecated_feature` and `deprecated_variable`: something deprecated is still read, at `warn` level. A feature variable's details include `featureKey`, a global variable's do not.
-- `conditions_parse_error`: malformed stringified selector JSON in the datafile. It is reported at error level once per selector per datafile load, on first read for v4 datafiles and during `setDatafile()` for v3 datafiles, with details `{ conditions: raw, entityType, entityKey }` where `entityType` is `'feature'`, `'segment'` or `'variable'`. The whole selector returns false, even under NOT referencing a malformed segment, and other entities keep working. Replacing an entity lets its diagnostic fire again. Retained entities do not repeat it.
+- `conditions_parse_error`: malformed stringified selector JSON in the datafile. It is reported at error level once per selector per datafile load, on first read for v4 datafiles and during `setDatafile()` for v3 datafiles, with details `{ conditions: raw, entityType, entityKey }` where `entityType` is `'feature'`, `'segment'` or `'variable'`. The whole selector returns false, even under `not` or when it references a malformed segment, and other entities keep working. Replacing an entity lets its diagnostic fire again. Retained entities do not repeat it.
 - `evaluation_error`: a dependency cycle or too deep a chain. The getter returns `false` or `null` with reason `error`.
 
 ## Modules

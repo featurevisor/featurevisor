@@ -2,32 +2,32 @@
 
 Full docs:
 
-- Sets: <https://featurevisor.com/docs/sets>
-- Promotions: <https://featurevisor.com/docs/promotions>
+- Sets: <https://featurevisor.com/docs/sets/>
+- Promotions: <https://featurevisor.com/docs/promotions/>
 
-Sets split one Featurevisor project into **independent trees** that each own their own attributes, segments, features, global variables, targets, and tests. Promotions copy definitions between sets. Most projects don't need either. Use them only when the situations below apply.
+Sets split one Featurevisor project into **independent trees** that each own their attributes, segments, features, global variables, targets and tests. Promotions copy definitions between sets. Most projects need neither. Use them only when the situations below apply.
 
 ## When to use sets (and when not to)
 
-| Situation                                                                                                                           | Use                                      |
-| ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| Same features, different rollout state per env, one team owns everything                                                            | Plain **environments**: no sets          |
-| Release lanes where changes **graduate** through review gates (dev → staging → production), possibly with different owners per lane | **Sets** (one per lane) + **promotions** |
-| Distinct surfaces (`storefront`, `admin`) that share almost nothing: different attributes, different segments                       | **Sets** (one per surface)               |
-| One tree, several client bundles                                                                                                    | **Tags + targets**: no sets              |
+| Situation                                                                                                                              | Use                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Same features, different rollout state per env, one team owns everything                                                               | Plain **environments**: no sets          |
+| Release lanes where changes **graduate** through review gates, from dev to staging to production, often with different owners per lane | **Sets** (one per lane) + **promotions** |
+| Distinct surfaces (`storefront`, `admin`) that share almost nothing: different attributes, different segments                          | **Sets** (one per surface)               |
+| One tree, several client bundles                                                                                                       | **Tags + targets**: no sets              |
 
-The key property: the **same feature key can exist in multiple sets with entirely different definitions**, with different rules, even different variables. With plain environments, one file holds all envs and any edit touches the single source of truth for every env. With sets-as-lanes, promoting to production is an explicit, reviewable file change in `sets/production/`, and `CODEOWNERS` can give each lane different approvers ([recipes.md](recipes.md#establishing-ownership)).
+The key property: the **same feature key can exist in several sets with entirely different definitions**, with different rules and even different variables. With plain environments, one file holds every environment, and any edit touches all of them. With sets as lanes, promoting to production is an explicit, reviewable file change in `sets/production/`, and `CODEOWNERS` can give each lane different approvers ([recipes.md](recipes.md#establishing-ownership)).
 
-Don't propose converting a working environments-based project to sets unprompted: it's a restructuring with real migration cost.
+Do not propose converting a working project with environments to sets unprompted. It is a restructuring with real migration cost.
 
 ## Enabling and layout
 
 ```js
 // featurevisor.config.js
 module.exports = {
-  sets: true,          // default false
-  // environments: [...] — optional; sets work with or without environments
-  // promotionFlows: [...] — see Promotions below
+  sets: true, // default false
+  // environments: optional, sets work with or without them
+  // promotionFlows: see Promotions below
 }
 ```
 
@@ -78,13 +78,13 @@ npx featurevisor list --features --set=storefront --json --pretty
 npx featurevisor evaluate --set=storefront --feature=promoBanner --context='{…}'
 ```
 
-**`--json` output requires `--set`** in a sets project (`list`, `evaluate`, `build --json`): there's no single answer across trees. When querying on the user's behalf, ask or infer which set they mean. When auditing, loop over the sets.
+**`--json` output requires `--set`** in a sets project (`list`, `evaluate`, `build --json`), since there is no single answer across trees. When querying on the user's behalf, ask or infer which set they mean. When auditing, loop over the sets.
 
 Authoring in a sets project means writing inside the right set's tree: `sets/<set>/features/<key>.yml`. Everything else in this skill (feature shapes, segments, testing, linting) applies unchanged within each set.
 
 ## Promotions
 
-`promote` copies definitions from one set to another for the release-lane workflow. **It previews by default and only writes with `--apply`.**
+`promote` copies definitions from one set to another for the release lane workflow. **It previews by default and only writes with `--apply`.**
 
 ```bash
 npx featurevisor promote --from=dev --to=staging                 # preview: created/updated/unchanged/conflicts
@@ -99,7 +99,7 @@ Both source and destination must lint clean before planning. After merging, prom
 
 ### Dependency closure
 
-Promoting a feature or global variable automatically brings everything it needs: referenced segments, attributes, reusable schemas, required features (including allocation features), matching test specs, and with `--target`, the target definition itself.
+Promoting a feature or global variable automatically brings everything it needs: referenced segments, attributes, reusable schemas, the features its conditions reference (allocation features included), matching test specs and, with `--target`, the target definition itself.
 
 Selected specs also retain root and matrix Target references. A referenced Target missing from the destination is included from the source. An existing destination Target is preserved unless explicitly selected. This does not promote every entity matching that Target. Invalid Target references fail planning before writes.
 
@@ -112,7 +112,7 @@ npx featurevisor promote --from=dev --to=staging --include-features="checkout*" 
 npx featurevisor promote --from=dev --to=staging --exclude-features="experimental*"
 ```
 
-Positive selectors (`--target`, `--tag`, `--include-features`) combine with **AND**. `--exclude-features` applies last and wins. Dependency closure may still pull in features the filters didn't name (required features, including allocation features). An empty selection fails loudly (override with `--allow-empty`). Unknown `--target`/`--tag` values fail and list what exists.
+Positive selectors (`--target`, `--tag`, `--include-features`) combine with **AND**. `--exclude-features` applies last and wins. Dependency closure may still pull in features the filters did not name, such as an allocation feature an experiment's conditions reference. An empty selection fails (override with `--allow-empty`). Unknown `--target` or `--tag` values fail and list what exists.
 
 A selected Target applies its tag selector to features and global variables. Its `includeFeatures` and `excludeFeatures` patterns filter features, while `includeVariables` and `excludeVariables` filter global variables. The Target definition itself is included in the promotion.
 
@@ -128,7 +128,7 @@ A definition existing in both sets with different values is a conflict. `--confl
 | `destination` | Destination keeps conflicting values         |
 | `fail`        | Stop with an error instead of overwriting    |
 
-Preview first specifically to see the conflict list. When lanes intentionally diverge (production at 10%, dev at 100%), plain `--conflicts=source` would stomp production's rollout state: that's what `promotable: false` is for.
+Preview first specifically to see the conflict list. When lanes intentionally diverge (production at 10%, dev at 100%), plain `--conflicts=source` would overwrite production's rollout. That is what `promotable: false` is for.
 
 Keyed overrides treat `value` versus `mutate` as conflicting alternatives. Keep only the winning form, never both fields. Their `conditions` expressions follow the selected conflict policy. `fail` rejects conflicts before writes.
 
@@ -136,14 +136,16 @@ Reordering matching promotable global variable override keys is a semantic confl
 
 <a id="promotable-false--protecting-lane-specific-state"></a>
 
-### `promotable: false`: protecting lane-specific state
+### `promotable: false`: protecting lane specific state
 
-Set it at the top level of a feature, global variable, attribute, segment, reusable schema, target, entity test spec, or standalone scenario to preserve the **destination** version during promotion. If either the source or existing destination definition has `promotable: false`, the destination stays unchanged. A missing destination is still created and keeps the flag for later promotions. This protection takes precedence over `--conflicts`.
+Set it at the top level of a feature, global variable, attribute, segment, reusable schema, target, entity test spec or standalone scenario to preserve the **destination** version during promotion. If either the source or existing destination definition has `promotable: false`, the destination stays unchanged. A missing destination is still created and keeps the flag for later promotions. This protection takes precedence over `--conflicts`.
 
 Rules are stricter and this is the powerful part:
 
 ```yaml
 description: Checkout flow
+
+bucketBy: userId
 
 rules:
   - key: internal-testing
@@ -162,6 +164,7 @@ Individual feature and segment test assertions also support promotion protection
 ```yaml
 # sets/production/tests/features/checkoutFlow.spec.yml
 feature: checkoutFlow
+
 assertions:
   - key: production-rollout
     promotable: false
@@ -175,20 +178,22 @@ assertions:
     expectedToBeEnabled: true
 ```
 
-A source assertion with `promotable: false` is omitted. A protected destination assertion is preserved when a source assertion with the same key is promoted. Both source and destination specs must use assertion keys when protection is involved. Existing unkeyed specs keep whole-array promotion behaviour.
+A source assertion with `promotable: false` is omitted. A protected destination assertion is preserved when a source assertion with the same key is promoted. Both source and destination specs must use assertion keys when protection is involved. Existing unkeyed specs keep promoting the whole assertions list.
 
 Standalone scenarios have no assertion wrapper or assertion key. Put `promotable: false` on the scenario root to protect its complete matrix and children:
 
 ```yaml
 # sets/production/tests/scenarios/checkout-contract.spec.yml
 promotable: false
+
 description: Production checkout values stay consistent
+
 checks:
   - variable: checkoutPolicy
     operator: notNull
 ```
 
-Global variable overrides support item level protection through their stable `key`, including nested overrides. A protected override also protects or omits its descendants, while a protected child affects only that child and its own descendants. Keys are unique across the complete override tree for one environment. Do not put `promotable` on individual matrix cases, children, segment conditions, force entries, or nested schema properties. Protect the parent entity test assertion or standalone scenario root to protect its complete matrix and children.
+Global variable overrides support item level protection through their stable `key`, including nested overrides. A protected override also protects or omits its descendants, while a protected child affects only that child and its own descendants. Keys are unique across the complete override tree for one environment. Do not put `promotable` on individual matrix cases, children, segment conditions, force entries or nested schema properties. Protect the parent entity test assertion or standalone scenario root to protect its complete matrix and children.
 
 <a id="promotionflows--allowed-directions"></a>
 
@@ -203,7 +208,7 @@ promotionFlows: [
 ]
 ```
 
-Now `promote --from=dev --to=production` fails: no lane-skipping. Check this config value before suggesting a promotion path.
+Now `promote --from=dev --to=production` fails, so no lane is skipped. Check this config value before suggesting a promotion path.
 
 ### Audit files
 
@@ -211,16 +216,16 @@ Now `promote --from=dev --to=production` fails: no lane-skipping. Check this con
 
 ## Agent guidance
 
-- **`promote --apply` writes files**: the one CLI command in this skill that modifies definitions. Treat it like an edit: preview first, show the user the created/updated/conflict summary, apply only with their go-ahead, then `npx featurevisor lint` and `npx featurevisor test --set=<to>`.
-- The promoted files are ordinary working-tree changes: they still go through the project's normal Git/PR flow ([SKILL.md → Changes ship through Git](../SKILL.md#changes-ship-through-git)).
+- **`promote --apply` writes files**: the one CLI command in this skill that modifies definitions. Treat it like an edit: preview first, show the user the created, updated and conflicting files, apply only when they agree, then run `npx featurevisor lint` and `npx featurevisor test --set=<to>`.
+- The promoted files are ordinary changes in the working tree. They still go through the project's normal pull request flow ([Changes ship through Git](../SKILL.md#changes-ship-through-git)).
 - When the user says "promote X to staging" for a single feature, use `--include-features="X"` and let dependency closure handle the rest.
-- When a promotion keeps overwriting something lane-specific, the fix is usually `promotable: false` on the destination rule/definition, not `--conflicts=destination` (which blocks _all_ updates to existing definitions, not just the protected one).
+- When a promotion keeps overwriting something lane specific, the fix is usually `promotable: false` on the destination rule or definition, not `--conflicts=destination`, which blocks _all_ updates to existing definitions, not only the protected one.
 
-## Release-lane workflow (canonical shape)
+## Release lane workflow
 
-1. Feature is born in `sets/dev/` at 100% to everyone in dev.
-2. `promote --from=dev --to=staging --include-features="newCheckout" --apply` when ready for QA.
-3. QA signs off → `promote --from=staging --to=production --include-features="newCheckout" --apply`. Production's own rollout rule (protected or edited in place) starts at a low percentage and ramps by direct edits to `sets/production/`.
-4. `promotionFlows` enforces the dev → staging → production order. `CODEOWNERS` on `sets/production/*` gives release owners the approval gate.
+1. A feature starts in `sets/dev/` at 100% for everyone in dev.
+2. When it is ready for QA, `promote --from=dev --to=staging --include-features="newCheckout" --apply`.
+3. Once QA signs off, `promote --from=staging --to=production --include-features="newCheckout" --apply`. Production's own rollout rule, protected or edited in place, starts at a low percentage and rises by direct edits to `sets/production/`.
+4. `promotionFlows` enforces the order from dev to staging to production. A `CODEOWNERS` line for `sets/production/` gives release owners the approval gate.
 
-Use `npx @featurevisor/cli init --example=environments` for release lanes with `promotionFlows` from dev to staging to production. The monorepo also ships [example-sets](https://github.com/featurevisor/featurevisor/tree/main/examples/example-sets) for storefront/admin surfaces and [example-test-environments](https://github.com/featurevisor/featurevisor/tree/main/examples/example-test-environments) for additional lane tests. `--example=with-environments` is different: one tree with explicit environment keyed rules.
+Use `npx @featurevisor/cli@latest init --example=environments` for release lanes with `promotionFlows` from dev to staging to production. The monorepo also ships [example-sets](https://github.com/featurevisor/featurevisor/tree/main/examples/example-sets) for storefront and admin surfaces and [example-test-environments](https://github.com/featurevisor/featurevisor/tree/main/examples/example-test-environments) for additional lane tests. `--example=with-environments` is different: one tree with explicit environment keyed rules.

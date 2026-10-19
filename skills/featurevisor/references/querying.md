@@ -25,7 +25,7 @@ For a global variable, pass `--variable` instead. The explanation names the matc
 
 **When an application disagrees with the CLI**, the definitions are rarely the cause. Compare, in this order:
 
-1. The datafile revision the application loaded (`f.getRevision()`) with the latest deployment. Applications refresh on their own schedule.
+1. The datafile revision the application loaded (`f.getRevision()`) with the latest deployment. Applications refresh on their own schedule, and a cache in front of the datafiles can serve an older copy for its lifetime.
 2. The target and environment of the datafile it loaded. A feature missing from that datafile evaluates as disabled with `feature_not_found`.
 3. The exact context it passed, including attribute names and types.
 4. Sticky values set in the application, which win over the datafile.
@@ -146,4 +146,14 @@ It serves `http://127.0.0.1:3000` in watch mode, reloading on every saved change
 2. Open the URL in your browser tool if you have one, otherwise give it to the user.
 3. Every edit you save appears there, so the user reviews changes visually instead of reading YAML diffs.
 
-Its search accepts qualifiers such as `tag:web`, `in:production`, `with:variations`, `variable:bgColor` and `archived:false`. `npx featurevisor catalog export` builds a static site for hosting, and `--test-report=<file>` shows results from `npx featurevisor test --json` output saved to a file.
+Its search accepts qualifiers such as `tag:web`, `in:production`, `with:variations`, `variable:colour`, `without:tests` and `archived:false`. `uses:netherlands` finds what depends on `netherlands`, directly or not, and `usedby:chatFileUpload` finds what `chatFileUpload` depends on. `npx featurevisor catalog export` builds a static site for hosting, and `--test-report=<file>` shows results from `npx featurevisor test --json` output saved to a file.
+
+When the person asking prefers the Catalog to the CLI, point them to where each answer lives ([Catalog docs](https://featurevisor.com/docs/catalog/#questions-it-answers)):
+
+| Question                              | In the Catalog                                    |
+| ------------------------------------- | ------------------------------------------------- |
+| Who gets this feature?                | its Rules tab                                     |
+| What changes if this segment changes? | its Usage tab                                     |
+| Who changed this, and when?           | its History tab                                   |
+| Is it tested?                         | its Tests tab, or `without:tests` in a list       |
+| How do I suggest a change?            | Propose change, which opens the Git host's editor |

@@ -34,7 +34,7 @@ Typed getters follow the same split. `getVariableKeys()` without a feature key l
 
 ## Number getters
 
-`number` variables are read with `getVariableNumber` in JavaScript and PHP, `get_variable_number` in Python, Ruby and Elixir (with `getVariableNumber` also in Python), and `getVariableDouble` or its language's spelling in Java, Kotlin, Swift, Go, Rust, Dart and .NET, named after the double they return.
+`number` variables are read with `getVariableNumber` in JavaScript and PHP, `get_variable_number` in Python, Ruby and Elixir (with `getVariableNumber` also in Python), and `getVariableDouble` or its language's spelling in Java, Kotlin, Swift, Go and Rust, named after the double they return.
 
 ## Kotlin and Android
 

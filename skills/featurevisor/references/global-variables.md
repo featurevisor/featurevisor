@@ -41,23 +41,27 @@ defaultValue: support@example.com
 overrides:
   - key: maintenance
     conditions:
-      variable: maintenanceMode
-      operator: equals
-      value: true
+      - variable: maintenanceMode
+        operator: equals
+        value: true
     value: status@example.com
 
   - key: priority
     conditions: payingAccounts
     value: priority@example.com
 
-  - key: dutch-checkout
+  - key: netherlands
+    conditions: netherlands
+    value: support-nl@example.com
+
+  - key: newCheckout
     conditions:
-      - netherlands
       - feature: checkout
-    value: checkout-nl@example.com
+    value: checkout-help@example.com
 ```
 
-- Overrides run in order and the first match wins.
+- Overrides run in order and the first match wins. A paying Dutch account gets `priority@example.com`, because `priority` comes first.
+- A list of conditions means all must match, so `[netherlands, { feature: checkout }]` narrows an override to Dutch users of the new checkout.
 - Every override needs a unique `key`, `conditions`, and exactly one of `value` or `mutate`.
 - Conditions take every leaf kind: segments, attributes, features and variables ([conditions.md](conditions.md)).
 - A catch-all `conditions: '*'` must be last.
@@ -110,7 +114,7 @@ overrides:
             operator: equals
             value: amsterdam
         mutate:
-          paymentMethods:appendUnique: cash
+          'paymentMethods:appendUnique': cash
 ```
 
 | Context             | `paymentMethods`        |
@@ -136,11 +140,11 @@ items:
 defaultValue: []
 
 overrides:
-  - key: premium
+  - key: paid
     conditions:
       attribute: plan
       operator: equals
-      value: premium
+      value: paid
     continue: true
     value: [likePosts, commentOnPosts, createPosts]
 
@@ -150,10 +154,10 @@ overrides:
       operator: equals
       value: true
     mutate:
-      :appendUnique: createPosts
+      ':appendUnique': createPosts
 ```
 
-A premium user with the grant gets `[likePosts, commentOnPosts, createPosts]`, without a duplicate. A free user with the grant gets `[createPosts]`. On an array variable itself, the path is empty, so the key is `:appendUnique`. Evaluations list every matched step in `variableOverridePaths`, and `npx featurevisor evaluate --explain` shows the operations applied.
+A paid user with the grant gets `[likePosts, commentOnPosts, createPosts]`, without a duplicate. A free user with the grant gets `[createPosts]`. On an array variable itself, the path is empty, so the key is `:appendUnique`. Evaluations list every matched step in `variableOverridePaths`, and `npx featurevisor evaluate --explain` shows the operations applied.
 
 Accumulating overrides need SDKs that support override programs. Check every consumer against the [SDK compatibility matrix](https://featurevisor.com/docs/sdks/compatibility/) before publishing them. Lint explores the reachable states of an accumulating tree, up to 4096. If it cannot prove a tree valid, simplify it or split the variable.
 

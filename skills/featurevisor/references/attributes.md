@@ -71,16 +71,15 @@ description: Account
 type: object
 
 properties:
-  plan:
+  locale:
     type: string
-    enum: [free, paid, enterprise]
   seats:
     type: integer
 
-required: [plan]
+required: [seats]
 ```
 
-Refer to object properties with dotted paths in conditions: `attribute: account.plan`. Comparing a whole object is a lint error. Use a property path, or `exists` and `notExists`.
+Refer to object properties with dotted paths in conditions: `attribute: account.seats`. Comparing a whole object is a lint error. Use a property path, or `exists` and `notExists`.
 
 `oneOf` replaces `type` when a value can match one of several schemas, with at least two branches:
 

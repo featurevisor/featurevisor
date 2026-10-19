@@ -1,6 +1,6 @@
-# Custom parsers (YAML / JSON / TOML / your own)
+# Custom parsers: YAML, JSON, TOML or your own
 
-Full docs: <https://featurevisor.com/docs/advanced/custom-parsers>
+Full docs: <https://featurevisor.com/docs/advanced/custom-parsers/>
 
 Featurevisor reads and writes definitions through a configurable parser. YAML is the default. JSON is built in. Other formats need a custom parser with `parse` and `stringify` functions.
 
@@ -19,7 +19,7 @@ Look at `parser` in the output. Then peek at a few existing files (`features/`, 
 ```js
 // featurevisor.config.js
 module.exports = {
-  parser: 'yml',          // optional; this is the default
+  parser: 'yml', // optional, this is the default
 }
 ```
 
@@ -35,14 +35,14 @@ module.exports = {
 
 Files end in `.json`. Every YAML example translates directly, with the same keys and nesting. Watch out for:
 
-- **Comments** aren't valid JSON. The author loses inline `# notes`.
-- **Multi-line strings** become escaped `"\n"` rather than YAML block scalars.
-- **Quoting** is uniform: no special handling needed for mutation keys (no YAML-specific gotcha), but they still must contain the exact same syntax (`"hero.subtitle"`, `"items[id=2]:before"`, etc.).
+- **Comments** are not valid JSON, so inline `# notes` have nowhere to go.
+- **Multiline strings** become escaped `"\n"` rather than YAML block scalars.
+- **Quoting** is uniform, so mutation keys need no special care, but they keep exactly the same syntax, such as `"hero.subtitle"` or `"items[id=2]:before"`.
 
 YAML example:
 
 ```yaml
-description: Sidebar
+description: Checkout redesign
 
 bucketBy: userId
 
@@ -56,7 +56,7 @@ Same as JSON:
 
 ```json
 {
-  "description": "Sidebar",
+  "description": "Checkout redesign",
   "bucketBy": "userId",
   "rules": [
     { "key": "everyone", "conditions": "*", "percentage": 100 }
@@ -89,13 +89,13 @@ module.exports = {
 
 Configuration loading requires a nonempty `extension` and both functions. A parser with only `parse` prevents project CLI commands from loading, even commands that do not write. The `toml` package is parse only. It cannot supply `stringify`. See [upgrading to v4](upgrading-to-v4.md#project).
 
-These examples omit environments. If the project declares them, keep the environment keyed shape when converting formats.
+These examples omit environments. If the project declares them, keep the environment keyed shape when converting formats. `init --example=json` and `init --example=toml` scaffold projects with staging and production environments, unlike the YAML default.
 
 ## Agent guidance
 
-- If `parser: 'json'`, **author JSON**: don't add YAML files. Convert YAML examples from this skill to JSON before writing.
-- If a custom parser is registered, **read several existing files** before authoring a new one: the syntax may be subtly different (e.g. TOML's lack of nested object literals affects how `variableOverrides` is expressed).
-- Custom parsers don't change the data model: if you can write it in YAML, you can express it in any parser format. Templates in this skill stay in YAML. Translate them when needed.
+- If `parser: 'json'`, **author JSON** and add no YAML files. Convert YAML examples from this skill to JSON before writing.
+- If a custom parser is registered, **read several existing files** before authoring a new one. The same data can look very different: TOML, for example, writes lists of objects such as `rules` as arrays of tables.
+- Custom parsers do not change the data model. Anything you can write in YAML can be expressed in any parser's format. Templates in this skill stay in YAML, so translate them when needed.
 - Lint catches structural errors regardless of source format. Run `npx featurevisor lint` after every edit.
 
 ## Reference projects

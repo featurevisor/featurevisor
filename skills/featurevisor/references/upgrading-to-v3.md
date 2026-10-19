@@ -1,12 +1,12 @@
 # Upgrading a project from v2 to v3
 
-Full docs: <https://featurevisor.com/docs/migrations/v3>
+Full docs: <https://featurevisor.com/docs/migrations/v3/>
 
 Use this when the user is on Featurevisor v2 and asks to upgrade, or when you find v2-only shapes in a project (`scopes:` in the config, an `environments/` definition directory, `createInstance` in app code).
 
 The current major version is v4. Upgrade v2 projects to the latest v3 first, following this guide, then continue with [upgrading-to-v4.md](upgrading-to-v4.md). Do not jump straight from v2 to v4.
 
-**First establish which version they're actually on.** Don't assume:
+**First establish which version they are actually on.** Do not assume:
 
 ```bash
 npm ls @featurevisor/cli                                         # in the project repo
@@ -27,7 +27,7 @@ The one behavioural exception is [`not` semantics](#not-now-means-not-all-of-the
 ## Step 1: project repo
 
 ```bash
-npm install --save @featurevisor/cli@3
+npm install --save-dev @featurevisor/cli@3
 npx featurevisor lint       # the error list is your worklist
 ```
 
@@ -114,7 +114,7 @@ Renames (mechanical, do these first):
 | `hooks` / `addHook` / `Hook` | `modules` / `addModule` / `FeaturevisorModule` |
 | `logger` + `createLogger`    | `logLevel` + `onDiagnostic`                    |
 
-Behaviour changes that renaming won't catch. Check each one deliberately:
+Behaviour changes that renaming does not catch. Check each one deliberately:
 
 - **`setDatafile` merges by default.** Code that refreshes the _same_ datafile must now pass `true` to replace, or features deleted upstream will linger: `f.setDatafile(fresh, true)`. ([sdk-javascript.md](sdk-javascript.md#set-and-refresh-the-datafile))
 - **Per-evaluation `sticky` is gone.** `f.isEnabled(key, ctx, { sticky })` → `f.setStickyFeatures(...)` on the instance, or `f.spawn(ctx, { stickyFeatures })` for isolated state.
@@ -154,4 +154,4 @@ Project, in order:
 
 Then per application: rename factory/types, replace logger and hook integrations, review `setDatafile`, sticky ownership, child cleanup, explicit defaults, and removed imports, then run the app's tests against the same v3 datafiles that will be deployed.
 
-Migrating from **v1**, or want the full annotated diff? <https://featurevisor.com/docs/migrations/v2> and <https://featurevisor.com/docs/migrations/v3>.
+Migrating from **v1**, or want the full annotated diff? <https://featurevisor.com/docs/migrations/v2/> and <https://featurevisor.com/docs/migrations/v3/>.

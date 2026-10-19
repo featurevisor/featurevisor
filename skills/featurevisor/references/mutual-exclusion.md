@@ -50,7 +50,7 @@ rules:
     percentage: 100
 ```
 
-Create `secondExperiment` the same way, requiring `second`. Holdout users get neither. An experiment's own percentage applies within its cohort, so a 25% rollout in a 40% cohort reaches about 10% of users.
+Create `secondExperiment` the same way, requiring `second`. Holdout users get neither, and comparing them with everyone else measures the combined effect of all the experiments, which no single test reports. An experiment's own percentage applies within its cohort, so a 25% rollout in a 40% cohort reaches about 10% of users.
 
 - Keep the allocation at 100% and its weights stable. Changing them moves users between cohorts. Reserve cohorts before launch rather than reweighting later.
 - Use the same `bucketBy` in the allocation and the experiments.

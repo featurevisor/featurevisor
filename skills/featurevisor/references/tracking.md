@@ -1,103 +1,117 @@
 # Activation tracking (analytics)
 
-Featurevisor itself is not an analytics platform. To measure experiments you wire the SDK's **`modules` API** to your existing analytics pipeline (GA4 + GTM, Segment, Amplitude, Snowplow, your own warehouse, etc.).
+Featurevisor decides who sees which variation. It is not an analytics platform. To measure an experiment, connect the SDK's **`modules` API** to the analytics the team already uses, such as GA4 with Tag Manager, Segment, Amplitude, Snowplow or a data warehouse.
 
 Full docs:
 
-- Modules API: [sdk-javascript.md](sdk-javascript.md#modules) and <https://featurevisor.com/docs/sdks/javascript>
-- GTM / GA4 recipe: <https://featurevisor.com/docs/tracking/google-analytics>
+- Modules API: [sdk-javascript.md](sdk-javascript.md#modules) and <https://featurevisor.com/docs/sdks/javascript/#modules>
+- Google Analytics recipe: <https://featurevisor.com/docs/tracking/google-analytics/>
+- Experiments: <https://featurevisor.com/docs/use-cases/experiments/>
 
 ## What "activation" means
 
-When a user is evaluated as bucketed into a variation, that's an **activation**. The module runs after each evaluation. You decide what to push downstream.
+An **activation** is the first time a user is shown a variation. Record one event per user, feature and variation, at the moment the variation is shown, not on every read. A module sees every evaluation, so it decides which ones count.
 
-## Minimal module (vendor-agnostic)
+## Minimal module
 
 ```js
-import { createFeaturevisor } from '@featurevisor/sdk'
+export function createActivationModule({ subjectId, identityAttribute = 'userId', send }) {
+  const seen = new Set()
 
-const f = createFeaturevisor({
-  datafile,
+  return {
+    name: 'activationTracking',
 
-  modules: [
-    {
-      name: 'analyticsActivation',
+    afterEvaluation(evaluation, options) {
+      // Read the variation the same way getVariation() does: for the common
+      // allocated reason the value lives on variation, not variationValue.
+      const variationValue = evaluation.variationValue ?? evaluation.variation?.value
 
-      afterEvaluation: function (evaluation, options) {
-        // Prerequisite reads are not direct experiment activations.
-        if (options.dependencyPurpose === 'condition') {
-          return evaluation
-        }
+      if (
+        options.dependencyPurpose !== 'condition' &&
+        evaluation.type === 'variation' &&
+        ['allocated', 'rule', 'sticky'].includes(evaluation.reason) &&
+        typeof variationValue === 'string' &&
+        options.context[identityAttribute] === subjectId
+      ) {
+        const key = JSON.stringify([evaluation.featureKey, variationValue])
 
-        // Read the variation the same way getVariation() does: for the common
-        // `allocated` reason the value lives on `variation`, not `variationValue`.
-        const variationValue =
-          evaluation.variationValue ?? evaluation.variation?.value
-
-        if (
-          evaluation.reason !== 'error' &&
-          evaluation.type === 'variation' &&
-          typeof variationValue === 'string'
-        ) {
-          const { userId } = options.context
-
-          // hand off to your analytics
-          yourAnalytics.track('featurevisor_activation', {
+        if (!seen.has(key)) {
+          seen.add(key)
+          send({
+            event: 'featurevisor_activation',
             featureKey: evaluation.featureKey,
             variationValue,
-            userId,
           })
         }
+      }
 
-        // ALWAYS return the evaluation, on every path.
-        return evaluation
-      },
+      // ALWAYS return the evaluation, on every path.
+      return evaluation
     },
+
+    close() {
+      seen.clear()
+    },
+  }
+}
+```
+
+```js
+const f = createFeaturevisor({
+  datafile,
+  modules: [
+    createActivationModule({
+      subjectId: currentUser.id,
+      send: (payload) => analytics.track(payload.event, payload),
+    }),
   ],
 })
 ```
 
-Two things in that shape are load-bearing, and both fail silently if you get them wrong:
+What the shape gets right, each of which fails silently when wrong:
 
 - **Always return `evaluation`, from every branch.** The SDK assigns the callback's return value back to the evaluation. An early `return` with no value makes every flag read as `false` and every variation as `null`, across the whole application, with no error.
-- **Do not read `variationValue` alone.** For the normal `allocated` reason it is `undefined` and the value sits on `evaluation.variation.value`. Reading only `variationValue` sends `undefined` to analytics for exactly the A/B tests you are trying to measure.
+- **Do not read `variationValue` alone.** For the normal `allocated` reason it is `undefined` and the value sits on `evaluation.variation.value`.
+- **Count only `allocated`, `rule` and `sticky`.** That skips errors, disabled fallbacks and `forced` results, so a QA or stakeholder preview through a force entry never counts in the results.
+- **Send once per feature and variation.** Without the `seen` set, every render sends another event. Create the module per user and session, and remove it on sign out or when consent is withdrawn (`await f.removeModule('activationTracking')`). Never share one across users on a server.
+- **Skip `dependencyPurpose: 'condition'`.** Those are eligibility reads, such as an experiment checking its allocation feature. Reads with `dependencyPurpose: 'composition'` are values the application consumes and can be real exposures, so do not skip everything that has `dependencyOf`.
 
-`afterEvaluation` also receives **global variable** evaluations ([global-variables.md](global-variables.md)). The `type === 'variation'` guard above already excludes them. If a module should act only on global variables, branch on a variable evaluation that has no `featureKey`.
+Read the variation with `getVariation` when the user actually sees it, not while prefetching, or users are counted before they see anything. Reading only feature variables records nothing with this module, since it listens for variation evaluations.
 
-Use `afterEvaluation`. The old `after` callback does not run in v4. Dependency evaluations also pass through this module pipeline once per equivalent dependency within one top-level getter call. The main example ignores these prerequisite evaluations before recording direct activation events.
+`afterEvaluation` also receives global variable evaluations ([global-variables.md](global-variables.md)). The `type === 'variation'` guard excludes them. Use `afterEvaluation`: the old `after` callback does not run in v4.
 
-`dependencyOf` and `dependencyPurpose` are absent for direct application calls. Consumed composition reads carry `dependencyPurpose: 'composition'` and can be experiment exposures. Do not skip them merely because they have `dependencyOf`. Evaluate compositions when displaying their values, not while loading speculatively. The memo is discarded when the root getter returns.
+## Google Analytics 4 with Tag Manager
 
-## Google Analytics 4 + GTM (canonical recipe)
-
-1. In GTM, create a GA4 Event tag with event name `featurevisor_activation`.
-2. Register `featureKey` and `variationValue` as Event Parameters (or User Properties, your call).
-3. Trigger the tag on a Custom Event matching the `dataLayer` event name (`featurevisorActivation`, camelCase).
-4. Use the module above, swapping `yourAnalytics.track(...)` for:
+1. In Tag Manager, create a GA4 event tag named `featurevisor_activation`.
+2. Register `featureKey` and `variationValue` as custom dimensions, as event parameters or user properties.
+3. Fire the tag on a custom event trigger matching the `dataLayer` event, `featurevisorActivation`.
+4. Pass a `send` that pushes to the data layer:
 
 ```js
-window.dataLayer.push({
-  event: 'featurevisorActivation',
-  featureKey: evaluation.featureKey,
-  variationValue,
-  userId,
-})
+send: (payload) =>
+  window.dataLayer.push({
+    event: 'featurevisorActivation',
+    featureKey: payload.featureKey,
+    variationValue: payload.variationValue,
+  })
 ```
 
-The `return evaluation` at the end of the callback still applies. Swapping the analytics call does not change that requirement.
+GA4 event names use underscores, while `dataLayer` events are usually camel case, which is why the two names differ. An engineer adds the module once. The Tag Manager and Analytics steps need no code, so an analyst or marketer can own them.
 
-Convention from the docs: snake_case for GA4 event names, camelCase for the `dataLayer` event name.
+## Planning and reading results
+
+Help the user decide before the experiment starts which outcome it should move, such as sign ups, and how long it runs. Choosing them afterwards makes any difference easy to find and hard to trust, and an early lead can be chance. Then compare users who saw `control` with those who saw `treatment` on that outcome, in the analytics tool or its warehouse export.
 
 ## Authoring side
 
-Tracking is application-side. Authoring affects what _can_ be tracked:
+Tracking is application work. Authoring affects what can be tracked:
 
-- Only variation evaluations fire meaningfully for experiments. If the user is running a simple boolean rollout (no `variations:`), there's nothing experiment-shaped to activate: track flag evaluations directly if needed.
-- Variable evaluations don't generally need their own activation events. The variation evaluation already represents the bucketed cohort.
-- Stable feature/variation **keys** are what analytics joins on. Reinforce: don't rename rule keys, don't rename variation values once tracked. Renames invalidate dashboards.
+- Only features with `variations` produce activations. A plain flag rollout has nothing to compare, so track flag reads directly if the team needs them.
+- Feature variables usually need no events of their own: the variation already identifies the cohort.
+- Analytics joins on feature keys and variation values. Do not rename either once tracked, or dashboards break.
 
 ## When the user asks
 
-- "How do I measure my A/B test?" → point at this file + the experiments recipe in [recipes.md](recipes.md).
-- "How do I send to <vendor>?" → use the vendor-agnostic shape above. The module runs, and you bridge it to the vendor.
-- "Is Featurevisor an analytics tool?" → no, it's a feature-management tool. Activation events flow into whatever you already use.
+- "How do I measure my A/B test?" Point at this file and the experiments recipe in [recipes.md](recipes.md#ab-test).
+- "How do I send to another vendor?" Use the same module and change `send`.
+- "Is Featurevisor an analytics tool?" No. It assigns variations, and the activation events flow into whatever the team already uses.

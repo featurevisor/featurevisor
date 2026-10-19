@@ -12,12 +12,13 @@ npx skills add featurevisor/featurevisor
 npx skills add https://github.com/featurevisor/featurevisor/tree/main/skills/featurevisor
 ```
 
-Then ask your agent (Claude Code, Codex, Cursor, OpenCode and others), for example with `/featurevisor` in Claude Code:
+Then ask your agent (Claude Code, Codex, Cursor, OpenCode and others), for example with `/featurevisor` in Claude Code. You do not need to know the YAML to ask: product managers and support colleagues can ask what a user gets and why, and any change the agent proposes still goes through your review. For example:
 
-- "Create a showWishlist feature starting at 5%"
+- "Create a wishlist feature starting at 5%"
 - "Add an A/B test on the pricing page, 50/50, only in Germany and the Netherlands"
-- "Create a checkoutConfig global variable with paymentMethods and allowDiscountCode, with iDEAL for the Netherlands"
+- "Create a checkoutSettings global variable with currency and paymentMethods, with iDEAL for the Netherlands"
 - "Add a maintenanceMode kill switch that turns off checkout and its promo banner"
+- "Let customers who opt in to early access try the wishlist before everyone else"
 - "Give the checkout page one composed value with the flag, the pricing variation and the support email"
 - "Why is checkout disabled for user 9b30 in Germany?"
 - "Which features use the netherlands segment, and what breaks if I archive it?"
@@ -37,6 +38,7 @@ One skill, `featurevisor`, for Featurevisor v4:
 - **Querying**: `list`, `find-usage`, `find-duplicate-segments`, `evaluate --explain`, `assess-distribution` and `diff` for answering questions without reading YAML by hand.
 - **Visual review**: the Catalog in watch mode, so changes made by prompt appear in the browser as they are saved.
 - **Applications**: the JavaScript SDK in Node.js, browsers, edge runtimes and React Native, React and Vue, typed code generation, SDKs in other languages and their spec runners, and OpenFeature providers.
+- **Recipes**: gradual rollouts, A/B and multivariate tests, kill switches, scheduled launches, early access programmes, entitlements, version gates and flag cleanup.
 - **Upgrades**: v3 to v4 and v2 to v3, for projects and applications, in an order that keeps them deployable.
 - **Extending**: CLI plugins, the datasource API and custom adapters.
 - **Templates**: a starting file for every common shape, and a complete example project that passes lint and test.

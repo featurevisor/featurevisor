@@ -4,5 +4,5 @@ type: string
 
 enum:
   - free
-  - pro
+  - paid
   - enterprise

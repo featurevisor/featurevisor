@@ -87,7 +87,7 @@ rules:
 
 Combine several old selectors into one `conditions` list, which means AND. Every override needs `conditions`, including nested ones.
 
-**Build does not run full lint.** A project that skips lint can silently lose an old gate or selector. Lint must pass before building, locally and in CI.
+**Build does not run full lint.** A rule that still uses `segments` builds without it and then matches nobody, switching the feature off for that audience with no error. A leftover feature `required` fails the build instead. Lint must pass before building, locally and in CI.
 
 Then:
 
@@ -130,7 +130,7 @@ The removed `sticky` option and `before` and `after` callbacks are silently igno
 
 ### Other languages
 
-Python, Ruby, PHP and Elixir also rename their number getter to `get_variable_number` or `getVariableNumber`. Java, Kotlin, Swift, Go, Rust, Dart and .NET keep `getVariableDouble`. Native version numbers differ: check the [SDK compatibility matrix](https://featurevisor.com/docs/sdks/compatibility/) for each language's first v4 compatible release, and its changelog for removed APIs. Every v4 SDK still reads v3 datafiles.
+Python, Ruby, PHP and Elixir also rename their number getter to `get_variable_number` or `getVariableNumber`. Java, Kotlin, Swift, Go and Rust keep `getVariableDouble`. Native version numbers differ: check the [SDK compatibility matrix](https://featurevisor.com/docs/sdks/compatibility/) for each language's first v4 compatible release, and its changelog for removed APIs. Every v4 SDK still reads v3 datafiles.
 
 Date inputs are stricter: Ruby rejects plain `Date`, Java rejects `LocalDate` and `LocalDateTime`, and Go's zero `time.Time{}` is a real instant. See [operators.md](operators.md#dates).
 

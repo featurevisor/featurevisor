@@ -1,4 +1,5 @@
 segment: <segmentKey>
+
 assertions:
   - key: matches-inside
     description: Matches inside the segment

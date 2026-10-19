@@ -11,7 +11,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 ```sh
 mkdir example-1
 cd example-1
-npx @featurevisor/cli init --example=1
+npx @featurevisor/cli@latest init --example=1
 ```
 
 ## Installation

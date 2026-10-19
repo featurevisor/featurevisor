@@ -34,12 +34,12 @@ Without a `featurevisor.config.js` in the working tree there is no Featurevisor 
 2. **Sets?** Default **no**. Offer Sets only for independently reviewed trees: release lanes promoted from dev to staging to production, or unrelated surfaces such as a storefront and an admin. Read [sets-promotions.md](references/sets-promotions.md) first.
 3. **Consumers?** One application can use the default `all` target, which has no selectors and includes every active definition. Several surfaces usually get tags such as `web`, `ios` and `android`, and a target per surface.
 4. **File format?** YAML (default) or JSON.
-5. **What identifies a user?** `userId`, `deviceId`, or both (`bucketBy: { or: [userId, deviceId] }`). This becomes `defaultBucketBy` and the first attributes.
+5. **What identifies a user?** `userId`, `deviceId`, or both (`bucketBy: { or: [userId, deviceId] }`). Lint requires `bucketBy` on every feature, so this decides what each feature declares and which attributes come first.
 
 Scaffold in an empty directory, in its own repository, separate from application code:
 
 ```bash
-npx @featurevisor/cli init
+npx @featurevisor/cli@latest init
 npm install
 ```
 
@@ -75,7 +75,7 @@ Four values change the **shape of everything you write**:
 - `parser`: author JSON for `"json"`, YAML for `"yml"` (default), or the configured custom format ([custom-parsers.md](references/custom-parsers.md)).
 - `namespaceCharacter`: separator for keys from subdirectories. Default `.`, so `features/checkout/promo.yml` is `checkout.promo`. Some projects use `/`. Every reference must use the project's separator. Confirm against real keys with `npx featurevisor list --segments --json`.
 
-Also note `tags` (every tag you use must be declared), `defaultBucketBy` (default `userId`), `disallowOperators`, and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
+Also note `tags` (every tag you use must be declared), `disallowOperators`, `allowedConditions`, and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
 
 ## How Featurevisor fits together
 
@@ -103,7 +103,7 @@ conditions:
     value: false
 ```
 
-**Evaluation order.** A feature's flag checks a sticky value, then whether the feature is in the datafile, then the first matching force entry, then root `conditions`, then the first rule whose conditions match, and finally that rule's percentage against the user's bucket. A percentage miss does not fall through to the next rule. A global variable checks a sticky value, then root `conditions`, then composition sources if any, then the first matching override, then its default. Details: [features.md](references/features.md#evaluation-flow) and [global-variables.md](references/global-variables.md#evaluation-order).
+**Evaluation order.** A feature's flag checks a sticky value, then whether the feature is in the datafile, then the first matching force entry, then root `conditions`, then the first rule whose conditions match, and finally that rule's percentage against the user's bucket. A percentage miss does not fall through to the next rule. A global variable checks a sticky value, then root `conditions`, then composition sources if any, then the first matching override (and later ones too when an override sets `continue: true`), then its default. Details: [features.md](references/features.md#evaluation-flow) and [global-variables.md](references/global-variables.md#evaluation-order).
 
 ## Core authoring rules
 
@@ -125,7 +125,7 @@ Confirm every attribute, segment, feature and variable you reference exists, or 
 
 ### 4. Variation weights sum to 100
 
-Each value is unique. `control` and `treatment` are conventions only. For mutually exclusive experiments, see [mutual-exclusion.md](references/mutual-exclusion.md).
+Each value is unique. `control` and `treatment` are conventions only. Lint rejects weights that do not sum to 100. With CLI 4.0.0 it did not, so check the sum yourself there: a short split builds once, then every later build fails with `Invalid saved variation allocation`. For mutually exclusive experiments, see [mutual-exclusion.md](references/mutual-exclusion.md).
 
 ### 5. Conditions stay portable across SDKs
 
@@ -186,37 +186,37 @@ Every CLI command is local and safe to run without asking, except:
 
 Read the matching file in full **before** authoring or debugging in that area. Do not rely on the summary here.
 
-| Task                                                                                                         | Read                                                                                                          |
-| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| Create or edit a feature: rules, force, variations, variables, root conditions, expose                       | [features.md](references/features.md)                                                                         |
-| Write conditions: leaves, groups, dependencies, paths, evaluation order                                      | [conditions.md](references/conditions.md)                                                                     |
-| Look up an operator, or a date, version or regex rule                                                        | [operators.md](references/operators.md)                                                                       |
-| Write or change a segment                                                                                    | [segments.md](references/segments.md)                                                                         |
-| Declare an attribute, its type, format and constraints                                                       | [attributes.md](references/attributes.md)                                                                     |
-| Feature variables, types, reusable schemas and mutations                                                     | [variables-schemas.md](references/variables-schemas.md)                                                       |
-| Global variables: overrides, nesting, accumulation, `compose`                                                | [global-variables.md](references/global-variables.md)                                                         |
-| Mutually exclusive experiments and priority exclusion                                                        | [mutual-exclusion.md](references/mutual-exclusion.md)                                                         |
-| Bucketing, `bucketBy`, state files, sticky values                                                            | [bucketing.md](references/bucketing.md)                                                                       |
-| Tags, targets and namespaces                                                                                 | [tags.md](references/tags.md), [targets.md](references/targets.md), [namespaces.md](references/namespaces.md) |
-| `featurevisor.config.js`, environments, project options                                                      | [configuration.md](references/configuration.md)                                                               |
-| Sets and promotions                                                                                          | [sets-promotions.md](references/sets-promotions.md)                                                           |
-| JSON, TOML or another file format                                                                            | [custom-parsers.md](references/custom-parsers.md)                                                             |
-| Build and deploy datafiles, CI                                                                               | [building-datafiles.md](references/building-datafiles.md)                                                     |
-| Write specs, checks and scenarios, read reports                                                              | [testing.md](references/testing.md)                                                                           |
-| Any CLI command and its options                                                                              | [cli.md](references/cli.md)                                                                                   |
-| Answer questions about a project, debug an evaluation, browse the Catalog                                    | [querying.md](references/querying.md)                                                                         |
-| JavaScript or TypeScript SDK in any runtime                                                                  | [sdk-javascript.md](references/sdk-javascript.md)                                                             |
-| React or React Native                                                                                        | [sdk-react.md](references/sdk-react.md)                                                                       |
-| Vue                                                                                                          | [sdk-vue.md](references/sdk-vue.md)                                                                           |
-| Go, Python, Ruby, Java, Kotlin, Swift, PHP, Rust, Elixir, and running specs through them                     | [sdk-other-languages.md](references/sdk-other-languages.md)                                                   |
-| OpenFeature providers                                                                                        | [openfeature.md](references/openfeature.md)                                                                   |
-| Typed TypeScript bindings                                                                                    | [code-generation.md](references/code-generation.md)                                                           |
-| Analytics and experiment exposure                                                                            | [tracking.md](references/tracking.md)                                                                         |
-| Upgrade from v3 to v4                                                                                        | [upgrading-to-v4.md](references/upgrading-to-v4.md)                                                           |
-| Upgrade from v2 to v3                                                                                        | [upgrading-to-v3.md](references/upgrading-to-v3.md)                                                           |
-| Custom CLI commands, the datasource API, adapters                                                            | [plugins-datasource.md](references/plugins-datasource.md)                                                     |
-| Named patterns: rollouts, A/B tests, kill switches, scheduled launches, entitlements, version gates, cleanup | [recipes.md](references/recipes.md)                                                                           |
-| Terminology                                                                                                  | [glossary.md](references/glossary.md)                                                                         |
+| Task                                                                                                        | Read                                                                                                          |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Create or edit a feature: rules, force, variations, variables, root conditions, expose                      | [features.md](references/features.md)                                                                         |
+| Write conditions: leaves, groups, dependencies, paths, evaluation order                                     | [conditions.md](references/conditions.md)                                                                     |
+| Look up an operator, or a date, version or regex rule                                                       | [operators.md](references/operators.md)                                                                       |
+| Write or change a segment                                                                                   | [segments.md](references/segments.md)                                                                         |
+| Declare an attribute, its type, format and constraints                                                      | [attributes.md](references/attributes.md)                                                                     |
+| Feature variables, types, reusable schemas and mutations                                                    | [variables-schemas.md](references/variables-schemas.md)                                                       |
+| Global variables: overrides, nesting, accumulation, `compose`                                               | [global-variables.md](references/global-variables.md)                                                         |
+| Mutually exclusive experiments and priority exclusion                                                       | [mutual-exclusion.md](references/mutual-exclusion.md)                                                         |
+| Bucketing, `bucketBy`, state files, sticky values                                                           | [bucketing.md](references/bucketing.md)                                                                       |
+| Tags, targets and namespaces                                                                                | [tags.md](references/tags.md), [targets.md](references/targets.md), [namespaces.md](references/namespaces.md) |
+| `featurevisor.config.js`, environments, project options                                                     | [configuration.md](references/configuration.md)                                                               |
+| Sets and promotions                                                                                         | [sets-promotions.md](references/sets-promotions.md)                                                           |
+| JSON, TOML or another file format                                                                           | [custom-parsers.md](references/custom-parsers.md)                                                             |
+| Build and deploy datafiles, CI                                                                              | [building-datafiles.md](references/building-datafiles.md)                                                     |
+| Write specs, checks and scenarios, read reports                                                             | [testing.md](references/testing.md)                                                                           |
+| Any CLI command and its options                                                                             | [cli.md](references/cli.md)                                                                                   |
+| Answer questions about a project, debug an evaluation, browse the Catalog                                   | [querying.md](references/querying.md)                                                                         |
+| JavaScript or TypeScript SDK in any runtime                                                                 | [sdk-javascript.md](references/sdk-javascript.md)                                                             |
+| React or React Native                                                                                       | [sdk-react.md](references/sdk-react.md)                                                                       |
+| Vue                                                                                                         | [sdk-vue.md](references/sdk-vue.md)                                                                           |
+| Go, Python, Ruby, Java, Kotlin, Swift, PHP, Rust, Elixir, and running specs through them                    | [sdk-other-languages.md](references/sdk-other-languages.md)                                                   |
+| OpenFeature providers                                                                                       | [openfeature.md](references/openfeature.md)                                                                   |
+| Typed TypeScript bindings                                                                                   | [code-generation.md](references/code-generation.md)                                                           |
+| Analytics and experiment exposure                                                                           | [tracking.md](references/tracking.md)                                                                         |
+| Upgrade from v3 to v4                                                                                       | [upgrading-to-v4.md](references/upgrading-to-v4.md)                                                           |
+| Upgrade from v2 to v3                                                                                       | [upgrading-to-v3.md](references/upgrading-to-v3.md)                                                           |
+| Custom CLI commands, the datasource API, adapters                                                           | [plugins-datasource.md](references/plugins-datasource.md)                                                     |
+| Named patterns: rollouts, A/B tests, kill switches, scheduled launches, early access, entitlements, cleanup | [recipes.md](references/recipes.md)                                                                           |
+| Terminology                                                                                                 | [glossary.md](references/glossary.md)                                                                         |
 
 ### Templates
 
@@ -241,7 +241,7 @@ Starting files without environments. Replace placeholder keys, and create anythi
 
 1. Run the interview in [Orient yourself first](#no-project-yet-interview-then-scaffold).
 2. Scaffold with the closest `init --example=…` and `npm install`.
-3. Adjust `featurevisor.config.js` to the answers: `environments`, `tags`, `sets`, `defaultBucketBy`, `parser`.
+3. Adjust `featurevisor.config.js` to the answers: `environments`, `tags`, `sets`, `parser`.
 4. Replace the scaffolded definitions with the user's own, in dependency order: attributes, then segments, then features and global variables, then targets.
 5. Run `npx featurevisor lint`, `npx featurevisor test` and `npx featurevisor build --no-state-files`.
 6. Offer CI and CDN deployment ([building-datafiles.md](references/building-datafiles.md)) and `npx featurevisor catalog`.
@@ -295,7 +295,7 @@ v3 to v4: [upgrading-to-v4.md](references/upgrading-to-v4.md). v2 to v3: [upgrad
 
 ### Named patterns
 
-Progressive rollouts, A/B and multivariate tests, kill switches, scheduled launches, staged rollouts from employees to everyone, app version gates, entitlements, backend migrations and flag cleanup each have a recipe in [recipes.md](references/recipes.md).
+Progressive rollouts, A/B and multivariate tests, kill switches, scheduled launches, staged rollouts from employees to everyone, early access programmes, app version gates, entitlements, backend migrations and flag cleanup each have a recipe in [recipes.md](references/recipes.md).
 
 ## Changes ship through Git
 
@@ -303,7 +303,7 @@ Nothing takes effect until it travels the pipeline: **edit, review, merge, CI (l
 
 - **Do not commit or push unless asked.** Editing files and running the CLI is your job. Landing the change belongs to the user and their CI.
 - Keep one logical change per pull request, with its spec updates.
-- When asked "when will this be live?", walk that pipeline. An application refreshing every five minutes can lag up to five minutes after deployment.
+- When asked "when will this be live?", walk that pipeline and add up the waits: CI, the cache in front of the datafiles, then each application's next fetch. With a five minute cache and a five minute refresh interval, a change can take ten minutes after deployment to reach everyone. Mobile apps usually fetch when they open or return to the foreground. [How long a change takes](https://featurevisor.com/docs/deployment/#how-long-a-change-takes) walks through it.
 
 ## Application integration (SDKs)
 
@@ -314,11 +314,12 @@ Nothing takes effect until it travels the pipeline: **edit, review, merge, CI (l
 - **OpenFeature**: [openfeature.md](references/openfeature.md).
 - **Frameworks**: [Next.js](https://featurevisor.com/docs/frameworks/nextjs/), [Express](https://featurevisor.com/docs/frameworks/express/), [Fastify](https://featurevisor.com/docs/frameworks/fastify/), [Astro](https://featurevisor.com/docs/frameworks/astro/), [Nuxt](https://featurevisor.com/docs/frameworks/nuxt/).
 
-Evaluations are local and synchronous, with no network call. The application loads a datafile and decides when to refresh it. Feature keys, variable keys and attribute names must match the project exactly: check them against the project or its Catalog rather than guessing.
+Evaluations are local and synchronous, with no network call. The application loads a datafile and decides when to refresh it. SDKs make no network requests of their own, so the context an application passes never leaves it, which is the answer when someone asks what user data Featurevisor sees. Feature keys, variable keys and attribute names must match the project exactly: check them against the project or its Catalog rather than guessing.
 
 ## What not to do
 
 - Do not change a feature's `bucketBy` or a rule's `key` to tidy up. It moves users.
+- Do not put `enabled` on a rule. Rules do not take it, and lint rejects it (CLI 4.0.0 accepted it, but builds ignored it). Set the rule's `percentage` to `0` to switch an audience off, or add a `force` entry.
 - Do not invent attribute, segment, feature or variable keys, in YAML or in application code.
 - Do not archive, rename or delete a definition before `find-usage` shows nothing active depends on it.
 - Do not delete a retired definition when archiving will do. A reused key brings back the old bucketing and history.

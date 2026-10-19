@@ -153,6 +153,10 @@ export interface Rule {
   conditions: Conditions;
   percentage: Weight;
 
+  /**
+   * @deprecated Rules do not take `enabled`, and lint rejects it.
+   * Set `percentage` to `0` to switch an audience off, or add a `force` entry.
+   */
   enabled?: boolean;
   variation?: VariationValue;
   variables?: {
