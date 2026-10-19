@@ -24,7 +24,7 @@ The hash is the same in every SDK and language, so a user in `treatment` on the 
 | Everyone in an organization together | `organizationId`                                    |
 | Per user within each organization    | `[organizationId, userId]`                          |
 
-**Attribute names differ between projects.** Read `attributes/` or `npx featurevisor list --attributes --json`, and ask when it is ambiguous. A feature without `bucketBy` uses `defaultBucketBy` from the configuration, which defaults to `userId`.
+**Attribute names differ between projects.** Read `attributes/` or `npx featurevisor list --attributes --json`, and ask when it is ambiguous. Every feature declares `bucketBy`, and lint rejects one without it.
 
 A missing `bucketBy` attribute adds nothing to the key, so every context without a `userId` shares one bucket and is in or out together. With `{ or: [userId, deviceId] }`, a visitor who signs in moves from their device bucket to their user bucket, so their result can change at that moment.
 
@@ -47,7 +47,7 @@ Raising a percentage keeps everyone already in, and keeps their variation. Warn 
 - `existing-state.json`, or `existing-state-<environment>.json` with environments: each rule's saved variation ranges, so the next build keeps users in their variation as percentages rise. In Sets projects it lives under `.featurevisor/sets/<set>/`.
 - `REVISION`: the revision number each build increments and writes into datafiles.
 
-**Only the deploying CI build updates and commits state.** A local build must use `--no-state-files`, so neither file changes. Never commit state generated locally, and never edit or delete it to fix an error. On `invalid_saved_allocation`, restore state from the deployed revision, or rename the rule deliberately after reviewing who would switch.
+**Only the deploying CI build updates and commits state.** A local build must use `--no-state-files`, so neither file changes. Never commit state generated locally, and never edit or delete it to fix an error. On `invalid_saved_allocation`, restore state from the deployed revision, or rename the rule deliberately after reviewing who would switch ([state files](https://featurevisor.com/docs/state-files/#traffic-allocation)).
 
 CI can choose the revision:
 

@@ -1,4 +1,5 @@
 variable: supportEmail
+
 assertions:
   - key: netherlands
     description: Uses the Netherlands override

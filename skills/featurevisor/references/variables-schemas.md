@@ -12,10 +12,10 @@ Feature variables turn a feature into typed remote configuration. They are decla
 
 ```yaml
 variablesSchema:
-  bgColor:
+  colour:
     type: string
-    description: Sidebar background
-    defaultValue: red
+    description: Buy button colour
+    defaultValue: '#111827'
 
   hero:
     type: object
@@ -36,10 +36,10 @@ Without either of these, a disabled feature returns `null` for its variables:
 
 ```yaml
 variablesSchema:
-  bgColor:
+  colour:
     type: string
-    defaultValue: red
-    disabledValue: grey # returned while disabled
+    defaultValue: '#111827'
+    disabledValue: '#6b7280' # returned while disabled
     # or: useDefaultWhenDisabled: true, to return defaultValue
     deprecated: true # SDKs log a warning when read
 ```
@@ -60,7 +60,7 @@ Constraints follow JSON Schema: `enum`, `const`, `minimum`, `maximum`, `minLengt
 
 `format: date-time` validates stored timestamps during lint. Date-time variables compare only with `before`, `after` and the presence operators in conditions. Plain strings can also use `before` and `after`.
 
-Applications read `number` variables with `getVariableNumber` in JavaScript, Python, Ruby, PHP and Elixir, and with `getVariableDouble` in Java, Swift, Go, Rust, Dart and .NET.
+Applications read `number` variables with `getVariableNumber` in JavaScript, Python, Ruby, PHP and Elixir, and with `getVariableDouble` in Java, Kotlin, Swift, Go and Rust.
 
 ```yaml
 acceptedCards:
@@ -92,7 +92,7 @@ rules:
     conditions: netherlands
     percentage: 100
     variables:
-      bgColor: orange
+      colour: orange
 ```
 
 ### In a variation
@@ -105,7 +105,7 @@ variations:
   - value: treatment
     weight: 50
     variables:
-      bgColor: blue
+      colour: blue
 ```
 
 A variation can only set variables declared in `variablesSchema`.
@@ -120,9 +120,9 @@ rules:
     conditions: netherlands
     percentage: 100
     variables:
-      bgColor: orange
+      colour: orange
     variableOverrides:
-      bgColor:
+      colour:
         - key: amsterdam
           conditions:
             - attribute: city

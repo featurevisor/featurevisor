@@ -52,9 +52,9 @@ includeVariables:
 
 The build adds everything the selected definitions need, even when selectors or tags would leave it out:
 
-- features and variables referenced in `conditions`, and their own dependencies,
-- segments used anywhere, with their references,
-- every source of a composition.
+- features and variables referenced in `conditions`, and their own dependencies
+- segments used anywhere, with their references
+- every source of a composition
 
 Every branch of an `and`, `or` or `not` counts. The exception is `expose: false`, which keeps a feature out, so never hide a prerequisite. For a composition, a hidden or archived source fails the build. Target filtering is not a confidentiality boundary: dependencies arrive as whole definitions.
 

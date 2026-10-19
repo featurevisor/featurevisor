@@ -17,6 +17,7 @@ import { setupApp } from '@featurevisor/vue'
 import App from './App.vue'
 
 const response = await fetch('https://cdn.example.com/featurevisor-all.json')
+if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
 const f = createFeaturevisor({
   datafile: await response.json(),
@@ -51,7 +52,7 @@ app.mount('#app')
 </template>
 ```
 
-Each function takes an optional context as its last argument. **They return plain values at the moment they are called, not refs**, so they do not update when the datafile, context or sticky values change. For components that must follow those changes, wrap a read in a `ref` and update it from the instance's `datafile_set`, `context_set` and `sticky_features_set` events, unsubscribing in `onUnmounted`. The docs show a complete `useLiveFlag`.
+Each function takes an optional context as its last argument. **They return plain values at the moment they are called, not refs**, so they do not update when the datafile, context or sticky values change. A feature switched off stays visible in an open page until its component is created again. For components that must follow those changes, wrap a read in a `ref` and update it from the instance's `datafile_set`, `context_set` and `sticky_features_set` events, unsubscribing in `onUnmounted`. The docs show a complete `useLiveFlag`.
 
 `useVariation` and `useVariable` return `null` when there is no value. `useSdk` throws when `setupApp` has not run: that error means missing wiring, not a missing feature.
 

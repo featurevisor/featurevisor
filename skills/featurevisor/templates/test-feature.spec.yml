@@ -1,15 +1,18 @@
 feature: <featureKey>
+
 assertions:
+  # Write each description as the promise in plain words, so a reviewer
+  # who does not read YAML can follow it.
   - key: rollout-gated
-    description: Everyone is gated at 0% rollout
+    description: Everyone is out while the rollout is at 0%
     # Add environment: production only when that environment is configured.
     at: 99
     context:
       userId: "test-user-1"
     expectedToBeEnabled: false
 
-  # If the feature has variations, assert each by picking `at` in their weight band.
-  # Variation weights of 50/50 → control covers ~[0,50), treatment ~[50,100).
+  # If the feature has variations, assert each by picking `at` in its weight band.
+  # With 50/50 weights, control covers buckets from 0 to 50, treatment from 50 to 100.
   # Enable the feature's rollout before asserting a variation.
   # - key: treatment
   #   description: Treatment variation
@@ -19,9 +22,9 @@ assertions:
   #   expectedToBeEnabled: true
   #   expectedVariation: treatment
   #   expectedVariables:
-  #     bgColor: blue
+  #     colour: '#2563eb'
 
-  # Matrix example — same expectations across multiple contexts:
+  # Matrix example, the same expectations across several contexts:
   # - key: country-matrix
   #   matrix:
   #     country: [nl, de, us]

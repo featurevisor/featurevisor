@@ -20,8 +20,8 @@ npm install
 | ------------------- | ----------------------------------------------------------------- |
 | `yml` (default)     | YAML, no environments, an `all` target without selectors          |
 | `with-environments` | YAML with `staging` and `production` environment keyed rules      |
-| `json`              | JSON definitions                                                  |
-| `toml`              | a custom TOML parser                                              |
+| `json`              | JSON definitions, with `staging` and `production` environments    |
+| `toml`              | a custom TOML parser, with `staging` and `production`             |
 | `no-environments`   | the same shape as the default, stated explicitly                  |
 | `environments`      | Sets as release lanes, promoted from dev to staging to production |
 | `sets`              | Sets as independent surfaces, `storefront` and `admin`            |
@@ -43,7 +43,7 @@ npx featurevisor lint --entity-type=feature
 npx featurevisor lint --key-pattern="checkout"
 ```
 
-Validates every definition and spec: schemas, references, types, operators, formats, cycles, weights, mutations and test expectations. Entity types: `feature`, `segment`, `attribute`, `schema`, `target`, `variable`, `test`, `scenario`.
+Validates every definition and spec: schemas, references, types, operators, formats, cycles, weights, mutations and test expectations. Entity types: `feature`, `segment`, `attribute`, `schema`, `target`, `variable`, `test`, `scenario`. `--key-pattern` is a case sensitive regular expression and is not anchored, in `lint`, `test` and `list` alike. Match the key's case exactly, which also works with CLI 4.0.0, where `test` and `list` ignored case.
 
 With `--json`, the report is `{ "errors": [...], "warnings": [...] }`, and each entry has `filePath`, `entityType`, `key`, `message`, `path` and `code`:
 
@@ -90,10 +90,10 @@ Builds the datafile in memory from the local project and evaluates it with the S
 
 `--explain` adds why:
 
-- the deciding force entry, rule or override, with its conditions,
-- a pass or fail probe for every leaf of root, force and rule conditions, keeping their `and`, `or` and `not` structure,
-- the bucket value and bucket key, such as `Bucket: 75177 / 100000 · key "u1.checkout"`,
-- for a composition, each member's source and value.
+- the deciding force entry, rule or override, with its conditions
+- a pass or fail probe for every leaf of root, force and rule conditions, keeping their `and`, `or` and `not` structure
+- the bucket value and bucket key, such as `Bucket: 75177 / 100000 · key "u1.checkout"`
+- for a composition, each member's source and value
 
 The probes run beside the SDK result and are not a full execution trace. The SDK result stays authoritative. `--explain --json` has the complete evidence.
 
@@ -211,6 +211,20 @@ npx featurevisor assess-distribution \
 
 Evaluates many generated users and reports how they split across enabled, disabled and variations. `--populate-uuid` fills an attribute with a fresh UUID per evaluation and can be repeated. Higher `--n` gives tighter numbers.
 
+```text
+Flag evaluations
+
+  • enabled:    1,000   100.00%
+  • disabled:       0     0.00%
+
+Variation evaluations
+
+  • treatment:    504    50.40%
+  • control:      496    49.60%
+```
+
+Each run draws new IDs, so counts vary a little between runs. Use it to show someone that a split works before an experiment starts.
+
 ## benchmark
 
 ```bash
@@ -260,7 +274,7 @@ npx featurevisor catalog export --out-dir=./out --hash-router
 npx featurevisor catalog serve
 ```
 
-`catalog` exports, serves at `http://127.0.0.1:3000` and reloads on every saved change. `catalog export` writes a static site to `catalog/` for hosting. `--hash-router` suits static hosts without a fallback to `index.html`. `--test-report=<file>` shows results from a saved `test --json` report. Set `catalogBasePath` in the configuration to host it under a path. Full docs: <https://featurevisor.com/docs/catalog/>.
+`catalog` exports, serves at `http://127.0.0.1:3000` and reloads on every saved change. When the project's remote is on GitHub, GitLab or Bitbucket, each definition has a Propose change link that opens it in the Git host's editor, which suits people who would rather not clone the repository. `catalog export` writes a static site to `catalog/` for hosting. `--hash-router` suits static hosts without a fallback to `index.html`. `--test-report=<file>` shows results from a saved `test --json` report. Set `catalogBasePath` in the configuration to host it under a path. Full docs: <https://featurevisor.com/docs/catalog/>.
 
 ## version
 

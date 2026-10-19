@@ -8,6 +8,8 @@ Full docs:
 
 Datafiles are the static JSON files SDKs load. The CLI builds one per target, and per environment when environments are configured. Each contains the target's selected features and global variables plus everything they reference, with `schemaVersion: "4"`. Only v4 SDKs read v4 datafiles correctly ([upgrading-to-v4.md](upgrading-to-v4.md)).
 
+Treat a datafile as public. A browser or app that loads it can read every key and value inside, so a feature named after an unannounced product can be seen before its launch. Datafiles must never contain secrets.
+
 ## Two kinds of build
 
 Bare `npx featurevisor build` is the **CI command**. Besides writing datafiles, it increments `.featurevisor/REVISION` and updates the state files that keep variation allocations stable between builds. The deploying pipeline commits them.
@@ -54,7 +56,7 @@ npx featurevisor build --print --pretty --feature=checkout
 
 ## Run lint and tests first
 
-Build does not run full lint. It catches broken references and dependency cycles, but can silently drop a removed v3 field or accept a malformed date. CI must run lint and tests before building:
+Build does not run full lint. It catches broken references and dependency cycles, but a rule that still uses the removed `segments` field builds without it and then matches nobody, and a malformed date operand passes. CI must run lint and tests before building:
 
 ```bash
 npx featurevisor lint
@@ -68,8 +70,10 @@ The usual pipeline on merge to the main branch:
 
 1. Lint and test.
 2. Build, with state files.
-3. Commit the updated `.featurevisor/` back, typically with `[skip ci]` in the message.
+3. Commit the updated `.featurevisor/` back, typically with `[skip ci]` in the message, and push it.
 4. Upload `datafiles/` to a CDN or static host.
+
+Push the state before uploading, so a rejected push stops the run before anything is published. Run one deployment at a time, such as through a GitHub Actions concurrency group, because two builds starting from the same state cannot both push. Never force push state.
 
 Do not run `git commit`, `git push` or a bare `build` on the user's behalf without explicit confirmation. Most projects ignore `datafiles/` in Git and track `.featurevisor/`, so keep that layout.
 
@@ -83,7 +87,8 @@ A build with `--environment` writes only that environment while advancing the sh
 import { createFeaturevisor } from '@featurevisor/sdk'
 
 const response = await fetch('https://cdn.yoursite.com/featurevisor-all.json')
+if (!response.ok) throw new Error(`HTTP ${response.status}`)
 const f = createFeaturevisor({ datafile: await response.json() })
 ```
 
-Applications refresh by polling or on a push signal, and call `setDatafile` with the new content ([sdk-javascript.md](sdk-javascript.md#set-and-refresh-the-datafile)). A change goes live after merge, build, upload and each application's next refresh.
+Applications refresh by polling or on a push signal, and call `setDatafile` with the new content ([sdk-javascript.md](sdk-javascript.md#set-and-refresh-the-datafile)). A change goes live after merge, build and upload, then the cache in front of the datafiles, then each application's next refresh. With a five minute cache and a five minute refresh interval, it can take ten minutes after deployment to reach everyone. See [how long a change takes](https://featurevisor.com/docs/deployment/#how-long-a-change-takes).

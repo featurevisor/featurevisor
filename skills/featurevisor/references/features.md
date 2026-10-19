@@ -27,21 +27,21 @@ rules:
 
 Examples use the default scaffold without environments.
 
-| Property                 | Required                                | Notes                                                                          |
-| ------------------------ | --------------------------------------- | ------------------------------------------------------------------------------ |
-| `description`            | yes                                     |                                                                                |
-| `bucketBy`               | yes, unless `defaultBucketBy` covers it | attribute, list of attributes, or `{ or: [...] }`                              |
-| `rules`                  | yes                                     | ordered list, or a map of environment to list when environments are configured |
-| `conditions`             | no                                      | root gate ([conditions.md](conditions.md#root-gates))                          |
-| `force`                  | no                                      | ordered list, or an environment map                                            |
-| `variations`             | no                                      | A/B test values with weights                                                   |
-| `variablesSchema`        | no                                      | feature variables ([variables-schemas.md](variables-schemas.md))               |
-| `disabledVariationValue` | no                                      | variation returned while disabled, instead of `null`                           |
-| `tags`                   | no                                      | must be declared in the project configuration                                  |
-| `expose`                 | no                                      | boolean or tag list, or an environment map                                     |
-| `deprecated`             | no                                      | still evaluated, SDKs log a warning                                            |
-| `archived`               | no                                      | left out of every datafile                                                     |
-| `promotable`             | no                                      | `false` protects the destination during Set promotions                         |
+| Property                 | Required | Notes                                                                          |
+| ------------------------ | -------- | ------------------------------------------------------------------------------ |
+| `description`            | yes      |                                                                                |
+| `bucketBy`               | yes      | attribute, list of attributes, or `{ or: [...] }`                              |
+| `rules`                  | yes      | ordered list, or a map of environment to list when environments are configured |
+| `conditions`             | no       | root gate ([conditions.md](conditions.md#root-gates))                          |
+| `force`                  | no       | ordered list, or an environment map                                            |
+| `variations`             | no       | A/B test values with weights                                                   |
+| `variablesSchema`        | no       | feature variables ([variables-schemas.md](variables-schemas.md))               |
+| `disabledVariationValue` | no       | variation returned while disabled, instead of `null`                           |
+| `tags`                   | no       | must be declared in the project configuration                                  |
+| `expose`                 | no       | boolean or tag list, or an environment map                                     |
+| `deprecated`             | no       | still evaluated, SDKs log a warning                                            |
+| `archived`               | no       | left out of every datafile                                                     |
+| `promotable`             | no       | `false` protects the destination during Set promotions                         |
 
 ## Bucketing
 
@@ -75,9 +75,10 @@ rules:
 ```
 
 - Rules run top to bottom. The first rule whose `conditions` match decides.
-- `percentage` (0 to 100, up to two decimals) is then checked against the user's bucket. A miss disables the feature and does **not** fall through to later rules.
+- `percentage` (0 to 100, up to three decimals, since buckets are counted out of 100,000) is then checked against the user's bucket. A miss disables the feature and does **not** fall through to later rules.
 - `key` is unique within the list and stays stable while the percentage changes. Raising a percentage keeps everyone already in. Renaming or reweighting reallocates variations.
 - `conditions` is required. Use `'*'` for everyone ([conditions.md](conditions.md)).
+- A rule has no `enabled` field. Lint rejects one and suggests `percentage: 0` instead. To switch an audience off, set its `percentage` to `0`, or use [force](#force). CLI 4.0.0 accepted the field, but builds ignored it.
 
 Rules can also fix a variation, change weights, and set variables for their audience:
 
@@ -88,7 +89,7 @@ rules:
     percentage: 100
     variation: treatment # everyone in this rule gets treatment
     variables:
-      bgColor: orange
+      colour: orange
 
   - key: de
     conditions: germany
@@ -130,10 +131,10 @@ variations:
   - value: treatment
     weight: 50
     variables:
-      bgColor: blue
+      colour: blue
 ```
 
-- Weights sum to 100, with up to two decimals each.
+- Weights sum to 100, with up to three decimals each, such as `33.333`, `33.333` and `33.334`. Lint reports a shortfall with its actual sum, such as `Variation weights must sum to 100, but they sum to 90.` A rule's `variationWeights` must sum to 100 too. CLI 4.0.0 did not check feature weights: a short split built once, then every later build failed with `Invalid saved variation allocation`.
 - Values are unique strings. `control` and `treatment` are conventions only. Analytics keys off these values, so do not rename them once tracked.
 - A variation can only set variables declared in `variablesSchema`.
 - `disabledVariationValue: control` returns `control` instead of `null` while the feature is disabled. It needs no `variations` list, and when one exists it must name one of its values.
@@ -148,9 +149,9 @@ rules:
     conditions: netherlands
     percentage: 100
     variables:
-      bgColor: orange
+      colour: orange
     variableOverrides:
-      bgColor:
+      colour:
         - key: amsterdam
           conditions:
             - attribute: city
@@ -204,7 +205,7 @@ force:
         value: '9b30'
     enabled: true
     variables:
-      bgColor: purple
+      colour: purple
 ```
 
 Force entries need `conditions`, have no `key` or `percentage`, and the first match wins. Prefer a reviewed `force` entry over SDK sticky values for QA access.

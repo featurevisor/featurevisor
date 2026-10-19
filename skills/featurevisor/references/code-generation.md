@@ -58,5 +58,6 @@ Call `setInstance` before using the functions, or they throw. Imports use `.js` 
 - The application is TypeScript and calls the SDK with string keys.
 - Typos in keys or context attributes have caused bugs.
 - Many features, or several teams consuming one project.
+- Flags are being retired. Archived features are left out of the generated code, so regenerating after archiving turns every call that still names one into a compile error.
 
 Regenerate after changing definitions, and compile the application. Teams often publish the generated code as a private package from the same CI pipeline that deploys datafiles. Setting that up is project work: agree it with the user before doing it.

@@ -1,7 +1,7 @@
 description: New checkout flow with an A/B test and configurable payment methods
 
 # Signed-in users keep their result across devices through userId.
-# Anonymous traffic falls back to deviceId.
+# Anonymous visitors fall back to deviceId.
 bucketBy:
   or:
     - userId

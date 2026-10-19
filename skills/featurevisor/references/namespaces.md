@@ -1,10 +1,10 @@
 # Namespaces
 
-Full docs: <https://featurevisor.com/docs/namespaces>
+Full docs: <https://featurevisor.com/docs/namespaces/>
 
 Namespaces are purely **organizational**: putting a feature, segment, global variable, or related test inside a subdirectory turns the directory name into a key prefix. They have no runtime effect beyond changing the key.
 
-The separator between directory name and file name is `namespaceCharacter` in `featurevisor.config.js`. **The default is `.` (dot).** Some projects configure `/` instead. **Adapt to the project and never assume.** Check `npx featurevisor config --json --pretty`, then confirm against real keys (`npx featurevisor list --segments --json`, `list --features --json`) before writing any namespaced reference. A key written with the wrong separator fails lint at best, or silently creates a new un-namespaced entity at worst.
+The separator between directory name and file name is `namespaceCharacter` in `featurevisor.config.js`. **The default is `.` (dot).** Some projects configure `/` instead. **Adapt to the project and never assume.** Check `npx featurevisor config --json --pretty`, then confirm against real keys (`npx featurevisor list --segments --json`, `list --features --json`) before writing any namespaced reference. A key written with the wrong separator fails lint at best, or silently creates a new entity outside the namespace at worst.
 
 ## Layout (default `.` separator)
 
@@ -14,7 +14,7 @@ features/
 │   ├── promo.yml          # key:  checkout.promo
 │   ├── express.yml        # key:  checkout.express
 │   └── oneClick.yml       # key:  checkout.oneClick
-└── sidebar.yml            # key:  sidebar
+└── pricing.yml            # key:  pricing
 
 segments/
 ├── countries/
@@ -23,7 +23,7 @@ segments/
 └── qa.yml                 # key:  qa
 ```
 
-Nested directories are allowed and stack: `features/checkout/v2/promo.yml` → key `checkout.v2.promo`.
+Nested directories are allowed and stack: `features/checkout/v2/promo.yml` has the key `checkout.v2.promo`.
 
 Attributes are the exception. Keep their files directly in the configured attributes directory, also within Sets. `attributes/geo/country.yml` and dotted names such as `attributes/geo.country.yml` are rejected regardless of the namespace separator. The configured file extension is allowed. For nested context, declare an object in `attributes/geo.yml` and use `attribute: geo.country`. This dot is an object property path, not a namespace. See [attributes.md](attributes.md).
 
@@ -64,7 +64,7 @@ segment: countries.netherlands
 
 ## When to use namespaces
 
-- A growing project where many teams contribute. Pair with `CODEOWNERS` patterns like `features/checkout/* @checkout-team` for ownership (CODEOWNERS patterns are file paths, so they always use `/` regardless of `namespaceCharacter`).
+- A growing project where many teams contribute. Pair with a `CODEOWNERS` line such as `features/checkout/ @checkout-team`, which covers nested directories too, so the owning team reviews every change ([establishing ownership](https://featurevisor.com/docs/use-cases/establishing-ownership/)). CODEOWNERS patterns are file paths, so they always use `/` whatever `namespaceCharacter` is.
 - Multi-product monorepos where a single Featurevisor project serves several apps. Namespace by product (`mobile/`, `web/`, `admin/` directories).
 - Logical groupings even within a single product (`onboarding/`, `pricing/`, `experiments/`).
 

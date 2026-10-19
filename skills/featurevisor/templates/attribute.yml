@@ -6,7 +6,7 @@ type: string
 # Use `oneOf` instead of `type` for a value matching one of several schemas.
 
 # Optional constraints, checked against every condition value:
-# enum: [free, pro, enterprise]
+# enum: [free, paid, enterprise]
 # pattern: '^[a-z]{2}$'
 # minLength: 2
 # maxLength: 2

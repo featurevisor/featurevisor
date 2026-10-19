@@ -3,26 +3,26 @@ description: <Feature with variables (remote config)>
 bucketBy: userId
 
 variablesSchema:
-  bgColor:
+  colour:
     type: string
-    description: Sidebar background
-    defaultValue: red
+    description: Buy button colour
+    defaultValue: "#111827"
 
-  showSidebar:
+  showBadge:
     type: boolean
     defaultValue: false
 
-  position:
+  maxItems:
     type: integer
-    defaultValue: 1
+    defaultValue: 10
 
-  acceptedCards:
+  paymentMethods:
     type: array
     items:
       type: string
     defaultValue:
-      - visa
-      - mastercard
+      - card
+      - paypal
 
   hero:
     type: object
@@ -44,8 +44,8 @@ variablesSchema:
 #   - value: treatment
 #     weight: 50
 #     variables:
-#       bgColor: blue
-#       "hero.subtitle": Welcome to the new design   # mutation key — must be quoted
+#       colour: '#2563eb'
+#       "hero.subtitle": Welcome to the new design   # a mutation key, quoted
 
 # With environments configured, nest this list under each environment key.
 rules:
@@ -53,13 +53,13 @@ rules:
     conditions: netherlands
     percentage: 100
     variables:
-      bgColor: orange
-      "hero.subtitle": Welkom op onze site # mutation: only this property (quoted key)
+      colour: "#047857"
+      "hero.subtitle": Welkom op onze site # a mutation: only this property, with a quoted key
     variableOverrides:
-      bgColor:
+      colour:
         - key: amsterdam
           conditions: amsterdam
-          value: red
+          value: "#b91c1c"
 
   - key: everyone
     conditions: "*"
