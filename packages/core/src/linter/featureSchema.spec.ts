@@ -173,6 +173,85 @@ describe("disabled variation fallbacks", () => {
   });
 });
 
+describe("variation weights and rule fields", () => {
+  function issues(feature: Record<string, unknown>) {
+    const result = getFeatureSchema().safeParse(baseFeature(feature));
+    return result.success ? [] : result.error.issues;
+  }
+
+  it("requires feature variation weights to sum to 100", () => {
+    expect(
+      issues({
+        variations: [
+          { value: "control", weight: 50 },
+          { value: "treatment", weight: 40 },
+        ],
+      }),
+    ).toContainEqual(
+      expect.objectContaining({
+        path: ["variations"],
+        message: "Variation weights must sum to 100, but they sum to 90.",
+      }),
+    );
+  });
+
+  it("accepts three decimal weights that sum to 100", () => {
+    expect(
+      issues({
+        variations: [
+          { value: "a", weight: 33.333 },
+          { value: "b", weight: 33.333 },
+          { value: "c", weight: 33.334 },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it("reports the actual sum of a rule's variation weights", () => {
+    expect(
+      issues({
+        variations: [
+          { value: "control", weight: 50 },
+          { value: "treatment", weight: 50 },
+        ],
+        rules: {
+          staging: [{ key: "r1", conditions: "*", percentage: 100 }],
+          production: [
+            {
+              key: "r1",
+              conditions: "*",
+              percentage: 100,
+              variationWeights: { control: 70, treatment: 20 },
+            },
+          ],
+        },
+      }),
+    ).toContainEqual(
+      expect.objectContaining({
+        path: ["rules", "production", 0, "variationWeights"],
+        message: "Variation weights must sum to 100, but they sum to 90.",
+      }),
+    );
+  });
+
+  it.each([true, false])("rejects enabled: %s on a rule and points to percentage 0", (enabled) => {
+    expect(
+      issues({
+        rules: {
+          staging: [{ key: "r1", conditions: "*", percentage: 100 }],
+          production: [{ key: "r1", conditions: "*", percentage: 100, enabled }],
+        },
+      }),
+    ).toContainEqual(
+      expect.objectContaining({
+        path: ["rules", "production", 0, "enabled"],
+        message:
+          "Rules do not take `enabled`. Set `percentage: 0` to switch this audience off, or add a `force` entry.",
+      }),
+    );
+  });
+});
+
 describe("variable diagnostic ownership", () => {
   const cases = [
     { name: "type", schema: { type: "integer", defaultValue: 1 }, invalid: "nope" },

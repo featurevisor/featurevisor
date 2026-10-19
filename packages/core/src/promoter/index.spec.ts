@@ -127,7 +127,9 @@ describe("promoteProjectSets", function () {
                     key: "conditions",
                     conditions: "*",
                     percentage: 100,
-                    ...(set === "dev" ? { enabled: true } : { description: "Destination rule" }),
+                    ...(set === "dev"
+                      ? { variables: { conditions: "same" } }
+                      : { description: "Destination rule" }),
                   },
                 ],
               }),
@@ -165,7 +167,7 @@ describe("promoteProjectSets", function () {
               key: "conditions",
               conditions: "*",
               percentage: 100,
-              enabled: true,
+              variables: { conditions: "same" },
               description: "Destination rule",
             },
           ]);

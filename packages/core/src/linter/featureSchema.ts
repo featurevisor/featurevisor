@@ -45,6 +45,17 @@ import {
   refineRequiredConditions,
 } from "./removedConditionFields";
 
+// Weights have up to three decimals, so compare without floating point noise.
+function weightsSumTo100(weights: number[]): boolean {
+  const sum = weights.reduce((total, weight) => total + weight, 0);
+  return Math.abs(sum - 100) < 1e-9;
+}
+
+function formatWeightsSum(weights: number[]): string {
+  const sum = weights.reduce((total, weight) => total + weight, 0);
+  return String(Math.round(sum * 1000) / 1000);
+}
+
 function isArrayOfStrings(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
@@ -1565,12 +1576,10 @@ function refineRules({
         }
 
         // weights sum must be 100
-        const weightsSum = overriddenVariationWeights.reduce((sum, weight) => sum + weight, 0);
-
-        if (weightsSum !== 100) {
+        if (!weightsSumTo100(overriddenVariationWeights)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Variation weights must sum to 100",
+            message: `Variation weights must sum to 100, but they sum to ${formatWeightsSum(overriddenVariationWeights)}.`,
             path: pathPrefix.concat([ruleN, "variationWeights"]),
           });
         }
@@ -1685,14 +1694,25 @@ export function getFeatureZodSchema(
           ...removedConditionFields,
           percentage: z.number().min(0).max(100),
 
-          enabled: z.boolean().optional(),
+          // Accepted only so lint can explain the replacement below.
+          enabled: z.unknown().optional(),
           variation: variationValueZodSchema.optional(),
           variables: z.record(z.string(), variableValueOrNullZodSchema).optional(),
           variableOverrides: z.record(z.string(), featureVariableOverridesSchema).optional(),
           variationWeights: z.record(z.string(), z.number().min(0).max(100)).optional(),
         })
         .strict()
-        .superRefine(refineRequiredConditions),
+        .superRefine(refineRequiredConditions)
+        .superRefine((rule, ctx) => {
+          if (Object.prototype.hasOwnProperty.call(rule, "enabled")) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message:
+                "Rules do not take `enabled`. Set `percentage: 0` to switch this audience off, or add a `force` entry.",
+              path: ["enabled"],
+            });
+          }
+        }),
     )
 
     // must have at least one rule
@@ -1955,6 +1975,15 @@ export function getFeatureZodSchema(
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: "Duplicate variation values found: " + value.map((v) => v.value).join(", "),
+            });
+          }
+
+          // A short split builds once, then every later build rejects its saved allocation.
+          const weights = value.map((v) => v.weight);
+          if (value.length > 0 && !weightsSumTo100(weights)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Variation weights must sum to 100, but they sum to ${formatWeightsSum(weights)}.`,
             });
           }
         })
