@@ -44,6 +44,10 @@ app.mount('#app')
   const supportEmail = useVariable('supportEmail') // global variable
 
   const f = useSdk() // the instance, for setContext and events
+
+  if (newCheckout.value) {
+    // script code reads .value
+  }
 </script>
 
 <template>
@@ -70,15 +74,17 @@ Several features at once, and the datafile revision:
 </script>
 ```
 
-These behave like their React counterparts in [sdk-react.md](sdk-react.md#several-features-at-once): one boolean per key in order, a repeated key evaluated once, and aggregates that stop early so modules do not see the rest. For a snapshot of several features, call `getFeatureEvaluations` on `useSdk()`, as [sdk-react.md](sdk-react.md#revision) describes.
+These behave like their React counterparts in [sdk-react.md](sdk-react.md#several-features-at-once): a value per key in order, a repeated key evaluated once, and aggregates that stop early so modules do not see the rest. `useFlags` returns one ref per key, so it destructures, and reads its keys once. For a snapshot of several features, call `getFeatureEvaluations` on `useSdk()`, as [sdk-react.md](sdk-react.md#revision) describes.
 
-Every composable that reads a feature or variable takes an optional context as its last argument. **They return plain values at the moment they are called, not refs**, so they do not update when the datafile, context or sticky values change. A feature switched off stays visible in an open page until its component is created again. For components that must follow those changes, wrap a read in a `ref` and update it from the instance's `datafile_set`, `context_set`, `sticky_features_set` and `sticky_variables_set` events, unsubscribing in `onUnmounted`. Sticky variables matter because a feature's conditions can read a variable. The docs show a complete `useLiveFlag`.
+**Every composable returns a readonly ref.** Templates use it directly, because Vue unwraps refs there, but script code must read `.value`: `if (newCheckout)` is always true. Call composables in `setup`, never inside a computed or a render function. A ref updates, like a React hook re-renders, when a datafile changes its key or anything its conditions depend on, when the instance context or sticky values change, and when a ref or prop its context reads changes. An unrelated datafile update causes no work. `useRevision` updates only on a new revision.
 
-`useVariation` and `useVariable` return `null` when there is no value. `useSdk` throws when `setupApp` has not run: that error means missing wiring, not a missing feature.
+Every composable that reads a feature or variable takes an optional context as its last argument: an object, a ref, or a getter such as `() => ({ plan: props.plan })` to follow props. Refs evaluate when first read and again only after a change, subscribe when the component mounts and unsubscribe when it unmounts. Server rendering evaluates without subscribing, so a shared server instance does not collect listeners.
+
+`useVariation` and `useVariable` hold `null` when there is no value. `useSdk` throws when `setupApp` has not run: that error means missing wiring, not a missing feature.
 
 ## Guidance
 
 - Record exposure with a [module](sdk-javascript.md#modules) on the instance ([tracking.md](tracking.md)), not in components.
 - For server rendering with Nuxt, see the [Nuxt guide](https://featurevisor.com/docs/frameworks/nuxt/) and [SSR handoff](sdk-javascript.md#ssr-handoff).
-- `useFlags`, `useEveryFlag`, `useSomeFlag` and `useRevision` need a `@featurevisor/vue` release that exports them. Check the installed package before using them, and otherwise call `useFlag` per key or propose upgrading.
+- Check the installed `@featurevisor/vue` before writing code. If its type definitions show `useFlag` returning `boolean` rather than a ref, it predates reactive composables: values are plain and do not update, there is no `.value`, and `useFlags`, `useEveryFlag`, `useSomeFlag` and `useRevision` may be missing. Write for that version, or propose upgrading, which means adding `.value` wherever script code reads a composable and removing any hand written live wrappers.
 - Example app: <https://github.com/featurevisor/featurevisor-example-vue>
