@@ -1,10 +1,9 @@
-import { defineComponent, h, nextTick, onUnmounted, ref } from "vue";
+import { defineComponent, h, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import { createFeaturevisor } from "@featurevisor/sdk";
 import { setupApp } from "./setupApp";
 import { useFlag } from "./useFlag";
 import { useVariable } from "./useVariable";
-import { useSdk } from "./useSdk";
 
 test.each([false, true])(
   "reports dependency changes through segments to Vue consumers, replacement: %s",
@@ -40,15 +39,9 @@ test.each([false, true])(
     const wrapper = mount(
       defineComponent({
         setup() {
-          const sdk = useSdk();
-          const text = ref(`${useFlag("checkout")}:${useVariable("label")}`);
-          onUnmounted(
-            sdk.on("datafile_set", ({ features, variables }) => {
-              if (features.indexOf("checkout") !== -1 || variables.indexOf("label") !== -1)
-                text.value = `${sdk.isEnabled("checkout")}:${sdk.getVariable("label")}`;
-            }),
-          );
-          return () => h("p", text.value);
+          const checkout = useFlag("checkout");
+          const label = useVariable("label");
+          return () => h("p", `${checkout.value}:${label.value}`);
         },
       }),
       {

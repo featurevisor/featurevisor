@@ -27,7 +27,7 @@ setupApp(app, f);
 app.mount("#app");
 ```
 
-Inside a component's setup, call `useFlag("checkout", { userId: "123" })` from `@featurevisor/vue`. See the guide for reactive context and other value types.
+Inside a component's setup, call `useFlag("checkout", { userId: "123" })` from `@featurevisor/vue`. It returns a readonly ref that updates when the datafile, the context or sticky values change. See the guide for reactive context and other value types.
 
 See the [documentation](https://featurevisor.com/docs/vue/).
 

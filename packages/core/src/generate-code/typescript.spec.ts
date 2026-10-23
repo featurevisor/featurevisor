@@ -234,13 +234,13 @@ const hook = useVariable("objectAlias");
 const vue = useVueVariable<Variables["objectAlias"]>("objectAlias");
 type Getter = Assert<Equal<typeof value, Borrowed>>;
 type Hook = Assert<Equal<typeof hook, Borrowed>>;
-type Vue = Assert<Equal<typeof vue, Borrowed>>;
+type Vue = Assert<Equal<typeof vue.value, Borrowed>>;
 // @ts-expect-error Even the alias root is borrowed.
 value!.items = [];
 // @ts-expect-error Nested alias arrays are borrowed.
 hook!.items.push({ label: "changed" });
-// @ts-expect-error Vue retains the same borrowed item type.
-vue!.items[0].label = "changed";
+// @ts-expect-error Vue retains the same borrowed item type in its ref.
+vue.value!.items[0].label = "changed";
 const ordinary = getVariable("policy/eu.current");
 ordinary!.items[0].label = "ordinary getter remains mutable";
 const mapped = getVariable("aliasInMap");
@@ -849,6 +849,63 @@ type OldFeatureValue = VariableType<"checkout", "label">;
     expect(reactContent).not.toContain("export function useGlobalVariable");
     expect(reactContent).not.toContain("as Variation<F> | null");
     expect(reactContent).not.toContain("as VariableType<F, V> | null");
+    expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
+  });
+
+  it("generates typed React hooks for several flags at once", async () => {
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      {
+        rootDirectoryPath: tempProjectPath,
+        projectConfig,
+        datasource,
+        options: {},
+      } as any,
+      outputPath,
+      { tag: ["checkout", "ecommerce"], react: true },
+    );
+
+    const reactContent = fs.readFileSync(path.join(outputPath, "react.ts"), "utf8");
+    for (const hook of ["useFlags", "useEveryFlag", "useSomeFlag"]) {
+      expect(reactContent).toContain(`${hook} as ${hook}Original,`);
+      expect(reactContent).toContain(
+        `export function ${hook}<K extends readonly FeatureKey[] | []>(`,
+      );
+      expect(reactContent).toContain(`return ${hook}Original<K>(featureKeys, context);`);
+    }
+
+    fs.writeFileSync(
+      path.join(outputPath, "multipleFlagsAssertions.ts"),
+      `import { useEveryFlag, useFlags, useSomeFlag } from "./react.js";
+import type { FeatureKey } from "./features.js";
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+type Assert<T extends true> = T;
+
+const flags = useFlags(["discount", "pricing", "withComplexSchema"], { userId: "user-1" });
+type Flags = Assert<Equal<typeof flags, readonly [boolean, boolean, boolean]>>;
+declare const runtimeKeys: FeatureKey[];
+const runtimeFlags = useFlags(runtimeKeys);
+type RuntimeFlags = Assert<Equal<typeof runtimeFlags, readonly boolean[]>>;
+// @ts-expect-error A misspelt key does not compile.
+useFlags(["discount", "pricng"]);
+// @ts-expect-error A feature outside the generated tags does not compile.
+useFlags(["accountTargeting"]);
+
+const every: boolean = useEveryFlag(["discount", "pricing"]);
+const some: boolean = useSomeFlag(runtimeKeys, { userId: "user-1" });
+// @ts-expect-error A literal empty list is rejected.
+useEveryFlag([]);
+// @ts-expect-error A literal empty list is rejected.
+useSomeFlag([]);
+// @ts-expect-error A misspelt key does not compile.
+useSomeFlag(["pricng"]);
+
+export type Checks = [Flags, RuntimeFlags];
+export { every, some };
+`,
+    );
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });
 

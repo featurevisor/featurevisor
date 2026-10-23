@@ -4,6 +4,14 @@ import "@testing-library/jest-dom";
 
 import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useSdk } from "./useSdk";
+import { useEveryFlag } from "./useEveryFlag";
+import { useFeaturevisor } from "./useFeaturevisor";
+import { useFlag } from "./useFlag";
+import { useFlags } from "./useFlags";
+import { useRevision } from "./useRevision";
+import { useSomeFlag } from "./useSomeFlag";
+import { useVariable } from "./useVariable";
+import { useVariation } from "./useVariation";
 import { createFeaturevisor } from "@featurevisor/sdk";
 
 function getNewInstance() {
@@ -99,5 +107,31 @@ describe("react: useSdk", function () {
     render(<Orphan />);
 
     expect(sdk).toBeUndefined();
+  });
+
+  test.each([
+    ["useFlag", () => useFlag("test")],
+    ["useFlags", () => useFlags(["test"])],
+    ["useEveryFlag", () => useEveryFlag(["test"])],
+    ["useSomeFlag", () => useSomeFlag(["test"])],
+    ["useVariation", () => useVariation("test")],
+    ["useVariable", () => useVariable("test", "color")],
+    ["useRevision", () => useRevision()],
+    ["useFeaturevisor", () => useFeaturevisor()],
+  ])("%s throws a clear error outside FeaturevisorProvider", function (name, read) {
+    function Orphan() {
+      read();
+      return <p>orphan</p>;
+    }
+
+    // React reports the thrown error to the console as well.
+    const error = jest.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(() => render(<Orphan />)).toThrow(
+        "Featurevisor SDK is not available. Wrap the component in FeaturevisorProvider.",
+      );
+    } finally {
+      error.mockRestore();
+    }
   });
 });

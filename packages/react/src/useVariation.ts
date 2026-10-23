@@ -1,6 +1,6 @@
 import type { Context, FeatureKey, VariationValue } from "@featurevisor/types";
 
-import { useSdk } from "./useSdk.js";
+import { useRequiredSdk } from "./useRequiredSdk.js";
 import { useEvaluationSubscription } from "./useEvaluationSubscription.js";
 
 /**
@@ -11,7 +11,7 @@ export function useVariation<TVariation extends VariationValue = VariationValue>
   featureKey: FeatureKey,
   context: Context = {},
 ): TVariation | null {
-  const sdk = useSdk();
+  const sdk = useRequiredSdk();
   useEvaluationSubscription(sdk, featureKey);
 
   return sdk.getVariation<TVariation>(featureKey, context);

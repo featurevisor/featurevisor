@@ -1,4 +1,4 @@
-import { defineComponent, nextTick, onUnmounted, ref, type App, type Plugin } from "vue";
+import { defineComponent, nextTick, type App, type Plugin, type Ref } from "vue";
 import {
   type Context,
   type FeatureKey,
@@ -65,6 +65,8 @@ function createSdk(overrides: Partial<Featurevisor> = {}): Featurevisor {
 
   return {
     getRevision: jest.fn(() => "1.0"),
+    // Composables subscribe through on, and this stand in never emits.
+    on: jest.fn(() => () => undefined),
     isEnabled: jest.fn(() => true),
     getVariation,
     getVariable,
@@ -118,14 +120,14 @@ describe("vue: composables", () => {
     const context: Context = { userId: "user-1", country: "nl" };
     const isEnabled = jest.fn(() => true);
     const sdk = createSdk({ isEnabled });
-    let result: boolean | undefined;
+    let result: Readonly<Ref<boolean>> | undefined;
 
     mountSetup(() => {
       result = useFlag("checkout", context);
       return {};
     }, sdk);
 
-    expect(result).toBe(true);
+    expect(result?.value).toBe(true);
     expect(isEnabled).toHaveBeenCalledWith("checkout", context);
   });
 
@@ -136,14 +138,14 @@ describe("vue: composables", () => {
     const context: Context = { userId: "user-1" };
     const { getVariation, spy } = createVariationGetter(value);
     const sdk = createSdk({ getVariation });
-    let result: string | null | undefined;
+    let result: Readonly<Ref<string | null>> | undefined;
 
     mountSetup(() => {
       result = useVariation("checkout", context);
       return {};
     }, sdk);
 
-    expect(result).toBe(value);
+    expect(result?.value).toBe(value);
     expect(spy).toHaveBeenCalledWith("checkout", context);
   });
 
@@ -155,14 +157,14 @@ describe("vue: composables", () => {
     const context: Context = { userId: "user-1" };
     const { getVariable, spy } = createVariableGetter(value);
     const sdk = createSdk({ getVariable });
-    let result: unknown;
+    let result: Readonly<Ref<unknown>> | undefined;
 
     mountSetup(() => {
       result = useVariable("checkout", "configuration", context);
       return {};
     }, sdk);
 
-    expect(result).toEqual(value);
+    expect(result?.value).toEqual(value);
     expect(spy).toHaveBeenCalledWith("checkout", "configuration", context);
   });
 
@@ -182,17 +184,19 @@ describe("vue: composables", () => {
       const typedVariable = useVariable<CheckoutConfig>("checkout", "configuration");
       const globalVariable = useVariable<CheckoutConfig>("configuration", { userId: "u" });
 
-      expectExactType<IsExact<typeof variation, VariationValue | null>>(true);
-      expectExactType<IsExact<typeof typedVariation, "control" | "treatment" | null>>(true);
-      expectExactType<IsExact<typeof variable, VariableValue | null>>(true);
-      expectExactType<IsExact<typeof typedVariable, CheckoutConfig | null>>(true);
-      expectExactType<IsExact<typeof globalVariable, CheckoutConfig | null>>(true);
+      expectExactType<IsExact<typeof variation, Readonly<Ref<VariationValue | null>>>>(true);
+      expectExactType<
+        IsExact<typeof typedVariation, Readonly<Ref<"control" | "treatment" | null>>>
+      >(true);
+      expectExactType<IsExact<typeof variable, Readonly<Ref<VariableValue | null>>>>(true);
+      expectExactType<IsExact<typeof typedVariable, Readonly<Ref<CheckoutConfig | null>>>>(true);
+      expectExactType<IsExact<typeof globalVariable, Readonly<Ref<CheckoutConfig | null>>>>(true);
 
-      expect(variation).toBe("treatment");
-      expect(typedVariation).toBe("treatment");
-      expect(variable).toEqual({ theme: "dark" });
-      expect(typedVariable).toEqual({ theme: "dark" });
-      expect(globalVariable).toEqual({ theme: "dark" });
+      expect(variation.value).toBe("treatment");
+      expect(typedVariation.value).toBe("treatment");
+      expect(variable.value).toEqual({ theme: "dark" });
+      expect(typedVariable.value).toEqual({ theme: "dark" });
+      expect(globalVariable.value).toEqual({ theme: "dark" });
 
       return {};
     }, sdk);
@@ -205,10 +209,11 @@ describe("vue: composables", () => {
     const sdk = createSdk({ isEnabled, getVariation, getVariable });
 
     mountSetup(() => {
-      useFlag("checkout");
-      useVariation("checkout");
-      useVariable("checkout", "configuration");
-      useVariable("globalConfiguration");
+      // Each ref evaluates when it is read.
+      void useFlag("checkout").value;
+      void useVariation("checkout").value;
+      void useVariable("checkout", "configuration").value;
+      void useVariable("globalConfiguration").value;
       return {};
     }, sdk);
 
@@ -218,7 +223,7 @@ describe("vue: composables", () => {
     expect(getVariableSpy).toHaveBeenCalledWith("globalConfiguration", {});
   });
 
-  it("reacts to a variable only dependency update through the SDK event", async () => {
+  it("follows an update that changes only a variable the flag depends on", async () => {
     const sdk = createSourceFeaturevisor({
       logLevel: "fatal",
       datafile: {
@@ -241,15 +246,7 @@ describe("vue: composables", () => {
     const wrapper = mount(
       defineComponent({
         setup() {
-          const enabled = ref(useFlag("checkout"));
-          const activeSdk = useSdk();
-          const unsubscribe = activeSdk.on("datafile_set", ({ features }) => {
-            if (features.indexOf("checkout") !== -1) {
-              enabled.value = activeSdk.isEnabled("checkout");
-            }
-          });
-          onUnmounted(unsubscribe);
-          return { enabled };
+          return { enabled: useFlag("checkout") };
         },
         template: "<p>{{ enabled ? 'Allowed' : 'Blocked' }}</p>",
       }),

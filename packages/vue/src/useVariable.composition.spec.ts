@@ -1,10 +1,9 @@
-import { defineComponent, h, nextTick, onUnmounted, ref } from "vue";
+import { defineComponent, h, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import { createFeaturevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
 
 import { setupApp } from "./setupApp";
-import { useSdk } from "./useSdk";
 import { useVariable } from "./useVariable";
 
 function compositionDatafile(label = "red", delivery = "standard"): DatafileContent {
@@ -110,17 +109,10 @@ describe("vue: useVariable composition", () => {
         const view = mount(
           defineComponent({
             setup() {
-              const activeSdk = useSdk();
-              const revision = ref(0);
-              // Match the synchronous getter consumer subscription used above.
-              const unsubscribe = activeSdk.on("datafile_set", ({ variables }) => {
-                if (variables.indexOf("nestedConfig") !== -1) revision.value++;
-              });
-              onUnmounted(unsubscribe);
+              const config = useVariable("nestedConfig", { userId: "123" });
               return () => {
-                revision.value;
                 if (++renders > 40) throw new Error("Composition override hook did not settle");
-                return h("p", JSON.stringify(useVariable("nestedConfig", { userId: "123" })));
+                return h("p", JSON.stringify(config.value));
               };
             },
           }),
@@ -193,22 +185,10 @@ describe("vue: useVariable composition", () => {
     const view = mount(
       defineComponent({
         setup() {
-          const activeSdk = useSdk();
-          const revision = ref(0);
-          // Vue getters are synchronous. The consumer subscribes to SDK events.
-          const cleanups = [
-            activeSdk.on("datafile_set", ({ variables }) => {
-              if (variables.indexOf("nestedConfig") !== -1) revision.value++;
-            }),
-            activeSdk.on("sticky_features_set", ({ features }) => {
-              if (features.length) revision.value++;
-            }),
-          ];
-          onUnmounted(() => cleanups.forEach((cleanup) => cleanup()));
+          const config = useVariable("nestedConfig", { userId: "123" });
           return () => {
-            revision.value;
             renders++;
-            return h("p", JSON.stringify(useVariable("nestedConfig", { userId: "123" })));
+            return h("p", JSON.stringify(config.value));
           };
         },
       }),

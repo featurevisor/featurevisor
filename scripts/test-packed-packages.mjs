@@ -144,15 +144,24 @@ import {
 import {
   FeaturevisorProvider,
   useFeaturevisor,
+  useEveryFlag as useReactEveryFlag,
+  useFlags as useReactFlags,
+  useRevision as useReactRevision,
+  useSomeFlag as useReactSomeFlag,
   useVariable as useReactVariable,
   useVariation as useReactVariation,
 } from "@featurevisor/react";
 import {
   setupApp,
+  useEveryFlag as useVueEveryFlag,
+  useFlags as useVueFlags,
+  useRevision as useVueRevision,
+  useSomeFlag as useVueSomeFlag,
   useVariable as useVueVariable,
   useVariation as useVueVariation,
 } from "@featurevisor/vue";
 import { FeaturevisorOpenFeatureProvider } from "@featurevisor/openfeature-provider-web";
+import type { Ref } from "vue";
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type IsExact<TActual, TExpected> = IsAny<TActual> extends true
@@ -269,15 +278,18 @@ function checkFrameworkTypes() {
   >;
   type _ReactVariable = Assert<IsExact<typeof reactVariable, CheckoutConfig | null>>;
   type _ReactGlobalVariable = Assert<IsExact<typeof reactGlobalVariable, string | null>>;
+  // Vue composables return readonly refs.
   type _BroadVueVariation = Assert<
-    IsExact<typeof broadVueVariation, VariationValue | null>
+    IsExact<typeof broadVueVariation, Readonly<Ref<VariationValue | null>>>
   >;
   type _VueVariation = Assert<
-    IsExact<typeof vueVariation, "control" | "treatment" | null>
+    IsExact<typeof vueVariation, Readonly<Ref<"control" | "treatment" | null>>>
   >;
-  type _BroadVueVariable = Assert<IsExact<typeof broadVueVariable, VariableValue | null>>;
-  type _VueVariable = Assert<IsExact<typeof vueVariable, CheckoutConfig | null>>;
-  type _VueGlobalVariable = Assert<IsExact<typeof vueGlobalVariable, string | null>>;
+  type _BroadVueVariable = Assert<
+    IsExact<typeof broadVueVariable, Readonly<Ref<VariableValue | null>>>
+  >;
+  type _VueVariable = Assert<IsExact<typeof vueVariable, Readonly<Ref<CheckoutConfig | null>>>>;
+  type _VueGlobalVariable = Assert<IsExact<typeof vueGlobalVariable, Readonly<Ref<string | null>>>>;
 
   return [
     broadReactVariation,
@@ -319,6 +331,48 @@ function checkUseFeaturevisorTypes(api: ReturnType<typeof useFeaturevisor>) {
   ];
 }
 
+function checkMultipleFlagTypes(runtimeKeys: string[]) {
+  const reactFlags = useReactFlags(["checkout", "liveChat", "wishlist"]);
+  const reactRuntimeFlags = useReactFlags(runtimeKeys, { userId: "user-1" });
+  const reactEvery: boolean = useReactEveryFlag(["checkout", "liveChat"]);
+  const reactSome: boolean = useReactSomeFlag(runtimeKeys);
+  const vueFlags = useVueFlags(["checkout", "liveChat", "wishlist"]);
+  const vueRuntimeFlags = useVueFlags(runtimeKeys, { userId: "user-1" });
+  const vueEvery: Readonly<Ref<boolean>> = useVueEveryFlag(["checkout", "liveChat"]);
+  const vueSome: Readonly<Ref<boolean>> = useVueSomeFlag(runtimeKeys);
+  const vueGetterContext = useVueFlags(["checkout"], () => ({ country: "nl" }));
+  const reactRevision = useReactRevision();
+  const vueRevision = useVueRevision();
+
+  type _ReactFlags = Assert<IsExact<typeof reactFlags, readonly [boolean, boolean, boolean]>>;
+  type _ReactRuntimeFlags = Assert<IsExact<typeof reactRuntimeFlags, readonly boolean[]>>;
+  type VueFlag = Readonly<Ref<boolean>>;
+  type _VueFlags = Assert<IsExact<typeof vueFlags, readonly [VueFlag, VueFlag, VueFlag]>>;
+  type _VueRuntimeFlags = Assert<IsExact<typeof vueRuntimeFlags, readonly VueFlag[]>>;
+  type _VueGetterContext = Assert<IsExact<typeof vueGetterContext, readonly [VueFlag]>>;
+  type _ReactRevision = Assert<IsExact<typeof reactRevision, string>>;
+  type _VueRevision = Assert<IsExact<typeof vueRevision, Readonly<Ref<string>>>>;
+
+  // @ts-expect-error A literal empty list is rejected.
+  useReactEveryFlag([]);
+  // @ts-expect-error A literal empty list is rejected.
+  useVueSomeFlag([]);
+
+  return [
+    reactFlags,
+    reactRuntimeFlags,
+    reactEvery,
+    reactSome,
+    vueFlags,
+    vueRuntimeFlags,
+    vueGetterContext,
+    vueEvery,
+    vueSome,
+    reactRevision,
+    vueRevision,
+  ];
+}
+
 // @ts-expect-error Variation types must remain strings.
 featurevisor.getVariation<number>("checkout");
 
@@ -330,6 +384,7 @@ void variationMock;
 void variableMock;
 void checkFrameworkTypes;
 void checkUseFeaturevisorTypes;
+void checkMultipleFlagTypes;
 void new FeaturevisorOpenFeatureProvider({ featurevisor });
 `,
   );
