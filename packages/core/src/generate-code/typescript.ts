@@ -779,8 +779,13 @@ export function getVariable(
     const reactFileContent = `
 import {
   useFlag as useFlagOriginal,
+  useFlags as useFlagsOriginal,
+  useEveryFlag as useEveryFlagOriginal,
+  useSomeFlag as useSomeFlagOriginal,
   useVariation as useVariationOriginal,
   useVariable as useVariableOriginal,
+  type FlagValues,
+  type NonEmptyFeatureKeys,
 } from ${JSON.stringify(importReactPath)};
 
 import type { FeatureKey, Variation, FeatureVariableKey, FeatureVariableType } from "./features.js";
@@ -789,6 +794,27 @@ import type { Context } from "./context.js";
 
 export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean {
   return useFlagOriginal(featureKey, context);
+}
+
+export function useFlags<const K extends readonly FeatureKey[]>(
+  featureKeys: K,
+  context: Context = {},
+): FlagValues<K> {
+  return useFlagsOriginal<K>(featureKeys, context);
+}
+
+export function useEveryFlag<const K extends readonly FeatureKey[]>(
+  featureKeys: NonEmptyFeatureKeys<K>,
+  context: Context = {},
+): boolean {
+  return useEveryFlagOriginal<K>(featureKeys, context);
+}
+
+export function useSomeFlag<const K extends readonly FeatureKey[]>(
+  featureKeys: NonEmptyFeatureKeys<K>,
+  context: Context = {},
+): boolean {
+  return useSomeFlagOriginal<K>(featureKeys, context);
 }
 
 export function useVariation<F extends FeatureKey>(
