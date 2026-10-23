@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.1.0](https://github.com/featurevisor/featurevisor/compare/v4.0.1...v4.1.0) (2026-10-23)
+
+### Features
+
+* hooks for React and Vue ([#435](https://github.com/featurevisor/featurevisor/issues/435)) ([16da9c3](https://github.com/featurevisor/featurevisor/commit/16da9c3619b8138c4fe2eb91644969ff2b19b1f8))
+
+
 ## [4.0.1](https://github.com/featurevisor/featurevisor/compare/v4.0.0...v4.0.1) (2026-10-19)
 
 **Note:** Version bump only for package featurevisor

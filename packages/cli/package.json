@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/cli",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "description": "Command line tool to lint, test and build Featurevisor projects",
   "engines": {
     "node": ">=24"
@@ -51,6 +51,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/core": "4.0.1"
+    "@featurevisor/core": "4.1.0"
   }
 }

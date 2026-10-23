@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/react",
   "sideEffects": false,
-  "version": "4.0.1",
+  "version": "4.1.0",
   "description": "React components and hooks for Featurevisor flags, variations and configuration",
   "main": "cjs/index.js",
   "module": "esm/index.js",
