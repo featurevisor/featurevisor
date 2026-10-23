@@ -30,7 +30,7 @@ const packages = [
     name: "@featurevisor/vue",
     entry: path.join(rootDir, "packages/vue/src/index.ts"),
     fileName: "featurevisor-vue",
-    budget: 550,
+    budget: 1_100,
     external: ["vue", "@featurevisor/sdk"],
   },
   {

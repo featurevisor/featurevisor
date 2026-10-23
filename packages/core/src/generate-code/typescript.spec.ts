@@ -234,13 +234,13 @@ const hook = useVariable("objectAlias");
 const vue = useVueVariable<Variables["objectAlias"]>("objectAlias");
 type Getter = Assert<Equal<typeof value, Borrowed>>;
 type Hook = Assert<Equal<typeof hook, Borrowed>>;
-type Vue = Assert<Equal<typeof vue, Borrowed>>;
+type Vue = Assert<Equal<typeof vue.value, Borrowed>>;
 // @ts-expect-error Even the alias root is borrowed.
 value!.items = [];
 // @ts-expect-error Nested alias arrays are borrowed.
 hook!.items.push({ label: "changed" });
-// @ts-expect-error Vue retains the same borrowed item type.
-vue!.items[0].label = "changed";
+// @ts-expect-error Vue retains the same borrowed item type in its ref.
+vue.value!.items[0].label = "changed";
 const ordinary = getVariable("policy/eu.current");
 ordinary!.items[0].label = "ordinary getter remains mutable";
 const mapped = getVariable("aliasInMap");

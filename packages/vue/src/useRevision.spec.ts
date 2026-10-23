@@ -1,4 +1,4 @@
-import { defineComponent, h, isRef, nextTick, type App, type Plugin } from "vue";
+import { defineComponent, h, isRef, nextTick, type App, type Plugin, type Ref } from "vue";
 import { mount } from "@vue/test-utils";
 import type { Featurevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
@@ -50,43 +50,59 @@ function featurevisorPlugin(sdk: Featurevisor): Plugin {
 }
 
 function mountRevision(sdk: Featurevisor) {
-  let revision = "";
+  let revision: Readonly<Ref<string>> | undefined;
+  let renders = 0;
   const wrapper = mount(
     defineComponent({
       setup() {
-        revision = useRevision();
-        return () => h("small", revision);
+        const current = useRevision();
+        revision = current;
+        return () => {
+          renders += 1;
+          return h("small", current.value);
+        };
       },
     }),
     { global: { plugins: [featurevisorPlugin(sdk)] } },
   );
-  return { wrapper, revision };
+  return { wrapper, revision: revision as Readonly<Ref<string>>, renders: () => renders };
 }
 
 describe("vue: useRevision", () => {
-  it("returns the revision of the instance's datafile", () => {
+  it("returns a readonly ref of the instance's datafile revision", () => {
     const sdk = createFeaturevisor({ logLevel: "fatal", datafile: datafile("first") });
     const { wrapper, revision } = mountRevision(sdk);
 
-    expect(revision).toBe("first");
+    expect(isRef(revision)).toBe(true);
+    expectExactType<IsExact<typeof revision, Readonly<Ref<string>>>>(true);
+    expect(revision.value).toBe("first");
     expect(wrapper.text()).toBe("first");
   });
 
-  it("returns unknown before a datafile is set", () => {
-    const { revision } = mountRevision(createFeaturevisor({ logLevel: "fatal" }));
-    expect(revision).toBe("unknown");
-  });
+  it("holds unknown before a datafile is set, then follows the first one", async () => {
+    const sdk = createFeaturevisor({ logLevel: "fatal" });
+    const { wrapper } = mountRevision(sdk);
+    expect(wrapper.text()).toBe("unknown");
 
-  it("returns a plain string taken when called, like the other composables", async () => {
-    const sdk = createFeaturevisor({ logLevel: "fatal", datafile: datafile("first") });
-    const { wrapper, revision } = mountRevision(sdk);
-    expect(isRef(revision)).toBe(false);
-    expectExactType<IsExact<typeof revision, string>>(true);
-
-    // It does not follow later datafiles. A component created afterwards reads the new one.
-    sdk.setDatafile(datafile("second"));
+    sdk.setDatafile(datafile("first"));
     await nextTick();
     expect(wrapper.text()).toBe("first");
-    expect(mountRevision(sdk).revision).toBe("second");
+  });
+
+  it("updates for a new revision only, not for context, sticky or same revision changes", async () => {
+    const sdk = createFeaturevisor({ logLevel: "fatal", datafile: datafile("first") });
+    const { wrapper, renders } = mountRevision(sdk);
+    const before = renders();
+
+    sdk.setDatafile(datafile("first"));
+    sdk.setContext({ userId: "user-2" });
+    sdk.setStickyFeatures({ checkout: { enabled: false } });
+    await nextTick();
+    expect(renders()).toBe(before);
+
+    sdk.setDatafile(datafile("second"));
+    await nextTick();
+    expect(wrapper.text()).toBe("second");
+    expect(renders()).toBe(before + 1);
   });
 });

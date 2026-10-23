@@ -1,6 +1,8 @@
-import type { Context, FeatureKey } from "@featurevisor/types";
+import type { Ref } from "vue";
+import type { FeatureKey } from "@featurevisor/types";
 
 import { flagUntil } from "./flagUntil.js";
+import type { ContextSource } from "./live.js";
 
 /**
  * A list of feature keys that is not written as an empty literal. A list built
@@ -10,14 +12,14 @@ export type NonEmptyFeatureKeys<K extends readonly FeatureKey[]> = K &
   (K extends readonly [] ? never : unknown);
 
 /**
- * Returns true when every feature is enabled, as a plain value. Features are
- * evaluated in order and evaluation stops at the first disabled one, so later
- * features are not evaluated, and modules do not see them. An empty list
- * returns true.
+ * Returns a readonly ref holding true when every feature is enabled, updating
+ * like useFlag. Features are evaluated in order and evaluation stops at the
+ * first disabled one, so later features are not evaluated, and modules do not
+ * see them. An empty list holds true.
  */
 export function useEveryFlag<K extends readonly FeatureKey[] | []>(
   featureKeys: NonEmptyFeatureKeys<K>,
-  context: Context = {},
-): boolean {
+  context?: ContextSource,
+): Readonly<Ref<boolean>> {
   return flagUntil(featureKeys, context, false);
 }

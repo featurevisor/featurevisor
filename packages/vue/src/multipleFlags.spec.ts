@@ -1,4 +1,4 @@
-import { defineComponent, h, isRef, nextTick, type App, type Plugin } from "vue";
+import { defineComponent, h, isRef, nextTick, unref, type App, type Plugin, type Ref } from "vue";
 import { mount } from "@vue/test-utils";
 import type { Featurevisor } from "@featurevisor/sdk";
 import type { DatafileContent, FeatureKey } from "@featurevisor/types";
@@ -98,16 +98,22 @@ function inSetup<T>(read: () => T, sdk?: Featurevisor): T {
   return result as T;
 }
 
+/** Like inSetup, then reads the ref, or each ref of a list, it returned. */
+function readInSetup<T>(read: () => T, sdk?: Featurevisor): unknown {
+  const result = inSetup(read, sdk);
+  return Array.isArray(result) ? result.map((item) => unref(item)) : unref(result);
+}
+
 describe("vue: useEveryFlag and useSomeFlag with a key listed twice", () => {
   it("evaluates it once", () => {
     const { sdk, evaluated } = instance(["wishlist"]);
-    expect(inSetup(() => useEveryFlag(["checkout", "checkout", "liveChat", "checkout"]), sdk)).toBe(
-      true,
-    );
+    expect(
+      readInSetup(() => useEveryFlag(["checkout", "checkout", "liveChat", "checkout"]), sdk),
+    ).toBe(true);
     expect(evaluated).toEqual(["checkout", "liveChat"]);
 
     evaluated.length = 0;
-    expect(inSetup(() => useSomeFlag(["wishlist", "wishlist", "liveChat"]), sdk)).toBe(true);
+    expect(readInSetup(() => useSomeFlag(["wishlist", "wishlist", "liveChat"]), sdk)).toBe(true);
     expect(evaluated).toEqual(["wishlist", "liveChat"]);
   });
 });
@@ -115,12 +121,12 @@ describe("vue: useEveryFlag and useSomeFlag with a key listed twice", () => {
 describe("vue: useFlags", () => {
   it("returns one boolean per key, in the order of the keys", () => {
     const { sdk } = instance(["wishlist"]);
-    expect(inSetup(() => useFlags(["checkout", "liveChat", "wishlist"]), sdk)).toEqual([
+    expect(readInSetup(() => useFlags(["checkout", "liveChat", "wishlist"]), sdk)).toEqual([
       true,
       true,
       false,
     ]);
-    expect(inSetup(() => useFlags(["wishlist", "liveChat", "checkout"]), sdk)).toEqual([
+    expect(readInSetup(() => useFlags(["wishlist", "liveChat", "checkout"]), sdk)).toEqual([
       false,
       true,
       true,
@@ -129,9 +135,12 @@ describe("vue: useFlags", () => {
 
   it("takes a list of any length", () => {
     const { sdk } = instance(["liveChat"]);
-    expect(inSetup(() => useFlags(["checkout"]), sdk)).toEqual([true]);
+    expect(readInSetup(() => useFlags(["checkout"]), sdk)).toEqual([true]);
     expect(
-      inSetup(() => useFlags(["checkout", "liveChat", "wishlist", "liveChat", "checkout"]), sdk),
+      readInSetup(
+        () => useFlags(["checkout", "liveChat", "wishlist", "liveChat", "checkout"]),
+        sdk,
+      ),
     ).toEqual([true, false, true, false, true]);
   });
 
@@ -139,21 +148,24 @@ describe("vue: useFlags", () => {
     const { sdk } = instance();
     const isEnabled = jest.spyOn(sdk, "isEnabled");
 
-    expect(inSetup(() => useFlags(KEYS), sdk)).toEqual([true, true, true]);
+    expect(readInSetup(() => useFlags(KEYS), sdk)).toEqual([true, true, true]);
     expect(isEnabled).toHaveBeenCalledWith("checkout", {});
 
     const context = { blocked: true };
-    expect(inSetup(() => useFlags(KEYS, context), sdk)).toEqual([false, false, false]);
+    expect(readInSetup(() => useFlags(KEYS, context), sdk)).toEqual([false, false, false]);
     expect(isEnabled).toHaveBeenCalledWith("wishlist", context);
   });
 
   it("returns false for a feature missing from the datafile", () => {
-    expect(inSetup(() => useFlags(["checkout", "missing"]), instance().sdk)).toEqual([true, false]);
+    expect(readInSetup(() => useFlags(["checkout", "missing"]), instance().sdk)).toEqual([
+      true,
+      false,
+    ]);
   });
 
   it("gives a key listed twice a value at each position, evaluating it once", () => {
     const { sdk, evaluated } = instance(["liveChat"]);
-    expect(inSetup(() => useFlags(["checkout", "liveChat", "checkout"]), sdk)).toEqual([
+    expect(readInSetup(() => useFlags(["checkout", "liveChat", "checkout"]), sdk)).toEqual([
       true,
       false,
       true,
@@ -163,47 +175,43 @@ describe("vue: useFlags", () => {
 
   it("returns an empty array for an empty list", () => {
     const { sdk, evaluated } = instance();
-    expect(inSetup(() => useFlags([]), sdk)).toEqual([]);
+    expect(readInSetup(() => useFlags([]), sdk)).toEqual([]);
     expect(evaluated).toEqual([]);
   });
 
-  it("returns a plain array taken when called, like useFlag", async () => {
+  it("returns a ref per key that follows later changes, like useFlag", async () => {
     const { sdk } = instance();
-    let flags: readonly boolean[] = [];
-    let flag = false;
     const wrapper = mount(
       defineComponent({
         setup() {
-          flags = useFlags(["checkout", "liveChat"]);
-          flag = useFlag("checkout");
-          return () => h("p", `${flag}:${flags.join(",")}`);
+          const [checkout, liveChat] = useFlags(["checkout", "liveChat"]);
+          const flag = useFlag("checkout");
+          expect(isRef(checkout) && isRef(liveChat) && isRef(flag)).toBe(true);
+          return () => h("p", `${flag.value}:${checkout.value},${liveChat.value}`);
         },
       }),
       { global: { plugins: [featurevisorPlugin(sdk)] } },
     );
-    expect(isRef(flags)).toBe(false);
-    expect(Array.isArray(flags)).toBe(true);
     expect(wrapper.text()).toBe("true:true,true");
 
-    // Neither function follows later changes. Keep values live with SDK events.
-    sdk.setDatafile(datafile("first", ["checkout", "liveChat"]));
+    sdk.setDatafile(datafile("first", ["liveChat"]));
     await nextTick();
-    expect(wrapper.text()).toBe("true:true,true");
-    expect(inSetup(() => useFlags(["checkout", "liveChat"]), sdk)).toEqual([false, false]);
+    expect(wrapper.text()).toBe("true:true,false");
     wrapper.unmount();
   });
 
   it("types an inline list as an exact tuple and a runtime list as an array", () => {
     const { sdk } = instance();
     inSetup(() => {
+      type Flag = Readonly<Ref<boolean>>;
       const inline = useFlags(["checkout", "liveChat", "wishlist"]);
-      expectExactType<IsExact<typeof inline, readonly [boolean, boolean, boolean]>>(true);
-      expect(inline).toEqual([true, true, true]);
+      expectExactType<IsExact<typeof inline, readonly [Flag, Flag, Flag]>>(true);
+      expect(inline.map((flag) => flag.value)).toEqual([true, true, true]);
 
       const keys: FeatureKey[] = ["checkout"];
       const runtime = useFlags(keys, { userId: "user-1" });
-      expectExactType<IsExact<typeof runtime, readonly boolean[]>>(true);
-      expect(runtime).toEqual([true]);
+      expectExactType<IsExact<typeof runtime, readonly Flag[]>>(true);
+      expect(runtime.map((flag) => flag.value)).toEqual([true]);
 
       // @ts-expect-error an inline list of two has no third value
       const [, , third] = useFlags(["checkout", "liveChat"]);
@@ -227,49 +235,49 @@ describe("vue: useEveryFlag and useSomeFlag", () => {
     [KEYS, false, false],
   ])("with %j off, return every %s and some %s", (off, every, some) => {
     const { sdk } = instance(off);
-    expect(inSetup(() => useEveryFlag(KEYS), sdk)).toBe(every);
-    expect(inSetup(() => useSomeFlag(KEYS), sdk)).toBe(some);
+    expect(readInSetup(() => useEveryFlag(KEYS), sdk)).toBe(every);
+    expect(readInSetup(() => useSomeFlag(KEYS), sdk)).toBe(some);
   });
 
   it("pass the context to the evaluations", () => {
     const { sdk } = instance();
     const context = { blocked: true };
-    expect(inSetup(() => useEveryFlag(KEYS, context), sdk)).toBe(false);
-    expect(inSetup(() => useSomeFlag(KEYS, context), sdk)).toBe(false);
+    expect(readInSetup(() => useEveryFlag(KEYS, context), sdk)).toBe(false);
+    expect(readInSetup(() => useSomeFlag(KEYS, context), sdk)).toBe(false);
   });
 
   it("count a feature missing from the datafile as disabled", () => {
     const { sdk } = instance();
-    expect(inSetup(() => useEveryFlag(["checkout", "missing"]), sdk)).toBe(false);
-    expect(inSetup(() => useSomeFlag(["missing", "checkout"]), sdk)).toBe(true);
+    expect(readInSetup(() => useEveryFlag(["checkout", "missing"]), sdk)).toBe(false);
+    expect(readInSetup(() => useSomeFlag(["missing", "checkout"]), sdk)).toBe(true);
   });
 
   it("useEveryFlag stops evaluating at the first disabled feature", () => {
     const { sdk, evaluated } = instance(["liveChat"]);
-    expect(inSetup(() => useEveryFlag(["checkout", "liveChat", "wishlist"]), sdk)).toBe(false);
+    expect(readInSetup(() => useEveryFlag(["checkout", "liveChat", "wishlist"]), sdk)).toBe(false);
     expect(evaluated).toEqual(["checkout", "liveChat"]);
   });
 
   it("useSomeFlag stops evaluating at the first enabled feature", () => {
     const { sdk, evaluated } = instance(["checkout"]);
-    expect(inSetup(() => useSomeFlag(["checkout", "liveChat", "wishlist"]), sdk)).toBe(true);
+    expect(readInSetup(() => useSomeFlag(["checkout", "liveChat", "wishlist"]), sdk)).toBe(true);
     expect(evaluated).toEqual(["checkout", "liveChat"]);
   });
 
   it("follow Array semantics for an empty list built at runtime", () => {
     const { sdk } = instance();
     const keys: FeatureKey[] = [];
-    expect(inSetup(() => useEveryFlag(keys), sdk)).toBe(true);
-    expect(inSetup(() => useSomeFlag(keys), sdk)).toBe(false);
+    expect(readInSetup(() => useEveryFlag(keys), sdk)).toBe(true);
+    expect(readInSetup(() => useSomeFlag(keys), sdk)).toBe(false);
   });
 
   it("reject a literal empty list at compile time", () => {
     const { sdk } = instance();
     inSetup(() => {
       // @ts-expect-error a literal empty list is rejected
-      expect(useEveryFlag([])).toBe(true);
+      expect(useEveryFlag([]).value).toBe(true);
       // @ts-expect-error a literal empty list is rejected
-      expect(useSomeFlag([])).toBe(false);
+      expect(useSomeFlag([]).value).toBe(false);
       return null;
     }, sdk);
   });

@@ -1,32 +1,45 @@
-import type { Context, FeatureKey } from "@featurevisor/types";
+import { computed, type Ref } from "vue";
+import type { FeatureKey } from "@featurevisor/types";
 
+import { onFeatures, readContext, useLive, type ContextSource } from "./live.js";
 import { useSdk } from "./useSdk.js";
 
 /**
- * One boolean per feature key, in the same order. An inline list gives an exact
- * tuple, and a list built at runtime gives `readonly boolean[]`.
+ * One readonly ref per feature key, in the same order. An inline list gives an
+ * exact tuple, and a list built at runtime gives an array.
  */
-export type FlagValues<K extends readonly FeatureKey[]> = { readonly [I in keyof K]: boolean };
+export type FlagRefs<K extends readonly FeatureKey[]> = {
+  readonly [I in keyof K]: Readonly<Ref<boolean>>;
+};
 
 /**
- * Returns whether each feature is enabled, in the order of the keys. Like
- * useFlag, the values are plain, evaluated when called, and do not update. A
- * key listed twice is evaluated once.
+ * Returns a readonly ref for each feature, in the order of the keys, so the
+ * result can be destructured. They update when a datafile changes any of the
+ * features, when the context or sticky values change, and when a ref or prop
+ * the context reads changes. The keys are read once. A key listed twice is
+ * evaluated once.
  */
 export function useFlags<K extends readonly FeatureKey[] | []>(
   featureKeys: K,
-  context: Context = {},
-): FlagValues<K> {
+  context?: ContextSource,
+): FlagRefs<K> {
   const sdk = useSdk();
+  const keys = featureKeys.slice();
 
-  const evaluated = new Map<FeatureKey, boolean>();
-  return featureKeys.map((featureKey) => {
-    let enabled = evaluated.get(featureKey);
-    if (enabled === undefined) {
-      enabled = sdk.isEnabled(featureKey, context);
-      evaluated.set(featureKey, enabled);
-    }
+  const values = useLive(sdk, keys.length === 0 ? undefined : onFeatures(sdk, keys), () => {
+    const resolved = readContext(context);
+    const evaluated = new Map<FeatureKey, boolean>();
 
-    return enabled;
-  }) as unknown as FlagValues<K>;
+    return keys.map((featureKey) => {
+      let enabled = evaluated.get(featureKey);
+      if (enabled === undefined) {
+        enabled = sdk.isEnabled(featureKey, resolved);
+        evaluated.set(featureKey, enabled);
+      }
+
+      return enabled;
+    });
+  });
+
+  return keys.map((_, index) => computed(() => values.value[index])) as unknown as FlagRefs<K>;
 }

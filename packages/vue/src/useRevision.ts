@@ -1,11 +1,15 @@
+import type { Ref } from "vue";
+
+import { onRevision, useLive } from "./live.js";
 import { useSdk } from "./useSdk.js";
 
 /**
- * Returns the revision of the instance's datafile, as a plain value taken when
- * it is called, like the other composables.
+ * Returns a readonly ref holding the revision of the instance's datafile. It
+ * updates when a datafile with a different revision is set. Context and sticky
+ * changes do not affect it.
  */
-export function useRevision(): string {
+export function useRevision(): Readonly<Ref<string>> {
   const sdk = useSdk();
 
-  return sdk.getRevision();
+  return useLive(sdk, onRevision(sdk), () => sdk.getRevision());
 }

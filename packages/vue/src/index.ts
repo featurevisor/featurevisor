@@ -1,4 +1,5 @@
 export * from "./setupApp.js";
+export type { ContextSource } from "./live.js";
 
 export * from "./useSdk.js";
 export * from "./useVariable.js";
