@@ -27,7 +27,7 @@ Several tags and targets form a union. Like datafiles, the output includes the d
 | `functions.ts`  | typed `isEnabled`, `getVariation` and `getVariable`                                |
 | `instance.ts`   | `setInstance` and `getInstance`                                                    |
 | `index.ts`      | exports everything                                                                 |
-| `react.ts`      | typed hooks, with `--react`                                                        |
+| `react.ts`      | typed hooks, with `--react`. See below                                             |
 
 Types follow the schemas: `enum` and `const` become literal types, `required` properties are non optional, `format: date-time` attributes accept `Date | string`. A composition's type is derived from its sources, read only, and conservatively nullable, because any member can be `null` at runtime.
 
@@ -52,6 +52,17 @@ getVariable('supportEmail', context) // a global variable
 ```
 
 Call `setInstance` before using the functions, or they throw. Imports use `.js` extensions, which works with NodeNext, CommonJS and bundlers.
+
+With `--react`, `react.ts` has typed `useFlag`, `useFlags`, `useEveryFlag`, `useSomeFlag`, `useVariation` and `useVariable`. Import them from the generated directory instead of `@featurevisor/react`. Every key in a list is checked. Hooks without keys, such as `useSdk`, `useFeaturevisor` and `useRevision`, still come from `@featurevisor/react`.
+
+```tsx
+import { useFlags } from './featurevisor'
+
+const [checkout, liveChat] = useFlags(['checkout', 'liveChat'])
+// readonly [boolean, boolean], and a misspelt key is a type error
+```
+
+The generated hooks import the new list hooks from `@featurevisor/react`, so install the `@featurevisor/react` released with the CLI that generated them.
 
 ## When to suggest it
 

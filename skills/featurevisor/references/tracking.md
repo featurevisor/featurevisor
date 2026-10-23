@@ -73,10 +73,10 @@ What the shape gets right, each of which fails silently when wrong:
 - **Always return `evaluation`, from every branch.** The SDK assigns the callback's return value back to the evaluation. An early `return` with no value makes every flag read as `false` and every variation as `null`, across the whole application, with no error.
 - **Do not read `variationValue` alone.** For the normal `allocated` reason it is `undefined` and the value sits on `evaluation.variation.value`.
 - **Count only `allocated`, `rule` and `sticky`.** That skips errors, disabled fallbacks and `forced` results, so a QA or stakeholder preview through a force entry never counts in the results.
-- **Send once per feature and variation.** Without the `seen` set, every render sends another event. Create the module per user and session, and remove it on sign out or when consent is withdrawn (`await f.removeModule('activationTracking')`). Never share one across users on a server.
+- **Send once per feature and variation.** Without the `seen` set, every render sends another event. React hooks evaluate on every render, and StrictMode renders twice in development. Create the module per user and session, and remove it on sign out or when consent is withdrawn (`await f.removeModule('activationTracking')`). Never share one across users on a server.
 - **Skip `dependencyPurpose: 'condition'`.** Those are eligibility reads, such as an experiment checking its allocation feature. Reads with `dependencyPurpose: 'composition'` are values the application consumes and can be real exposures, so do not skip everything that has `dependencyOf`.
 
-Read the variation with `getVariation` when the user actually sees it, not while prefetching, or users are counted before they see anything. Reading only feature variables records nothing with this module, since it listens for variation evaluations.
+Read the variation with `getVariation` when the user actually sees it, not while prefetching, or users are counted before they see anything. `getFeatureEvaluations` reads the variation of every listed feature, with reason `allocated`, so this module counts each one as shown. Keep it to debugging and internal tools. Reading only feature variables records nothing with this module, since it listens for variation evaluations.
 
 `afterEvaluation` also receives global variable evaluations ([global-variables.md](global-variables.md)). The `type === 'variation'` guard excludes them. Use `afterEvaluation`: the old `after` callback does not run in v4.
 
