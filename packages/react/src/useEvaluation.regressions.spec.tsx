@@ -83,6 +83,9 @@ function expected(label = "first", key = "policy", enabled = true): Snapshot {
   };
 }
 
+// The change tracker adds four listeners per instance while any hook is subscribed.
+const TRACKER_LISTENERS = 4;
+
 function observe(sdk: Featurevisor) {
   const original = sdk.on.bind(sdk);
   const cleanups: jest.Mock[] = [];
@@ -156,11 +159,11 @@ describe.each([false, true])("committed hook snapshots, StrictMode: %s", (strict
     const h = harness(first);
     const view = render(h.tree());
     h.snapshots.forEach((snapshot) => expect(snapshot).toEqual(expected()));
-    expect(firstEvents.active()).toHaveLength(16);
+    expect(firstEvents.active()).toHaveLength(16 + TRACKER_LISTENERS);
 
     h.check(() => view.rerender(h.tree(second)), expected("second", "policy", false));
     expect(firstEvents.active()).toHaveLength(0);
-    expect(secondEvents.active()).toHaveLength(16);
+    expect(secondEvents.active()).toHaveLength(16 + TRACKER_LISTENERS);
     h.check(() => view.rerender(h.tree(first)), expected());
     h.check(() => view.rerender(h.tree(first, "alternate")), expected("first", "alternate"));
     h.check(() => view.rerender(h.tree(first, "missing")), {
@@ -249,8 +252,11 @@ describe.each([false, true])("committed hook snapshots, StrictMode: %s", (strict
     (kind) => {
       const sdk = instance();
       const original = sdk.on.bind(sdk);
-      jest.spyOn(sdk, "on").mockImplementationOnce((event, callback) => {
-        sdk.setStickyVariables({ gate: false });
+      let calls = 0;
+      jest.spyOn(sdk, "on").mockImplementation((event, callback) => {
+        // The change tracker attaches first, while rendering. Change the SDK as
+        // the hook itself subscribes.
+        if (++calls === TRACKER_LISTENERS + 1) sdk.setStickyVariables({ gate: false });
         return original(event, callback);
       });
       const commits: unknown[] = [];

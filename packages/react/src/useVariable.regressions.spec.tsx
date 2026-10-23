@@ -237,15 +237,16 @@ describe("react: useVariable evaluation and subscriptions", () => {
     );
     const view = render(tree());
     expectValue({ grants: ["read"] });
-    // StrictMode must leave just one set of four active listeners.
+    // StrictMode must leave just one set of four active listeners, plus the
+    // change tracker's four.
     const active = () =>
       firstSubscriptions.cleanups.filter((cleanup) => cleanup.mock.calls.length === 0);
-    expect(active()).toHaveLength(4);
+    expect(active()).toHaveLength(8);
     const globalCleanups = active();
     view.rerender(tree(first, "grants"));
     expectValue({ grants: ["feature-read"] });
     globalCleanups.forEach((cleanup) => expect(cleanup).toHaveBeenCalledTimes(1));
-    expect(active()).toHaveLength(4);
+    expect(active()).toHaveLength(8);
 
     const subscriptions = firstSubscriptions.on.mock.calls.length;
     view.rerender(tree(first, "alternate"));

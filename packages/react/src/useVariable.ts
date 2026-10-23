@@ -1,6 +1,6 @@
 import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
-import { useSdk } from "./useSdk.js";
+import { useRequiredSdk } from "./useRequiredSdk.js";
 import { useEvaluationSubscription } from "./useEvaluationSubscription.js";
 
 const EMPTY_CONTEXT: Context = {};
@@ -24,7 +24,7 @@ export function useVariable<TValue = VariableValue>(
   variableKeyOrContext: VariableKey | Context = EMPTY_CONTEXT,
   context: Context = EMPTY_CONTEXT,
 ): TValue | null {
-  const sdk = useSdk();
+  const sdk = useRequiredSdk();
   const isStandaloneVariable = typeof variableKeyOrContext !== "string";
   const resolvedContext = isStandaloneVariable ? variableKeyOrContext : context;
   useEvaluationSubscription(sdk, featureKeyOrVariableKey, isStandaloneVariable);

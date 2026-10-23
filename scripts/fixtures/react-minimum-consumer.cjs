@@ -127,11 +127,12 @@ for (const strict of [false, true]) {
     });
     assert.deepEqual(snapshots[0], expected("read"), "initial render must have evaluated values");
     expectValue(expected("read"));
-    assert.equal(active(first), 12, "one listener per event for each of the three hooks");
+    // One listener per event for each of the three hooks, and the change tracker's four.
+    assert.equal(active(first), 16, "one listener per event for each hook and the tracker");
     step(() => view.update(tree()));
     step(() => view.update(tree()));
     expectValue(expected("read"));
-    assert.equal(active(first), 12);
+    assert.equal(active(first), 16);
     step(() => view.update(tree(first.sdk, "de")));
     expectValue(expected("read", []));
     step(() => view.update(tree()));
@@ -148,7 +149,7 @@ for (const strict of [false, true]) {
     step(() => view.update(tree(second.sdk)));
     expectValue(expected("second"));
     assert.equal(active(first), 0, "provider replacement must release old SDK listeners");
-    assert.equal(active(second), 12);
+    assert.equal(active(second), 16);
     const beforeOldEvent = renders;
     step(() => first.sdk.setContext({ country: "de" }));
     assert.equal(renders, beforeOldEvent);

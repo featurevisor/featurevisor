@@ -2,7 +2,16 @@ const assert = require("node:assert/strict");
 const React = require("react");
 const renderer = require("react-test-renderer");
 const { createFeaturevisor } = require("@featurevisor/sdk");
-const { FeaturevisorProvider, useFlag, useVariation, useVariable } = require("@featurevisor/react");
+const {
+  FeaturevisorProvider,
+  useFlag,
+  useFlags,
+  useEveryFlag,
+  useSomeFlag,
+  useRevision,
+  useVariation,
+  useVariable,
+} = require("@featurevisor/react");
 
 assert.equal(React.version, "16.8.0");
 
@@ -64,6 +73,10 @@ for (const strict of [false, true]) {
       variation: useVariation(featureKey, context),
       feature: useVariable(featureKey, "value", context),
       global: useVariable("policy", context),
+      flags: useFlags([featureKey, "alternate"], context),
+      every: useEveryFlag([featureKey, "alternate"], context),
+      some: useSomeFlag([featureKey, "alternate"], context),
+      revision: useRevision(),
     };
     React.useLayoutEffect(() => {
       commits.push(snapshot);
@@ -81,11 +94,16 @@ for (const strict of [false, true]) {
     );
     return strict ? React.createElement(React.StrictMode, null, content) : content;
   }
-  const expected = (label, key = "policy", enabled = true) => ({
+  // alternate shares policy's conditions, so it differs only when policy is pinned.
+  const expected = (label, key = "policy", enabled = true, alternate = enabled) => ({
     flag: enabled,
     variation: enabled ? `${label}-${key}` : null,
     feature: enabled ? { label: `${label}-${key}` } : null,
     global: { label: enabled ? label : "blocked" },
+    flags: [enabled, alternate],
+    every: enabled && alternate,
+    some: enabled || alternate,
+    revision: label,
   });
   function step(operation, value) {
     commits.length = 0;
@@ -129,7 +147,7 @@ for (const strict of [false, true]) {
     step(() => first.setStickyVariables({}, true), expected("updated"));
     step(
       () => first.setStickyFeatures({ policy: { enabled: false } }),
-      expected("updated", "policy", false),
+      expected("updated", "policy", false, true),
     );
     step(() => first.setStickyFeatures({}, true), expected("updated"));
     step(() =>

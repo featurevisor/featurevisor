@@ -144,11 +144,19 @@ import {
 import {
   FeaturevisorProvider,
   useFeaturevisor,
+  useEveryFlag as useReactEveryFlag,
+  useFlags as useReactFlags,
+  useRevision as useReactRevision,
+  useSomeFlag as useReactSomeFlag,
   useVariable as useReactVariable,
   useVariation as useReactVariation,
 } from "@featurevisor/react";
 import {
   setupApp,
+  useEveryFlag as useVueEveryFlag,
+  useFlags as useVueFlags,
+  useRevision as useVueRevision,
+  useSomeFlag as useVueSomeFlag,
   useVariable as useVueVariable,
   useVariation as useVueVariation,
 } from "@featurevisor/vue";
@@ -319,6 +327,44 @@ function checkUseFeaturevisorTypes(api: ReturnType<typeof useFeaturevisor>) {
   ];
 }
 
+function checkMultipleFlagTypes(runtimeKeys: string[]) {
+  const reactFlags = useReactFlags(["checkout", "liveChat", "wishlist"]);
+  const reactRuntimeFlags = useReactFlags(runtimeKeys, { userId: "user-1" });
+  const reactEvery: boolean = useReactEveryFlag(["checkout", "liveChat"]);
+  const reactSome: boolean = useReactSomeFlag(runtimeKeys);
+  const vueFlags = useVueFlags(["checkout", "liveChat", "wishlist"]);
+  const vueRuntimeFlags = useVueFlags(runtimeKeys, { userId: "user-1" });
+  const vueEvery: boolean = useVueEveryFlag(["checkout", "liveChat"]);
+  const vueSome: boolean = useVueSomeFlag(runtimeKeys);
+  const reactRevision = useReactRevision();
+  const vueRevision = useVueRevision();
+
+  type _ReactFlags = Assert<IsExact<typeof reactFlags, readonly [boolean, boolean, boolean]>>;
+  type _ReactRuntimeFlags = Assert<IsExact<typeof reactRuntimeFlags, readonly boolean[]>>;
+  type _VueFlags = Assert<IsExact<typeof vueFlags, readonly [boolean, boolean, boolean]>>;
+  type _VueRuntimeFlags = Assert<IsExact<typeof vueRuntimeFlags, readonly boolean[]>>;
+  type _ReactRevision = Assert<IsExact<typeof reactRevision, string>>;
+  type _VueRevision = Assert<IsExact<typeof vueRevision, string>>;
+
+  // @ts-expect-error A literal empty list is rejected.
+  useReactEveryFlag([]);
+  // @ts-expect-error A literal empty list is rejected.
+  useVueSomeFlag([]);
+
+  return [
+    reactFlags,
+    reactRuntimeFlags,
+    reactEvery,
+    reactSome,
+    vueFlags,
+    vueRuntimeFlags,
+    vueEvery,
+    vueSome,
+    reactRevision,
+    vueRevision,
+  ];
+}
+
 // @ts-expect-error Variation types must remain strings.
 featurevisor.getVariation<number>("checkout");
 
@@ -330,6 +376,7 @@ void variationMock;
 void variableMock;
 void checkFrameworkTypes;
 void checkUseFeaturevisorTypes;
+void checkMultipleFlagTypes;
 void new FeaturevisorOpenFeatureProvider({ featurevisor });
 `,
   );

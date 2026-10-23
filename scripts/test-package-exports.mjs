@@ -21,6 +21,11 @@ const packages = [
     runtimeExports: {
       FeaturevisorProvider: "function",
       useFlag: "function",
+      useFlags: "function",
+      useEveryFlag: "function",
+      useSomeFlag: "function",
+      useRevision: "function",
+      onFeaturesChange: "function",
     },
   },
   {

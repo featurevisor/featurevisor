@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { Featurevisor } from "@featurevisor/sdk";
 
-import { useSdk } from "./useSdk.js";
+import { useRequiredSdk } from "./useRequiredSdk.js";
 
 export const BOUND_METHODS = [
   "isEnabled",
@@ -42,7 +42,7 @@ function pickBound<K extends keyof Featurevisor>(
 }
 
 export function useFeaturevisor(): FeaturevisorHookApi {
-  const f = useSdk();
+  const f = useRequiredSdk();
 
   return React.useMemo(() => pickBound(f, BOUND_METHODS), [f]);
 }

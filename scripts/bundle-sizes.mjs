@@ -23,14 +23,14 @@ const packages = [
     name: "@featurevisor/react",
     entry: path.join(rootDir, "packages/react/src/index.ts"),
     fileName: "featurevisor-react",
-    budget: 800,
+    budget: 1_400,
     external: ["react", "react-dom", "@featurevisor/sdk"],
   },
   {
     name: "@featurevisor/vue",
     entry: path.join(rootDir, "packages/vue/src/index.ts"),
     fileName: "featurevisor-vue",
-    budget: 400,
+    budget: 550,
     external: ["vue", "@featurevisor/sdk"],
   },
   {
