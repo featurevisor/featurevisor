@@ -16,7 +16,7 @@ export type FlagValues<K extends readonly FeatureKey[]> = { readonly [I in keyof
  * Returns whether each feature is enabled, in the order of the keys, and
  * updates when any of them changes. A key listed twice is evaluated once.
  */
-export function useFlags<const K extends readonly FeatureKey[]>(
+export function useFlags<K extends readonly FeatureKey[] | []>(
   featureKeys: K,
   context: Context = EMPTY_CONTEXT,
 ): FlagValues<K> {

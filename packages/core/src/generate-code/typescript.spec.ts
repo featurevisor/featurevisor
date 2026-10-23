@@ -871,7 +871,7 @@ type OldFeatureValue = VariableType<"checkout", "label">;
     for (const hook of ["useFlags", "useEveryFlag", "useSomeFlag"]) {
       expect(reactContent).toContain(`${hook} as ${hook}Original,`);
       expect(reactContent).toContain(
-        `export function ${hook}<const K extends readonly FeatureKey[]>(`,
+        `export function ${hook}<K extends readonly FeatureKey[] | []>(`,
       );
       expect(reactContent).toContain(`return ${hook}Original<K>(featureKeys, context);`);
     }

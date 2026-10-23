@@ -15,7 +15,7 @@ export type NonEmptyFeatureKeys<K extends readonly FeatureKey[]> = K &
  * features are not evaluated, and modules do not see them. An empty list
  * returns true.
  */
-export function useEveryFlag<const K extends readonly FeatureKey[]>(
+export function useEveryFlag<K extends readonly FeatureKey[] | []>(
   featureKeys: NonEmptyFeatureKeys<K>,
   context: Context = {},
 ): boolean {

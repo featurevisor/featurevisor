@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import process from "node:process";
@@ -71,7 +71,34 @@ function assertRuntimeExports(packageDetails, module, moduleType) {
   }
 }
 
+// TypeScript 4 cannot parse const type parameters, which TypeScript 5.0 added, and
+// reports that even with skipLibCheck. A union with [] infers the same tuples.
+const TYPESCRIPT_5_TYPE_PARAMETER = /<\s*const\s+[A-Za-z_$]/;
+
+function declarationFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const target = join(directory, entry.name);
+    if (entry.isDirectory()) return declarationFiles(target);
+    return entry.name.endsWith(".d.ts") ? [target] : [];
+  });
+}
+
+function assertDeclarationsParseInTypeScript4(directory) {
+  for (const output of ["cjs", "esm", "node-esm", "lib", "dist"]) {
+    const outputDirectory = join(rootDirectory, "packages", directory, output);
+    if (!existsSync(outputDirectory)) continue;
+    for (const file of declarationFiles(outputDirectory)) {
+      if (TYPESCRIPT_5_TYPE_PARAMETER.test(readFileSync(file, "utf8"))) {
+        throw new Error(`${file} has a const type parameter, which TypeScript 4 cannot parse`);
+      }
+    }
+  }
+}
+
 async function main() {
+  for (const directory of ["types", "sdk", "react", "vue"]) {
+    assertDeclarationsParseInTypeScript4(directory);
+  }
   for (const entry of readdirSync(join(rootDirectory, "packages"), { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const directory = entry.name;

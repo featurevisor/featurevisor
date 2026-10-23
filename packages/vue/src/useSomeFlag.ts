@@ -9,7 +9,7 @@ import type { NonEmptyFeatureKeys } from "./useEveryFlag.js";
  * features are not evaluated, and modules do not see them. An empty list
  * returns false.
  */
-export function useSomeFlag<const K extends readonly FeatureKey[]>(
+export function useSomeFlag<K extends readonly FeatureKey[] | []>(
   featureKeys: NonEmptyFeatureKeys<K>,
   context: Context = {},
 ): boolean {

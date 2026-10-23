@@ -13,7 +13,7 @@ export type FlagValues<K extends readonly FeatureKey[]> = { readonly [I in keyof
  * useFlag, the values are plain, evaluated when called, and do not update. A
  * key listed twice is evaluated once.
  */
-export function useFlags<const K extends readonly FeatureKey[]>(
+export function useFlags<K extends readonly FeatureKey[] | []>(
   featureKeys: K,
   context: Context = {},
 ): FlagValues<K> {

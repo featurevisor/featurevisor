@@ -796,21 +796,21 @@ export function useFlag(featureKey: FeatureKey, context: Context = {}): boolean 
   return useFlagOriginal(featureKey, context);
 }
 
-export function useFlags<const K extends readonly FeatureKey[]>(
+export function useFlags<K extends readonly FeatureKey[] | []>(
   featureKeys: K,
   context: Context = {},
 ): FlagValues<K> {
   return useFlagsOriginal<K>(featureKeys, context);
 }
 
-export function useEveryFlag<const K extends readonly FeatureKey[]>(
+export function useEveryFlag<K extends readonly FeatureKey[] | []>(
   featureKeys: NonEmptyFeatureKeys<K>,
   context: Context = {},
 ): boolean {
   return useEveryFlagOriginal<K>(featureKeys, context);
 }
 
-export function useSomeFlag<const K extends readonly FeatureKey[]>(
+export function useSomeFlag<K extends readonly FeatureKey[] | []>(
   featureKeys: NonEmptyFeatureKeys<K>,
   context: Context = {},
 ): boolean {
