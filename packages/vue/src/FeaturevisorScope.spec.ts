@@ -1,4 +1,13 @@
-import { createSSRApp, defineComponent, h, nextTick, ref, type App, type Plugin } from "vue";
+import {
+  createSSRApp,
+  defineComponent,
+  h,
+  nextTick,
+  reactive,
+  ref,
+  type App,
+  type Plugin,
+} from "vue";
 import { renderToString } from "vue/server-renderer";
 import { mount } from "@vue/test-utils";
 import type { Featurevisor } from "@featurevisor/sdk";
@@ -525,5 +534,73 @@ describe("vue: the FeaturevisorScope docs examples", () => {
     category.value = "electronics";
     await nextTick();
     expect(cards()).toEqual(["1 size:false reviews:true", "2 size:false reviews:false"]);
+  });
+});
+
+describe("vue: FeaturevisorScope when its context changes", () => {
+  it("follows a reactive object changed in place, given as the context prop", async () => {
+    const sdk = instance();
+    const context = reactive<Context>({ plan: "free" });
+    const wrapper = mountIn(sdk, () => h(FeaturevisorScope, { context }, () => h(Readers)));
+    const text = () => wrapper.find(".readers").text();
+    expect(text()).toBe("false,false,false,false,control,help,Buy");
+
+    context.plan = "paid";
+    await nextTick();
+    expect(text()).toBe("true,true,true,true,treatment,help,Buy");
+  });
+
+  it("follows a ref given to provideFeaturevisorScope, including a change inside it", async () => {
+    const sdk = instance();
+    const context = ref<Context>({ plan: "free", country: "de" });
+    const Page = defineComponent({
+      setup() {
+        provideFeaturevisorScope(context);
+        return () => h(Readers);
+      },
+    });
+    const wrapper = mountIn(sdk, () => h(Page));
+    const text = () => wrapper.find(".readers").text();
+
+    context.value.plan = "paid";
+    await nextTick();
+    expect(text()).toBe("true,true,true,true,treatment,help,Buy");
+
+    context.value = { plan: "paid", country: "nl" };
+    await nextTick();
+    expect(text()).toBe("true,true,true,true,treatment,help-nl,Buy");
+  });
+
+  it("evaluates nothing again for an equal inline context, nested objects included", async () => {
+    const sdk = instance();
+    const isEnabled = jest.spyOn(sdk, "isEnabled");
+    const label = ref("a");
+    const seats = ref(10);
+    const wrapper = mountIn(sdk, () =>
+      h("div", [
+        h("span", label.value),
+        h(
+          FeaturevisorScope,
+          { context: { plan: "paid", account: { seats: seats.value, tags: ["a"] } } },
+          () => h(Readers),
+        ),
+      ]),
+    );
+    expect(wrapper.find(".readers").text()).toBe("true,true,true,true,treatment,help,Buy");
+    const settled = isEnabled.mock.calls.length;
+
+    label.value = "b";
+    await nextTick();
+    label.value = "c";
+    await nextTick();
+    expect(isEnabled).toHaveBeenCalledTimes(settled);
+
+    seats.value = 60;
+    await nextTick();
+    expect(isEnabled.mock.calls.length).toBeGreaterThan(settled);
+    expect(isEnabled).toHaveBeenLastCalledWith("wishlist", {
+      plan: "paid",
+      account: { seats: 60, tags: ["a"] },
+    });
   });
 });

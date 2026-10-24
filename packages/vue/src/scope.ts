@@ -29,6 +29,43 @@ export function mergeContext(first: Context, second: Context): Context {
   return Object.assign(result, first, second);
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return false;
+  const prototype = Object.getPrototypeOf(value);
+
+  return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * Compares context values by what they hold. Attribute values are strings,
+ * numbers, booleans, dates, arrays and plain objects, so an inline context with
+ * nested objects is equal to the one before it when its values are.
+ */
+export function sameValue(first: unknown, second: unknown): boolean {
+  if (Object.is(first, second)) return true;
+
+  if (first instanceof Date && second instanceof Date) {
+    return first.getTime() === second.getTime();
+  }
+
+  if (Array.isArray(first) && Array.isArray(second)) {
+    return (
+      first.length === second.length && first.every((item, index) => sameValue(item, second[index]))
+    );
+  }
+
+  if (isPlainObject(first) && isPlainObject(second)) {
+    const keys = Object.keys(first);
+
+    return (
+      keys.length === Object.keys(second).length &&
+      keys.every((key) => hasOwn(second, key) && sameValue(first[key], second[key]))
+    );
+  }
+
+  return false;
+}
+
 /** The enclosing scope, read in setup. Undefined outside any scope. */
 export function injectScope(): Readonly<Ref<Context>> | undefined {
   return inject(SCOPE, undefined);

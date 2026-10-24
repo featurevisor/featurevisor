@@ -722,3 +722,152 @@ describe("react: the FeaturevisorScope docs examples", function () {
     expect(cards()).toEqual(["1 size:false reviews:true", "2 size:false reviews:false"]);
   });
 });
+
+describe("react: FeaturevisorScope when its context changes", function () {
+  test("updates every hook below it, through a memoized component, in one render", function () {
+    const sdk = instance();
+    let renders = 0;
+    const commits: string[] = [];
+    const Deep = React.memo(function Deep() {
+      renders += 1;
+      const flag = useFlag("wishlist");
+      const variation = useVariation("pricing");
+      const email = useVariable("supportEmail");
+      React.useLayoutEffect(() => {
+        commits.push(`${flag}:${variation}:${email}`);
+      });
+      return null;
+    });
+    const Boundary = React.memo(function Boundary() {
+      return <Deep />;
+    });
+    const tree = (context: Context) => (
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={context}>
+          <Boundary />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree({ plan: "free", country: "de" }));
+    expect(commits).toEqual(["false:control:help"]);
+
+    commits.length = 0;
+    const before = renders;
+    view.rerender(tree({ plan: "paid", country: "nl" }));
+    expect(renders).toBe(before + 1);
+    expect(commits).toEqual(["true:treatment:help-nl"]);
+  });
+
+  test("gives useFeaturevisor reads the new context", function () {
+    const sdk = instance();
+    const reads: boolean[] = [];
+    function Reader() {
+      const { isEnabled } = useFeaturevisor();
+      reads.push(isEnabled("wishlist"));
+      return null;
+    }
+    const tree = (plan: string) => (
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={{ plan }}>
+          <Reader />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree("free"));
+    view.rerender(tree("paid"));
+    expect(reads[0]).toBe(false);
+    expect(reads[reads.length - 1]).toBe(true);
+  });
+
+  test("follows a context object changed in place when the scope renders again", function () {
+    const sdk = instance();
+    const context: Context = { plan: "free" };
+    const tree = () => (
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={context}>
+          <Readers />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree());
+    expect(text()).toBe("false,false,false,false,control,help,Buy");
+    context.plan = "paid";
+    view.rerender(tree());
+    expect(text()).toBe("true,true,true,true,treatment,help,Buy");
+  });
+
+  test("does not render components below that read no feature or variable", function () {
+    const sdk = instance();
+    let plainRenders = 0;
+    const Plain = React.memo(function Plain() {
+      plainRenders += 1;
+      return <span>plain</span>;
+    });
+    const tree = (plan: string) => (
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={{ plan }}>
+          <Plain />
+          <Readers />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree("free"));
+    const settled = plainRenders;
+    view.rerender(tree("paid"));
+    expect(text()).toBe("true,true,true,true,treatment,help,Buy");
+    expect(plainRenders).toBe(settled);
+  });
+
+  test("treats an inline context with equal nested objects and arrays as unchanged", function () {
+    const sdk = instance();
+    let renders = 0;
+    const Reader = React.memo(function Reader() {
+      renders += 1;
+      useFlag("wishlist");
+      return null;
+    });
+    const tree = (seats: number, label: string) => (
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope
+          context={{ plan: "paid", account: { seats, tags: ["a", "b"] }, since: new Date(0) }}
+        >
+          <Reader />
+          <span>{label}</span>
+        </FeaturevisorScope>
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree(10, "a"));
+    const settled = renders;
+    view.rerender(tree(10, "b"));
+    view.rerender(tree(10, "c"));
+    expect(renders).toBe(settled);
+
+    view.rerender(tree(60, "d"));
+    expect(renders).toBe(settled + 1);
+  });
+});
+
+test("react: FeaturevisorScope renders again when a nested array or date changes", function () {
+  const sdk = instance();
+  const isEnabled = jest.spyOn(sdk, "isEnabled");
+  const tree = (tags: string[], since: number) => (
+    <FeaturevisorProvider instance={sdk}>
+      <FeaturevisorScope context={{ account: { tags }, since: new Date(since) }}>
+        <Readers />
+      </FeaturevisorScope>
+    </FeaturevisorProvider>
+  );
+  const lastContext = () => isEnabled.mock.calls[isEnabled.mock.calls.length - 1][1] as Context;
+
+  const view = render(tree(["a"], 0));
+  view.rerender(tree(["a", "b"], 0));
+  expect(lastContext().account).toEqual({ tags: ["a", "b"] });
+
+  view.rerender(tree(["a", "b"], 1000));
+  expect((lastContext().since as Date).getTime()).toBe(1000);
+});

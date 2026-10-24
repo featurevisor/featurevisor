@@ -9,23 +9,52 @@ export interface FeaturevisorScopeProps {
   children: React.ReactNode;
 }
 
-function sameContext(first: Context, second: Context): boolean {
-  const keys = Object.keys(first);
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return false;
+  const prototype = Object.getPrototypeOf(value);
 
-  return (
-    keys.length === Object.keys(second).length &&
-    keys.every(
-      (key) =>
-        Object.prototype.hasOwnProperty.call(second, key) && Object.is(first[key], second[key]),
-    )
-  );
+  return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * Compares context values by what they hold. Attribute values are strings,
+ * numbers, booleans, dates, arrays and plain objects, so an inline context with
+ * nested objects is equal to the one before it when its values are.
+ */
+function sameValue(first: unknown, second: unknown): boolean {
+  if (Object.is(first, second)) return true;
+
+  if (first instanceof Date && second instanceof Date) {
+    return first.getTime() === second.getTime();
+  }
+
+  if (Array.isArray(first) && Array.isArray(second)) {
+    return (
+      first.length === second.length && first.every((item, index) => sameValue(item, second[index]))
+    );
+  }
+
+  if (isPlainObject(first) && isPlainObject(second)) {
+    const keys = Object.keys(first);
+
+    return (
+      keys.length === Object.keys(second).length &&
+      keys.every(
+        (key) =>
+          Object.prototype.hasOwnProperty.call(second, key) && sameValue(first[key], second[key]),
+      )
+    );
+  }
+
+  return false;
 }
 
 /**
  * Adds context for every hook below it. It is merged over the instance context
  * and any enclosing scope, and each hook's own context argument is merged over
- * it. A context with the same keys and values, such as an inline object, keeps
- * the value already provided, so nothing below renders again.
+ * it. A context with the same values, such as an inline object, including
+ * nested objects, arrays and dates, keeps the value already provided, so
+ * nothing below renders again.
  */
 export function FeaturevisorScope(props: FeaturevisorScopeProps) {
   const outer = React.useContext(ScopeContext);
@@ -34,7 +63,7 @@ export function FeaturevisorScope(props: FeaturevisorScopeProps) {
   // Equal values keep the previous object. Replacing it with an equal one in a
   // render React discards would change nothing anyone reads.
   const provided = React.useRef(merged);
-  if (!sameContext(provided.current, merged)) {
+  if (!sameValue(provided.current, merged)) {
     provided.current = merged;
   }
 
