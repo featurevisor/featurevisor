@@ -535,6 +535,77 @@ describe("vue: the FeaturevisorScope docs examples", () => {
     await nextTick();
     expect(cards()).toEqual(["1 size:false reviews:true", "2 size:false reviews:false"]);
   });
+
+  const ProductReviews = defineComponent({
+    setup() {
+      const productReviews = useFlag("productReviews");
+      return () => h("p", String(productReviews.value));
+    },
+  });
+
+  it("merge the instance, the page's category and the card's product into one context", () => {
+    const evaluated: Record<string, Context> = {};
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: docsDatafile,
+      context: { userId: "user-4", country: "nl" },
+      modules: [
+        {
+          afterEvaluation(evaluation, options) {
+            evaluated[evaluation.featureKey as string] = options.context;
+            return evaluation;
+          },
+        },
+      ],
+    });
+    const ProductCard = defineComponent({
+      setup() {
+        const sizeGuide = useFlag("sizeGuide");
+        const productReviews = useFlag("productReviews");
+        return () => h("li", `${sizeGuide.value} ${productReviews.value}`);
+      },
+    });
+
+    mountIn(sdk, () =>
+      h(FeaturevisorScope, { context: { category: "shoes" } }, () =>
+        h(FeaturevisorScope, { context: { productId: "1" } }, () => h(ProductCard)),
+      ),
+    );
+
+    const merged = { userId: "user-4", country: "nl", category: "shoes", productId: "1" };
+    expect(evaluated.sizeGuide).toEqual(merged);
+    expect(evaluated.productReviews).toEqual(merged);
+    expect(sdk.getContext()).toEqual({ userId: "user-4", country: "nl" });
+  });
+
+  it("let a related product's scope replace the page's product inside it only", () => {
+    const wrapper = mountIn(docsInstance(), () =>
+      h(FeaturevisorScope, { context: { productId: "1" } }, () => [
+        h("div", { class: "page" }, h(ProductReviews)),
+        h(FeaturevisorScope, { context: { productId: "2" } }, () =>
+          h("div", { class: "related" }, h(ProductReviews)),
+        ),
+      ]),
+    );
+
+    expect(wrapper.find(".page").text()).toBe("true");
+    expect(wrapper.find(".related").text()).toBe("false");
+  });
+
+  it("keep a scope's keys over setContext, and sticky values over the merged context", async () => {
+    const sdk = docsInstance();
+    const wrapper = mountIn(sdk, () =>
+      h(FeaturevisorScope, { context: { productId: "1" } }, () => h(ProductReviews)),
+    );
+
+    sdk.setContext({ productId: "2" });
+    await nextTick();
+    expect(wrapper.text()).toBe("true");
+
+    sdk.setStickyFeatures({ productReviews: { enabled: false } });
+    await nextTick();
+    expect(wrapper.text()).toBe("false");
+  });
 });
 
 describe("vue: FeaturevisorScope when its context changes", () => {

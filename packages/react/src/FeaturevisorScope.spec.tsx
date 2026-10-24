@@ -721,6 +721,86 @@ describe("react: the FeaturevisorScope docs examples", function () {
     view.rerender(tree("electronics"));
     expect(cards()).toEqual(["1 size:false reviews:true", "2 size:false reviews:false"]);
   });
+
+  test("merge the instance, the page's category and the card's product into one context", function () {
+    const evaluated: Record<string, Context> = {};
+    const sdk = createFeaturevisor({
+      logLevel: "fatal",
+      datafile: docsDatafile,
+      context: { userId: "user-4", country: "nl" },
+      modules: [
+        {
+          afterEvaluation(evaluation, options) {
+            evaluated[evaluation.featureKey as string] = options.context;
+            return evaluation;
+          },
+        },
+      ],
+    });
+    let inspected: Context = {};
+    function Inspector() {
+      inspected = useFeaturevisor().getContext();
+      return null;
+    }
+
+    render(
+      <FeaturevisorProvider instance={sdk}>
+        <CategoryPage category="shoes" productIds={["1"]} />
+        <FeaturevisorScope context={{ category: "shoes" }}>
+          <FeaturevisorScope context={{ productId: "1" }}>
+            <Inspector />
+          </FeaturevisorScope>
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+
+    const merged = { userId: "user-4", country: "nl", category: "shoes", productId: "1" };
+    expect(evaluated.sizeGuide).toEqual(merged);
+    expect(evaluated.productReviews).toEqual(merged);
+    expect(inspected).toEqual(merged);
+    expect(sdk.getContext()).toEqual({ userId: "user-4", country: "nl" });
+  });
+
+  test("let a related product's scope replace the page's product inside it only", function () {
+    const sdk = docsInstance();
+    function RelatedReviews() {
+      return <p data-testid="related">{String(useFlag("productReviews"))}</p>;
+    }
+    function RelatedProducts() {
+      return (
+        <FeaturevisorScope context={{ productId: "2" }}>
+          <RelatedReviews />
+        </FeaturevisorScope>
+      );
+    }
+
+    render(
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={{ productId: "1" }}>
+          <ProductReviews />
+          <RelatedProducts />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByTestId("reviews")).toHaveTextContent("true");
+    expect(screen.getByTestId("related")).toHaveTextContent("false");
+  });
+
+  test("keep a scope's keys over setContext, and sticky values over the merged context", function () {
+    const sdk = docsInstance();
+    render(
+      <FeaturevisorProvider instance={sdk}>
+        <ProductPage productId="1" />
+      </FeaturevisorProvider>,
+    );
+
+    act(() => sdk.setContext({ productId: "2" }));
+    expect(screen.getByTestId("reviews")).toHaveTextContent("true");
+
+    act(() => sdk.setStickyFeatures({ productReviews: { enabled: false } }));
+    expect(screen.getByTestId("reviews")).toHaveTextContent("false");
+  });
 });
 
 describe("react: FeaturevisorScope when its context changes", function () {
