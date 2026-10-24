@@ -83,17 +83,24 @@ Every composable that reads a feature or variable takes an optional context as i
 Context for part of the tree comes from a scope, as a component or a function in `setup`:
 
 ```html
-<FeaturevisorScope :context="{ plan: account.plan }">
-  <AccountRow :account="account" />
+<!-- a category page sets the category, and each card adds its product -->
+<FeaturevisorScope :context="{ category: category.key }">
+  <FeaturevisorScope
+    v-for="product in products"
+    :key="product.id"
+    :context="{ productId: product.id }"
+  >
+    <ProductCard :product="product" />
+  </FeaturevisorScope>
 </FeaturevisorScope>
 ```
 
 ```js
-// in setup: applies to descendants, not to this component's own composables
-provideFeaturevisorScope(() => ({ plan: props.plan }))
+// a product page's setup adds the product, for descendants only, not its own composables
+provideFeaturevisorScope(() => ({ productId: props.product.id }))
 ```
 
-Each read merges, lowest first: the instance context, each enclosing scope from the outermost, and the composable's own context argument. The merge is shallow and scopes nest, whether made by the component or the function: an inner scope keeps the keys it sets when the outer one changes them and follows it for the rest, and sibling scopes stay apart. The `context` prop, refs and getters are followed. Instance context changes and sticky values still apply inside a scope. As in React, keep `userId` out of a scope unless that part is about another user, and expect tracking modules to see previews of other plans. `FeaturevisorScope` and `provideFeaturevisorScope` need a `@featurevisor/vue` release that exports them.
+Each read merges, lowest first: the instance context, each enclosing scope from the outermost, and the composable's own context argument. The merge is shallow and scopes nest, whether made by the component or the function: an inner scope keeps the keys it sets when the outer one changes them and follows it for the rest, and sibling scopes stay apart. The `context` prop, refs and getters are followed. Instance context changes and sticky values still apply inside a scope. Use scopes as in React, for what a part of the page knows, such as the product or category it shows. Keep `userId` out of a scope unless that part is about another user, and expect tracking modules to see the merged context. `FeaturevisorScope` and `provideFeaturevisorScope` need a `@featurevisor/vue` release that exports them.
 
 `useVariation` and `useVariable` hold `null` when there is no value. `useSdk` throws when `setupApp` has not run: that error means missing wiring, not a missing feature.
 

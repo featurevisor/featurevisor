@@ -88,20 +88,34 @@ There is no hook for a snapshot of several features. For a debugging panel, call
 ```jsx
 import { FeaturevisorScope } from '@featurevisor/react'
 
-function Accounts({ accounts }) {
-  return accounts.map((account) => (
-    <FeaturevisorScope key={account.id} context={{ plan: account.plan }}>
-      <AccountRow account={account} />
+// A product page adds the product it shows.
+function ProductPage({ product }) {
+  return (
+    <FeaturevisorScope context={{ productId: product.id }}>
+      <ProductReviews />
     </FeaturevisorScope>
-  ))
+  )
+}
+
+// A category page sets the category once, and each card adds its product.
+function CategoryPage({ category, products }) {
+  return (
+    <FeaturevisorScope context={{ category: category.key }}>
+      {products.map((product) => (
+        <FeaturevisorScope key={product.id} context={{ productId: product.id }}>
+          <ProductCard product={product} />
+        </FeaturevisorScope>
+      ))}
+    </FeaturevisorScope>
+  )
 }
 ```
 
 - Every evaluating hook below a `FeaturevisorScope` reads its context. Each read merges, lowest first: the instance context, each enclosing scope from the outermost, and the hook's own context argument. The merge is shallow, and scopes nest: an inner scope keeps the keys it sets when the outer one changes them and follows it for the rest, and sibling scopes stay apart.
 - `useFeaturevisor` reads (`isEnabled`, `getVariation`, every `getVariable` form, `getContext`) include the scope. Its `setContext` and sticky setters still change the instance. `useSdk` and `useRevision` are unchanged, and a nested `FeaturevisorProvider` starts without the scope.
 - Instance context changes and sticky values still apply inside a scope. An equal inline `context` prop renders nothing below again.
-- Reach for it for admin rows per account, "preview as" panels, plan comparisons and stories pinned to a plan, instead of threading context through props.
-- Keep `userId` out of a scope unless that part is about another user, because it changes bucketing. Tracking modules see the merged context, so previews of other plans count as exposures unless the module skips them.
+- Reach for it when part of the page knows something the instance context does not: which product, category or other item it shows, so feature conditions can target it, which microfrontend it is when several share one instance, or, in a support tool, which customer it is about. On a client one person sees the whole page, so do not use scopes to preview that person on other plans.
+- Keep `userId` out of a scope unless that part is about another user, because it changes bucketing. Tracking modules see the merged context, so they can tell which product an exposure came from.
 
 ### When components render again
 
