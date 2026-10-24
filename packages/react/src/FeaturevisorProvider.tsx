@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import type { Featurevisor } from "@featurevisor/sdk";
 

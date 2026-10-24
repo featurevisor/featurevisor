@@ -1,3 +1,7 @@
+// A server component, such as a Next.js page, can render it around client
+// components, passing a context made of plain values.
+"use client";
+
 import * as React from "react";
 import type { Context } from "@featurevisor/types";
 
