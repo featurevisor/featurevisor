@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.2.0](https://github.com/featurevisor/featurevisor/compare/v4.1.0...v4.2.0) (2026-10-24)
+
+### Features
+
+* Scopes in React and Vue SDKs ([#436](https://github.com/featurevisor/featurevisor/issues/436)) ([0b9bca2](https://github.com/featurevisor/featurevisor/commit/0b9bca20686d295ed3c1f4b82b1f7077dd26ab5a))
+
+
 ## [4.1.0](https://github.com/featurevisor/featurevisor/compare/v4.0.1...v4.1.0) (2026-10-23)
 
 ### Features
