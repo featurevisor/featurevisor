@@ -616,3 +616,109 @@ describe("react: nested FeaturevisorScope", function () {
     expect(text()).toBe("false,false,false,false,treatment,help-nl,Buy");
   });
 });
+
+describe("react: the FeaturevisorScope docs examples", function () {
+  // Both bucket by user. productReviews is on for product 1 only, and sizeGuide
+  // for the clothing and shoes categories, so each reads what its scope adds.
+  const docsDatafile = {
+    schemaVersion: "4",
+    revision: "docs",
+    segments: {},
+    features: {
+      productReviews: {
+        hash: "productReviews",
+        bucketBy: "userId",
+        traffic: [
+          {
+            key: "pilot",
+            conditions: [{ attribute: "productId", operator: "in", value: ["1"] }],
+            percentage: 100000,
+          },
+          { key: "everyone", conditions: "*", percentage: 0 },
+        ],
+      },
+      sizeGuide: {
+        hash: "sizeGuide",
+        bucketBy: "userId",
+        traffic: [
+          {
+            key: "apparel",
+            conditions: [{ attribute: "category", operator: "in", value: ["clothing", "shoes"] }],
+            percentage: 100000,
+          },
+          { key: "everyone", conditions: "*", percentage: 0 },
+        ],
+      },
+    },
+  } as unknown as DatafileContent;
+
+  function ProductReviews() {
+    return <p data-testid="reviews">{String(useFlag("productReviews"))}</p>;
+  }
+
+  function ProductPage({ productId }: { productId: string }) {
+    return (
+      <FeaturevisorScope context={{ productId }}>
+        <ProductReviews />
+      </FeaturevisorScope>
+    );
+  }
+
+  function ProductCard({ productId }: { productId: string }) {
+    const sizeGuide = useFlag("sizeGuide");
+    const productReviews = useFlag("productReviews");
+    return <li>{`${productId} size:${sizeGuide} reviews:${productReviews}`}</li>;
+  }
+
+  function CategoryPage({ category, productIds }: { category: string; productIds: string[] }) {
+    return (
+      <FeaturevisorScope context={{ category }}>
+        <ul data-testid="cards">
+          {productIds.map((productId) => (
+            <FeaturevisorScope key={productId} context={{ productId }}>
+              <ProductCard productId={productId} />
+            </FeaturevisorScope>
+          ))}
+        </ul>
+      </FeaturevisorScope>
+    );
+  }
+
+  function docsInstance() {
+    return createFeaturevisor({
+      logLevel: "fatal",
+      datafile: docsDatafile,
+      context: { userId: "user-1" },
+    });
+  }
+
+  test("give a product page's hooks its product", function () {
+    const sdk = docsInstance();
+    const tree = (productId: string) => (
+      <FeaturevisorProvider instance={sdk}>
+        <ProductPage productId={productId} />
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree("1"));
+    expect(screen.getByTestId("reviews")).toHaveTextContent("true");
+    view.rerender(tree("2"));
+    expect(screen.getByTestId("reviews")).toHaveTextContent("false");
+  });
+
+  test("let each card on a category page add its product to the page's category", function () {
+    const sdk = docsInstance();
+    const tree = (category: string) => (
+      <FeaturevisorProvider instance={sdk}>
+        <CategoryPage category={category} productIds={["1", "2"]} />
+      </FeaturevisorProvider>
+    );
+    const cards = () =>
+      [...screen.getByTestId("cards").querySelectorAll("li")].map((card) => card.textContent);
+
+    const view = render(tree("shoes"));
+    expect(cards()).toEqual(["1 size:true reviews:true", "2 size:true reviews:false"]);
+    view.rerender(tree("electronics"));
+    expect(cards()).toEqual(["1 size:false reviews:true", "2 size:false reviews:false"]);
+  });
+});

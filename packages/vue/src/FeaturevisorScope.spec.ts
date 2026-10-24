@@ -428,3 +428,102 @@ describe("vue: nested FeaturevisorScope", () => {
     expect(text()).toBe("false,false,false,false,control,help-nl,Buy");
   });
 });
+
+describe("vue: the FeaturevisorScope docs examples", () => {
+  // Both bucket by user. productReviews is on for product 1 only, and sizeGuide
+  // for the clothing and shoes categories, so each reads what its scope adds.
+  const docsDatafile = {
+    schemaVersion: "4",
+    revision: "docs",
+    segments: {},
+    features: {
+      productReviews: {
+        hash: "productReviews",
+        bucketBy: "userId",
+        traffic: [
+          {
+            key: "pilot",
+            conditions: [{ attribute: "productId", operator: "in", value: ["1"] }],
+            percentage: 100000,
+          },
+          { key: "everyone", conditions: "*", percentage: 0 },
+        ],
+      },
+      sizeGuide: {
+        hash: "sizeGuide",
+        bucketBy: "userId",
+        traffic: [
+          {
+            key: "apparel",
+            conditions: [{ attribute: "category", operator: "in", value: ["clothing", "shoes"] }],
+            percentage: 100000,
+          },
+          { key: "everyone", conditions: "*", percentage: 0 },
+        ],
+      },
+    },
+  } as unknown as DatafileContent;
+
+  function docsInstance(): Featurevisor {
+    return createFeaturevisor({
+      logLevel: "fatal",
+      datafile: docsDatafile,
+      context: { userId: "user-1" },
+    });
+  }
+
+  it("give a product page's hooks its product", async () => {
+    const productId = ref("1");
+    const ProductReviews = defineComponent({
+      setup() {
+        const productReviews = useFlag("productReviews");
+        return () => h("p", String(productReviews.value));
+      },
+    });
+    const ProductPage = defineComponent({
+      setup() {
+        provideFeaturevisorScope(() => ({ productId: productId.value }));
+        return () => h(ProductReviews);
+      },
+    });
+
+    const wrapper = mountIn(docsInstance(), () => h(ProductPage));
+    expect(wrapper.text()).toBe("true");
+
+    productId.value = "2";
+    await nextTick();
+    expect(wrapper.text()).toBe("false");
+  });
+
+  it("let each card on a category page add its product to the page's category", async () => {
+    const category = ref("shoes");
+    const ProductCard = defineComponent({
+      props: { productId: { type: String, required: true } },
+      setup(props) {
+        const sizeGuide = useFlag("sizeGuide");
+        const productReviews = useFlag("productReviews");
+        return () =>
+          h("li", `${props.productId} size:${sizeGuide.value} reviews:${productReviews.value}`);
+      },
+    });
+
+    const wrapper = mountIn(docsInstance(), () =>
+      h(FeaturevisorScope, { context: { category: category.value } }, () =>
+        h(
+          "ul",
+          ["1", "2"].map((productId) =>
+            h(FeaturevisorScope, { key: productId, context: { productId } }, () =>
+              h(ProductCard, { productId }),
+            ),
+          ),
+        ),
+      ),
+    );
+    const cards = () => wrapper.findAll("li").map((card) => card.text());
+    expect(cards()).toEqual(["1 size:true reviews:true", "2 size:true reviews:false"]);
+
+    category.value = "electronics";
+    await nextTick();
+    expect(cards()).toEqual(["1 size:false reviews:true", "2 size:false reviews:false"]);
+  });
+});
