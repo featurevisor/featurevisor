@@ -278,3 +278,153 @@ describe("vue: FeaturevisorScope", () => {
     );
   });
 });
+
+/** The context the last flag read below used, as the SDK received it. */
+function lastContext(isEnabled: jest.SpyInstance) {
+  return isEnabled.mock.calls[isEnabled.mock.calls.length - 1][1];
+}
+
+const Probe = defineComponent({
+  props: { context: { type: Object, default: undefined } },
+  setup(props) {
+    const flag = useFlag("wishlist", props.context as Context | undefined);
+    return () => h("span", String(flag.value));
+  },
+});
+
+describe("vue: nested FeaturevisorScope", () => {
+  it("merges three levels, each over the one around it, under the composable's own argument", () => {
+    const sdk = instance({ userId: "user-1", country: "de", plan: "free", region: "eu" });
+    const isEnabled = jest.spyOn(sdk, "isEnabled");
+    const Middle = defineComponent({
+      setup() {
+        provideFeaturevisorScope({ plan: "paid", locale: "en" });
+        return () =>
+          h(FeaturevisorScope, { context: { locale: "nl-NL", team: "inner" } }, () =>
+            h(Probe, { context: { team: "argument" } }),
+          );
+      },
+    });
+
+    mountIn(sdk, () =>
+      h(FeaturevisorScope, { context: { country: "nl", plan: "enterprise", team: "outer" } }, () =>
+        h(Middle),
+      ),
+    );
+    expect(lastContext(isEnabled)).toEqual({
+      country: "nl",
+      plan: "paid",
+      locale: "nl-NL",
+      team: "argument",
+    });
+  });
+
+  it("keeps sibling scopes apart while both inherit the outer one", () => {
+    const sdk = instance();
+    const wrapper = mountIn(sdk, () =>
+      h(FeaturevisorScope, { context: { country: "nl" } }, () => [
+        h("div", { class: "paid" }, [
+          h(FeaturevisorScope, { context: { plan: "paid" } }, () => h(Readers)),
+        ]),
+        h("div", { class: "free" }, [
+          h(FeaturevisorScope, { context: { plan: "free" } }, () => h(Readers)),
+        ]),
+      ]),
+    );
+
+    expect(wrapper.find(".paid").text()).toBe("true,true,true,true,treatment,help-nl,Buy");
+    expect(wrapper.find(".free").text()).toBe("false,false,false,false,control,help-nl,Buy");
+  });
+
+  it("keeps the keys an inner scope sets when the outer one changes them, and follows the rest", async () => {
+    const sdk = instance();
+    const outer = ref<Context>({ plan: "free", country: "de" });
+    const wrapper = mountIn(sdk, () =>
+      h(FeaturevisorScope, { context: outer.value }, () =>
+        h(FeaturevisorScope, { context: { plan: "paid" } }, () => h(Readers)),
+      ),
+    );
+    const text = () => wrapper.find(".readers").text();
+    expect(text()).toBe("true,true,true,true,treatment,help,Buy");
+
+    outer.value = { plan: "enterprise", country: "de" };
+    await nextTick();
+    expect(text()).toBe("true,true,true,true,treatment,help,Buy");
+
+    outer.value = { plan: "enterprise", country: "nl" };
+    await nextTick();
+    expect(text()).toBe("true,true,true,true,treatment,help-nl,Buy");
+  });
+
+  it("leaves the outer scope's own readers alone when an inner scope changes", async () => {
+    const sdk = instance();
+    const innerPlan = ref("free");
+    let outerRenders = 0;
+    const OuterReader = defineComponent({
+      setup() {
+        const flag = useFlag("wishlist");
+        return () => {
+          outerRenders += 1;
+          return h("span", { class: "outer" }, String(flag.value));
+        };
+      },
+    });
+    const wrapper = mountIn(sdk, () =>
+      h(FeaturevisorScope, { context: { plan: "free" } }, () => [
+        h(OuterReader),
+        h(FeaturevisorScope, { context: { plan: innerPlan.value } }, () => h(Readers)),
+      ]),
+    );
+    const settled = outerRenders;
+
+    innerPlan.value = "paid";
+    await nextTick();
+    expect(wrapper.find(".readers").text()).toBe("true,true,true,true,treatment,help,Buy");
+    expect(wrapper.find(".outer").text()).toBe("false");
+    expect(outerRenders).toBe(settled);
+  });
+
+  it("merges shallowly, so an inner object replaces the outer one", () => {
+    const sdk = instance();
+    const isEnabled = jest.spyOn(sdk, "isEnabled");
+    mountIn(sdk, () =>
+      h(FeaturevisorScope, { context: { account: { locale: "de", seats: 10 } } }, () =>
+        h(FeaturevisorScope, { context: { account: { seats: 60 } } }, () => h(Probe)),
+      ),
+    );
+    expect(lastContext(isEnabled)).toEqual({ account: { seats: 60 } });
+  });
+
+  it("passes the outer scope through an empty inner one", () => {
+    const sdk = instance();
+    const isEnabled = jest.spyOn(sdk, "isEnabled");
+    mountIn(sdk, () =>
+      h(FeaturevisorScope, { context: { plan: "paid", country: "nl" } }, () =>
+        h(FeaturevisorScope, { context: {} }, () => h(Probe)),
+      ),
+    );
+    expect(lastContext(isEnabled)).toEqual({ plan: "paid", country: "nl" });
+  });
+
+  it("switches values as an inner scope mounts and unmounts", async () => {
+    const sdk = instance();
+    const withInner = ref(false);
+    const wrapper = mountIn(sdk, () =>
+      h(FeaturevisorScope, { context: { country: "nl" } }, () =>
+        withInner.value
+          ? h(FeaturevisorScope, { context: { plan: "paid" } }, () => h(Readers))
+          : h(Readers),
+      ),
+    );
+    const text = () => wrapper.find(".readers").text();
+    expect(text()).toBe("false,false,false,false,control,help-nl,Buy");
+
+    withInner.value = true;
+    await nextTick();
+    expect(text()).toBe("true,true,true,true,treatment,help-nl,Buy");
+
+    withInner.value = false;
+    await nextTick();
+    expect(text()).toBe("false,false,false,false,control,help-nl,Buy");
+  });
+});

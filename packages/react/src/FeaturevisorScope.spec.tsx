@@ -386,3 +386,233 @@ describe("react: FeaturevisorScope", function () {
     expect(text()).toBe("true,true,true,true,treatment,help-nl,Buy");
   });
 });
+
+/** Records the context every read below it would use, through useFeaturevisor. */
+function ContextProbe({ name, seen }: { name: string; seen: Record<string, Context> }) {
+  seen[name] = useFeaturevisor().getContext();
+  return null;
+}
+
+describe("react: nested FeaturevisorScope", function () {
+  test("merges three levels, each over the one around it, under the hook's own argument", function () {
+    const sdk = instance({ userId: "user-1", country: "de", plan: "free", region: "eu" });
+    const isEnabled = jest.spyOn(sdk, "isEnabled");
+    const seen: Record<string, Context> = {};
+    function Reader() {
+      useFlag("wishlist", { team: "argument" });
+      return <ContextProbe name="inner" seen={seen} />;
+    }
+
+    render(
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={{ country: "nl", plan: "enterprise", team: "outer" }}>
+          <FeaturevisorScope context={{ plan: "paid", locale: "en" }}>
+            <FeaturevisorScope context={{ locale: "nl-NL", team: "inner" }}>
+              <Reader />
+            </FeaturevisorScope>
+          </FeaturevisorScope>
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+
+    // The hook argument wins over every scope, and the instance supplies the rest.
+    expect(isEnabled).toHaveBeenLastCalledWith("wishlist", {
+      country: "nl",
+      plan: "paid",
+      locale: "nl-NL",
+      team: "argument",
+    });
+    expect(seen.inner).toEqual({
+      userId: "user-1",
+      country: "nl",
+      plan: "paid",
+      region: "eu",
+      locale: "nl-NL",
+      team: "inner",
+    });
+  });
+
+  test("keeps sibling scopes apart while both inherit the outer one", function () {
+    const sdk = instance();
+    render(
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={{ country: "nl" }}>
+          <div data-testid="paid">
+            <FeaturevisorScope context={{ plan: "paid" }}>
+              <Readers />
+            </FeaturevisorScope>
+          </div>
+          <div data-testid="free">
+            <FeaturevisorScope context={{ plan: "free" }}>
+              <Readers />
+            </FeaturevisorScope>
+          </div>
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+
+    expect(screen.getByTestId("paid")).toHaveTextContent(
+      "true,true,true,true,treatment,help-nl,Buy",
+    );
+    expect(screen.getByTestId("free")).toHaveTextContent(
+      "false,false,false,false,control,help-nl,Buy",
+    );
+  });
+
+  test("keeps the keys an inner scope sets when the outer one changes them, and follows the rest", function () {
+    const sdk = instance();
+    let renders = 0;
+    const Reader = React.memo(function Reader() {
+      renders += 1;
+      return <Readers />;
+    });
+    const tree = (outer: Context) => (
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={outer}>
+          <FeaturevisorScope context={{ plan: "paid" }}>
+            <Reader />
+          </FeaturevisorScope>
+        </FeaturevisorScope>
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree({ plan: "free", country: "de" }));
+    expect(text()).toBe("true,true,true,true,treatment,help,Buy");
+    const settled = renders;
+
+    // The inner scope sets plan, so the merged value is the same and nothing renders again.
+    view.rerender(tree({ plan: "enterprise", country: "de" }));
+    expect(renders).toBe(settled);
+    expect(text()).toBe("true,true,true,true,treatment,help,Buy");
+
+    // It does not set country, so that change reaches the hooks below.
+    view.rerender(tree({ plan: "enterprise", country: "nl" }));
+    expect(text()).toBe("true,true,true,true,treatment,help-nl,Buy");
+  });
+
+  test("leaves the outer scope's own readers alone when an inner scope changes", function () {
+    const sdk = instance();
+    let outerRenders = 0;
+    const OuterReader = React.memo(function OuterReader() {
+      outerRenders += 1;
+      return <p data-testid="outer">{String(useFlag("wishlist"))}</p>;
+    });
+    const tree = (innerPlan: string) => (
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={{ plan: "free" }}>
+          <OuterReader />
+          <FeaturevisorScope context={{ plan: innerPlan }}>
+            <Readers />
+          </FeaturevisorScope>
+        </FeaturevisorScope>
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree("free"));
+    const settled = outerRenders;
+    view.rerender(tree("paid"));
+
+    expect(text()).toBe("true,true,true,true,treatment,help,Buy");
+    expect(screen.getByTestId("outer")).toHaveTextContent("false");
+    expect(outerRenders).toBe(settled);
+  });
+
+  test("merges shallowly, so an inner object replaces the outer one", function () {
+    const sdk = instance();
+    const seen: Record<string, Context> = {};
+    render(
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={{ account: { locale: "de", seats: 10 } }}>
+          <FeaturevisorScope context={{ account: { seats: 60 } }}>
+            <ContextProbe name="inner" seen={seen} />
+          </FeaturevisorScope>
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+    expect(seen.inner.account).toEqual({ seats: 60 });
+  });
+
+  test("passes the outer scope through an empty inner one", function () {
+    const sdk = instance();
+    const seen: Record<string, Context> = {};
+    render(
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={{ plan: "paid" }}>
+          <ContextProbe name="outer" seen={seen} />
+          <FeaturevisorScope context={{}}>
+            <ContextProbe name="inner" seen={seen} />
+          </FeaturevisorScope>
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+    expect(seen.inner).toEqual(seen.outer);
+  });
+
+  test("switches values as an inner scope mounts and unmounts", function () {
+    const sdk = instance();
+    const tree = (withInner: boolean) => (
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={{ country: "nl" }}>
+          {withInner ? (
+            <FeaturevisorScope context={{ plan: "paid" }}>
+              <Readers />
+            </FeaturevisorScope>
+          ) : (
+            <Readers />
+          )}
+        </FeaturevisorScope>
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree(false));
+    expect(text()).toBe("false,false,false,false,control,help-nl,Buy");
+    view.rerender(tree(true));
+    expect(text()).toBe("true,true,true,true,treatment,help-nl,Buy");
+    view.rerender(tree(false));
+    expect(text()).toBe("false,false,false,false,control,help-nl,Buy");
+  });
+
+  test("starts again inside a FeaturevisorProvider, where scopes nest from there", function () {
+    const outer = instance();
+    const inner = instance({ userId: "user-2" });
+    const seen: Record<string, Context> = {};
+    render(
+      <FeaturevisorProvider instance={outer}>
+        <FeaturevisorScope context={{ plan: "paid" }}>
+          <FeaturevisorProvider instance={inner}>
+            <FeaturevisorScope context={{ country: "nl" }}>
+              <FeaturevisorScope context={{ locale: "nl-NL" }}>
+                <ContextProbe name="inner" seen={seen} />
+              </FeaturevisorScope>
+            </FeaturevisorScope>
+          </FeaturevisorProvider>
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+    expect(seen.inner).toEqual({ userId: "user-2", country: "nl", locale: "nl-NL" });
+  });
+
+  test("follows instance changes and every level's changes in StrictMode", function () {
+    const sdk = instance();
+    const tree = (country: string, plan: string) => (
+      <React.StrictMode>
+        <FeaturevisorProvider instance={sdk}>
+          <FeaturevisorScope context={{ country }}>
+            <FeaturevisorScope context={{ plan }}>
+              <Readers />
+            </FeaturevisorScope>
+          </FeaturevisorScope>
+        </FeaturevisorProvider>
+      </React.StrictMode>
+    );
+
+    const view = render(tree("de", "free"));
+    expect(text()).toBe("false,false,false,false,control,help,Buy");
+    view.rerender(tree("nl", "free"));
+    expect(text()).toBe("false,false,false,false,control,help-nl,Buy");
+    view.rerender(tree("nl", "paid"));
+    expect(text()).toBe("true,true,true,true,treatment,help-nl,Buy");
+    act(() => sdk.setStickyFeatures({ wishlist: { enabled: false } }));
+    expect(text()).toBe("false,false,false,false,treatment,help-nl,Buy");
+  });
+});
