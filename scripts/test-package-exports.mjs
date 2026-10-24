@@ -84,13 +84,21 @@ function declarationFiles(directory) {
   });
 }
 
-function assertDeclarationsParseInTypeScript4(directory) {
+// React.JSX is missing from older @types/react releases, such as 18.0, which the
+// React package's peer range still covers, so its components declare ReactElement.
+const REACT_JSX_NAMESPACE = /\bJSX\./;
+
+function assertDeclarations(directory) {
   for (const output of ["cjs", "esm", "node-esm", "lib", "dist"]) {
     const outputDirectory = join(rootDirectory, "packages", directory, output);
     if (!existsSync(outputDirectory)) continue;
     for (const file of declarationFiles(outputDirectory)) {
-      if (TYPESCRIPT_5_TYPE_PARAMETER.test(readFileSync(file, "utf8"))) {
+      const declarations = readFileSync(file, "utf8");
+      if (TYPESCRIPT_5_TYPE_PARAMETER.test(declarations)) {
         throw new Error(`${file} has a const type parameter, which TypeScript 4 cannot parse`);
+      }
+      if (directory === "react" && REACT_JSX_NAMESPACE.test(declarations)) {
+        throw new Error(`${file} names the JSX namespace, which older @types/react releases lack`);
       }
     }
   }
@@ -98,7 +106,7 @@ function assertDeclarationsParseInTypeScript4(directory) {
 
 async function main() {
   for (const directory of ["types", "sdk", "react", "vue"]) {
-    assertDeclarationsParseInTypeScript4(directory);
+    assertDeclarations(directory);
   }
   for (const entry of readdirSync(join(rootDirectory, "packages"), { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;

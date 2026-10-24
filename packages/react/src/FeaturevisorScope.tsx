@@ -55,8 +55,11 @@ function sameValue(first: unknown, second: unknown): boolean {
  * it. A context with the same values, such as an inline object, including
  * nested objects, arrays and dates, keeps the value already provided, so
  * nothing below renders again.
+ *
+ * Its return type is declared, like FeaturevisorProvider's, so the published
+ * declarations work with older @types/react releases.
  */
-export function FeaturevisorScope(props: FeaturevisorScopeProps) {
+export function FeaturevisorScope(props: FeaturevisorScopeProps): React.ReactElement {
   const outer = React.useContext(ScopeContext);
   const merged = mergeContext(outer || {}, props.context);
 

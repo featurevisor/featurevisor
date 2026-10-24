@@ -9,7 +9,9 @@ export interface FeaturevisorProviderProps {
   children: React.ReactNode;
 }
 
-export function FeaturevisorProvider(props: FeaturevisorProviderProps) {
+// A declared return type keeps React.JSX, which older @types/react releases
+// such as 18.0 lack, out of the published declarations.
+export function FeaturevisorProvider(props: FeaturevisorProviderProps): React.ReactElement {
   return (
     <FeaturevisorContext.Provider value={props.instance}>
       {/* A new instance starts outside any scope, since its attributes may differ. */}
