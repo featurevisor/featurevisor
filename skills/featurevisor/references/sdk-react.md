@@ -83,6 +83,26 @@ function Footer() {
 
 There is no hook for a snapshot of several features. For a debugging panel, call `getFeatureEvaluations(context, keys)` on `useSdk()` ([sdk-javascript.md](sdk-javascript.md)) in a component that also calls `useRevision()`, so it reads again after each new revision. It returns an object keyed by feature key, evaluates every variable of every listed feature, and reads each listed feature's variation, which an [activation module](tracking.md) counts as shown. Keep it out of what users see.
 
+### Context for part of the tree
+
+```jsx
+import { FeaturevisorScope } from '@featurevisor/react'
+
+function Accounts({ accounts }) {
+  return accounts.map((account) => (
+    <FeaturevisorScope key={account.id} context={{ plan: account.plan }}>
+      <AccountRow account={account} />
+    </FeaturevisorScope>
+  ))
+}
+```
+
+- Every evaluating hook below a `FeaturevisorScope` reads its context. Each read merges, lowest first: the instance context, each enclosing scope from the outermost, and the hook's own context argument. The merge is shallow, and scopes nest.
+- `useFeaturevisor` reads (`isEnabled`, `getVariation`, every `getVariable` form, `getContext`) include the scope. Its `setContext` and sticky setters still change the instance. `useSdk` and `useRevision` are unchanged, and a nested `FeaturevisorProvider` starts without the scope.
+- Instance context changes and sticky values still apply inside a scope. An equal inline `context` prop renders nothing below again.
+- Reach for it for admin rows per account, "preview as" panels, plan comparisons and stories pinned to a plan, instead of threading context through props.
+- Keep `userId` out of a scope unless that part is about another user, because it changes bucketing. Tracking modules see the merged context, so previews of other plans count as exposures unless the module skips them.
+
 ### When components render again
 
 A hook that reads a feature or variable renders its component again when:
@@ -115,6 +135,6 @@ Evaluating separately on server and client can disagree and cause hydration mism
 ## Guidance
 
 - Typed hooks with checked keys come from `generate-code --react` ([code-generation.md](code-generation.md)).
-- `useFlags`, `useEveryFlag`, `useSomeFlag`, `useRevision` and `onFeaturesChange` need a `@featurevisor/react` release that exports them. Check the installed package (`npm ls @featurevisor/react` and its type definitions) before using them, and otherwise call `useFlag` per key or propose upgrading.
+- `useFlags`, `useEveryFlag`, `useSomeFlag`, `useRevision`, `onFeaturesChange` and `FeaturevisorScope` need a `@featurevisor/react` release that exports them. Check the installed package (`npm ls @featurevisor/react` and its type definitions) before using them, and otherwise call `useFlag` per key or propose upgrading.
 - React Native uses the same package. Create the instance at module scope, fetch the datafile in a root `useEffect`, call `setDatafile(datafile, true)`, and render once loading settles.
 - Example app: <https://github.com/featurevisor/featurevisor-example-react>

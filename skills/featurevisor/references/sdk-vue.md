@@ -80,6 +80,21 @@ These behave like their React counterparts in [sdk-react.md](sdk-react.md#severa
 
 Every composable that reads a feature or variable takes an optional context as its last argument: an object, a ref, or a getter such as `() => ({ plan: props.plan })` to follow props. Refs evaluate when first read and again only after a change, subscribe when the component mounts and unsubscribe when it unmounts. Server rendering evaluates without subscribing, so a shared server instance does not collect listeners.
 
+Context for part of the tree comes from a scope, as a component or a function in `setup`:
+
+```html
+<FeaturevisorScope :context="{ plan: account.plan }">
+  <AccountRow :account="account" />
+</FeaturevisorScope>
+```
+
+```js
+// in setup: applies to descendants, not to this component's own composables
+provideFeaturevisorScope(() => ({ plan: props.plan }))
+```
+
+Each read merges, lowest first: the instance context, each enclosing scope from the outermost, and the composable's own context argument. The merge is shallow and scopes nest. The `context` prop, refs and getters are followed. Instance context changes and sticky values still apply inside a scope. As in React, keep `userId` out of a scope unless that part is about another user, and expect tracking modules to see previews of other plans. `FeaturevisorScope` and `provideFeaturevisorScope` need a `@featurevisor/vue` release that exports them.
+
 `useVariation` and `useVariable` hold `null` when there is no value. `useSdk` throws when `setupApp` has not run: that error means missing wiring, not a missing feature.
 
 ## Guidance
