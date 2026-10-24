@@ -1,3 +1,4 @@
+import * as React from "react";
 import { useEffect, useReducer } from "react";
 import type { Featurevisor } from "@featurevisor/sdk";
 
@@ -57,6 +58,21 @@ function release(tracker: Tracker): void {
   });
 }
 
+const { useSyncExternalStore } = React as Partial<typeof React>;
+const listenToNothing = () => () => {};
+
+/**
+ * Reads the count while rendering. From React 18, a render can pause between
+ * components, and a change in that pause would commit readers rendered before
+ * it with older values than those after it. Read through useSyncExternalStore,
+ * the count is checked again before such a render commits, and the render runs
+ * again at once if it moved. Nothing listens through it: the hooks' own
+ * subscriptions decide what renders. Earlier versions render in one pass.
+ */
+const useRenderedCount: (read: () => number) => number = useSyncExternalStore
+  ? (read) => useSyncExternalStore(listenToNothing, read, read)
+  : (read) => read();
+
 /**
  * Subscribes in an effect and renders again only if the SDK changed after
  * rendering and before subscribing, which the count read while rendering shows.
@@ -74,7 +90,7 @@ export function useSubscription(
   inputs: readonly unknown[],
 ): void {
   const [, refresh] = useReducer((count: number) => count + 1, 0);
-  const rendered = subscribe ? track(sdk).changes : 0;
+  const rendered = useRenderedCount(() => (subscribe ? track(sdk).changes : 0));
 
   useEffect(() => {
     if (!subscribe) return;

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { act, render, screen } from "@testing-library/react";
+import { createRoot } from "react-dom/client";
 import "@testing-library/jest-dom";
 import { createFeaturevisor, type Featurevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
@@ -302,5 +303,58 @@ describe("react: renders after subscribing", function () {
     expect(renders).toBe(2);
     // The count keeps its listeners while the hook resubscribes.
     expect(events.on).toHaveBeenCalledTimes(2 * 4 + 4);
+  });
+
+  test("never commits readers torn by a change in the middle of a transition", async function () {
+    // A transition can pause between components, so the SDK can change after
+    // one reader renders and before the next. Rendering stands in for that
+    // pause here. The readers must never be committed with different values,
+    // which a mutation observer sees after every task.
+    const globals = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    const actEnvironment = globals.IS_REACT_ACT_ENVIRONMENT;
+    globals.IS_REACT_ACT_ENVIRONMENT = false;
+    const { sdk } = instance();
+    let changed = false;
+    function ChangeWhileRendering() {
+      if (!changed) {
+        changed = true;
+        sdk.setContext({ blocked: true });
+      }
+      return null;
+    }
+    function Reader() {
+      return <span className="reader">{String(useFlag("checkout"))}</span>;
+    }
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const read = () =>
+      Array.from(container.querySelectorAll(".reader"), (reader) => reader.textContent).join();
+    const seen: string[] = [];
+    const observer = new MutationObserver(() => seen.push(read()));
+    observer.observe(container, { subtree: true, childList: true, characterData: true });
+    const root = createRoot(container);
+
+    try {
+      React.startTransition(() =>
+        root.render(
+          <FeaturevisorProvider instance={sdk}>
+            <Reader />
+            <ChangeWhileRendering />
+            <Reader />
+          </FeaturevisorProvider>,
+        ),
+      );
+      for (let tick = 0; tick < 50 && read() !== "false,false"; tick++) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(read()).toBe("false,false");
+      expect(seen.length).toBeGreaterThan(0);
+      expect(seen.filter((value) => value !== "false,false")).toEqual([]);
+    } finally {
+      observer.disconnect();
+      root.unmount();
+      container.remove();
+      globals.IS_REACT_ACT_ENVIRONMENT = actEnvironment;
+    }
   });
 });
