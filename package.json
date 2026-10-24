@@ -12,6 +12,7 @@
     "test": "lerna run test && npm run test:skills",
     "test:skills": "node --test skills/tests/*.test.mjs",
     "test:react-minimum": "node scripts/test-react-minimum.mjs",
+    "test:vue-minimum": "node scripts/test-vue-minimum.mjs",
     "test:package-exports": "node scripts/test-package-exports.mjs",
     "test:packed-packages": "node scripts/test-packed-packages.mjs",
     "test:browser": "node scripts/test-browser.mjs",

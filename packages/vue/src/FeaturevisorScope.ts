@@ -1,4 +1,4 @@
-import { computed, defineComponent, provide, type PropType } from "vue";
+import { defineComponent, provide, shallowRef, watch, type PropType } from "vue";
 import type { Context } from "@featurevisor/types";
 
 import { readContext, type ContextSource } from "./live.js";
@@ -14,20 +14,22 @@ import { injectScope, mergeContext, sameValue, SCOPE } from "./scope.js";
  */
 export function provideFeaturevisorScope(context: ContextSource): void {
   const outer = injectScope();
-  let provided: Context | undefined;
+  const merge = () => mergeContext(outer ? outer.value : {}, readContext(context));
+  const provided = shallowRef(merge());
 
-  provide(
-    SCOPE,
-    computed(() => {
-      const merged = mergeContext(outer ? outer.value : {}, readContext(context));
-
-      // Equal values keep the object already provided, so the composables below
-      // evaluate nothing again when a parent renders a new inline object.
-      if (!provided || !sameValue(provided, merged)) provided = merged;
-
-      return provided;
-    }),
+  // Only a new object changes the ref, so the composables below evaluate
+  // nothing again for equal values. A computed returning the same object would
+  // still make them evaluate again before Vue 3.4. Watching synchronously keeps
+  // the scope current before anything below renders.
+  watch(
+    merge,
+    (merged) => {
+      if (!sameValue(provided.value, merged)) provided.value = merged;
+    },
+    { flush: "sync" },
   );
+
+  provide(SCOPE, provided);
 }
 
 /**
