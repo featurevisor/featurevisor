@@ -1,5 +1,6 @@
 import * as React from "react";
 import { act, render, screen } from "@testing-library/react";
+import { createRoot } from "react-dom/client";
 import "@testing-library/jest-dom";
 import { createFeaturevisor, type Featurevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
@@ -199,7 +200,7 @@ describe("react: renders after subscribing", function () {
     expect(screen.getByTestId("new")).toHaveTextContent("false");
   });
 
-  test("counts with one set of listeners per instance, removed with the last hook", function () {
+  test("counts with one set of listeners per instance, removed after the last hook", async function () {
     const { sdk } = instance();
     const events = observe(sdk);
     function Reader({ featureKey }: { featureKey: string }) {
@@ -219,6 +220,9 @@ describe("react: renders after subscribing", function () {
     expect(events.active()).toHaveLength(3 * 4 + 4);
 
     view.unmount();
+    // The count stops a microtask after the last hook leaves.
+    expect(events.active()).toHaveLength(4);
+    await Promise.resolve();
     expect(events.active()).toHaveLength(0);
 
     // Events after unmounting render nothing and attach nothing.
@@ -247,5 +251,110 @@ describe("react: renders after subscribing", function () {
 
     act(() => sdk.setContext({ blocked: true }));
     expect(screen.getByTestId("checkout")).toHaveTextContent("false");
+  });
+
+  test.each(Object.keys(HOOKS))(
+    "%s renders as often as a component without hooks on mount in StrictMode",
+    function (name) {
+      // StrictMode cleans every effect up and sets it up again. That must not
+      // stop the count in between, which would render every hook again.
+      const { sdk } = instance();
+      const renders = { probe: 0, control: 0 };
+      function Probe() {
+        renders.probe += 1;
+        HOOKS[name]();
+        return null;
+      }
+      function Control() {
+        renders.control += 1;
+        React.useState(0);
+        return null;
+      }
+
+      render(
+        <React.StrictMode>
+          <FeaturevisorProvider instance={sdk}>
+            <Probe />
+            <Control />
+          </FeaturevisorProvider>
+        </React.StrictMode>,
+      );
+      expect(renders.probe).toBe(renders.control);
+    },
+  );
+
+  test("renders once when the only hook on an instance changes its key", function () {
+    const { sdk } = instance();
+    const events = observe(sdk);
+    let renders = 0;
+    function Reader({ featureKey }: { featureKey: string }) {
+      renders += 1;
+      useFlag(featureKey);
+      return null;
+    }
+    const tree = (featureKey: string) => (
+      <FeaturevisorProvider instance={sdk}>
+        <Reader featureKey={featureKey} />
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree("checkout"));
+    view.rerender(tree("liveChat"));
+    expect(renders).toBe(2);
+    // The count keeps its listeners while the hook resubscribes.
+    expect(events.on).toHaveBeenCalledTimes(2 * 4 + 4);
+  });
+
+  test("never commits readers torn by a change in the middle of a transition", async function () {
+    // A transition can pause between components, so the SDK can change after
+    // one reader renders and before the next. Rendering stands in for that
+    // pause here. The readers must never be committed with different values,
+    // which a mutation observer sees after every task.
+    const globals = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    const actEnvironment = globals.IS_REACT_ACT_ENVIRONMENT;
+    globals.IS_REACT_ACT_ENVIRONMENT = false;
+    const { sdk } = instance();
+    let changed = false;
+    function ChangeWhileRendering() {
+      if (!changed) {
+        changed = true;
+        sdk.setContext({ blocked: true });
+      }
+      return null;
+    }
+    function Reader() {
+      return <span className="reader">{String(useFlag("checkout"))}</span>;
+    }
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const read = () =>
+      Array.from(container.querySelectorAll(".reader"), (reader) => reader.textContent).join();
+    const seen: string[] = [];
+    const observer = new MutationObserver(() => seen.push(read()));
+    observer.observe(container, { subtree: true, childList: true, characterData: true });
+    const root = createRoot(container);
+
+    try {
+      React.startTransition(() =>
+        root.render(
+          <FeaturevisorProvider instance={sdk}>
+            <Reader />
+            <ChangeWhileRendering />
+            <Reader />
+          </FeaturevisorProvider>,
+        ),
+      );
+      for (let tick = 0; tick < 50 && read() !== "false,false"; tick++) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(read()).toBe("false,false");
+      expect(seen.length).toBeGreaterThan(0);
+      expect(seen.filter((value) => value !== "false,false")).toEqual([]);
+    } finally {
+      observer.disconnect();
+      root.unmount();
+      container.remove();
+      globals.IS_REACT_ACT_ENVIRONMENT = actEnvironment;
+    }
   });
 });

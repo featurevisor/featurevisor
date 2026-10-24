@@ -22,6 +22,7 @@ test-extended:
 	npm run test:package-exports
 	npm run test:packed-packages
 	npm run test:react-minimum
+	npm run test:vue-minimum
 	npm run test:browser
 	npm run test:catalog-browser
 	node scripts/test-cli-integration.mjs

@@ -151,7 +151,7 @@ describe.each([false, true])("committed hook snapshots, StrictMode: %s", (strict
     return { snapshots, tree, check, renders: () => renders };
   }
 
-  test("commits current provider, feature key, variable key and context without mixed values", () => {
+  test("commits current provider, feature key, variable key and context without mixed values", async () => {
     const first = instance();
     const second = instance("second", false);
     const firstEvents = observe(first);
@@ -162,6 +162,8 @@ describe.each([false, true])("committed hook snapshots, StrictMode: %s", (strict
     expect(firstEvents.active()).toHaveLength(16 + TRACKER_LISTENERS);
 
     h.check(() => view.rerender(h.tree(second)), expected("second", "policy", false));
+    // The change tracker stops a microtask after the last hook on an instance leaves.
+    await Promise.resolve();
     expect(firstEvents.active()).toHaveLength(0);
     expect(secondEvents.active()).toHaveLength(16 + TRACKER_LISTENERS);
     h.check(() => view.rerender(h.tree(first)), expected());
@@ -194,6 +196,7 @@ describe.each([false, true])("committed hook snapshots, StrictMode: %s", (strict
     act(() => second.setContext({ account: { blocked: true } }));
     expect(h.renders()).toBe(beforeOldEvent);
     view.unmount();
+    await Promise.resolve();
     [...firstEvents.cleanups, ...secondEvents.cleanups].forEach((fn) =>
       expect(fn).toHaveBeenCalledTimes(1),
     );

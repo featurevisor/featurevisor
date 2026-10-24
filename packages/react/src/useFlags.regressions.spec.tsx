@@ -138,7 +138,7 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
     return { snapshots, tree, check, renders: () => renders };
   }
 
-  test("commits current provider, keys and context without mixed values", () => {
+  test("commits current provider, keys and context without mixed values", async () => {
     const first = instance();
     const second = instance("second", ["liveChat"]);
     const firstEvents = observe(first);
@@ -155,6 +155,8 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
     const onSecond = h.check(() => view.rerender(h.tree(second)), second);
     expect(onSecond.flags).toEqual([true, false]);
     expect(onSecond.every).toBe(false);
+    // The change tracker stops a microtask after the last hook on an instance leaves.
+    await Promise.resolve();
     expect(firstEvents.active()).toHaveLength(0);
     expect(secondEvents.active()).toHaveLength(LISTENERS + TRACKER_LISTENERS);
 
@@ -201,6 +203,7 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
     act(() => second.setContext({ blocked: true }));
     expect(h.renders()).toBe(beforeOldEvent);
     view.unmount();
+    await Promise.resolve();
     [...firstEvents.cleanups, ...secondEvents.cleanups].forEach((fn) =>
       expect(fn).toHaveBeenCalledTimes(1),
     );

@@ -1,6 +1,7 @@
 import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
 import { useRequiredSdk } from "./useRequiredSdk.js";
+import { useScopedContext } from "./scope.js";
 import { useEvaluationSubscription } from "./useEvaluationSubscription.js";
 
 const EMPTY_CONTEXT: Context = {};
@@ -26,7 +27,7 @@ export function useVariable<TValue = VariableValue>(
 ): TValue | null {
   const sdk = useRequiredSdk();
   const isStandaloneVariable = typeof variableKeyOrContext !== "string";
-  const resolvedContext = isStandaloneVariable ? variableKeyOrContext : context;
+  const resolvedContext = useScopedContext(isStandaloneVariable ? variableKeyOrContext : context);
   useEvaluationSubscription(sdk, featureKeyOrVariableKey, isStandaloneVariable);
 
   // Context and module inputs are evaluated on every render. Runtime programs

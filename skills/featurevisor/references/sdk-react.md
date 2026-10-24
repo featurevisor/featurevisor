@@ -83,6 +83,41 @@ function Footer() {
 
 There is no hook for a snapshot of several features. For a debugging panel, call `getFeatureEvaluations(context, keys)` on `useSdk()` ([sdk-javascript.md](sdk-javascript.md)) in a component that also calls `useRevision()`, so it reads again after each new revision. It returns an object keyed by feature key, evaluates every variable of every listed feature, and reads each listed feature's variation, which an [activation module](tracking.md) counts as shown. Keep it out of what users see.
 
+### Context for part of the tree
+
+```jsx
+import { FeaturevisorScope } from '@featurevisor/react'
+
+// A product page adds the product it shows.
+function ProductPage({ product }) {
+  return (
+    <FeaturevisorScope context={{ productId: product.id }}>
+      <ProductReviews />
+    </FeaturevisorScope>
+  )
+}
+
+// A category page sets the category once, and each card adds its product.
+function CategoryPage({ category, products }) {
+  return (
+    <FeaturevisorScope context={{ category: category.key }}>
+      {products.map((product) => (
+        <FeaturevisorScope key={product.id} context={{ productId: product.id }}>
+          <ProductCard product={product} />
+        </FeaturevisorScope>
+      ))}
+    </FeaturevisorScope>
+  )
+}
+```
+
+- Every evaluating hook below a `FeaturevisorScope` reads its context. Each read merges, lowest first: the instance context, each enclosing scope from the outermost, and the hook's own context argument. The merge is shallow, and scopes nest: an inner scope keeps the keys it sets when the outer one changes them and follows it for the rest, and sibling scopes stay apart.
+- `useFeaturevisor` reads (`isEnabled`, `getVariation`, every `getVariable` form, `getContext`) include the scope. Its `setContext` and sticky setters still change the instance. `useSdk` and `useRevision` are unchanged, and a nested `FeaturevisorProvider` starts without the scope.
+- The order is by position, not by time: instance context changes apply inside a scope only for keys it does not set, and an inner scope keeps its keys over an outer one. Sticky values sit outside the merge and still win inside a scope. `useFeaturevisor().getContext()` inside a scope shows the merged context. A scope follows its `context` prop: when the values change, every hook below renders again with them, in the same render, and components that read no feature or variable are not rendered by it. Change it with state or props, not by mutating an object in place. A context with the same values, nested objects, arrays and dates included, renders nothing below again.
+- Reach for it when part of the page knows something the instance context does not: which product, category or other item it shows, so feature conditions can target it, which microfrontend it is when several share one instance, or, in a support tool, which customer it is about. On a client one person sees the whole page, so do not use scopes to preview that person on other plans.
+- In the Next.js App Router, a server component such as a page can render `FeaturevisorScope` around client components, with a context of plain values. `FeaturevisorProvider` needs a client component, because a server component cannot pass it an instance.
+- Keep `userId` out of a scope unless that part is about another user, because it changes bucketing. Tracking modules see the merged context, so they can tell which product an exposure came from.
+
 ### When components render again
 
 A hook that reads a feature or variable renders its component again when:
@@ -115,6 +150,6 @@ Evaluating separately on server and client can disagree and cause hydration mism
 ## Guidance
 
 - Typed hooks with checked keys come from `generate-code --react` ([code-generation.md](code-generation.md)).
-- `useFlags`, `useEveryFlag`, `useSomeFlag`, `useRevision` and `onFeaturesChange` need a `@featurevisor/react` release that exports them. Check the installed package (`npm ls @featurevisor/react` and its type definitions) before using them, and otherwise call `useFlag` per key or propose upgrading.
+- `useFlags`, `useEveryFlag`, `useSomeFlag`, `useRevision`, `onFeaturesChange` and `FeaturevisorScope` need a `@featurevisor/react` release that exports them. Check the installed package (`npm ls @featurevisor/react` and its type definitions) before using them, and otherwise call `useFlag` per key or propose upgrading.
 - React Native uses the same package. Create the instance at module scope, fetch the datafile in a root `useEffect`, call `setDatafile(datafile, true)`, and render once loading settles.
 - Example app: <https://github.com/featurevisor/featurevisor-example-react>

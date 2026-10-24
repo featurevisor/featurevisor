@@ -209,7 +209,7 @@ describe("react: useVariable evaluation and subscriptions", () => {
     expectValue({ grants: ["blocked"] });
   });
 
-  test("switches feature and global subscriptions, variable keys and provider instances with cleanup", () => {
+  test("switches feature and global subscriptions, variable keys and provider instances with cleanup", async () => {
     const first = createFeaturevisor({
       logLevel: "fatal",
       datafile: programDatafile(),
@@ -245,7 +245,10 @@ describe("react: useVariable evaluation and subscriptions", () => {
     const globalCleanups = active();
     view.rerender(tree(first, "grants"));
     expectValue({ grants: ["feature-read"] });
-    globalCleanups.forEach((cleanup) => expect(cleanup).toHaveBeenCalledTimes(1));
+    // The hook swaps the global variable's four listeners for the feature's,
+    // while the change tracker keeps its four through the resubscription.
+    const called = (cleanup: jest.Mock) => cleanup.mock.calls.length;
+    expect(globalCleanups.map(called).sort()).toEqual([0, 0, 0, 0, 1, 1, 1, 1]);
     expect(active()).toHaveLength(8);
 
     const subscriptions = firstSubscriptions.on.mock.calls.length;
@@ -279,6 +282,8 @@ describe("react: useVariable evaluation and subscriptions", () => {
 
     view.rerender(tree(second));
     expectValue({ grants: ["second"] });
+    // The change tracker stops a microtask after the last hook on an instance leaves.
+    await Promise.resolve();
     firstSubscriptions.cleanups.forEach((cleanup) => expect(cleanup).toHaveBeenCalledTimes(1));
     const afterSwap = guard.mock.calls.length;
     act(() => first.setContext({ country: "de" }));
@@ -288,6 +293,7 @@ describe("react: useVariable evaluation and subscriptions", () => {
     view.rerender(tree(second, undefined, "gate"));
     expectValue(true);
     view.unmount();
+    await Promise.resolve();
     secondSubscriptions.cleanups.forEach((cleanup) => expect(cleanup).toHaveBeenCalledTimes(1));
     firstSubscriptions.on.mockRestore();
     secondSubscriptions.on.mockRestore();

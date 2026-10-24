@@ -1,7 +1,8 @@
 import type { Ref } from "vue";
 import type { FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
-import { onFeatures, onVariable, readContext, useLive, type ContextSource } from "./live.js";
+import { onFeatures, onVariable, useLive, type ContextSource } from "./live.js";
+import { injectScope, readScopedContext } from "./scope.js";
 import { useSdk } from "./useSdk.js";
 
 /**
@@ -27,17 +28,25 @@ export function useVariable<TValue = VariableValue>(
   context?: ContextSource,
 ): Readonly<Ref<TValue | null>> {
   const sdk = useSdk();
+  const scope = injectScope();
 
   // Keys are plain strings, so a second argument that is not one is the context.
   if (typeof variableKeyOrContext === "string") {
     const variableKey = variableKeyOrContext;
 
     return useLive(sdk, onFeatures(sdk, [featureKeyOrVariableKey]), () =>
-      sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKey, readContext(context)),
+      sdk.getVariable<TValue>(
+        featureKeyOrVariableKey,
+        variableKey,
+        readScopedContext(scope, context),
+      ),
     );
   }
 
   return useLive(sdk, onVariable(sdk, featureKeyOrVariableKey), () =>
-    sdk.getVariable<TValue>(featureKeyOrVariableKey, readContext(variableKeyOrContext)),
+    sdk.getVariable<TValue>(
+      featureKeyOrVariableKey,
+      readScopedContext(scope, variableKeyOrContext),
+    ),
   );
 }

@@ -1,7 +1,8 @@
 import { computed, type Ref } from "vue";
 import type { FeatureKey } from "@featurevisor/types";
 
-import { onFeatures, readContext, useLive, type ContextSource } from "./live.js";
+import { onFeatures, useLive, type ContextSource } from "./live.js";
+import { injectScope, readScopedContext } from "./scope.js";
 import { useSdk } from "./useSdk.js";
 
 /**
@@ -24,10 +25,11 @@ export function useFlags<K extends readonly FeatureKey[] | []>(
   context?: ContextSource,
 ): FlagRefs<K> {
   const sdk = useSdk();
+  const scope = injectScope();
   const keys = featureKeys.slice();
 
   const values = useLive(sdk, keys.length === 0 ? undefined : onFeatures(sdk, keys), () => {
-    const resolved = readContext(context);
+    const resolved = readScopedContext(scope, context);
     const evaluated = new Map<FeatureKey, boolean>();
 
     return keys.map((featureKey) => {

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { Context, FeatureKey } from "@featurevisor/types";
 
 import { useRequiredSdk } from "./useRequiredSdk.js";
+import { useScopedContext } from "./scope.js";
 import { useFeaturesSubscription } from "./useFeaturesSubscription.js";
 
 const EMPTY_CONTEXT: Context = {};
@@ -21,13 +22,14 @@ export function useFlags<K extends readonly FeatureKey[] | []>(
   context: Context = EMPTY_CONTEXT,
 ): FlagValues<K> {
   const sdk = useRequiredSdk();
+  const scopedContext = useScopedContext(context);
   useFeaturesSubscription(sdk, featureKeys);
 
   const evaluated = new Map<FeatureKey, boolean>();
   const values = featureKeys.map((featureKey) => {
     let enabled = evaluated.get(featureKey);
     if (enabled === undefined) {
-      enabled = sdk.isEnabled(featureKey, context);
+      enabled = sdk.isEnabled(featureKey, scopedContext);
       evaluated.set(featureKey, enabled);
     }
 

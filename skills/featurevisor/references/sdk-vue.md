@@ -80,6 +80,28 @@ These behave like their React counterparts in [sdk-react.md](sdk-react.md#severa
 
 Every composable that reads a feature or variable takes an optional context as its last argument: an object, a ref, or a getter such as `() => ({ plan: props.plan })` to follow props. Refs evaluate when first read and again only after a change, subscribe when the component mounts and unsubscribe when it unmounts. Server rendering evaluates without subscribing, so a shared server instance does not collect listeners.
 
+Context for part of the tree comes from a scope, as a component or a function in `setup`:
+
+```html
+<!-- a category page sets the category, and each card adds its product -->
+<FeaturevisorScope :context="{ category: category.key }">
+  <FeaturevisorScope
+    v-for="product in products"
+    :key="product.id"
+    :context="{ productId: product.id }"
+  >
+    <ProductCard :product="product" />
+  </FeaturevisorScope>
+</FeaturevisorScope>
+```
+
+```js
+// a product page's setup adds the product, for descendants only, not its own composables
+provideFeaturevisorScope(() => ({ productId: props.product.id }))
+```
+
+Each read merges, lowest first: the instance context, each enclosing scope from the outermost, and the composable's own context argument. The merge is shallow and scopes nest, whether made by the component or the function: an inner scope keeps the keys it sets when the outer one changes them and follows it for the rest, and sibling scopes stay apart. The `context` prop, refs, getters and reactive objects are followed, including changes inside them, and the composables below update. An update with the same values, nested objects, arrays and dates included, evaluates nothing again. The order is by position, not by time: instance context changes apply inside a scope only for keys it does not set. Sticky values sit outside the merge and still win inside a scope. Use scopes as in React, for what a part of the page knows, such as the product or category it shows. Keep `userId` out of a scope unless that part is about another user, and expect tracking modules to see the merged context. `FeaturevisorScope` and `provideFeaturevisorScope` need a `@featurevisor/vue` release that exports them.
+
 `useVariation` and `useVariable` hold `null` when there is no value. `useSdk` throws when `setupApp` has not run: that error means missing wiring, not a missing feature.
 
 ## Guidance

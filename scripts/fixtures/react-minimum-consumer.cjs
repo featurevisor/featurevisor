@@ -67,103 +67,113 @@ function instance(grant) {
   return { sdk, subscriptions };
 }
 
-for (const strict of [false, true]) {
-  const first = instance("read");
-  const second = instance("second");
-  const snapshots = [];
-  let view;
-  let renders = 0;
-  function Reader({ country }) {
-    assert.ok(++renders <= 80, "hooks failed to settle");
-    const context = { userId: "123", ...(country ? { country } : {}) };
-    const snapshot = {
-      enabled: useFlag("policy", context),
-      global: useVariable("policy", context),
-      feature: useVariable("policy", "grants", context),
-    };
-    assert.ok([first.sdk, second.sdk].includes(useSdk()));
-    snapshots.push(snapshot);
-    return React.createElement("output", null, JSON.stringify(snapshot));
-  }
-  function tree(sdk = first.sdk, country) {
-    const content = React.createElement(
-      FeaturevisorProvider,
-      { instance: sdk },
-      React.createElement(Reader, { country }),
-    );
-    return strict ? React.createElement(React.StrictMode, null, content) : content;
-  }
-  const expected = (grant, global = [grant], enabled = true) => ({
-    enabled,
-    global: { grants: global },
-    feature: enabled ? { grants: [grant] } : null,
-  });
-  const expectValue = (value) => assert.deepEqual(JSON.parse(view.toJSON().children[0]), value);
-  const step = (operation) => {
-    const before = renders;
-    renderer.act(() => {
-      operation();
-    });
-    // React 16.8 act drains one passive effect batch. Flush any resulting work
-    // before checking that subsequent SDK events cannot reach detached readers.
-    let settled = false;
-    for (let attempt = 0; attempt < 8; attempt++) {
-      const previous = renders;
-      renderer.act(() => {});
-      if (renders === previous) {
-        settled = true;
-        break;
-      }
+async function main() {
+  for (const strict of [false, true]) {
+    const first = instance("read");
+    const second = instance("second");
+    const snapshots = [];
+    let view;
+    let renders = 0;
+    function Reader({ country }) {
+      assert.ok(++renders <= 80, "hooks failed to settle");
+      const context = { userId: "123", ...(country ? { country } : {}) };
+      const snapshot = {
+        enabled: useFlag("policy", context),
+        global: useVariable("policy", context),
+        feature: useVariable("policy", "grants", context),
+      };
+      assert.ok([first.sdk, second.sdk].includes(useSdk()));
+      snapshots.push(snapshot);
+      return React.createElement("output", null, JSON.stringify(snapshot));
     }
-    assert.ok(settled, "passive effects did not settle");
-    assert.ok(renders - before <= 8, "update triggered excessive renders");
-  };
-  const active = (instance) =>
-    instance.subscriptions.filter((entry) => entry.cleanups === 0).length;
-
-  try {
-    step(() => {
-      view = renderer.create(tree());
+    function tree(sdk = first.sdk, country) {
+      const content = React.createElement(
+        FeaturevisorProvider,
+        { instance: sdk },
+        React.createElement(Reader, { country }),
+      );
+      return strict ? React.createElement(React.StrictMode, null, content) : content;
+    }
+    const expected = (grant, global = [grant], enabled = true) => ({
+      enabled,
+      global: { grants: global },
+      feature: enabled ? { grants: [grant] } : null,
     });
-    assert.deepEqual(snapshots[0], expected("read"), "initial render must have evaluated values");
-    expectValue(expected("read"));
-    // One listener per event for each of the three hooks, and the change tracker's four.
-    assert.equal(active(first), 16, "one listener per event for each hook and the tracker");
-    step(() => view.update(tree()));
-    step(() => view.update(tree()));
-    expectValue(expected("read"));
-    assert.equal(active(first), 16);
-    step(() => view.update(tree(first.sdk, "de")));
-    expectValue(expected("read", []));
-    step(() => view.update(tree()));
-    step(() => first.sdk.setContext({ country: "de" }));
-    expectValue(expected("read", []));
-    step(() => first.sdk.setContext({ country: "nl" }));
-    expectValue(expected("read"));
-    step(() => first.sdk.setDatafile(datafile("write")));
-    expectValue(expected("write"));
-    step(() => first.sdk.setStickyVariables({ gate: false }));
-    expectValue(expected("write", ["blocked"], false));
-    step(() => first.sdk.setStickyVariables({}, true));
-    expectValue(expected("write"));
-    step(() => view.update(tree(second.sdk)));
-    expectValue(expected("second"));
-    assert.equal(active(first), 0, "provider replacement must release old SDK listeners");
-    assert.equal(active(second), 16);
-    const beforeOldEvent = renders;
-    step(() => first.sdk.setContext({ country: "de" }));
-    assert.equal(renders, beforeOldEvent);
-    step(() => view.unmount());
-    assert.equal(active(second), 0, "unmount must release all SDK listeners");
-    const beforeUnmountedEvent = renders;
-    step(() => second.sdk.setDatafile(datafile("after-unmount")));
-    assert.equal(renders, beforeUnmountedEvent);
-    console.log(
-      `React ${React.version} packaged consumer passed (StrictMode=${strict}, ${renders} renders)`,
-    );
-  } finally {
-    if (view) renderer.act(() => view.unmount());
-    first.sdk.close();
-    second.sdk.close();
+    const expectValue = (value) => assert.deepEqual(JSON.parse(view.toJSON().children[0]), value);
+    const step = (operation) => {
+      const before = renders;
+      renderer.act(() => {
+        operation();
+      });
+      // React 16.8 act drains one passive effect batch. Flush any resulting work
+      // before checking that subsequent SDK events cannot reach detached readers.
+      let settled = false;
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const previous = renders;
+        renderer.act(() => {});
+        if (renders === previous) {
+          settled = true;
+          break;
+        }
+      }
+      assert.ok(settled, "passive effects did not settle");
+      assert.ok(renders - before <= 8, "update triggered excessive renders");
+    };
+    const active = (instance) =>
+      instance.subscriptions.filter((entry) => entry.cleanups === 0).length;
+
+    try {
+      step(() => {
+        view = renderer.create(tree());
+      });
+      assert.deepEqual(snapshots[0], expected("read"), "initial render must have evaluated values");
+      expectValue(expected("read"));
+      // One listener per event for each of the three hooks, and the change tracker's four.
+      assert.equal(active(first), 16, "one listener per event for each hook and the tracker");
+      step(() => view.update(tree()));
+      step(() => view.update(tree()));
+      expectValue(expected("read"));
+      assert.equal(active(first), 16);
+      step(() => view.update(tree(first.sdk, "de")));
+      expectValue(expected("read", []));
+      step(() => view.update(tree()));
+      step(() => first.sdk.setContext({ country: "de" }));
+      expectValue(expected("read", []));
+      step(() => first.sdk.setContext({ country: "nl" }));
+      expectValue(expected("read"));
+      step(() => first.sdk.setDatafile(datafile("write")));
+      expectValue(expected("write"));
+      step(() => first.sdk.setStickyVariables({ gate: false }));
+      expectValue(expected("write", ["blocked"], false));
+      step(() => first.sdk.setStickyVariables({}, true));
+      expectValue(expected("write"));
+      step(() => view.update(tree(second.sdk)));
+      expectValue(expected("second"));
+      // The change tracker stops a microtask after the last hook on an instance leaves.
+      await Promise.resolve();
+      assert.equal(active(first), 0, "provider replacement must release old SDK listeners");
+      assert.equal(active(second), 16);
+      const beforeOldEvent = renders;
+      step(() => first.sdk.setContext({ country: "de" }));
+      assert.equal(renders, beforeOldEvent);
+      step(() => view.unmount());
+      await Promise.resolve();
+      assert.equal(active(second), 0, "unmount must release all SDK listeners");
+      const beforeUnmountedEvent = renders;
+      step(() => second.sdk.setDatafile(datafile("after-unmount")));
+      assert.equal(renders, beforeUnmountedEvent);
+      console.log(
+        `React ${React.version} packaged consumer passed (StrictMode=${strict}, ${renders} renders)`,
+      );
+    } finally {
+      if (view) renderer.act(() => view.unmount());
+      first.sdk.close();
+      second.sdk.close();
+    }
   }
 }
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

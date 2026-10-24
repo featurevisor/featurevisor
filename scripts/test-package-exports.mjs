@@ -20,6 +20,7 @@ const packages = [
     name: "@featurevisor/react",
     runtimeExports: {
       FeaturevisorProvider: "function",
+      FeaturevisorScope: "function",
       useFlag: "function",
       useFlags: "function",
       useEveryFlag: "function",
@@ -83,13 +84,42 @@ function declarationFiles(directory) {
   });
 }
 
-function assertDeclarationsParseInTypeScript4(directory) {
+// React.JSX is missing from older @types/react releases, such as 18.0, which the
+// React package's peer range still covers, so its components declare ReactElement.
+const REACT_JSX_NAMESPACE = /\bJSX\./;
+
+function assertDeclarations(directory) {
   for (const output of ["cjs", "esm", "node-esm", "lib", "dist"]) {
     const outputDirectory = join(rootDirectory, "packages", directory, output);
     if (!existsSync(outputDirectory)) continue;
     for (const file of declarationFiles(outputDirectory)) {
-      if (TYPESCRIPT_5_TYPE_PARAMETER.test(readFileSync(file, "utf8"))) {
+      const declarations = readFileSync(file, "utf8");
+      if (TYPESCRIPT_5_TYPE_PARAMETER.test(declarations)) {
         throw new Error(`${file} has a const type parameter, which TypeScript 4 cannot parse`);
+      }
+      if (directory === "react" && REACT_JSX_NAMESPACE.test(declarations)) {
+        throw new Error(`${file} names the JSX namespace, which older @types/react releases lack`);
+      }
+    }
+  }
+}
+
+// React server components, such as a Next.js page, cannot create a context.
+// Modules that do, and the components a server component renders, must reach
+// them as client modules, which bundlers recognise by a leading "use client".
+const CLIENT_DIRECTIVE = /^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*"use client";/;
+const REACT_CLIENT_COMPONENTS = ["FeaturevisorProvider.js", "FeaturevisorScope.js"];
+
+function assertReactClientModules() {
+  for (const output of ["cjs", "esm", "node-esm"]) {
+    const outputDirectory = join(rootDirectory, "packages", "react", output);
+    for (const name of readdirSync(outputDirectory)) {
+      if (!name.endsWith(".js")) continue;
+      const source = readFileSync(join(outputDirectory, name), "utf8");
+      const needsClient =
+        REACT_CLIENT_COMPONENTS.includes(name) || source.includes("createContext(");
+      if (needsClient && !CLIENT_DIRECTIVE.test(source)) {
+        throw new Error(`${output}/${name} must start with "use client" for server components`);
       }
     }
   }
@@ -97,8 +127,9 @@ function assertDeclarationsParseInTypeScript4(directory) {
 
 async function main() {
   for (const directory of ["types", "sdk", "react", "vue"]) {
-    assertDeclarationsParseInTypeScript4(directory);
+    assertDeclarations(directory);
   }
+  assertReactClientModules();
   for (const entry of readdirSync(join(rootDirectory, "packages"), { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const directory = entry.name;
