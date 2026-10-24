@@ -19,7 +19,7 @@ import { useVariation } from "./useVariation";
 
 /**
  * wishlist is on only for the paid plan, pricing gives paid accounts treatment,
- * and supportEmail has a Dutch override.
+ * buyButton's badge says paid for them, and supportEmail has a Dutch override.
  */
 function datafile(revision = "first", wishlistOn = true): DatafileContent {
   return {
@@ -63,8 +63,18 @@ function datafile(revision = "first", wishlistOn = true): DatafileContent {
       buyButton: {
         hash: "buyButton",
         bucketBy: "userId",
-        variablesSchema: { label: { type: "string", defaultValue: "Buy" } },
-        traffic: [{ key: "all", conditions: "*", percentage: 100000 }],
+        variablesSchema: {
+          label: { type: "string", defaultValue: "Buy" },
+          badge: { type: "string", defaultValue: "none" },
+        },
+        traffic: [
+          {
+            key: "all",
+            conditions: "*",
+            percentage: 100000,
+            variableOverrides: { badge: [{ segments: ["paid"], value: "paid" }] },
+          },
+        ],
       },
     },
     variables: {
@@ -339,8 +349,9 @@ describe("react: FeaturevisorScope", function () {
     expect(api!.getVariation("pricing")).toBe("treatment");
     expect(api!.getVariable("supportEmail")).toBe("help-nl");
     expect(api!.getVariableString("supportEmail", { country: "de" })).toBe("help");
-    expect(api!.getVariable("buyButton", "label")).toBe("Buy");
-    expect(api!.getVariableString("buyButton", "label", { plan: "free" })).toBe("Buy");
+    expect(api!.getVariable("buyButton", "badge")).toBe("paid");
+    expect(api!.getVariableString("buyButton", "badge")).toBe("paid");
+    expect(api!.getVariableString("buyButton", "badge", { plan: "free" })).toBe("none");
     expect(api!.getContext()).toEqual({ userId: "user-1", country: "nl", plan: "paid" });
 
     act(() => api!.setContext({ userId: "user-2" }));
