@@ -199,7 +199,7 @@ describe("react: renders after subscribing", function () {
     expect(screen.getByTestId("new")).toHaveTextContent("false");
   });
 
-  test("counts with one set of listeners per instance, removed with the last hook", function () {
+  test("counts with one set of listeners per instance, removed after the last hook", async function () {
     const { sdk } = instance();
     const events = observe(sdk);
     function Reader({ featureKey }: { featureKey: string }) {
@@ -219,6 +219,9 @@ describe("react: renders after subscribing", function () {
     expect(events.active()).toHaveLength(3 * 4 + 4);
 
     view.unmount();
+    // The count stops a microtask after the last hook leaves.
+    expect(events.active()).toHaveLength(4);
+    await Promise.resolve();
     expect(events.active()).toHaveLength(0);
 
     // Events after unmounting render nothing and attach nothing.
@@ -247,5 +250,57 @@ describe("react: renders after subscribing", function () {
 
     act(() => sdk.setContext({ blocked: true }));
     expect(screen.getByTestId("checkout")).toHaveTextContent("false");
+  });
+
+  test.each(Object.keys(HOOKS))(
+    "%s renders as often as a component without hooks on mount in StrictMode",
+    function (name) {
+      // StrictMode cleans every effect up and sets it up again. That must not
+      // stop the count in between, which would render every hook again.
+      const { sdk } = instance();
+      const renders = { probe: 0, control: 0 };
+      function Probe() {
+        renders.probe += 1;
+        HOOKS[name]();
+        return null;
+      }
+      function Control() {
+        renders.control += 1;
+        React.useState(0);
+        return null;
+      }
+
+      render(
+        <React.StrictMode>
+          <FeaturevisorProvider instance={sdk}>
+            <Probe />
+            <Control />
+          </FeaturevisorProvider>
+        </React.StrictMode>,
+      );
+      expect(renders.probe).toBe(renders.control);
+    },
+  );
+
+  test("renders once when the only hook on an instance changes its key", function () {
+    const { sdk } = instance();
+    const events = observe(sdk);
+    let renders = 0;
+    function Reader({ featureKey }: { featureKey: string }) {
+      renders += 1;
+      useFlag(featureKey);
+      return null;
+    }
+    const tree = (featureKey: string) => (
+      <FeaturevisorProvider instance={sdk}>
+        <Reader featureKey={featureKey} />
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree("checkout"));
+    view.rerender(tree("liveChat"));
+    expect(renders).toBe(2);
+    // The count keeps its listeners while the hook resubscribes.
+    expect(events.on).toHaveBeenCalledTimes(2 * 4 + 4);
   });
 });

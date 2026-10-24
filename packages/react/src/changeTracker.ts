@@ -41,6 +41,23 @@ function track(sdk: Featurevisor): Tracker {
 }
 
 /**
+ * Stops the count once no hook on the instance is subscribed. It waits a
+ * microtask, because StrictMode and Activity clean an effect up and set it up
+ * again at once, and stopping in between would count as a change and render
+ * every hook again. The listeners keep counting until it stops.
+ */
+function release(tracker: Tracker): void {
+  if (--tracker.subscribers > 0) return;
+
+  Promise.resolve().then(() => {
+    if (tracker.subscribers === 0 && tracker.detach) {
+      tracker.detach();
+      tracker.changes++;
+    }
+  });
+}
+
+/**
  * Subscribes in an effect and renders again only if the SDK changed after
  * rendering and before subscribing, which the count read while rendering shows.
  * The count runs while any hook on the instance is subscribed. When the last
@@ -69,10 +86,7 @@ export function useSubscription(
 
     return () => {
       unsubscribe();
-      if (--tracker.subscribers === 0 && tracker.detach) {
-        tracker.detach();
-        tracker.changes++;
-      }
+      release(tracker);
     };
   }, [sdk, ...inputs]);
 }

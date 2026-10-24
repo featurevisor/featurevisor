@@ -206,10 +206,12 @@ describe("react: useFlags", function () {
     const first = [...events.cleanups];
 
     view.rerender(tree(sdk, ["liveChat", "wishlist"]));
-    first.forEach((cleanup) => expect(cleanup).toHaveBeenCalledTimes(1));
-    // The only hook on the instance resubscribes, so the tracker detaches and
-    // attaches again with it.
-    expect(events.on).toHaveBeenCalledTimes(2 * (4 + TRACKER_LISTENERS));
+    // The hook's own four listeners are replaced. The change tracker keeps its
+    // four through the resubscription, so it counts nothing as a change.
+    expect(first.map((cleanup) => cleanup.mock.calls.length).sort()).toEqual([
+      0, 0, 0, 0, 1, 1, 1, 1,
+    ]);
+    expect(events.on).toHaveBeenCalledTimes(2 * 4 + TRACKER_LISTENERS);
     expect(events.active()).toHaveLength(4 + TRACKER_LISTENERS);
 
     // The new subscription follows the new keys.
@@ -217,12 +219,14 @@ describe("react: useFlags", function () {
     expect(text()).toBe("on,off");
   });
 
-  test("removes its listeners on unmount", function () {
+  test("removes its listeners on unmount", async function () {
     const sdk = instance();
     const events = observe(sdk);
     const view = render(tree(sdk, KEYS));
 
     view.unmount();
+    // The change tracker stops a microtask after the last hook on an instance leaves.
+    await Promise.resolve();
     events.cleanups.forEach((cleanup) => expect(cleanup).toHaveBeenCalledTimes(1));
 
     const before = renders;

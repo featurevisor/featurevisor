@@ -196,7 +196,7 @@ describe("react: useEveryFlag and useSomeFlag", function () {
     expect(text()).toBe("every:true some:false");
   });
 
-  test("subscribe once each for an inline list, and remove their listeners on unmount", function () {
+  test("subscribe once each for an inline list, and remove their listeners on unmount", async function () {
     const { sdk } = instance();
     const original = sdk.on.bind(sdk);
     const cleanups: jest.Mock[] = [];
@@ -213,6 +213,8 @@ describe("react: useEveryFlag and useSomeFlag", function () {
     expect(on).toHaveBeenCalledTimes(12);
 
     view.unmount();
+    // The change tracker stops a microtask after the last hook on an instance leaves.
+    await Promise.resolve();
     cleanups.forEach((cleanup) => expect(cleanup).toHaveBeenCalledTimes(1));
   });
 
