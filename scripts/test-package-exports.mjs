@@ -20,6 +20,7 @@ const packages = [
     name: "@featurevisor/react",
     runtimeExports: {
       FeaturevisorProvider: "function",
+      FeaturevisorScope: "function",
       useFlag: "function",
       useFlags: "function",
       useEveryFlag: "function",

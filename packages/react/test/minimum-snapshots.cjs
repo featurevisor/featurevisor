@@ -4,6 +4,7 @@ const renderer = require("react-test-renderer");
 const { createFeaturevisor } = require("@featurevisor/sdk");
 const {
   FeaturevisorProvider,
+  FeaturevisorScope,
   useFlag,
   useFlags,
   useEveryFlag,
@@ -86,11 +87,18 @@ for (const strict of [false, true]) {
     }, [duringLayout]);
     return null;
   }
-  function tree(sdk = first, featureKey = "policy", context = { userId: "123" }, duringLayout) {
+  function tree(
+    sdk = first,
+    featureKey = "policy",
+    context = { userId: "123" },
+    duringLayout,
+    scope,
+  ) {
+    const reader = React.createElement(Reader, { featureKey, context, duringLayout });
     const content = React.createElement(
       FeaturevisorProvider,
       { instance: sdk },
-      React.createElement(Reader, { featureKey, context, duringLayout }),
+      scope ? React.createElement(FeaturevisorScope, { context: scope }, reader) : reader,
     );
     return strict ? React.createElement(React.StrictMode, null, content) : content;
   }
@@ -137,6 +145,12 @@ for (const strict of [false, true]) {
     step(() => view.update(tree(first, "alternate")), expected("first", "alternate"));
     step(
       () => view.update(tree(first, "policy", { blocked: true })),
+      expected("first", "policy", false),
+    );
+    step(() => view.update(tree()), expected("first"));
+    // A scope's context reaches every hook below it, and leaving it restores the values.
+    step(
+      () => view.update(tree(first, "policy", { userId: "123" }, undefined, { blocked: true })),
       expected("first", "policy", false),
     );
     step(() => view.update(tree()), expected("first"));

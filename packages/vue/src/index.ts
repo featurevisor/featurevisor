@@ -1,4 +1,5 @@
 export * from "./setupApp.js";
+export * from "./FeaturevisorScope.js";
 export type { ContextSource } from "./live.js";
 
 export * from "./useSdk.js";

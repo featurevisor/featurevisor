@@ -143,6 +143,8 @@ import {
 } from "@featurevisor/sdk";
 import {
   FeaturevisorProvider,
+  FeaturevisorScope as ReactFeaturevisorScope,
+  type FeaturevisorScopeProps,
   useFeaturevisor,
   useEveryFlag as useReactEveryFlag,
   useFlags as useReactFlags,
@@ -152,6 +154,8 @@ import {
   useVariation as useReactVariation,
 } from "@featurevisor/react";
 import {
+  FeaturevisorScope as VueFeaturevisorScope,
+  provideFeaturevisorScope,
   setupApp,
   useEveryFlag as useVueEveryFlag,
   useFlags as useVueFlags,
@@ -331,6 +335,16 @@ function checkUseFeaturevisorTypes(api: ReturnType<typeof useFeaturevisor>) {
   ];
 }
 
+function checkScopeTypes() {
+  const reactScope: FeaturevisorScopeProps = { context: { plan: "paid" }, children: null };
+  provideFeaturevisorScope({ plan: "paid" });
+  provideFeaturevisorScope(() => ({ plan: "paid" }));
+  // @ts-expect-error A scope needs a context.
+  const missingContext: FeaturevisorScopeProps = { children: null };
+
+  return [reactScope, missingContext, ReactFeaturevisorScope, VueFeaturevisorScope];
+}
+
 function checkMultipleFlagTypes(runtimeKeys: string[]) {
   const reactFlags = useReactFlags(["checkout", "liveChat", "wishlist"]);
   const reactRuntimeFlags = useReactFlags(runtimeKeys, { userId: "user-1" });
@@ -385,6 +399,7 @@ void variableMock;
 void checkFrameworkTypes;
 void checkUseFeaturevisorTypes;
 void checkMultipleFlagTypes;
+void checkScopeTypes;
 void new FeaturevisorOpenFeatureProvider({ featurevisor });
 `,
   );

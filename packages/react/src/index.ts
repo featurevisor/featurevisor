@@ -3,6 +3,7 @@ export * from "./FeaturevisorContext.js";
 
 // components
 export * from "./FeaturevisorProvider.js";
+export * from "./FeaturevisorScope.js";
 
 // hooks
 export * from "./useSdk.js";

@@ -1,7 +1,8 @@
 import type { Ref } from "vue";
 import type { FeatureKey, VariationValue } from "@featurevisor/types";
 
-import { onFeatures, readContext, useLive, type ContextSource } from "./live.js";
+import { onFeatures, useLive, type ContextSource } from "./live.js";
+import { injectScope, readScopedContext } from "./scope.js";
 import { useSdk } from "./useSdk.js";
 
 /**
@@ -13,8 +14,9 @@ export function useVariation<TVariation extends VariationValue = VariationValue>
   context?: ContextSource,
 ): Readonly<Ref<TVariation | null>> {
   const sdk = useSdk();
+  const scope = injectScope();
 
   return useLive(sdk, onFeatures(sdk, [featureKey]), () =>
-    sdk.getVariation<TVariation>(featureKey, readContext(context)),
+    sdk.getVariation<TVariation>(featureKey, readScopedContext(scope, context)),
   );
 }

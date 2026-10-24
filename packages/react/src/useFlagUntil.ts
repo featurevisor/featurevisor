@@ -1,6 +1,7 @@
 import type { Context, FeatureKey } from "@featurevisor/types";
 
 import { useRequiredSdk } from "./useRequiredSdk.js";
+import { useScopedContext } from "./scope.js";
 import { useFeaturesSubscription } from "./useFeaturesSubscription.js";
 
 /**
@@ -15,6 +16,7 @@ export function useFlagUntil(
   stopAt: boolean,
 ): boolean {
   const sdk = useRequiredSdk();
+  const scopedContext = useScopedContext(context);
   useFeaturesSubscription(sdk, featureKeys);
 
   for (let index = 0; index < featureKeys.length; index++) {
@@ -22,7 +24,7 @@ export function useFlagUntil(
 
     // A key listed again was already evaluated and did not stop the loop.
     if (featureKeys.indexOf(featureKey) !== index) continue;
-    if (sdk.isEnabled(featureKey, context) === stopAt) return stopAt;
+    if (sdk.isEnabled(featureKey, scopedContext) === stopAt) return stopAt;
   }
 
   return !stopAt;
