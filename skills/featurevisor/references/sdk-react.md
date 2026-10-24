@@ -97,7 +97,7 @@ function Accounts({ accounts }) {
 }
 ```
 
-- Every evaluating hook below a `FeaturevisorScope` reads its context. Each read merges, lowest first: the instance context, each enclosing scope from the outermost, and the hook's own context argument. The merge is shallow, and scopes nest.
+- Every evaluating hook below a `FeaturevisorScope` reads its context. Each read merges, lowest first: the instance context, each enclosing scope from the outermost, and the hook's own context argument. The merge is shallow, and scopes nest: an inner scope keeps the keys it sets when the outer one changes them and follows it for the rest, and sibling scopes stay apart.
 - `useFeaturevisor` reads (`isEnabled`, `getVariation`, every `getVariable` form, `getContext`) include the scope. Its `setContext` and sticky setters still change the instance. `useSdk` and `useRevision` are unchanged, and a nested `FeaturevisorProvider` starts without the scope.
 - Instance context changes and sticky values still apply inside a scope. An equal inline `context` prop renders nothing below again.
 - Reach for it for admin rows per account, "preview as" panels, plan comparisons and stories pinned to a plan, instead of threading context through props.
