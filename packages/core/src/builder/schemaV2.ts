@@ -19,6 +19,7 @@ import type {
 } from "@featurevisor/types";
 
 import { parseConditions } from "../datasource/conditions";
+import { FeaturevisorCLIError } from "../error";
 
 /**
  * Schema "2" is the datafile format of Featurevisor v2 and v3. Targets that
@@ -30,7 +31,7 @@ import { parseConditions } from "../datasource/conditions";
  * - flat `requiredFeatures` lists on features, global variables and overrides
  * - segments whose conditions compare attributes only
  *
- * Anything else has no schema "2" form and is reported as an issue, never
+ * Anything else has no schema version "2" form and is reported as an issue, never
  * dropped, so an older application cannot silently receive a different
  * configuration.
  */
@@ -45,7 +46,7 @@ const V4_ONLY_OPERATORS = new Set([
   "notIncludesAny",
 ]);
 
-// Empty groups are false in v4. In schema "2" an empty `and` is true, while an
+// Empty groups are false in v4. In schema version "2" an empty `and` is true, while an
 // empty `or` is false in both, so it stands for false.
 const NEVER: Condition = { or: [] };
 
@@ -70,7 +71,8 @@ export interface SchemaV2Options {
   stringify?: boolean;
 }
 
-export class SchemaV2ConversionError extends Error {
+/** A CLI error, so `--json` output carries its code and every issue. */
+export class SchemaV2ConversionError extends FeaturevisorCLIError {
   readonly issues: SchemaV2Issue[];
   readonly targetKey?: string;
 
@@ -82,9 +84,22 @@ export class SchemaV2ConversionError extends Error {
       .filter(Boolean)
       .join(" ");
     super(
-      `${where} sets schemaVersion "2" for @featurevisor/sdk 3, which cannot express:\n` +
+      `${where} sets schemaVersion "2" for @featurevisor/sdk v3, which cannot express:\n` +
         issues.map((issue) => `  - ${describeIssue(issue)}`).join("\n") +
-        `\nKeep these definitions out of the target, or write them in a form schema "2" supports. Run featurevisor lint to see each file.`,
+        `\nKeep these definitions out of the target, or write them in a form schema version "2" supports. Run featurevisor lint to see each file.`,
+      {
+        code: "schema_v2_unsupported",
+        details: {
+          target: targetKey ?? null,
+          environment: environment || null,
+          issues: issues.map(({ entityType, key, path, reason }) => ({
+            entityType,
+            key,
+            path,
+            reason,
+          })),
+        },
+      },
     );
     this.name = "SchemaV2ConversionError";
     this.issues = issues;
@@ -128,7 +143,7 @@ function kindOf(leaf: Condition): Kind {
   return "attribute";
 }
 
-/** Every leaf kind under a node, so callers can choose a schema "2" form. */
+/** Every leaf kind under a node, so callers can choose a schema version "2" form. */
 function kinds(value: Conditions, out = new Set<Kind>()): Set<Kind> {
   if (value === "*") return out;
   if (Array.isArray(value) || isGroup(value as Condition)) {
@@ -152,7 +167,7 @@ function firstLeaf(value: Conditions, kind: Kind): Condition | undefined {
   return kindOf(value as Condition) === kind ? (value as Condition) : undefined;
 }
 
-/** A copy without fields that schema "2" writes differently. */
+/** A copy without fields that schema version "2" writes differently. */
 function without<T extends object>(value: T, keys: string[]): T {
   const result = { ...value } as Record<string, unknown>;
   for (const key of keys) delete result[key];
@@ -188,13 +203,16 @@ export function convertDatafileToSchemaV2(
   /** An attribute leaf, refusing operators the v3 SDK does not know. */
   const attribute = (leaf: AttributeCondition, scope: Scope): Condition => {
     if (V4_ONLY_OPERATORS.has(leaf.operator)) {
-      report(scope, `uses operator "${leaf.operator}", which @featurevisor/sdk 3 does not support`);
+      report(
+        scope,
+        `uses operator "${leaf.operator}", which @featurevisor/sdk v3 does not support`,
+      );
     }
     return { ...leaf };
   };
 
   /**
-   * Attribute conditions, the schema "2" form for segments, force entries and
+   * Attribute conditions, the schema version "2" form for segments, force entries and
    * overrides. Segment references are replaced by their own conditions.
    */
   const toConditions = (
@@ -228,8 +246,8 @@ export function convertDatafileToSchemaV2(
     report(
       scope,
       kind === "variable"
-        ? `reads ${describeLeaf(value)}, and schema "2" has no variable conditions`
-        : `requires ${describeLeaf(value)} where schema "2" can only compare attributes`,
+        ? `reads ${describeLeaf(value)}, and schema version "2" has no variable conditions`
+        : `requires ${describeLeaf(value)} where schema version "2" can only compare attributes`,
     );
     return NEVER;
   };
@@ -243,7 +261,7 @@ export function convertDatafileToSchemaV2(
   };
 
   /**
-   * Segment references with `and`, `or` and `not`, the schema "2" form for
+   * Segment references with `and`, `or` and `not`, the schema version "2" form for
    * rules. Attribute only parts become segments of their own.
    */
   const toSegments = (value: Conditions, scope: Scope): GroupSegment | GroupSegment[] | "*" => {
@@ -268,8 +286,8 @@ export function convertDatafileToSchemaV2(
     report(
       scope,
       kind === "variable"
-        ? `reads ${describeLeaf(value)}, and schema "2" has no variable conditions`
-        : `requires ${describeLeaf(value)}, and schema "2" rules and force entries cannot require features`,
+        ? `reads ${describeLeaf(value)}, and schema version "2" has no variable conditions`
+        : `requires ${describeLeaf(value)}, and schema version "2" rules and force entries cannot require features`,
     );
     return NEVER as GroupSegment;
   };
@@ -321,7 +339,7 @@ export function convertDatafileToSchemaV2(
         if (kindOf(node as Condition) === "feature") {
           report(
             scope,
-            `requires ${describeLeaf(node as Condition)} inside "or" or "not", while schema "2" only has a flat list of required features`,
+            `requires ${describeLeaf(node as Condition)} inside "or" or "not", while schema version "2" only has a flat list of required features`,
           );
         }
       };
@@ -344,7 +362,7 @@ export function convertDatafileToSchemaV2(
   const encode = <T>(value: T): T =>
     (stringify && typeof value !== "string" ? JSON.stringify(value) : value) as T;
 
-  /** A root gate: schema "2" features and global variables only require features. */
+  /** A root gate: schema version "2" features and global variables only require features. */
   const gate = (value: Conditions | undefined, scope: Scope): RequiredFeature[] | undefined => {
     if (value === undefined) return undefined;
     const { features, rest } = split(parseConditions(value));
@@ -352,12 +370,15 @@ export function convertDatafileToSchemaV2(
     for (const entry of rest) {
       const variable = firstLeaf(entry, "variable");
       if (variable)
-        report(scope, `reads ${describeLeaf(variable)}, and schema "2" has no variable conditions`);
+        report(
+          scope,
+          `reads ${describeLeaf(variable)}, and schema version "2" has no variable conditions`,
+        );
       const other = firstLeaf(entry, "segment") || firstLeaf(entry, "attribute");
       if (other)
         report(
           scope,
-          `compares ${describeLeaf(other)}, while schema "2" root conditions can only require features`,
+          `compares ${describeLeaf(other)}, while schema version "2" root conditions can only require features`,
         );
     }
     return features.length ? required(features) : undefined;
@@ -528,14 +549,14 @@ export function convertDatafileToSchemaV2(
       if (variable.compose !== undefined) {
         report(
           scope(["compose"], "the variable"),
-          `is a composition, which @featurevisor/sdk 3 cannot evaluate`,
+          `is a composition, which @featurevisor/sdk v3 cannot evaluate`,
         );
         continue;
       }
       if (variable.overrideProgram !== undefined) {
         report(
           scope(["overrides"], "the variable"),
-          `needs runtime overrides, from "continue" or "precomputeMutations: false", which @featurevisor/sdk 3 cannot run`,
+          `needs runtime overrides, from "continue" or "precomputeMutations: false", which @featurevisor/sdk v3 cannot run`,
         );
         continue;
       }

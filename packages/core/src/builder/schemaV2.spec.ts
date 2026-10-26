@@ -7,11 +7,12 @@ import { createFeaturevisor } from "@featurevisor/sdk";
 
 import { getProjectConfig } from "../config";
 import { Datasource } from "../datasource";
+import { formatFeaturevisorCLIError } from "../error";
 import { buildTargetDatafile } from "./buildProject";
 import { resolveBuildEnvironments } from "./environments";
 import { SchemaV2ConversionError, convertDatafileToSchemaV2, toSchemaV2 } from "./schemaV2";
 
-// The latest v3 JavaScript SDK, the one schema "2" targets are converted for.
+// The latest v3 JavaScript SDK, the one schema version "2" targets are converted for.
 const { createFeaturevisor: createFeaturevisorV3 } = require("featurevisor-sdk-3");
 
 const examples = path.resolve(__dirname, "../../../../examples");
@@ -368,6 +369,18 @@ describe("schema 2 conversion", () => {
     expect(message).toContain('feature "a", rule "r"');
     expect(message).toContain('variable "c", the variable');
     expect((error as SchemaV2ConversionError).issues).toHaveLength(2);
+    // A CLI error, so --json output reports the code and each issue.
+    const output = JSON.parse(formatFeaturevisorCLIError(error, { json: true }));
+    expect(output.error.code).toBe("schema_v2_unsupported");
+    expect(output.error.message).toBe(message);
+    expect(output.error.details.target).toBe("ios");
+    expect(output.error.details.environment).toBe("production");
+    expect(
+      output.error.details.issues.map((issue: any) => [issue.entityType, issue.key, issue.path]),
+    ).toEqual([
+      ["feature", "a", ["rules", "r", "conditions"]],
+      ["variable", "c", ["compose"]],
+    ]);
   });
 });
 

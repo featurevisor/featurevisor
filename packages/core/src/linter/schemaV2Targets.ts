@@ -69,5 +69,5 @@ export function describeSchemaV2TargetIssue(issue: SchemaV2TargetIssue): string 
   const environments = issue.environments.length
     ? ` in ${issue.environments.length === 1 ? "environment" : "environments"} ${issue.environments.join(", ")}`
     : "";
-  return `${issue.location[0].toUpperCase()}${issue.location.slice(1)} ${issue.reason}. ${targets} schemaVersion "2"${environments}, so keep this ${issue.entityType} out of ${names.length === 1 ? "it" : "them"} or write it in a form schema "2" supports.`;
+  return `${issue.location[0].toUpperCase()}${issue.location.slice(1)} ${issue.reason}. ${targets} schemaVersion "2"${environments}, so keep this ${issue.entityType} out of ${names.length === 1 ? "it" : "them"} or write it in a form schema version "2" supports.`;
 }

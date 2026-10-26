@@ -86,7 +86,7 @@ describe("schemaVersion 2 targets", () => {
       path.relative(process.cwd(), path.join(root, "features/newOnboarding.yml")),
     );
     expect(gate.message).toBe(
-      'The root gate reads variable "maintenanceMode", and schema "2" has no variable conditions. Target "android" sets schemaVersion "2" in environments staging, production, so keep this feature out of it or write it in a form schema "2" supports.',
+      'The root gate reads variable "maintenanceMode", and schema version "2" has no variable conditions. Target "android" sets schemaVersion "2" in environments staging, production, so keep this feature out of it or write it in a form schema version "2" supports.',
     );
     expect(gate.value).toEqual({
       targets: ["android"],
@@ -213,7 +213,7 @@ describe("schemaVersion 2 targets", () => {
       "payingAccounts",
       "recentApps",
     ]);
-    // The schema "2" file is measured as served, with its synthesized segment.
+    // The schema version "2" file is measured as served, with its synthesized segment.
     const v4 = { ...(await datasource.readTarget("ios")), schemaVersion: undefined };
     expect(legacy.datafiles[1].bytes).not.toBe(
       Buffer.from(JSON.stringify(await buildAsSchema4(projectConfig, datasource, v4, "production")))
