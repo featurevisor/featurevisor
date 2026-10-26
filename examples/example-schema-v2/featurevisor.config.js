@@ -1,5 +1,5 @@
 /** @type {import('@featurevisor/core').ProjectConfig} */
 module.exports = {
   environments: ["staging", "production"],
-  tags: ["web", "ios", "android"],
+  tags: ["web", "ios", "ios-v4", "android"],
 };

@@ -75,17 +75,19 @@ Serve such a datafile only to users matching that context. Its results assume it
 
 ## Applications on the v3 SDK
 
-Applications still on `@featurevisor/sdk` 3 read schema "2" datafiles. Give their target `schemaVersion: "2"`, in quotes:
+Releases still on `@featurevisor/sdk` v3 read schema version "2" datafiles. Keep the target they already load, so their datafile URL stays the same, and set its schema version to "2", in quotes:
 
 ```yaml
-description: Mobile apps on @featurevisor/sdk 3
+description: iOS app
+
+tag: ios
 
 schemaVersion: "2"
-
-tag: mobile
 ```
 
-The build converts that target's datafiles for `@featurevisor/sdk` 3.8, the latest v3 JavaScript SDK. Lint checks every definition the target carries, dependencies included, and reports on the definition's own file anything schema "2" cannot express:
+Give releases on the v4 SDK a new target, such as `targets/ios-v4.yml`, without `schemaVersion`. Never move older releases to a new URL for this.
+
+The build converts the schema version "2" target's datafiles for `@featurevisor/sdk` 3.8, the latest v3 JavaScript SDK. Lint checks every definition that target carries, dependencies included, and reports on the definition's own file anything schema version "2" cannot express:
 
 - variable conditions
 - feature conditions in rules, force entries or segments, or under `or` and `not`
@@ -93,7 +95,7 @@ The build converts that target's datafiles for `@featurevisor/sdk` 3.8, the late
 - `isNull`, `notNull`, `empty`, `notEmpty`, `includesAny` and `notIncludesAny`
 - compositions, and overrides that need runtime mutations (`continue`, `precomputeMutations: false`)
 
-Keep such definitions out of the target, or keep them in the v3 shape. Removing a definition an older release reads turns it off there, so serve new releases from a schema "4" target rather than changing what the old one selects. Projects and targets without `schemaVersion: "2"` are not affected.
+Keep such definitions out of that target, for example with a tag only the v4 target selects, or keep them in the v3 shape. Removing a definition older releases read turns it off for them. Projects and targets without `schemaVersion: "2"` are not affected.
 
 ## Test and inspect
 

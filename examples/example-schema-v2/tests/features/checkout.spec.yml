@@ -4,8 +4,8 @@ assertions:
   - description: Dutch users are in, on old and new iOS releases
     matrix:
       target:
+        - ios-v4
         - ios
-        - ios-legacy
     target: ${{ target }}
     environment: production
     at: 90
@@ -18,9 +18,9 @@ assertions:
     matrix:
       target:
         - web
+        - ios-v4
         - ios
-        - ios-legacy
-        - android-legacy
+        - android
     target: ${{ target }}
     environment: production
     at: 20
@@ -33,9 +33,9 @@ assertions:
     matrix:
       target:
         - web
+        - ios-v4
         - ios
-        - ios-legacy
-        - android-legacy
+        - android
     target: ${{ target }}
     environment: production
     at: 30

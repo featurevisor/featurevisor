@@ -1,8 +1,8 @@
 feature: buyButton
 
 assertions:
-  - description: Dutch users in the treatment see Dutch copy on the legacy target
-    target: ios-legacy
+  - description: Dutch users in the treatment see Dutch copy for v3 releases
+    target: ios
     environment: production
     at: 80
     context:
@@ -13,8 +13,8 @@ assertions:
       label: Nu kopen
       colour: "#2563eb"
 
-  - description: Paid accounts can buy up to ten on the legacy target
-    target: ios-legacy
+  - description: Paid accounts can buy up to ten for v3 releases
+    target: ios
     environment: production
     at: 20
     context:

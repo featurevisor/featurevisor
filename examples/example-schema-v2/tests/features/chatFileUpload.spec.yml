@@ -1,8 +1,8 @@
 feature: chatFileUpload
 
 assertions:
-  - description: Requires liveChat on the legacy target too
-    target: ios-legacy
+  - description: Requires liveChat for v3 releases too
+    target: ios
     environment: production
     at: 10
     stickyFeatures:
@@ -17,8 +17,8 @@ assertions:
   - description: Dutch paying accounts get it once liveChat is on
     matrix:
       target:
+        - ios-v4
         - ios
-        - ios-legacy
     target: ${{ target }}
     environment: production
     at: 10
@@ -34,8 +34,8 @@ assertions:
   - description: Recent German apps join the 50% rule
     matrix:
       target:
+        - ios-v4
         - ios
-        - ios-legacy
     target: ${{ target }}
     environment: production
     at: 40
@@ -51,8 +51,8 @@ assertions:
   - description: Older German apps fall through to the 0% rule
     matrix:
       target:
+        - ios-v4
         - ios
-        - ios-legacy
     target: ${{ target }}
     environment: production
     at: 40

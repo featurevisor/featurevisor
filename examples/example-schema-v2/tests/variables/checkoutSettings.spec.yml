@@ -2,7 +2,7 @@ variable: checkoutSettings
 
 assertions:
   - description: German users get sofort while checkout is on
-    target: ios-legacy
+    target: ios
     environment: staging
     context:
       userId: user-5

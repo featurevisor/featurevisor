@@ -2,7 +2,7 @@ description: Onboarding for new releases, using v4 only conditions
 
 tags:
   - web
-  - ios
+  - ios-v4
 
 bucketBy: userId
 

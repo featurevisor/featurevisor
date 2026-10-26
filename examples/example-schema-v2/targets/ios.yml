@@ -1,3 +1,5 @@
-description: iOS application 5 and later, on @featurevisor/sdk 4
+description: iOS app, read by releases on @featurevisor/sdk v3
 
 tag: ios
+
+schemaVersion: "2"

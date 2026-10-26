@@ -358,13 +358,13 @@ describe("schema 2 conversion", () => {
     });
     let error: unknown;
     try {
-      toSchemaV2(source, { targetKey: "ios-legacy", environment: "production" });
+      toSchemaV2(source, { targetKey: "ios", environment: "production" });
     } catch (caught) {
       error = caught;
     }
     expect(error).toBeInstanceOf(SchemaV2ConversionError);
     const message = (error as Error).message;
-    expect(message).toContain('Target "ios-legacy" in environment "production"');
+    expect(message).toContain('Target "ios" in environment "production"');
     expect(message).toContain('feature "a", rule "r"');
     expect(message).toContain('variable "c", the variable');
     expect((error as SchemaV2ConversionError).issues).toHaveLength(2);
@@ -488,13 +488,13 @@ describe("schema 2 datafiles evaluate the same in @featurevisor/sdk 3.8", () => 
     return result;
   }
 
-  it("matches for the legacy targets of example-schema-v2", async () => {
+  it("matches for the schema 2 targets of example-schema-v2", async () => {
     const built = await pairs("example-schema-v2", (target) => target.schemaVersion === "2");
     expect(built.map((entry) => entry.name).sort()).toEqual([
-      "android-legacy production",
-      "android-legacy staging",
-      "ios-legacy production",
-      "ios-legacy staging",
+      "android production",
+      "android staging",
+      "ios production",
+      "ios staging",
     ]);
     let compared = 0;
     for (const { v4, v2 } of built) {

@@ -2,7 +2,7 @@ description: Onboarding copy, composed from other variables
 
 tags:
   - web
-  - ios
+  - ios-v4
 
 compose:
   email:

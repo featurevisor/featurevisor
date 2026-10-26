@@ -1,10 +1,10 @@
 # example-schema-v2
 
-A project whose newer applications read schema "4" datafiles, while older iOS and Android releases still run `@featurevisor/sdk` 3 and read schema "2".
+A project whose older iOS and Android releases still run `@featurevisor/sdk` v3 and read schema version "2" datafiles, while new releases read schema version "4".
 
-- `targets/web.yml` and `targets/ios.yml` build schema "4" datafiles for current applications.
-- `targets/ios-legacy.yml` and `targets/android-legacy.yml` set `schemaVersion: "2"`. The build converts their datafiles, and lint checks every definition they carry.
-- `features/newOnboarding.yml`, `segments/writers.yml` and `variables/onboardingCopy.yml` use v4 only syntax. Neither legacy target selects them, so lint accepts them.
+- `targets/ios.yml` and `targets/android.yml` are the targets older releases already load. They set `schemaVersion: "2"`, so their datafile URLs stay the same. The build converts their datafiles, and lint checks every definition they carry.
+- `targets/ios-v4.yml` is a new target for iOS releases on the v4 SDK, and `targets/web.yml` serves the web. Both write schema version "4".
+- `features/newOnboarding.yml`, `segments/writers.yml` and `variables/onboardingCopy.yml` use v4 only syntax. They are tagged `ios-v4` and `web`, so neither schema version "2" target carries them.
 
 ```sh
 npm run lint
