@@ -39,6 +39,11 @@ export function getTargetZodSchema(projectConfig: ProjectConfig) {
       includeVariables: entityPatternsSchema.optional(),
       excludeVariables: entityPatternsSchema.optional(),
       context: z.record(z.string(), z.unknown()).optional(),
+      schemaVersion: z
+        .enum(["2", "4"], {
+          error: () => 'schemaVersion must be the string "2" or "4", in quotes',
+        })
+        .optional(),
     })
     .strict()
     .refine((target) => !(target.tag && target.tags), {

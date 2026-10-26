@@ -1,0 +1,30 @@
+description: Support email address
+
+tags:
+  - web
+  - ios
+  - android
+
+type: string
+
+defaultValue: support@example.com
+
+overrides:
+  staging:
+    - key: dutch
+      conditions: netherlands
+      value: support-nl@example.com
+
+  production:
+    - key: dutch
+      conditions: netherlands
+      value: support-nl@example.com
+
+    - key: pricingTreatment
+      conditions:
+        - feature: pricing
+          variation: treatment
+        - attribute: plan
+          operator: equals
+          value: enterprise
+      value: enterprise@example.com

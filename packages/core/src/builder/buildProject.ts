@@ -6,6 +6,7 @@ import { Datasource } from "../datasource";
 import { getNextRevision } from "./revision";
 import { buildDatafile, getCustomDatafile } from "./buildDatafile";
 import { applyContextToDatafile } from "./applyContextToDatafile";
+import { SCHEMA_V2, toSchemaV2 } from "./schemaV2";
 import { generateHashForDatafile } from "./hashes";
 import { Dependencies } from "../dependencies";
 import { Plugin } from "../cli";
@@ -144,18 +145,36 @@ export async function buildTargetDatafile({
     existingState,
   );
 
+  let result = datafileContent as DatafileContent;
   if (target.context) {
-    const contextualDatafile = applyContextToDatafile(
-      datafileContent as DatafileContent,
-      target.context,
-    );
-    if (revisionFromHash) {
-      contextualDatafile.revision = generateHashForDatafile(contextualDatafile);
+    result = applyContextToDatafile(result, target.context);
+    if (revisionFromHash && target.schemaVersion !== SCHEMA_V2) {
+      result.revision = generateHashForDatafile(result);
     }
-    return contextualDatafile;
   }
 
-  return datafileContent as DatafileContent;
+  return finishTargetDatafile(result, target, projectConfig, environment, revisionFromHash);
+}
+
+/**
+ * Write the schema the target asks for. Only targets with schemaVersion "2"
+ * pay for the conversion, and only they can fail it.
+ */
+function finishTargetDatafile(
+  datafile: DatafileContent,
+  target: Target | undefined,
+  projectConfig: ProjectConfig,
+  environment: string | false,
+  revisionFromHash?: boolean,
+): DatafileContent {
+  if (target?.schemaVersion !== SCHEMA_V2) return datafile;
+  const converted = toSchemaV2(datafile, {
+    stringify: projectConfig.stringify,
+    targetKey: target.key,
+    environment,
+  });
+  if (revisionFromHash) converted.revision = generateHashForDatafile(converted);
+  return converted;
 }
 
 export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptions = {}) {
@@ -214,10 +233,17 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
 
     if (target?.context) {
       datafileContent = applyContextToDatafile(datafileContent as DatafileContent, target.context);
-      if (cliOptions.revisionFromHash) {
+      if (cliOptions.revisionFromHash && target.schemaVersion !== SCHEMA_V2) {
         datafileContent.revision = generateHashForDatafile(datafileContent);
       }
     }
+    datafileContent = finishTargetDatafile(
+      datafileContent as DatafileContent,
+      target,
+      projectConfig,
+      environment,
+      cliOptions.revisionFromHash,
+    );
 
     if (cliOptions.pretty) {
       console.log(JSON.stringify(datafileContent, null, 2));

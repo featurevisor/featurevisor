@@ -1,0 +1,10 @@
+description: Permissions of the account
+
+type: array
+
+items:
+  type: string
+  enum:
+    - read
+    - write
+    - admin

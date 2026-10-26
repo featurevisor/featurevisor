@@ -1,0 +1,14 @@
+{
+  "name": "@featurevisor/example-schema-v2",
+  "private": true,
+  "version": "4.1.0",
+  "description": "Featurevisor project serving schema 2 datafiles to applications on @featurevisor/sdk 3",
+  "scripts": {
+    "lint": "featurevisor lint",
+    "build": "featurevisor build",
+    "test": "featurevisor test --only-failures"
+  },
+  "dependencies": {
+    "@featurevisor/cli": "4.1.0"
+  }
+}

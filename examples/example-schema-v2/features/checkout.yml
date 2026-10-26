@@ -1,0 +1,23 @@
+description: New checkout flow
+
+tags:
+  - web
+  - ios
+  - android
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: netherlands
+      conditions: netherlands
+      percentage: 100
+
+    - key: everyone
+      conditions: "*"
+      percentage: 25

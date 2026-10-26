@@ -26,4 +26,9 @@ export interface Target {
   includeVariables?: TargetVariables;
   excludeVariables?: TargetVariables;
   context?: Context;
+  /**
+   * Datafile schema to write. "4" by default. "2" writes datafiles that the
+   * latest v3 JavaScript SDK, @featurevisor/sdk 3.8, can read.
+   */
+  schemaVersion?: "2" | "4";
 }

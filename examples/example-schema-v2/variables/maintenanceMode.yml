@@ -1,0 +1,10 @@
+description: Kill switch for the whole checkout
+
+tags:
+  - web
+  - ios
+  - android
+
+type: boolean
+
+defaultValue: false

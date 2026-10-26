@@ -1,0 +1,8 @@
+description: Accounts that can write, with a v4 only operator
+
+conditions:
+  - attribute: permissions
+    operator: includesAny
+    value:
+      - write
+      - admin

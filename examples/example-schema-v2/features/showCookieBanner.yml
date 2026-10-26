@@ -1,0 +1,17 @@
+description: Cookie consent banner
+
+tags:
+  - web
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 100

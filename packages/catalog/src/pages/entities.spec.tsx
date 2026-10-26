@@ -780,6 +780,34 @@ describe("Catalog entity surfaces", () => {
     );
   });
 
+  it("shows a Target's schema version only when it sets one", () => {
+    const overview = (entity: Record<string, unknown>) =>
+      render(
+        <Routes>
+          <Route
+            element={
+              <Outlet
+                context={{
+                  detail: { type: "target", key: "ios", entity, relationships: { features: [] } },
+                }}
+              />
+            }
+          >
+            <Route path="*" element={<OverviewTab />} />
+          </Route>
+        </Routes>,
+        "/targets/ios",
+      );
+    const legacy = overview({ tag: "ios", schemaVersion: "2" });
+    expect(legacy).toContain("Schema version");
+    expect(legacy).toContain(">2</span>");
+    expect(legacy).toContain("@featurevisor/sdk</code> v3");
+    const explicit = overview({ tag: "ios", schemaVersion: "4" });
+    expect(explicit).toContain("Schema version");
+    expect(explicit).not.toContain("@featurevisor/sdk");
+    expect(overview({ tag: "ios" })).not.toContain("Schema version");
+  });
+
   it("starts long usage lists collapsed with a filter", () => {
     const usedBy = Array.from({ length: 20 }, (_, index) => ({
       type: "segment" as const,

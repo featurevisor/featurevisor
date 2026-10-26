@@ -1,0 +1,25 @@
+feature: buyButton
+
+assertions:
+  - description: Dutch users in the treatment see Dutch copy for v3 releases
+    target: ios
+    environment: production
+    at: 80
+    context:
+      userId: user-4
+      country: nl
+    expectedVariation: treatment
+    expectedVariables:
+      label: Nu kopen
+      colour: "#2563eb"
+
+  - description: Paid accounts can buy up to ten for v3 releases
+    target: ios
+    environment: production
+    at: 20
+    context:
+      userId: user-5
+      country: us
+      plan: paid
+    expectedVariables:
+      maxQuantity: 10

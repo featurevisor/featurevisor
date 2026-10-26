@@ -1,0 +1,45 @@
+feature: checkout
+
+assertions:
+  - description: Dutch users are in, on old and new iOS releases
+    matrix:
+      target:
+        - ios-v4
+        - ios
+    target: ${{ target }}
+    environment: production
+    at: 90
+    context:
+      userId: user-4
+      country: nl
+    expectedToBeEnabled: true
+
+  - description: Below 25% everyone else is in, on every target
+    matrix:
+      target:
+        - web
+        - ios-v4
+        - ios
+        - android
+    target: ${{ target }}
+    environment: production
+    at: 20
+    context:
+      userId: user-5
+      country: de
+    expectedToBeEnabled: true
+
+  - description: Above 25% everyone else is out, on every target
+    matrix:
+      target:
+        - web
+        - ios-v4
+        - ios
+        - android
+    target: ${{ target }}
+    environment: production
+    at: 30
+    context:
+      userId: user-5
+      country: de
+    expectedToBeEnabled: false

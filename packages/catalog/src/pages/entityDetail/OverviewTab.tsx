@@ -516,6 +516,16 @@ function TargetDefinition(props: {
               </span>
             )}
           </OverviewMetaRow>
+          {entity.schemaVersion !== undefined ? (
+            <OverviewMetaRow label="Schema version">
+              <OverviewChip>{String(entity.schemaVersion)}</OverviewChip>
+              {entity.schemaVersion === "2" ? (
+                <span className="text-xs text-muted">
+                  Converted for <code>@featurevisor/sdk</code> v3
+                </span>
+              ) : null}
+            </OverviewMetaRow>
+          ) : null}
           {props.detail.datafiles?.length ? (
             <OverviewMetaRow label="Estimated size">
               <span className="flex flex-col gap-1 text-sm text-text">
