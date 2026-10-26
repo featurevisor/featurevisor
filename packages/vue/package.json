@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/vue",
   "sideEffects": false,
-  "version": "4.2.0",
+  "version": "4.3.0",
   "description": "Vue functions for Featurevisor flags, variations and configuration",
   "main": "cjs/index.js",
   "module": "esm/index.js",
@@ -56,8 +56,8 @@
     "url": "https://github.com/featurevisor/featurevisor/issues"
   },
   "dependencies": {
-    "@featurevisor/sdk": "4.0.1",
-    "@featurevisor/types": "4.0.1"
+    "@featurevisor/sdk": "4.3.0",
+    "@featurevisor/types": "4.3.0"
   },
   "peerDependencies": {
     "vue": "^3.0.0"

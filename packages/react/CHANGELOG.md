@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.3.0](https://github.com/featurevisor/featurevisor/compare/v4.2.0...v4.3.0) (2026-10-26)
+
+**Note:** Version bump only for package @featurevisor/react
+
+
+
+
+
 ## [4.2.0](https://github.com/featurevisor/featurevisor/compare/v4.1.0...v4.2.0) (2026-10-24)
 
 ### Features
