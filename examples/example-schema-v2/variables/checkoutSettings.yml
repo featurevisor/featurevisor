@@ -1,0 +1,48 @@
+description: Checkout currency and payment methods
+
+tags:
+  - web
+  - ios
+  - android
+
+type: object
+
+properties:
+  currency:
+    type: string
+
+  paymentMethods:
+    type: array
+    items:
+      type: string
+
+defaultValue:
+  currency: EUR
+  paymentMethods:
+    - ideal
+    - card
+
+conditions:
+  - feature: checkout
+
+disabledValue:
+  currency: EUR
+  paymentMethods:
+    - card
+
+overrides:
+  staging:
+    - key: germany
+      conditions: germany
+      mutate:
+        paymentMethods:
+          - card
+          - sofort
+
+  production:
+    - key: germany
+      conditions: germany
+      mutate:
+        paymentMethods:
+          - card
+          - sofort

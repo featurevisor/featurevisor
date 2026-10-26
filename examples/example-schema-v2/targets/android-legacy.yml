@@ -1,0 +1,5 @@
+description: Android application releases before 5, on @featurevisor/sdk 3
+
+schemaVersion: "2"
+
+tag: android

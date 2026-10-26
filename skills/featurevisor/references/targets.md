@@ -73,6 +73,28 @@ context:
 
 Serve such a datafile only to users matching that context. Its results assume it, so a German user evaluated against it would be treated as Dutch.
 
+## Applications on the v3 SDK
+
+Applications still on `@featurevisor/sdk` 3 read schema "2" datafiles. Give their target `schemaVersion: "2"`, in quotes:
+
+```yaml
+description: Mobile apps on @featurevisor/sdk 3
+
+schemaVersion: "2"
+
+tag: mobile
+```
+
+The build converts that target's datafiles for `@featurevisor/sdk` 3.8, the latest v3 JavaScript SDK. Lint checks every definition the target carries, dependencies included, and reports on the definition's own file anything schema "2" cannot express:
+
+- variable conditions
+- feature conditions in rules, force entries or segments, or under `or` and `not`
+- root conditions that compare attributes or segments
+- `isNull`, `notNull`, `empty`, `notEmpty`, `includesAny` and `notIncludesAny`
+- compositions, and overrides that need runtime mutations (`continue`, `precomputeMutations: false`)
+
+Keep such definitions out of the target, or keep them in the v3 shape. Removing a definition an older release reads turns it off there, so serve new releases from a schema "4" target rather than changing what the old one selects. Projects and targets without `schemaVersion: "2"` are not affected.
+
 ## Test and inspect
 
 ```yaml

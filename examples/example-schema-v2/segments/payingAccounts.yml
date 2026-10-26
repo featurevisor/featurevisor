@@ -1,0 +1,8 @@
+description: Accounts on a paid plan
+
+conditions:
+  - attribute: plan
+    operator: in
+    value:
+      - paid
+      - enterprise

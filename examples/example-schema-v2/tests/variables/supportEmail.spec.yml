@@ -1,0 +1,16 @@
+variable: supportEmail
+
+assertions:
+  - description: Dutch users get the Dutch address on the legacy target
+    target: ios-legacy
+    environment: production
+    context:
+      country: nl
+    expectedValue: support-nl@example.com
+
+  - description: Everyone else gets the default
+    target: android-legacy
+    environment: production
+    context:
+      country: de
+    expectedValue: support@example.com

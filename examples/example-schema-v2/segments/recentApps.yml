@@ -1,0 +1,6 @@
+description: Application releases from 5.0.0
+
+conditions:
+  - attribute: appVersion
+    operator: semverGreaterThanOrEquals
+    value: 5.0.0

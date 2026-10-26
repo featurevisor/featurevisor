@@ -8,6 +8,7 @@ import type {
   Segment,
   ParsedVariable,
   Schema,
+  Target,
 } from "@featurevisor/types";
 import type { ZodError } from "zod";
 
@@ -22,6 +23,7 @@ import { assertNoLegacyDatasourceGroups } from "../config/removedGroups";
 import { getSchemaZodSchema } from "./schema";
 import { getScenariosZodSchema, getTestsZodSchema } from "./testSchema";
 import { getTargetZodSchema } from "./targetSchema";
+import { describeSchemaV2TargetIssue, findSchemaV2TargetIssues } from "./schemaV2Targets";
 import { getVariableZodSchema } from "./variableSchema";
 
 import { getLintIssuesFromZodError, printLintIssues } from "./printError";
@@ -1032,6 +1034,8 @@ export async function lintProject(
   // lint targets
   const targets = await datasource.listTargets();
   const targetZodSchema = getTargetZodSchema(projectConfig);
+  const parsedTargets = new Map<string, Target>();
+  const checkedTargets = new Set<string>();
 
   if (!options.entityType || options.entityType === "target") {
     await lintReservedNamespaceCharacterInEntityPaths("target");
@@ -1056,6 +1060,7 @@ export async function lintProject(
         });
       }
 
+      checkedTargets.add(key);
       try {
         const parsed = await datasource.readTarget(key);
 
@@ -1063,11 +1068,54 @@ export async function lintProject(
 
         if (!result.success && "error" in result) {
           await reportZodValidationError("target", key, fullPath, result.error);
+        } else {
+          parsedTargets.set(key, parsed);
         }
         await reportArchivedReferences("target", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("target", key, fullPath, error);
       }
+    }
+  }
+
+  // Definitions that schemaVersion "2" targets carry must have a schema "2"
+  // form. Projects without such a target only read their target files.
+  if (
+    !options.entityType ||
+    ["feature", "segment", "variable", "target"].includes(options.entityType)
+  ) {
+    // Targets the loop above skipped, because of --entityType or --keyPattern.
+    for (const key of targets) {
+      if (checkedTargets.has(key)) continue;
+      try {
+        const parsed = await datasource.readTarget(key);
+        if (targetZodSchema.safeParse(parsed, diagnosticParseOptions).success) {
+          parsedTargets.set(key, parsed);
+        }
+      } catch {
+        // Linting targets reports this.
+      }
+    }
+    const byTarget = options.entityType === "target";
+    const schemaV2Issues = await findSchemaV2TargetIssues(
+      projectConfig,
+      datasource,
+      [...parsedTargets]
+        .filter(([key]) => !byTarget || !keyPattern || keyPattern.test(key))
+        .map(([key, target]) => ({ ...target, key })),
+    );
+    for (const issue of schemaV2Issues) {
+      if (!byTarget && options.entityType && options.entityType !== issue.entityType) continue;
+      if (!byTarget && keyPattern && !keyPattern.test(issue.key)) continue;
+      await reportSimpleError({
+        entityType: issue.entityType,
+        key: issue.key,
+        fullPath: getFullPathFromKey(issue.entityType, issue.key),
+        message: describeSchemaV2TargetIssue(issue),
+        pathParts: issue.path,
+        code: "schema_v2_unsupported",
+        value: { targets: issue.targets, environments: issue.environments },
+      });
     }
   }
 

@@ -1,0 +1,5 @@
+description: Paying accounts in the Netherlands, built from two segments
+
+conditions:
+  - netherlands
+  - payingAccounts

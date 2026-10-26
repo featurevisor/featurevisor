@@ -1,0 +1,6 @@
+description: Germany
+
+conditions:
+  - attribute: country
+    operator: equals
+    value: de

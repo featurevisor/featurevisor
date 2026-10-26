@@ -1,0 +1,5 @@
+description: Version of the installed application
+
+type: string
+
+format: semver

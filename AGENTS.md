@@ -76,7 +76,11 @@ make test-mutation-conformance RUNNERS="javascript go"
 
 Native checks expect sibling SDK repositories with their CLI runners built.
 Example 1 is the broad integration project. Other examples cover compositions,
-Sets, namespaces and optional environments.
+Sets, namespaces and optional environments. example-schema-v2 serves schema "2"
+datafiles to @featurevisor/sdk 3.8 beside schema "4" targets. Core's schemaV2
+specs evaluate it, example-targets and example-1 with that SDK, installed as the
+root dev dependency featurevisor-sdk-3, against the v4 SDK. Keep that comparison
+when changing the converter in packages/core/src/builder/schemaV2.ts.
 
 ## Catalog
 

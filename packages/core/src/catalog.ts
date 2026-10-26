@@ -5,6 +5,7 @@ import type { Target } from "@featurevisor/types";
 
 import { buildTargetDatafile } from "./builder/buildProject";
 import { resolveVariableOverrideValue } from "./builder/buildDatafile";
+import { convertDatafileToSchemaV2, SCHEMA_V2 } from "./builder/schemaV2";
 import { CONFIG_MODULE_NAME, getProjectConfig, type ProjectConfig } from "./config";
 import { Datasource } from "./datasource";
 import { buildDependencyGraph } from "./datasource/dependencies";
@@ -43,20 +44,28 @@ export async function getCatalogTargetMemberships(
     const datafiles: Array<{ environment: string | null; bytes: number; gzipBytes: number }> = [];
 
     for (const environment of environments) {
+      // Membership comes from the selection, so a schema "2" target is built as schema
+      // "4" here. Its converted segments are an encoding, not members.
       const datafile = await buildTargetDatafile({
         projectConfig,
         datasource,
-        target,
+        target: { ...target, schemaVersion: undefined },
         environment,
         existingState: await datasource.readState(environment),
         revision: "catalog",
         dependencyGraph,
       });
+      // Measure what is served: the converted datafile, when the conversion succeeds.
+      const converted =
+        target.schemaVersion === SCHEMA_V2
+          ? convertDatafileToSchemaV2(datafile, { stringify: projectConfig.stringify })
+          : undefined;
+      const served = converted && !converted.issues.length ? converted.datafile : datafile;
 
       // An estimate: the revision is synthetic, and hosts may compress differently. It does
       // follow the project's own datafile formatting.
       const serialized = Buffer.from(
-        projectConfig.prettyDatafile ? JSON.stringify(datafile, null, 2) : JSON.stringify(datafile),
+        projectConfig.prettyDatafile ? JSON.stringify(served, null, 2) : JSON.stringify(served),
       );
       datafiles.push({
         environment: environment === false ? null : environment,

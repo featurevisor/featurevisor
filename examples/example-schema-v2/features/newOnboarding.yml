@@ -1,0 +1,27 @@
+description: Onboarding for new releases, using v4 only conditions
+
+tags:
+  - web
+  - ios
+
+bucketBy: userId
+
+conditions:
+  - variable: maintenanceMode
+    operator: equals
+    value: false
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: writers
+      conditions: writers
+      percentage: 100
+
+    - key: everyone
+      conditions: "*"
+      percentage: 10

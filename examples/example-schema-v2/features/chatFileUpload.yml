@@ -1,0 +1,39 @@
+description: File uploads in live chat
+
+tags:
+  - web
+  - ios
+  - android
+
+bucketBy: userId
+
+conditions:
+  - feature: liveChat
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: dutchPaying
+      conditions: dutchPayingAccounts
+      percentage: 100
+
+    - key: benelux
+      conditions:
+        or:
+          - attribute: country
+            operator: in
+            value:
+              - be
+              - lu
+          - and:
+              - germany
+              - recentApps
+      percentage: 50
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

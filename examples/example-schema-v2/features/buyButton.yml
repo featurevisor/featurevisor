@@ -1,0 +1,62 @@
+description: Buy button copy and colour
+
+tags:
+  - web
+  - ios
+  - android
+
+bucketBy: userId
+
+variablesSchema:
+  label:
+    type: string
+    defaultValue: Buy
+
+  colour:
+    type: string
+    defaultValue: "#111827"
+
+  maxQuantity:
+    type: number
+    defaultValue: 5
+
+variations:
+  - value: control
+    weight: 50
+
+  - value: treatment
+    weight: 50
+    variables:
+      label: Buy now
+      colour: "#2563eb"
+    variableOverrides:
+      label:
+        - key: dutch
+          conditions: netherlands
+          value: Nu kopen
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+      variableOverrides:
+        maxQuantity:
+          - key: paid
+            conditions:
+              - attribute: plan
+                operator: equals
+                value: paid
+            value: 10
+
+          - key: pricingTreatment
+            conditions:
+              - feature: pricing
+                variation: treatment
+              - germany
+            value: 8

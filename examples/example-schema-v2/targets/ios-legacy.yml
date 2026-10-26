@@ -1,0 +1,15 @@
+description: iOS application releases before 5, on @featurevisor/sdk 3
+
+schemaVersion: "2"
+
+includeFeatures:
+  - checkout
+  - pricing
+  - buyButton
+  - liveChat
+  - chatFileUpload
+
+includeVariables:
+  - supportEmail
+  - maintenanceMode
+  - checkoutSettings

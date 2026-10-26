@@ -1,0 +1,19 @@
+description: Live chat with support
+
+tags:
+  - web
+  - ios
+  - android
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 50

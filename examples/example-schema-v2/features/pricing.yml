@@ -1,0 +1,41 @@
+description: Pricing page experiment
+
+tags:
+  - web
+  - ios
+  - android
+
+bucketBy: userId
+
+variations:
+  - value: control
+    weight: 50
+
+  - value: treatment
+    weight: 50
+
+force:
+  staging:
+    - conditions:
+        - attribute: userId
+          operator: equals
+          value: qa-user-1
+      variation: treatment
+
+  production:
+    - conditions:
+        - attribute: userId
+          operator: equals
+          value: qa-user-1
+      variation: treatment
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
