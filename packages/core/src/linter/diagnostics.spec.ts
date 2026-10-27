@@ -341,49 +341,50 @@ describe("authoring diagnostics", () => {
     );
   });
 
-  it("explains numeric membership values without accepting numeric arrays", async () => {
+  it("explains numbers in a list for a string attribute", async () => {
     write(
       "segments/numeric.yml",
       "description: Numeric\nconditions:\n  - { attribute: userId, operator: in, value: [1, 2] }\n",
     );
     const result = await lint();
     expect(result.hasError).toBe(true);
-    expect(result.errors).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          path: ["conditions", 0, "value"],
-          message: expect.stringContaining("array of strings"),
-        }),
-      ]),
-    );
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: ["conditions", 0, "value", 0],
+        message: 'Value at index 0 does not match the schema of attribute "userId".',
+      }),
+      expect.objectContaining({
+        path: ["conditions", 0, "value", 1],
+        message: 'Value at index 1 does not match the schema of attribute "userId".',
+      }),
+    ]);
     expect(result.errors.some((error) => error.message === "Invalid input")).toBe(false);
   });
 
-  it.each(["in", "notIn"])(
-    "reports one actionable %s error for a numeric attribute",
-    async (operator) => {
-      write("attributes/age.yml", "description: Age\ntype: integer\n");
-      write(
-        "segments/numeric.yml",
-        `description: Numeric\nconditions:\n  - { attribute: age, operator: ${operator}, value: [18, 21] }\n`,
-      );
-      const result = await lint();
-      expect(result.hasError).toBe(true);
-      expect(result.errors).toEqual([
-        expect.objectContaining({
-          path: ["conditions", 0, "value"],
-          message: expect.stringContaining(
-            `Operator "${operator}" can only be used with string attributes`,
-          ),
-        }),
-      ]);
-      expect(result.errors[0].message).toContain(
-        operator === "in"
-          ? "Use an or group of equals conditions for numbers."
-          : "Use a not group containing an or group of equals conditions for numbers.",
-      );
-    },
-  );
+  it.each(["in", "notIn"])("accepts %s with numbers for a numeric attribute", async (operator) => {
+    write("attributes/age.yml", "description: Age\ntype: integer\n");
+    write(
+      "segments/numeric.yml",
+      `description: Numeric\nconditions:\n  - { attribute: age, operator: ${operator}, value: [18, 21, null] }\n`,
+    );
+    const result = await lint();
+    expect(result.errors).toEqual([]);
+  });
+
+  it.each(["in", "notIn"])("keeps one type per list for %s", async (operator) => {
+    write("attributes/age.yml", "description: Age\ntype: integer\n");
+    write(
+      "segments/numeric.yml",
+      `description: Numeric\nconditions:\n  - { attribute: age, operator: ${operator}, value: [18, "21"] }\n`,
+    );
+    const result = await lint();
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: ["conditions", 0, "value", 1],
+        message: 'Value at index 1 does not match the schema of attribute "age".',
+      }),
+    ]);
+  });
 
   it("lists variable types and uses the global key for default and override errors", async () => {
     write("variables/typo.yml", "description: Typo\ntype: strng\ndefaultValue: hello\n");

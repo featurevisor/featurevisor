@@ -109,7 +109,7 @@ describe.each(["includesAny", "notIncludesAny"])("array list operator %s", (oper
       expect(result.error.issues).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            message: expect.stringContaining("value must be an array of strings"),
+            message: expect.stringContaining("value must be a list of strings or of numbers"),
           }),
         ]),
       );

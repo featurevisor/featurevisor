@@ -15,6 +15,7 @@ import { ProjectConfig } from "../config";
 import { refineWithMessage, UNKNOWN_REFERENCE } from "./zodHelpers";
 import { diagnosticParseOptions, suggestKey } from "./diagnostics";
 import { findDisallowedOperators } from "./comparisonOperators";
+import { getMixedListMessage } from "./listTypes";
 import { getFeatureConditionZodSchema } from "./requiredFeaturesSchema";
 import { getVariableConditionZodSchema } from "./requiredVariablesSchema";
 
@@ -63,8 +64,26 @@ function isPrimitiveAttributeValue(value: unknown): boolean {
   );
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+/** `in` and `notIn` compare with string attributes, or with integer and number attributes. */
+function supportsMembership(types: string[]): boolean {
+  return (
+    types.length > 0 &&
+    (types.every((type) => type === "string") ||
+      types.every((type) => type === "integer" || type === "number"))
+  );
+}
+
+/** A list of strings or of numbers, with null allowed beside either. */
+function isMembershipList(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (entry) =>
+        entry === null ||
+        typeof entry === "string" ||
+        (typeof entry === "number" && Number.isFinite(entry)),
+    )
+  );
 }
 
 function getPortableRegexError(pattern: string): string | null {
@@ -598,10 +617,10 @@ function validateAttributeAwareCondition(
   }
 
   if (arrayMembershipOperators.includes(data.operator)) {
-    if (leafTypes.length === 0 || leafTypes.some((type) => type !== "string")) {
+    if (!supportsMembership(leafTypes)) {
       addIssue(
         context,
-        `Operator "${data.operator}" can only be used with string attributes or nested paths declared as strings. ${data.operator === "notIn" ? "Use a not group containing an or group of equals conditions for numbers." : "Use an or group of equals conditions for numbers."}`,
+        `Operator "${data.operator}" can only be used with string, integer or number attributes, or nested paths declared as one of them.`,
       );
       return;
     }
@@ -610,8 +629,10 @@ function validateAttributeAwareCondition(
       return;
     }
 
+    let entryIssue = false;
     data.value.forEach((entry, index) => {
-      if (!matchesLeafValue(resolvedLeaf, entry, schemasByKey)) {
+      if (entry !== null && !matchesLeafValue(resolvedLeaf, entry, schemasByKey)) {
+        entryIssue = true;
         addIssue(
           context,
           `Value at index ${index} does not match the schema of attribute "${data.attribute}".`,
@@ -619,6 +640,8 @@ function validateAttributeAwareCondition(
         );
       }
     });
+    const mixed = !entryIssue && getMixedListMessage(data.operator, data.value);
+    if (mixed) addIssue(context, mixed, ["value"]);
 
     return;
   }
@@ -637,15 +660,19 @@ function validateAttributeAwareCondition(
     }
 
     if (arrayListOperators.includes(data.operator)) {
+      let entryIssue = false;
       if (Array.isArray(data.value))
         data.value.forEach((value, index) => {
           // Malformed candidates already have an indexed operand diagnostic.
           if (
             !isPrimitiveAttributeValue(value) ||
             (typeof value === "number" && !Number.isFinite(value))
-          )
+          ) {
+            entryIssue = true;
             return;
+          }
           if (!matchesLeafValue(itemLeaf, value, schemasByKey)) {
+            entryIssue = true;
             addIssue(
               context,
               `Value at index ${index} does not match the item schema of attribute "${data.attribute}".`,
@@ -653,6 +680,8 @@ function validateAttributeAwareCondition(
             );
           }
         });
+      const mixed = !entryIssue && getMixedListMessage(data.operator, data.value);
+      if (mixed) addIssue(context, mixed, ["value"]);
     } else if (!matchesLeafValue(itemLeaf, data.value, schemasByKey)) {
       addIssue(context, `Value does not match the item schema of attribute "${data.attribute}".`);
     }
@@ -746,7 +775,7 @@ export function getConditionsZodSchema(
       if (arrayMembershipOperators.includes(data.operator)) {
         const leaf = resolveAttributePath(data.attribute, attributesByKey, schemasByKey);
         const types = leaf ? getLeafTypes(leaf, schemasByKey) : [];
-        if (leaf && (types.length === 0 || types.some((type) => type !== "string"))) {
+        if (leaf && !supportsMembership(types)) {
           validateAttributeAwareCondition(data, context, attributesByKey, schemasByKey);
           return;
         }
@@ -812,16 +841,16 @@ export function getConditionsZodSchema(
         }
       }
 
-      if (arrayMembershipOperators.includes(data.operator) && !Array.isArray(data.value)) {
-        addIssue(context, `when operator is "${data.operator}", value must be an array of strings`);
-      }
-
-      if (
-        arrayMembershipOperators.includes(data.operator) &&
-        Array.isArray(data.value) &&
-        !isStringArray(data.value)
-      ) {
-        addIssue(context, `when operator is "${data.operator}", value must be an array of strings`);
+      if (arrayMembershipOperators.includes(data.operator) && !isMembershipList(data.value)) {
+        addIssue(
+          context,
+          `when operator is "${data.operator}", value must be a list of strings or of numbers`,
+        );
+      } else if (arrayMembershipOperators.includes(data.operator)) {
+        const leaf = resolveAttributePath(data.attribute, attributesByKey, schemasByKey);
+        // Without a known attribute, the list's own types still have to agree.
+        const mixed = !leaf && getMixedListMessage(data.operator, data.value);
+        if (mixed) addIssue(context, mixed, ["value"]);
       }
 
       if (arrayListOperators.includes(data.operator)) {

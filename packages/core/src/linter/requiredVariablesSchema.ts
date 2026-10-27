@@ -9,6 +9,7 @@ import { resolveVariableSchema } from "./featureSchema";
 import { resolveSchemaAtPath } from "./mutationNotation";
 import { ProjectConfig } from "../config";
 import { findDisallowedOperators } from "./comparisonOperators";
+import { getMixedListMessage } from "./listTypes";
 import { UNKNOWN_REFERENCE } from "./zodHelpers";
 
 const commonOperators = ["equals", "notEquals"];
@@ -359,17 +360,23 @@ function validateOperand(
       );
     if (!Array.isArray(value))
       addValueIssue(ctx, `when operator is "${operator}", value must be an array`);
-    else
+    else {
+      let entryIssue = false;
       value.forEach((entry, index) => {
         if (
           entry !== null &&
           (typeof entry === "boolean" || !valueMatchesOperandType(schema, entry))
-        )
+        ) {
+          entryIssue = true;
           addValueIssue(ctx, "Value type does not match the referenced variable type.", [
             "value",
             index,
           ]);
+        }
       });
+      const mixed = !entryIssue && getMixedListMessage(operator, value);
+      if (mixed) addValueIssue(ctx, mixed, ["value"]);
+    }
   } else if ([...arrayOperators, ...arrayListOperators].includes(operator)) {
     const items = itemSchema(schema, schemasByKey);
     if (!items || ["object", "array"].includes(schemaType(items) || ""))
@@ -380,18 +387,24 @@ function validateOperand(
           ctx,
           `when operator is "${operator}", value must be an array of primitive values`,
         );
-      else
+      else {
+        let entryIssue = false;
         value.forEach((entry, index) => {
           validateFormatOperand(items, entry, ctx, ["value", index]);
           if (
             !valueMatchesOperandType(items, entry) ||
             (typeof entry === "number" && !Number.isFinite(entry))
-          )
+          ) {
+            entryIssue = true;
             addValueIssue(ctx, "Value type does not match the referenced variable item type.", [
               "value",
               index,
             ]);
+          }
         });
+        const mixed = !entryIssue && getMixedListMessage(operator, value);
+        if (mixed) addValueIssue(ctx, mixed, ["value"]);
+      }
     } else {
       validateFormatOperand(items, value, ctx, ["value"]);
       if (typeof value === "undefined" || !valueMatchesOperandType(items, value))
@@ -450,17 +463,24 @@ function validateUnknownOperand(
         ctx,
         `when operator is "${operator}", value must be an array of primitive values`,
       );
-    else
+    else {
+      let entryIssue = false;
       value.forEach((entry, index) => {
         if (
           (entry !== null && !["string", "number", "boolean"].includes(typeof entry)) ||
           (typeof entry === "number" && !Number.isFinite(entry))
-        )
+        ) {
+          entryIssue = true;
           addValueIssue(ctx, "Each candidate must be a string, number, boolean or null.", [
             "value",
             index,
           ]);
+        }
       });
+      // A json value's type is unknown to lint, so the list's own types have to agree.
+      const mixed = !entryIssue && getMixedListMessage(operator, value);
+      if (mixed) addValueIssue(ctx, mixed, ["value"]);
+    }
   } else if (membershipOperators.includes(operator)) {
     if (
       !Array.isArray(value) ||
@@ -470,6 +490,9 @@ function validateUnknownOperand(
         ctx,
         `when operator is "${operator}", value must be an array of strings, numbers or null`,
       );
+    } else {
+      const mixed = getMixedListMessage(operator, value);
+      if (mixed) addValueIssue(ctx, mixed, ["value"]);
     }
   } else if (arrayOperators.includes(operator) && (typeof value === "undefined" || !primitive)) {
     addValueIssue(ctx, `when operator is "${operator}", value must be primitive or null`);
