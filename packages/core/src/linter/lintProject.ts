@@ -727,7 +727,9 @@ export async function lintProject(
     for (const item of items) {
       print(CLI_FORMAT_RED, `  => Error: ${item.message}`);
       printFelDetails(item, print);
-      print("     Path:", item.path.join(".") || "(root)");
+      // Inside FEL the code frame shows the place. The tree path would name keys the file lacks.
+      if (item.line === undefined || !felFrames.has(item))
+        print("     Path:", item.path.join(".") || "(root)");
       if (typeof item.value !== "undefined" && item.value !== "undefined") {
         print("     Value:", item.value);
       }

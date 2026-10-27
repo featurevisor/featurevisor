@@ -46,7 +46,7 @@ const variables = {
   text: { type: "string", defaultValue: "owner" },
   objects: { type: "array", items: { type: "object" }, defaultValue: [] },
   arrays: { type: "array", items: { type: "array", items: { type: "string" } }, defaultValue: [] },
-  dynamic: { type: "json", defaultValue: '{"roles":["owner"]}' },
+  dynamic: { type: "object", defaultValue: { roles: ["owner"] } },
 } as unknown as Record<string, ParsedVariable>;
 const features = { checkout: { variablesSchema: variables } } as unknown as Record<
   string,

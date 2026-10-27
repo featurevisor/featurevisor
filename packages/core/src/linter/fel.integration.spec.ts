@@ -309,18 +309,20 @@ describe("lint with FEL", () => {
     expect(errors[0].hint).toContain("allowFEL: true");
   });
 
-  it("keeps one type per list, json variables included", async () => {
+  it("rejects json variables and keeps one type per list", async () => {
     write(
       "variables/payload.yml",
       "description: Payload\ntype: json\ndefaultValue: '{\"ids\":[1]}'\n",
     );
+    write("variables/settings.yml", "description: Settings\ntype: object\ndefaultValue: {}\n");
     write(
       "segments/lists.yml",
       [
         "description: Lists",
         "conditions:",
-        "  - variable('payload').ids in [1, 'a']",
-        "  - variable('payload').ids in [1, 2, null]",
+        "  - variable('payload').ids in [1, 2]",
+        "  - variable('settings').ids in [1, 'a']",
+        "  - variable('settings').ids in [1, 2, null]",
         "  - seats in [1, 5, 10]",
         "",
       ].join("\n"),
@@ -329,11 +331,50 @@ describe("lint with FEL", () => {
     expect(errors.map(({ message, line, column }) => ({ message, line, column }))).toEqual([
       {
         message:
-          'when operator is "in", the list mixes strings and numbers. A list holds one type, with null allowed beside it. Quote every value or none.',
+          'Conditions cannot read json variables, since their contents have no declared types. Give global variable "payload" a declared shape, such as type object with properties, to use it here.',
         line: 3,
-        column: 32,
+        column: 5,
+      },
+      {
+        message:
+          'when operator is "in", the list mixes strings and numbers. A list holds one type, with null allowed beside it. Quote every value or none.',
+        line: 4,
+        column: 33,
       },
     ]);
+  });
+
+  it("prints a code frame instead of a tree path inside FEL", async () => {
+    write("segments/text.yml", "description: Text\nconditions: region == 'eu'\n");
+    write(
+      "segments/tree.yml",
+      "description: Tree\nconditions:\n  - attribute: region\n    operator: equals\n    value: eu\n",
+    );
+    const printed: string[] = [];
+    const capture = (...args: unknown[]) => {
+      printed.push(args.map(String).join(" "));
+    };
+    const log = jest.spyOn(console, "log").mockImplementation(capture);
+    const error = jest.spyOn(console, "error").mockImplementation(capture);
+    try {
+      const projectConfig = getProjectConfig(root);
+      await lintProject(
+        {
+          rootDirectoryPath: root,
+          projectConfig,
+          datasource: new Datasource(projectConfig, root),
+          options: {},
+        } as never,
+        {},
+      );
+    } finally {
+      log.mockRestore();
+      error.mockRestore();
+    }
+    const output = printed.join("\n");
+    expect(output).toContain(path.join("segments", "text.yml") + ":2:13");
+    expect(output).not.toContain("Path: conditions.attribute");
+    expect(output).toContain("Path: conditions.0.attribute");
   });
 
   it("rejects an allowFEL that is not a boolean", () => {
