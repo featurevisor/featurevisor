@@ -121,20 +121,24 @@ function resolveReferenceSchema(
 }
 type PathPart = string | number;
 
-/** Names the variable an alias or a composed path reads its json from. */
-function describeJsonSource(
+/**
+ * The variable that declares a value a condition reads, and the path to it inside that
+ * variable, following aliases and composed members.
+ */
+function findDeclaringVariable(
   definition: VariableDefinition,
   parts: PathPart[],
+  subject: string,
   variablesByKey: Record<string, ParsedVariable>,
-): string | undefined {
+): { subject: string; path: PathPart[] } | undefined {
   const readGlobal = (key: string) =>
     Object.prototype.hasOwnProperty.call(variablesByKey, key) ? variablesByKey[key] : undefined;
   let current: VariableDefinition | undefined = definition;
-  let source: string | undefined;
+  let declaring = subject;
   let remaining = parts;
   for (let depth = 0; current?.compose && depth < 64; depth++) {
     if (typeof current.compose === "string") {
-      source = `global variable "${current.compose}"`;
+      declaring = `global variable "${current.compose}"`;
       current = readGlobal(current.compose);
       continue;
     }
@@ -146,22 +150,31 @@ function describeJsonSource(
         ? (members[String(part)] as { feature?: string; variable?: string } | undefined)
         : undefined;
     if (!member || typeof member !== "object" || !member.variable) return undefined;
-    if (member.feature) return `variable "${member.variable}" of feature "${member.feature}"`;
-    source = `global variable "${member.variable}"`;
+    if (member.feature)
+      return {
+        subject: `variable "${member.variable}" of feature "${member.feature}"`,
+        path: remaining,
+      };
+    declaring = `global variable "${member.variable}"`;
     current = readGlobal(member.variable);
   }
-  return current && !current.compose ? source : undefined;
+  return current && !current.compose ? { subject: declaring, path: remaining } : undefined;
 }
 
 const unknownSchema = Symbol("unknownSchema");
 const emptinessIncompatibleSchema = Symbol("emptinessIncompatibleSchema");
-/** A json value. Conditions cannot read one, since its contents have no declared types. */
+/**
+ * A json value, and the inside of an object without declared properties. Conditions cannot
+ * read either, since their contents have no declared types.
+ */
 const jsonSchema = Symbol("jsonSchema");
+const openObjectSchema = Symbol("openObjectSchema");
 type ResolvedRequiredVariableSchema =
   | Schema
   | typeof unknownSchema
   | typeof emptinessIncompatibleSchema
-  | typeof jsonSchema;
+  | typeof jsonSchema
+  | typeof openObjectSchema;
 
 function portableRegexError(pattern: string): string | null {
   try {
@@ -228,12 +241,18 @@ function isCanonicalArrayIndex(part: string): boolean {
   return /^(0|[1-9]\d*)$/.test(part) && Number.isSafeInteger(Number(part));
 }
 
+/**
+ * Resolves the schema a condition reads. For a json value, or a path reading inside an open
+ * object, `untyped.at` is how many path parts lead to that value or object.
+ */
 function resolveRequiredVariablePath(
   root: Schema,
   parts: PathPart[],
   schemasByKey: Record<string, Schema>,
+  untyped: { at?: number } = {},
 ): ResolvedRequiredVariableSchema | null {
-  const normalizeSelected = (selected: Schema): ResolvedRequiredVariableSchema => {
+  type Selected = Exclude<ResolvedRequiredVariableSchema, typeof openObjectSchema>;
+  const normalizeSelected = (selected: Schema): Selected => {
     const resolved = resolveSchemaAtPath(selected, [], schemasByKey) || selected;
     if (schemaType(resolved) === "json") return jsonSchema;
     if ("oneOf" in resolved) {
@@ -243,10 +262,13 @@ function resolveRequiredVariablePath(
     }
     return resolved;
   };
-  let current: ResolvedRequiredVariableSchema = normalizeSelected(root);
+  let current: Selected = normalizeSelected(root);
 
-  for (const part of parts) {
-    if (current === jsonSchema) return jsonSchema;
+  for (const [index, part] of parts.entries()) {
+    if (current === jsonSchema) {
+      untyped.at = index;
+      return current;
+    }
     if (current === unknownSchema || current === emptinessIncompatibleSchema) continue;
     const type = schemaType(current);
     if (!type) {
@@ -270,16 +292,19 @@ function resolveRequiredVariablePath(
     } else if (additional && typeof additional === "object") {
       current = normalizeSelected(additional as Schema);
     } else if (additional === true || (!properties && typeof additional === "undefined")) {
-      current = unknownSchema;
+      // The object itself is typed, so presence and emptiness still apply. Its members are not.
+      untyped.at = index;
+      return openObjectSchema;
     } else {
       return null;
     }
   }
-  return current === unknownSchema ||
-    current === emptinessIncompatibleSchema ||
-    current === jsonSchema
-    ? current
-    : normalizeSelected(current);
+  const selected =
+    current === unknownSchema || current === emptinessIncompatibleSchema || current === jsonSchema
+      ? current
+      : normalizeSelected(current);
+  if (selected === jsonSchema) untyped.at = parts.length;
+  return selected;
 }
 
 function valueMatchesOperandType(schema: Schema, value: unknown): boolean {
@@ -623,30 +648,44 @@ export function getVariableConditionZodSchema(
         addValueIssue(ctx, normalized.error, ["path"]);
         return;
       }
-      const selected = resolveRequiredVariablePath(root, normalized.parts || [], schemasByKey);
+      const parts = normalized.parts || [];
+      const untyped: { at?: number } = {};
+      const selected = resolveRequiredVariablePath(root, parts, schemasByKey, untyped);
       if (!selected) {
         addValueIssue(ctx, "Path does not exist in the referenced variable schema.", ["path"]);
         return;
       }
-      if (selected === jsonSchema) {
+      if (selected === jsonSchema || selected === openObjectSchema) {
         const subject = leaf.feature
           ? `variable "${leaf.variable}" of feature "${leaf.feature}"`
           : `global variable "${leaf.variable}"`;
-        // A json variable itself is reshaped in place. An alias or a composed path reads
-        // json from another variable, which is the one to reshape.
-        const direct =
-          !definition.compose &&
-          schemaType(resolveSchemaAtPath(root, [], schemasByKey) || root) === "json";
-        const source = direct
-          ? subject
-          : describeJsonSource(definition, normalized.parts || [], variablesByKey) ||
-            "its json source";
+        const json = selected === jsonSchema;
+        const fix = json
+          ? "a declared shape, such as type object with properties,"
+          : "properties, or additionalProperties for a map,";
+        // A variable that is itself untyped is reshaped in place. Otherwise name the variable
+        // declaring the untyped value, reached through a path, an alias or a composed member.
+        const direct = !definition.compose && untyped.at === 0;
+        const what = json ? "json values" : "inside objects without declared properties";
+        const declaring = findDeclaringVariable(
+          definition,
+          parts.slice(0, untyped.at),
+          subject,
+          variablesByKey,
+        );
+        const location = !declaring
+          ? json
+            ? "its json source"
+            : "the object it reads"
+          : declaring.path.length > 0
+            ? `"${declaring.path.join(".")}" in ${declaring.subject}`
+            : declaring.subject;
         addValueIssue(
           ctx,
           direct
-            ? `Conditions cannot read json variables, since their contents have no declared types. Give ${subject} a declared shape, such as type object with properties, to use it here.`
-            : `Conditions cannot read json values, since their contents have no declared types, and this condition reads one through ${subject}. Give ${source} a declared shape, such as type object with properties, to use it here.`,
-          [direct || typeof leaf.path === "undefined" ? "variable" : "path"],
+            ? `Conditions cannot read ${json ? "json variables" : what}, since their contents have no declared types. Give ${subject} ${fix} to use it here.`
+            : `Conditions cannot read ${what}, since their contents have no declared types, and this condition reads ${json ? "one" : "inside one"} through ${subject}. Give ${location} ${fix} to use it here.`,
+          [typeof leaf.path === "undefined" || (direct && json) ? "variable" : "path"],
         );
         return;
       }

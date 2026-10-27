@@ -37,6 +37,11 @@ const variables = {
     properties: { "0": { type: "string" } },
     defaultValue: { "0": "zero" },
   },
+  literalKeys: {
+    type: "object",
+    properties: { "01": { type: "string" }, "support.label": { type: "string" } },
+    defaultValue: {},
+  },
   "config.policy": { type: "string", defaultValue: "strict" },
   archived: { archived: true, type: "string", defaultValue: "old" },
 } as unknown as Record<string, ParsedVariable>;
@@ -49,6 +54,7 @@ const schemas = {
       enabled: { type: "boolean" },
       quota: { schema: "limit" },
       payload: { type: "json" },
+      extras: { type: "object" },
     },
   },
   limit: { type: "integer", minimum: 0, maximum: 10 },
@@ -179,7 +185,7 @@ describe("requiredVariables schema", () => {
       true,
     );
     expect(
-      parse({ variable: "openObject", path: ["support.label"], operator: "equals", value: "Help" })
+      parse({ variable: "literalKeys", path: ["support.label"], operator: "equals", value: "Help" })
         .success,
     ).toBe(true);
     expect(
@@ -195,9 +201,6 @@ describe("requiredVariables schema", () => {
     expect(parse({ variable: "regions", operator: "matches", value: "^e" }).success).toBe(true);
     expect(parse({ variable: "positive", operator: "greaterThan", value: 0 }).success).toBe(true);
     expect(parse({ variable: "unionValue", operator: "greaterThan", value: 2 }).success).toBe(true);
-    expect(
-      parse({ variable: "looseObject", path: "dynamic", operator: "equals", value: 1 }).success,
-    ).toBe(true);
     expect(
       parse({
         feature: "checkout",
@@ -261,9 +264,9 @@ describe("requiredVariables schema", () => {
   });
 
   it("keeps leading-zero dotted components and dotted array components as literal keys", () => {
-    expect(parse({ variable: "openObject", path: "01", operator: "exists" }).success).toBe(true);
+    expect(parse({ variable: "literalKeys", path: "01", operator: "exists" }).success).toBe(true);
     expect(
-      parse({ variable: "openObject", path: ["support.label"], operator: "exists" }).success,
+      parse({ variable: "literalKeys", path: ["support.label"], operator: "exists" }).success,
     ).toBe(true);
   });
 
@@ -314,6 +317,50 @@ describe("requiredVariables schema", () => {
     );
   });
 
+  it("rejects reading inside objects without declared properties", () => {
+    const fix = "properties, or additionalProperties for a map, to use it here.";
+    for (const [requirement, message] of [
+      [
+        { variable: "openObject", path: "anything", operator: "exists" },
+        `Conditions cannot read inside objects without declared properties, since their contents have no declared types. Give global variable "openObject" ${fix}`,
+      ],
+      [
+        { variable: "looseObject", path: "dynamic", operator: "equals", value: 1 },
+        `Give global variable "looseObject" ${fix}`,
+      ],
+      [
+        { variable: "profile", path: "extras.colour", operator: "equals", value: "red" },
+        `this condition reads inside one through global variable "profile". Give "extras" in global variable "profile" ${fix}`,
+      ],
+    ] as const) {
+      const result = parse(requirement);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues).toHaveLength(1);
+        expect(result.error.issues[0].message).toContain(message);
+        expect(result.error.issues[0].path).toEqual(["path"]);
+      }
+    }
+    const aliased = getConditionsZodSchema({} as any, {}, schemas, features, {
+      ...variables,
+      openAlias: { compose: "openObject" },
+    } as unknown as Record<string, ParsedVariable>).safeParse({
+      variable: "openAlias",
+      path: "anything",
+      operator: "exists",
+    });
+    expect(!aliased.success && aliased.error.issues[0].message).toContain(
+      `reads inside one through global variable "openAlias". Give global variable "openObject" ${fix}`,
+    );
+    for (const requirement of [
+      { variable: "openObject", operator: "exists" },
+      { variable: "openObject", operator: "notEmpty" },
+      { variable: "profile", path: "extras", operator: "notNull" },
+    ]) {
+      expect(parse(requirement).success).toBe(true);
+    }
+  });
+
   it("accepts emptiness operators for supported, referenced, union and unknown schemas", () => {
     for (const requirement of [
       { variable: "nullableMessage", operator: "empty" },
@@ -321,7 +368,8 @@ describe("requiredVariables schema", () => {
       { variable: "strictObject", operator: "empty" },
       { variable: "profile", operator: "notEmpty" },
       { variable: "profile", path: "name", operator: "empty" },
-      { variable: "openObject", path: "anything", operator: "notEmpty" },
+      { variable: "openObject", operator: "notEmpty" },
+      { variable: "profile", path: "extras", operator: "empty" },
       { variable: "unionValue", operator: "empty" },
       { variable: "release", operator: "notEmpty" },
       { feature: "checkout", variable: "settings", path: "limits", operator: "notEmpty" },

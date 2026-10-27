@@ -309,12 +309,26 @@ describe("lint with FEL", () => {
     expect(errors[0].hint).toContain("allowFEL: true");
   });
 
-  it("rejects json variables and keeps one type per list", async () => {
+  it("rejects json variables and reads inside open objects, and keeps one type per list", async () => {
     write(
       "variables/payload.yml",
       "description: Payload\ntype: json\ndefaultValue: '{\"ids\":[1]}'\n",
     );
-    write("variables/settings.yml", "description: Settings\ntype: object\ndefaultValue: {}\n");
+    write("variables/bag.yml", "description: Bag\ntype: object\ndefaultValue: {}\n");
+    write(
+      "variables/settings.yml",
+      [
+        "description: Settings",
+        "type: object",
+        "properties:",
+        "  ids:",
+        "    oneOf:",
+        "      - { type: integer }",
+        "      - { type: string }",
+        "defaultValue: { ids: 1 }",
+        "",
+      ].join("\n"),
+    );
     write(
       "segments/lists.yml",
       [
@@ -324,6 +338,8 @@ describe("lint with FEL", () => {
         "  - variable('settings').ids in [1, 'a']",
         "  - variable('settings').ids in [1, 2, null]",
         "  - seats in [1, 5, 10]",
+        "  - variable('bag') notEmpty",
+        "  - variable('bag').colour == 'red'",
         "",
       ].join("\n"),
     );
@@ -340,6 +356,12 @@ describe("lint with FEL", () => {
           'when operator is "in", the list mixes strings and numbers. A list holds one type, with null allowed beside it. Quote every value or none.',
         line: 4,
         column: 33,
+      },
+      {
+        message:
+          'Conditions cannot read inside objects without declared properties, since their contents have no declared types. Give global variable "bag" properties, or additionalProperties for a map, to use it here.',
+        line: 8,
+        column: 5,
       },
     ]);
   });

@@ -73,7 +73,7 @@ conditions:
 - A missing getter result is `null`. A missing nested path is absent, which is different from `null`. `isNull` matches only an explicit null. `notNull` requires a present, nonnull value. `exists` and `notExists` test presence.
 - Compare booleans with `equals` or `notEquals`, not `in` or `notIn`.
 - Operands must suit the value's type, but need not satisfy its enum, minimum or pattern. A threshold can sit outside the variable's allowed range.
-- Conditions cannot read `json` variables, directly, through an alias or through a composed path, since their contents have no declared types. Give the variable a declared shape, such as `type: object` with `properties`, to compare what it holds.
+- Conditions cannot read values without declared types: a `json` variable, read directly, through an alias or through a composed path, or a path inside an object declared without `properties` or `additionalProperties`. Declare the shape, such as `type: object` with `properties`, to compare what it holds. Presence and emptiness checks on such an object itself still work.
 
 ## Lists and groups
 
