@@ -1,0 +1,63 @@
+feature: yamlStyles
+
+assertions:
+  - description: a plain scalar
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: nl, device: mobile }
+    expectedToBeEnabled: true
+    expectedVariables: { style: plain }
+
+  - description: a double quoted scalar
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: de, device: mobile }
+    expectedVariables: { style: double-quoted }
+
+  - description: a literal block with a comment line
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: at, device: mobile }
+    expectedVariables: { style: literal-block }
+
+  - description: a folded block
+    environment: production
+    at: 50
+    context: { userId: user-1, country: ch, device: mobile }
+    expectedVariables: { style: folded-block }
+
+  - description: a list of expressions, all of which must match
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: lu, device: mobile }
+    expectedVariables: { style: list }
+
+  - description: expressions as children of a tree or group, first branch
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: dk, device: mobile }
+    expectedVariables: { style: tree-group }
+
+  - description: expressions as children of a tree or group, second branch
+    environment: production
+    at: 50
+    context: { userId: user-1, country: se, device: tablet }
+    expectedVariables: { style: tree-group }
+
+  - description: a segment name beside a tree leaf
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: se, device: desktop }
+    expectedVariables: { style: mixed }
+
+  - description: nothing matches a Dutch desktop
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: nl, device: desktop }
+    expectedToBeEnabled: false
+
+  - description: nothing matches a Swedish phone
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: se, device: mobile }
+    expectedToBeEnabled: false

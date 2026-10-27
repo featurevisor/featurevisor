@@ -2,7 +2,7 @@
   "name": "@featurevisor/example-fel",
   "private": true,
   "version": "4.3.0",
-  "description": "Example 1 with conditions written in FEL. For testing only",
+  "description": "A showcase of FEL, forked from Example 1. For testing only",
   "scripts": {
     "lint": "featurevisor lint",
     "build": "npm run build:datafiles && npm run export && npm run find-duplicate-segments && npm run generate-code",

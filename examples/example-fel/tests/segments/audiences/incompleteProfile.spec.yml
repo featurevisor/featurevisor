@@ -1,0 +1,28 @@
+segment: audiences.incompleteProfile
+
+assertions:
+  - description: no email at all
+    context: {}
+    expectedToMatch: true
+
+  - description: an empty email
+    context:
+      email: ""
+    expectedToMatch: true
+
+  - description: an email without roles
+    context:
+      email: "sam@shop.example"
+      roles: []
+    expectedToMatch: true
+
+  - description: an email and a role make a complete profile
+    context:
+      email: "sam@shop.example"
+      roles: ["viewer"]
+    expectedToMatch: false
+
+  - description: missing roles are not empty, so an email alone is complete
+    context:
+      email: "sam@shop.example"
+    expectedToMatch: false

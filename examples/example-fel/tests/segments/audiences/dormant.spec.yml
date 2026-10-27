@@ -1,0 +1,16 @@
+segment: audiences.dormant
+
+assertions:
+  - description: no order at all counts as dormant
+    context: {}
+    expectedToMatch: true
+
+  - description: an order in 2025 is before the cutoff
+    context:
+      lastOrderAt: "2025-06-01T12:00:00Z"
+    expectedToMatch: true
+
+  - description: an order in March 2026 is recent
+    context:
+      lastOrderAt: "2026-03-01T12:00:00Z"
+    expectedToMatch: false

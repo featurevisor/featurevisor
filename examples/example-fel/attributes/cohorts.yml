@@ -1,0 +1,6 @@
+description: Free form cohorts the user has joined, such as beta or canary
+
+type: array
+
+items:
+  type: string

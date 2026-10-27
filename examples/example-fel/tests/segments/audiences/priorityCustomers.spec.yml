@@ -1,0 +1,47 @@
+segment: audiences.priorityCustomers
+
+assertions:
+  - description: a Dutch pro team matches
+    context:
+      country: "nl"
+      plan: "pro"
+      seats: 10
+      email: "sam@shop.example"
+    expectedToMatch: true
+
+  - description: an Austrian enterprise matches
+    context:
+      country: "at"
+      plan: "enterprise"
+      seats: 40
+      email: "lea@shop.example"
+    expectedToMatch: true
+
+  - description: our own staff never match
+    context:
+      country: "nl"
+      plan: "pro"
+      seats: 10
+      email: "sam@featurevisor.com"
+    expectedToMatch: false
+
+  - description: a paying team in the United States does not
+    context:
+      country: "us"
+      plan: "pro"
+      seats: 10
+    expectedToMatch: false
+
+  - description: a Dutch team on the starter plan does not
+    context:
+      country: "nl"
+      plan: "starter"
+      seats: 10
+    expectedToMatch: false
+
+  - description: a missing email is not staff, so it does not block the match
+    context:
+      country: "be"
+      plan: "pro"
+      seats: 5
+    expectedToMatch: true

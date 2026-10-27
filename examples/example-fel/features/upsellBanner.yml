@@ -1,0 +1,54 @@
+description: Upsell banner that reads other features' results, variations and variables
+
+tags: [all, checkout, fel]
+
+bucketBy: userId
+
+conditions: feature('smartCheckout')
+
+variablesSchema:
+  message:
+    type: string
+    defaultValue: Upgrade your plan
+
+rules:
+  staging: &rules
+    - key: express-in-euros
+      conditions: |
+        # The express variation, priced in euros
+        feature('smartCheckout').variation == 'express'
+        and feature('regionalPricing').currency == 'EUR'
+      percentage: 100
+      variables:
+        message: Check out faster with saved details
+      variableOverrides:
+        message:
+          - key: one-tap-ideal
+            conditions: feature('smartCheckout').paymentMethods includes 'ideal'
+            value: Pay with iDEAL in one tap
+
+    - key: large-orders
+      conditions: feature('smartCheckout').limits.maxItems >= 50
+      percentage: 100
+      variables:
+        message: Order up to 50 items at once
+
+    - key: team-discount
+      conditions: |
+        feature('regionalPricing').discountPercent > 0
+        and feature('regionalPricing').discountPercent <= 10
+      percentage: 100
+      variables:
+        message: Your team saves on every seat
+
+    - key: several-methods
+      conditions: feature('smartCheckout').paymentMethods.length > 1
+      percentage: 100
+      variables:
+        message: More ways to pay
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0
+
+  production: *rules

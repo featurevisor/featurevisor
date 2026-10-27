@@ -1,0 +1,22 @@
+segment: audiences.betaTesters
+
+assertions:
+  - description: an opt in matches
+    context:
+      betaOptIn: true
+    expectedToMatch: true
+
+  - description: the beta cohort matches
+    context:
+      cohorts: ["canary", "beta"]
+    expectedToMatch: true
+
+  - description: neither does not
+    context:
+      betaOptIn: false
+      cohorts: ["canary"]
+    expectedToMatch: false
+
+  - description: an empty context does not
+    context: {}
+    expectedToMatch: false

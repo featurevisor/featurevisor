@@ -1,0 +1,26 @@
+segment: audiences.staff
+
+assertions:
+  - description: a company address matches
+    context:
+      email: "alex@featurevisor.com"
+    expectedToMatch: true
+
+  - description: a QA inbox matches in any letter case
+    context:
+      email: "QA+Checkout@Example.com"
+    expectedToMatch: true
+
+  - description: a QA inbox without a label after the plus does not
+    context:
+      email: "qa@example.com"
+    expectedToMatch: false
+
+  - description: endsWith checks the very end of the address
+    context:
+      email: "alex@featurevisor.com.example.net"
+    expectedToMatch: false
+
+  - description: a missing email does not match
+    context: {}
+    expectedToMatch: false

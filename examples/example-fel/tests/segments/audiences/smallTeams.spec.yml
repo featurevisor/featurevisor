@@ -1,0 +1,21 @@
+segment: audiences.smallTeams
+
+assertions:
+  - description: one seat matches a number in the list
+    context:
+      seats: 1
+    expectedToMatch: true
+
+  - description: three seats match
+    context:
+      seats: 3
+    expectedToMatch: true
+
+  - description: four seats do not
+    context:
+      seats: 4
+    expectedToMatch: false
+
+  - description: missing seats do not
+    context: {}
+    expectedToMatch: false

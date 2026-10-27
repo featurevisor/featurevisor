@@ -1,0 +1,59 @@
+feature: releaseTrain
+
+assertions:
+  - description: a build with known crashes is held back
+    environment: staging
+    at: 50
+    context: { userId: user-1, device: mobile, osVersion: 17.4.0 }
+    expectedToBeEnabled: false
+
+  - description: a beta of version 18 rides the canary channel
+    environment: staging
+    at: 50
+    context: { userId: user-1, device: mobile, osVersion: 18.0.0-beta.3 }
+    expectedToBeEnabled: true
+    expectedVariables: { channel: canary }
+
+  - description: the canary cohort rides it on any version
+    environment: production
+    at: 50
+    context: { userId: user-1, device: mobile, osVersion: 16.0.0, cohorts: [canary] }
+    expectedVariables: { channel: canary }
+
+  - description: a phone on iOS 18 is fast
+    environment: staging
+    at: 50
+    context: { userId: user-1, device: mobile, osVersion: 18.1.0 }
+    expectedVariables: { channel: fast }
+
+  - description: a recent browser is fast
+    environment: staging
+    at: 50
+    context: { userId: user-1, browser: { name: chrome, version: 121.0.0 } }
+    expectedVariables: { channel: fast }
+
+  - description: the broken browser build is held back
+    environment: staging
+    at: 50
+    context: { userId: user-1, browser: { name: chrome, version: 120.0.1 } }
+    expectedToBeEnabled: false
+
+  - description: an older browser stays on stable
+    environment: production
+    at: 50
+    context: { userId: user-1, browser: { name: chrome, version: 120.0.0 } }
+    expectedToBeEnabled: true
+    expectedVariables: { channel: stable }
+
+  - description: a desktop on version 18 is not a modern phone, so it stays on stable
+    environment: staging
+    at: 50
+    context: { userId: user-1, device: desktop, osVersion: 18.1.0 }
+    expectedVariables: { channel: stable }
+
+  - description: missing versions stay on stable
+    environment: staging
+    at: 50
+    context: { userId: user-1 }
+    expectedToBeEnabled: true
+    expectedVariables: { channel: stable }

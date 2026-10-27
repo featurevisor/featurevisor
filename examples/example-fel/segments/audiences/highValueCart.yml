@@ -1,0 +1,3 @@
+description: Large carts, with a lower bar for enterprise plans
+
+conditions: cartTotal >= 250 or (plan == 'enterprise' and cartTotal >= 99.5)

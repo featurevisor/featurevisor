@@ -1,0 +1,3 @@
+description: French locales with or without a region, in any letter case
+
+conditions: locale matches /^fr(-[a-z]{2})?$/i

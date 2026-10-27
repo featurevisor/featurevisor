@@ -1,0 +1,17 @@
+description: The old checkout, still on in North America while smartCheckout rolls out elsewhere
+
+tags: [all, checkout, fel]
+
+bucketBy: userId
+
+rules:
+  staging: &rules
+    - key: north-america
+      conditions: markets.northAmerica
+      percentage: 100
+
+    - key: everyone-else
+      conditions: "*"
+      percentage: 0
+
+  production: *rules

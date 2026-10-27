@@ -1,0 +1,6 @@
+description: Shoppers at least five hours from UTC, in either direction
+
+conditions: |
+  # Negative offsets are west of Greenwich
+  timezoneOffset <= -5
+  or timezoneOffset >= 5

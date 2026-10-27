@@ -1,0 +1,3 @@
+description: Phones on iOS 17 or 18
+
+conditions: device == 'mobile' and osVersion >= semver('17.0.0') and osVersion < semver('19.0.0')

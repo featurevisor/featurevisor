@@ -1,0 +1,58 @@
+feature: fraudScreening
+
+assertions:
+  - description: a high score goes to manual review
+    environment: staging
+    at: 50
+    context: { userId: user-1, cartTotal: 50, riskScore: 0.8 }
+    expectedToBeEnabled: true
+    expectedVariables: { action: review }
+
+  - description: a failed score on a large cart goes to manual review
+    environment: staging
+    at: 50
+    context: { userId: user-1, cartTotal: 600, riskScore: null }
+    expectedVariables: { action: review }
+
+  - description: a missing score is not null, so a large cart is allowed
+    environment: staging
+    at: 50
+    context: { userId: user-1, cartTotal: 600 }
+    expectedToBeEnabled: true
+    expectedVariables: { action: allow }
+    expectedEvaluations:
+      flag: { reason: rule, ruleKey: everyone }
+
+  - description: a test coupon matches the tree leaf in any letter case
+    environment: production
+    at: 50
+    context: { userId: user-1, cartTotal: 20, riskScore: 0.1, couponCode: TEST-123 }
+    expectedVariables: { action: review }
+
+  - description: a medium score is challenged
+    environment: staging
+    at: 50
+    context: { userId: user-1, cartTotal: 50, riskScore: 0.5 }
+    expectedVariables: { action: challenge }
+
+  - description: a verified enterprise with a medium score is allowed through the not group
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      cartTotal: 50
+      riskScore: 0.5
+      organization: { tier: enterprise, verified: true }
+    expectedVariables: { action: allow }
+
+  - description: a null score on a small cart is allowed, since null is not a number
+    environment: production
+    at: 50
+    context: { userId: user-1, cartTotal: 100, riskScore: null }
+    expectedVariables: { action: allow }
+
+  - description: an empty cart fails the root conditions
+    environment: staging
+    at: 50
+    context: { userId: user-1, cartTotal: 0, riskScore: 0.9 }
+    expectedToBeEnabled: false

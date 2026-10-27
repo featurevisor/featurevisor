@@ -1,0 +1,97 @@
+feature: upsellBanner
+
+assertions:
+  - description: Dutch staff on express pay in euros with iDEAL, evaluated end to end
+    environment: staging
+    at: 10
+    context: { userId: user-1, loggedIn: true, country: nl, email: alex@featurevisor.com }
+    expectedToBeEnabled: true
+    expectedVariables:
+      message: Pay with iDEAL in one tap
+
+  - description: express in euros without iDEAL keeps the rule's message
+    environment: staging
+    at: 50
+    stickyFeatures:
+      smartCheckout:
+        enabled: true
+        variation: express
+        variables:
+          paymentMethods: [card]
+          limits: { maxItems: 10, maxTotal: 1000 }
+      regionalPricing:
+        enabled: true
+        variables: { currency: EUR, discountPercent: 0 }
+    expectedToBeEnabled: true
+    expectedVariables:
+      message: Check out faster with saved details
+
+  - description: large limits read through a nested feature variable path
+    environment: staging
+    at: 50
+    stickyFeatures:
+      smartCheckout:
+        enabled: true
+        variation: control
+        variables:
+          paymentMethods: [card]
+          limits: { maxItems: 50, maxTotal: 25000 }
+      regionalPricing:
+        enabled: true
+        variables: { currency: EUR, discountPercent: 0 }
+    expectedVariables:
+      message: Order up to 50 items at once
+
+  - description: a discount between 1 and 10 percent reads another feature's number
+    environment: production
+    at: 50
+    stickyFeatures:
+      smartCheckout:
+        enabled: true
+        variation: control
+        variables:
+          paymentMethods: [card]
+          limits: { maxItems: 10, maxTotal: 1000 }
+      regionalPricing:
+        enabled: true
+        variables: { currency: EUR, discountPercent: 5 }
+    expectedVariables:
+      message: Your team saves on every seat
+
+  - description: more than one payment method reads the array's length
+    environment: staging
+    at: 50
+    stickyFeatures:
+      smartCheckout:
+        enabled: true
+        variation: control
+        variables:
+          paymentMethods: [card, paypal]
+          limits: { maxItems: 10, maxTotal: 1000 }
+      regionalPricing:
+        enabled: true
+        variables: { currency: USD, discountPercent: 15 }
+    expectedVariables:
+      message: More ways to pay
+
+  - description: nothing to upsell reaches the catch all at 0 percent
+    environment: staging
+    at: 50
+    stickyFeatures:
+      smartCheckout:
+        enabled: true
+        variation: control
+        variables:
+          paymentMethods: [card]
+          limits: { maxItems: 10, maxTotal: 1000 }
+      regionalPricing:
+        enabled: true
+        variables: { currency: USD, discountPercent: 0 }
+    expectedToBeEnabled: false
+
+  - description: without smartCheckout the root conditions fail
+    environment: staging
+    at: 50
+    stickyFeatures:
+      smartCheckout: { enabled: false }
+    expectedToBeEnabled: false

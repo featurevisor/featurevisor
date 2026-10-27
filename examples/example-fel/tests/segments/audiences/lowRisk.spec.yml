@@ -1,0 +1,31 @@
+segment: audiences.lowRisk
+
+assertions:
+  - description: zero is low risk
+    context:
+      riskScore: 0
+    expectedToMatch: true
+
+  - description: just under a quarter is low risk
+    context:
+      riskScore: 0.249
+    expectedToMatch: true
+
+  - description: a quarter is not
+    context:
+      riskScore: 0.25
+    expectedToMatch: false
+
+  - description: a negative score is out of range
+    context:
+      riskScore: -0.1
+    expectedToMatch: false
+
+  - description: an unscored null does not compare as a number
+    context:
+      riskScore: null
+    expectedToMatch: false
+
+  - description: a missing score does not
+    context: {}
+    expectedToMatch: false

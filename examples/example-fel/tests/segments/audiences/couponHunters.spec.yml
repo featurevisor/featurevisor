@@ -1,0 +1,26 @@
+segment: audiences.couponHunters
+
+assertions:
+  - description: SAVE20 matches in upper case
+    context:
+      couponCode: "SAVE20"
+    expectedToMatch: true
+
+  - description: deal05 matches in lower case
+    context:
+      couponCode: "deal05"
+    expectedToMatch: true
+
+  - description: the SAVE00 test code is excluded by notMatches
+    context:
+      couponCode: "SAVE00"
+    expectedToMatch: false
+
+  - description: a single digit is not enough
+    context:
+      couponCode: "save2"
+    expectedToMatch: false
+
+  - description: a missing code does not match
+    context: {}
+    expectedToMatch: false

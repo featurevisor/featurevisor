@@ -1,0 +1,48 @@
+feature: storefrontPromo
+
+assertions:
+  - description: a coupon hunter gets the big discount headline, read through a bracket path
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: us, couponCode: SAVE20 }
+    expectedToBeEnabled: true
+    expectedVariables:
+      headline: 30% off with your code
+
+  - description: the Benelux assortment leads with sku-7, read by index
+    environment: production
+    at: 50
+    context: { userId: user-1, country: nl }
+    expectedVariables:
+      headline: Local favourites on sale
+
+  - description: elsewhere the full shelf of three products is shown
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: us }
+    expectedVariables:
+      headline: Shop the full Black Friday shelf
+
+  - description: an inactive banner fails the root conditions
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: us }
+    stickyVariables:
+      storefront:
+        banners:
+          black-friday: { active: false, discount: 30 }
+          spring-sale: { active: true, discount: 10 }
+        featuredSkus: [sku-1, sku-2, sku-3]
+    expectedToBeEnabled: false
+
+  - description: a short shelf with a small discount reaches the catch all
+    environment: staging
+    at: 50
+    context: { userId: user-1, country: us, couponCode: SAVE20 }
+    stickyVariables:
+      storefront:
+        banners:
+          black-friday: { active: true, discount: 10 }
+          spring-sale: { active: false, discount: 10 }
+        featuredSkus: [sku-1]
+    expectedToBeEnabled: false

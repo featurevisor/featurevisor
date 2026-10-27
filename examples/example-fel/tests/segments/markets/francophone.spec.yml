@@ -1,0 +1,31 @@
+segment: markets.francophone
+
+assertions:
+  - description: plain fr matches, since the region is optional
+    context:
+      locale: "fr"
+    expectedToMatch: true
+
+  - description: Belgian French matches
+    context:
+      locale: "fr-BE"
+    expectedToMatch: true
+
+  - description: the i flag ignores letter case
+    context:
+      locale: "FR-ca"
+    expectedToMatch: true
+
+  - description: a three letter code does not match the anchored pattern
+    context:
+      locale: "fra"
+    expectedToMatch: false
+
+  - description: English in France does not
+    context:
+      locale: "en-FR"
+    expectedToMatch: false
+
+  - description: a missing locale does not
+    context: {}
+    expectedToMatch: false

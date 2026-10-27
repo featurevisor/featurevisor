@@ -1,0 +1,3 @@
+description: Users who opted in to betas or joined the beta cohort
+
+conditions: betaOptIn == true or cohorts includes 'beta'

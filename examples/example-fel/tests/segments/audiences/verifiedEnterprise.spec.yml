@@ -1,0 +1,22 @@
+segment: audiences.verifiedEnterprise
+
+assertions:
+  - description: a verified enterprise matches
+    context:
+      organization: { tier: "enterprise", verified: true }
+    expectedToMatch: true
+
+  - description: an unverified enterprise does not
+    context:
+      organization: { tier: "enterprise", verified: false }
+    expectedToMatch: false
+
+  - description: a missing verified property does not
+    context:
+      organization: { tier: "enterprise" }
+    expectedToMatch: false
+
+  - description: a verified midmarket organization does not
+    context:
+      organization: { tier: "midmarket", verified: true }
+    expectedToMatch: false

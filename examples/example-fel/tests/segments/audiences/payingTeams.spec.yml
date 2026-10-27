@@ -1,0 +1,31 @@
+segment: audiences.payingTeams
+
+assertions:
+  - description: a pro team of five matches
+    context:
+      plan: "pro"
+      seats: 5
+    expectedToMatch: true
+
+  - description: a large enterprise matches
+    context:
+      plan: "enterprise"
+      seats: 200
+    expectedToMatch: true
+
+  - description: four seats is one too few
+    context:
+      plan: "pro"
+      seats: 4
+    expectedToMatch: false
+
+  - description: a starter plan is not paid in this sense
+    context:
+      plan: "starter"
+      seats: 10
+    expectedToMatch: false
+
+  - description: missing seats fail the comparison
+    context:
+      plan: "pro"
+    expectedToMatch: false

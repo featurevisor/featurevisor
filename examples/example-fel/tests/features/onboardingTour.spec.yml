@@ -1,0 +1,47 @@
+feature: onboardingTour
+
+assertions:
+  - description: launch week signups get the long tour
+    environment: staging
+    at: 50
+    context: { userId: user-1, signupDate: "2026-10-03T10:00:00Z" }
+    expectedToBeEnabled: true
+    expectedVariables: { steps: 5 }
+
+  - description: later newcomers get the default tour
+    environment: production
+    at: 50
+    context: { userId: user-1, signupDate: "2026-10-20T10:00:00Z" }
+    expectedToBeEnabled: true
+    expectedVariables: { steps: 3 }
+
+  - description: returning customers who last ordered in 2025 get a short tour
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      signupDate: "2025-01-01T10:00:00Z"
+      lastOrderAt: "2025-06-01T10:00:00Z"
+    expectedToBeEnabled: true
+    expectedVariables: { steps: 2 }
+
+  - description: dormant users who never ordered get no tour, since returning needs lastOrderAt
+    environment: staging
+    at: 50
+    context: { userId: user-1, signupDate: "2025-01-01T10:00:00Z" }
+    expectedToBeEnabled: false
+
+  - description: active customers get no tour
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      signupDate: "2025-01-01T10:00:00Z"
+      lastOrderAt: "2026-05-01T10:00:00Z"
+    expectedToBeEnabled: false
+
+  - description: without a signup date the root conditions fail
+    environment: staging
+    at: 50
+    context: { userId: user-1 }
+    expectedToBeEnabled: false

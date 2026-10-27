@@ -1,0 +1,165 @@
+feature: smartCheckout
+
+assertions:
+  - description: staff get the express variation from their rule, with Benelux payment methods
+    environment: staging
+    at: 10
+    context: { userId: user-1, loggedIn: true, country: nl, email: alex@featurevisor.com }
+    expectedToBeEnabled: true
+    expectedVariation: express
+    expectedVariables:
+      layout: express
+      paymentMethods: [ideal, card]
+      limits: { maxItems: 10, maxTotal: 1000 }
+      trustBadge: false
+    expectedEvaluations:
+      flag: { reason: rule, ruleKey: staff }
+
+  - description: the same rule applies in production through the YAML anchor
+    environment: production
+    at: 90
+    context: { userId: user-1, loggedIn: true, country: be, email: alex@featurevisor.com }
+    expectedToBeEnabled: true
+    expectedVariation: express
+
+  - description: the root conditions need a signed in shopper
+    environment: staging
+    at: 10
+    context: { userId: user-1, loggedIn: false, country: nl, email: alex@featurevisor.com }
+    expectedToBeEnabled: false
+
+  - description: the root conditions need a known country
+    environment: staging
+    at: 10
+    context: { userId: user-1, loggedIn: true, email: alex@featurevisor.com }
+    expectedToBeEnabled: false
+
+  - description: the root conditions keep it off where the legacy checkout is on
+    environment: staging
+    at: 10
+    context: { userId: user-1, loggedIn: true, country: us, email: alex@featurevisor.com }
+    expectedToBeEnabled: false
+
+  - description: a QA force entry runs before the root conditions, so it works signed out in the United States
+    environment: staging
+    at: 10
+    context: { userId: qa-7, loggedIn: false, country: us, couponCode: FORCE-EXPRESS }
+    expectedToBeEnabled: true
+    expectedVariation: express
+    expectedEvaluations:
+      flag: { reason: forced }
+
+  - description: a QA user outside the European rollout is forced in, with the express variation's variables
+    environment: production
+    at: 90
+    context: { userId: qa-8, loggedIn: true, country: se, couponCode: FORCE-EXPRESS }
+    expectedToBeEnabled: true
+    expectedVariation: express
+    expectedVariables:
+      layout: express
+      paymentMethods: [card]
+
+  - description: the force entry needs both the QA user ID and the code
+    environment: staging
+    at: 10
+    context: { userId: user-7, loggedIn: false, country: us, couponCode: FORCE-EXPRESS }
+    expectedToBeEnabled: false
+
+  - description: a Dutch priority customer on express gets iDEAL, large limits and the trust badge
+    environment: staging
+    at: 90
+    context:
+      userId: user-2
+      loggedIn: true
+      country: nl
+      plan: pro
+      seats: 10
+      email: sam@shop.example
+      cartTotal: 300
+      riskScore: 0.1
+    expectedToBeEnabled: true
+    expectedVariation: express
+    expectedVariables:
+      layout: express
+      paymentMethods: [ideal, card]
+      limits: { maxItems: 50, maxTotal: 25000 }
+      trustBadge: true
+    expectedEvaluations:
+      flag: { reason: rule, ruleKey: priority }
+
+  - description: a large German organization on control gets large limits from organization.employees
+    environment: production
+    at: 10
+    context:
+      userId: user-3
+      loggedIn: true
+      country: de
+      plan: enterprise
+      seats: 20
+      email: lea@shop.example
+      cartTotal: 50
+      riskScore: 0.5
+      organization: { employees: 5000 }
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      layout: classic
+      paymentMethods: [card]
+      limits: { maxItems: 50, maxTotal: 25000 }
+      trustBadge: false
+
+  - description: a small DACH cart on express pays with Sofort
+    environment: staging
+    at: 90
+    context:
+      userId: user-3
+      loggedIn: true
+      country: de
+      plan: pro
+      seats: 6
+      email: lea@shop.example
+      cartTotal: 120
+    expectedToBeEnabled: true
+    expectedVariation: express
+    expectedVariables:
+      paymentMethods: [sofort, card]
+      limits: { maxItems: 10, maxTotal: 1000 }
+      trustBadge: false
+
+  - description: a DACH cart of 1000 or more keeps card only, but gets large limits
+    environment: staging
+    at: 90
+    context:
+      userId: user-3
+      loggedIn: true
+      country: at
+      plan: pro
+      seats: 6
+      email: lea@shop.example
+      cartTotal: 1500
+    expectedToBeEnabled: true
+    expectedVariation: express
+    expectedVariables:
+      paymentMethods: [card]
+      limits: { maxItems: 50, maxTotal: 25000 }
+
+  - description: other signed in Europeans are in the 50 percent rollout at a low bucket
+    environment: staging
+    at: 10
+    context: { userId: user-4, loggedIn: true, country: se }
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedEvaluations:
+      flag: { reason: rule, ruleKey: europe }
+
+  - description: and out of it at a high bucket
+    environment: staging
+    at: 90
+    context: { userId: user-4, loggedIn: true, country: se }
+    expectedToBeEnabled: false
+
+  - description: shoppers outside Europe and North America reach the catch all at 0 percent
+    environment: production
+    at: 10
+    context: { userId: user-5, loggedIn: true, country: jp }
+    expectedToBeEnabled: false
