@@ -1,0 +1,7 @@
+description: Signup message with its required feature dependency
+
+includeFeatures:
+  - unrelated.*
+
+includeVariables:
+  - signupMessage

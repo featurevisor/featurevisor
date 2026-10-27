@@ -1,0 +1,38 @@
+description: Variations with weights having decimal places
+tags:
+  - all
+
+bucketBy: userId
+
+conditions: feature('experimentAllocation').variation == 'qux'
+
+variablesSchema:
+  fooConfig:
+    type: json
+    defaultValue: '{"foo": "bar"}'
+
+variations:
+  - value: control
+    weight: 33.34
+  - value: b
+    weight: 33.33
+    variables:
+      fooConfig: '{"foo": "bar b"}'
+  - value: c
+    weight: 33.33
+
+rules:
+  # New rule keys deliberately reset allocations from the former Group.
+  staging:
+    - key: allocated
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: allocated-germany
+      conditions:
+        - countries.germany
+      percentage: 100
+      variation: b
+    - key: allocated-everyone
+      conditions: "*"
+      percentage: 100

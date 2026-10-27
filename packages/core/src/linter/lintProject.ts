@@ -26,7 +26,7 @@ import { getTargetZodSchema } from "./targetSchema";
 import { describeSchemaV2TargetIssue, findSchemaV2TargetIssues } from "./schemaV2Targets";
 import { getVariableZodSchema } from "./variableSchema";
 
-import { getLintIssuesFromZodError, printLintIssues } from "./printError";
+import { getLintIssuesFromZodError } from "./printError";
 import { Dependencies } from "../dependencies";
 import { CLI_FORMAT_BOLD_UNDERLINE, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "../tester/cliFormat";
 import { Plugin } from "../cli";
@@ -51,6 +51,11 @@ import { getTestContextWarnings } from "./contextWarnings";
 import { createCompositionWarningInspector } from "./compositionWarnings";
 import { diagnosticParseOptions } from "./diagnostics";
 import { EntityParseError } from "../datasource/parseError";
+import { isEntityKey } from "@featurevisor/fel";
+import type { FelPosition } from "@featurevisor/fel";
+import { FelExpressionError, getFelExpressions } from "../datasource/fel";
+import type { FelExpressionRecord } from "../datasource/fel";
+import { createFelLocator, findFelRange, isInsideFailedExpression } from "./felDiagnostics";
 import {
   ATTRIBUTE_NAMESPACE_MESSAGE,
   AttributeNamespaceError,
@@ -84,6 +89,13 @@ export interface LintErrorItem {
   path: (string | number)[];
   code?: string;
   value?: unknown;
+  /** Where in the file, for problems inside FEL expressions. One based. */
+  line?: number;
+  column?: number;
+  endLine?: number;
+  endColumn?: number;
+  /** A suggestion, when one is obvious. */
+  hint?: string;
 }
 
 export interface LintResult {
@@ -92,7 +104,6 @@ export interface LintResult {
   warnings?: LintErrorItem[];
 }
 
-const ENTITY_NAME_REGEX = /^[a-zA-Z0-9_\-./]+$/;
 const ENTITY_NAME_REGEX_ERROR =
   "Names must be alphanumeric and can contain _, -, /, ., and the configured namespace character";
 
@@ -100,17 +111,9 @@ const ATTRIBUTE_NAME_REGEX = /^[a-zA-Z0-9_\-]+$/;
 const ATTRIBUTE_NAME_REGEX_ERROR =
   "Attribute names must be alphanumeric and can contain _ and -. Dots, directory separators and the configured namespace character are not allowed.";
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
+/** One rule for key shapes, shared with FEL, which reads a string of this shape as a segment. */
 function isValidEntityKey(key: string, namespaceCharacter: string): boolean {
-  const keyWithoutNamespaceCharacter = key.replace(
-    new RegExp(escapeRegExp(namespaceCharacter), "g"),
-    "",
-  );
-
-  return ENTITY_NAME_REGEX.test(keyWithoutNamespaceCharacter);
+  return isEntityKey(key, { namespaceCharacter });
 }
 
 function isReservedKey(key: string, reservedKeys: string[]): boolean {
@@ -321,16 +324,261 @@ export async function lintProject(
     }
   }
 
-  function recordError(error: LintErrorItem) {
-    errors.push(error);
+  // FEL: problems inside expressions point to the exact file, line and column.
+  const locateFel = createFelLocator(datasource.getExtension() === "yml");
+  /** The expressions of the definition being linted, so its problems can be located. */
+  let felContext: { fullPath: string; records: FelExpressionRecord[] } | undefined;
+  /** Code frames to print, kept out of JSON output. */
+  const felFrames = new WeakMap<LintErrorItem, string[]>();
+  /** Aliased YAML repeats expressions, so one location is reported once. */
+  const reportedFelLocations = new Set<string>();
+  /** Definitions for FEL hints, filled once they are loaded. */
+  const felLookup: {
+    attributes: Record<string, Attribute>;
+    features: Record<string, ParsedFeature>;
+    variables: Record<string, ParsedVariable>;
+  } = { attributes: {}, features: {}, variables: {} };
+
+  function locateFelItem(
+    item: LintErrorItem,
+    fullPath: string,
+    stringPath: (string | number)[],
+    range: { start: FelPosition; end: FelPosition },
+  ): LintErrorItem {
+    const location = locateFel(fullPath, stringPath, range.start, range.end);
+    if (!location) {
+      return {
+        ...item,
+        message: `${item.message} (line ${range.start.line}, column ${range.start.column} of the expression)`,
+      };
+    }
+    const located: LintErrorItem = {
+      ...item,
+      line: location.line,
+      column: location.column,
+      endLine: location.endLine,
+      endColumn: location.endColumn,
+    };
+    felFrames.set(located, location.frame);
+    return located;
+  }
+
+  /** Points a problem on a compiled FEL leaf at its place in the expression. */
+  function withFelLocation(item: LintErrorItem): LintErrorItem {
+    if (item.line !== undefined) return item;
+    const range = felContext ? findFelRange(felContext.records, item.path) : undefined;
+    if (!felContext || !range) {
+      // In a project writing FEL, advise FEL for plain strings too.
+      return projectConfig.allowFEL ? { ...item, message: rewordForFel(item.message) } : item;
+    }
+    return locateFelItem(
+      { ...item, message: rewordForFel(item.message) },
+      felContext.fullPath,
+      range.record.path,
+      range,
+    );
+  }
+
+  /** Tree advice in an expression's own terms. */
+  function rewordForFel(message: string): string {
+    const unknownSegment = /^Unknown segment "([^"]+)"\./.exec(message);
+    if (!unknownSegment) return message;
+    const name = unknownSegment[1];
+    const prefix = `Unknown segment "${name}".`;
+    if (Object.prototype.hasOwnProperty.call(felLookup.attributes, name)) {
+      const type = (felLookup.attributes[name] as { type?: unknown }).type;
+      const example =
+        type === "boolean"
+          ? `${name} == true`
+          : type === "string"
+            ? `${name} == '...'`
+            : type === "integer" || type === "number"
+              ? `${name} >= 1`
+              : `${name} exists`;
+      return `${prefix} "${name}" is an attribute: compare it, such as ${example}.`;
+    }
+    if (Object.prototype.hasOwnProperty.call(felLookup.features, name)) {
+      return `${prefix} "${name}" is a feature: write feature('${name}').`;
+    }
+    if (Object.prototype.hasOwnProperty.call(felLookup.variables, name)) {
+      return `${prefix} "${name}" is a global variable: compare it, such as variable('${name}') == true.`;
+    }
+    return message;
+  }
+
+  function isRepeatedFelLocation(item: LintErrorItem): boolean {
+    if (item.line === undefined && !String(item.code).startsWith("fel_")) return false;
+    const id = JSON.stringify([
+      item.filePath,
+      item.line ?? item.path.join("."),
+      item.column,
+      item.code,
+      item.message,
+    ]);
+    if (reportedFelLocations.has(id)) return true;
+    reportedFelLocations.add(id);
+    return false;
+  }
+
+  function printFelDetails(item: LintErrorItem, print: (...args: unknown[]) => void = console.log) {
+    const frame = felFrames.get(item);
+    if (item.line !== undefined && frame) {
+      print(`     ${item.filePath}:${item.line}:${item.column}`);
+      for (const line of frame) print(`       ${line}`);
+    }
+    if (item.hint) print(`     Hint: ${item.hint}`);
+  }
+
+  /** Records an error, located inside FEL where it applies. Undefined when already reported. */
+  function recordError(error: LintErrorItem): LintErrorItem | undefined {
+    const item = withFelLocation(error);
+    if (isRepeatedFelLocation(item)) return undefined;
+    errors.push(item);
+    return item;
   }
 
   function reportWarning(warning: LintErrorItem) {
-    warnings.push(warning);
-    if (!isJsonMode)
+    const item = withFelLocation(warning);
+    if (isRepeatedFelLocation(item)) return;
+    warnings.push(item);
+    if (!isJsonMode) {
       console.log(
-        `  => Warning: ${warning.message} (${warning.entityType} ${warning.key}: ${warning.path.join(".")})`,
+        `  => Warning: ${item.message} (${item.entityType} ${item.key}: ${item.path.join(".")})`,
       );
+      printFelDetails(item);
+    }
+  }
+
+  /**
+   * Reports what FEL found while reading a definition: expressions that do not compile, their
+   * warnings, expressions in a project that has not allowed FEL, and checks that need the
+   * project's attributes.
+   */
+  async function reportFelExpressions(
+    entityType: LintEntityType,
+    key: string,
+    fullPath: string,
+    records: FelExpressionRecord[],
+    definition?: unknown,
+  ) {
+    const filePath = path.relative(process.cwd(), fullPath);
+    for (const record of records) {
+      if (!projectConfig.allowFEL) {
+        const lines = record.source.split("\n");
+        const item = locateFelItem(
+          {
+            filePath,
+            entityType,
+            key,
+            path: record.path,
+            code: "fel_not_allowed",
+            message: "FEL expressions are not allowed in this project.",
+            hint: "Set allowFEL: true in featurevisor.config.js to write conditions as expressions, or write this condition as a YAML tree.",
+          },
+          fullPath,
+          record.path,
+          {
+            start: { offset: 0, line: 1, column: 1 },
+            end: {
+              offset: record.source.length,
+              line: lines.length,
+              column: lines[lines.length - 1].length + 1,
+            },
+          },
+        );
+        await printFelError(item, fullPath);
+      }
+      for (const error of record.errors) {
+        const item = locateFelItem(
+          {
+            filePath,
+            entityType,
+            key,
+            path: record.path,
+            code: error.code,
+            message: error.message,
+            ...(error.hint ? { hint: error.hint } : {}),
+          },
+          fullPath,
+          record.path,
+          error,
+        );
+        await printFelError(item, fullPath);
+      }
+      for (const warning of record.warnings) {
+        const item = locateFelItem(
+          {
+            filePath,
+            entityType,
+            key,
+            path: record.path,
+            code: warning.code,
+            message: warning.message,
+            ...(warning.hint ? { hint: warning.hint } : {}),
+          },
+          fullPath,
+          record.path,
+          warning,
+        );
+        reportWarning(item);
+      }
+    }
+    if (definition) reportFelSemverText(entityType, key, fullPath, records, definition);
+  }
+
+  /** `appVersion == '5.5.0'` compares text, which is rarely meant for a version attribute. */
+  function reportFelSemverText(
+    entityType: LintEntityType,
+    key: string,
+    fullPath: string,
+    records: FelExpressionRecord[],
+    definition: unknown,
+  ) {
+    for (const record of records) {
+      for (const span of record.spans) {
+        let leaf: unknown = definition;
+        for (const part of span.path) {
+          leaf =
+            leaf && typeof leaf === "object" ? (leaf as Record<string, unknown>)[part] : undefined;
+        }
+        if (!leaf || typeof leaf !== "object") continue;
+        const condition = leaf as { attribute?: unknown; operator?: unknown; value?: unknown };
+        if (typeof condition.attribute !== "string") continue;
+        if (condition.operator !== "equals" && condition.operator !== "notEquals") continue;
+        const attribute = felLookup.attributes[condition.attribute];
+        if (!attribute || (attribute as { format?: unknown }).format !== "semver") continue;
+        if (typeof condition.value !== "string") continue;
+        const symbol = condition.operator === "equals" ? "==" : "!=";
+        reportWarning(
+          locateFelItem(
+            {
+              filePath: path.relative(process.cwd(), fullPath),
+              entityType,
+              key,
+              path: span.path,
+              code: "fel_semver_text",
+              message: `"${condition.attribute}" holds versions, so ${symbol} compares them as text.`,
+              hint: `Write ${condition.attribute} ${symbol} semver('${condition.value}') to compare versions, so 5.5 matches 5.5.0.`,
+            },
+            fullPath,
+            record.path,
+            span.operator ?? span,
+          ),
+        );
+      }
+    }
+  }
+
+  async function printFelError(item: LintErrorItem, fullPath: string) {
+    if (isRepeatedFelLocation(item)) return;
+    errors.push(item);
+    if (!isJsonMode) {
+      await printEntityHeader(item.entityType, item.key, fullPath);
+      console.log(CLI_FORMAT_RED, `  => Error: ${item.message}`);
+      printFelDetails(item);
+      console.log("     Path:", item.path.join(".") || "(root)");
+      console.log("");
+    }
   }
 
   async function reportSimpleError({
@@ -352,7 +600,7 @@ export async function lintProject(
     code?: string;
     value?: unknown;
   }) {
-    recordError({
+    const item = recordError({
       filePath: path.relative(process.cwd(), fullPath),
       entityType,
       key,
@@ -362,12 +610,13 @@ export async function lintProject(
       value,
     });
 
-    if (!isJsonMode) {
+    if (!isJsonMode && item) {
       await printEntityHeader(entityType, key, fullPath);
-      console.log(CLI_FORMAT_RED, `  => Error: ${message}`);
+      console.log(CLI_FORMAT_RED, `  => Error: ${item.message}`);
       if (detail) {
         console.log(CLI_FORMAT_RED, `     ${detail}`);
       }
+      printFelDetails(item);
       console.log("");
     }
   }
@@ -385,6 +634,17 @@ export async function lintProject(
       typeof error.featurevisorFilePath === "string"
         ? error.featurevisorFilePath
         : undefined;
+    if (error instanceof FelExpressionError) {
+      // Reported against the definition holding the expression, whoever read it.
+      await reportFelExpressions(
+        error.entityType,
+        error.entityKey,
+        getFullPathFromKey(error.entityType, error.entityKey),
+        error.expressions,
+        error.definition,
+      );
+      return;
+    }
     const targetPath = pathFromError || fullPath;
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof EntityParseError) {
@@ -439,60 +699,39 @@ export async function lintProject(
     { ignoreUnknownReferences = false }: { ignoreUnknownReferences?: boolean } = {},
   ) {
     const issues = getLintIssuesFromZodError(error).filter(
-      (issue) => !(ignoreUnknownReferences && issue.unknownReference),
+      (issue) =>
+        !(ignoreUnknownReferences && issue.unknownReference) &&
+        // An expression that did not compile is reported once, as itself.
+        !(felContext && isInsideFailedExpression(felContext.records, issue.path)),
     );
     if (issues.length === 0) return;
 
-    const issuesWithTargetPath: {
-      issue: (typeof issues)[0];
-      targetPath: string;
-      pathRelativeToFile: (string | number)[];
-    }[] = [];
+    const items: LintErrorItem[] = [];
     for (const issue of issues) {
-      const targetPath = fullPath;
-      const pathRelativeToFile = issue.path;
-      issuesWithTargetPath.push({ issue, targetPath, pathRelativeToFile });
-
-      recordError({
-        filePath: path.relative(process.cwd(), targetPath),
+      const item = recordError({
+        filePath: path.relative(process.cwd(), fullPath),
         entityType,
         key,
         message: issue.message,
-        path: pathRelativeToFile,
+        path: issue.path,
         code: issue.code,
         value: issue.value,
       });
+      if (item) items.push(item);
     }
 
-    if (!isJsonMode) {
-      if (entityType === "feature" && issuesWithTargetPath.length > 0) {
-        const byPath = new Map<
-          string,
-          {
-            issue: (typeof issuesWithTargetPath)[0]["issue"];
-            pathRelativeToFile: (string | number)[];
-          }[]
-        >();
-        for (const { issue, targetPath, pathRelativeToFile } of issuesWithTargetPath) {
-          const pathKey = targetPath;
-          if (!byPath.has(pathKey)) byPath.set(pathKey, []);
-          byPath.get(pathKey)!.push({ issue, pathRelativeToFile });
-        }
-        for (const [targetPathKey, groupItems] of byPath) {
-          await printEntityHeader(entityType, key, targetPathKey);
-          for (const { issue, pathRelativeToFile } of groupItems) {
-            console.log(CLI_FORMAT_RED, `  => Error: ${issue.message}`);
-            console.log("     Path:", pathRelativeToFile.join(".") || "(root)");
-            if (typeof issue.value !== "undefined" && issue.value !== "undefined") {
-              console.log("     Value:", issue.value);
-            }
-            console.log("");
-          }
-        }
-      } else {
-        await printEntityHeader(entityType, key, fullPath);
-        printLintIssues(issues);
+    if (isJsonMode || items.length === 0) return;
+    await printEntityHeader(entityType, key, fullPath);
+    // Features have always printed to stdout and other definitions to stderr.
+    const print = entityType === "feature" ? console.log : console.error;
+    for (const item of items) {
+      print(CLI_FORMAT_RED, `  => Error: ${item.message}`);
+      printFelDetails(item, print);
+      print("     Path:", item.path.join(".") || "(root)");
+      if (typeof item.value !== "undefined" && item.value !== "undefined") {
+        print("     Value:", item.value);
       }
+      print("");
     }
   }
 
@@ -620,7 +859,11 @@ export async function lintProject(
   for (const key of variables) {
     try {
       variablesByKey[key] = await datasource.readVariable(key);
-    } catch {
+    } catch (error) {
+      // Invalid FEL is reported below. Its valid parts still serve as a reference.
+      if (error instanceof FelExpressionError) {
+        variablesByKey[key] = error.definition as ParsedVariable;
+      }
       // Variable read failures are reported during variable linting below.
     }
   }
@@ -631,7 +874,10 @@ export async function lintProject(
   for (const key of features) {
     try {
       featuresByKey[key] = await datasource.readFeature(key);
-    } catch {
+    } catch (error) {
+      if (error instanceof FelExpressionError) {
+        featuresByKey[key] = error.definition as ParsedFeature;
+      }
       // Feature read failures are reported during feature linting below.
     }
   }
@@ -641,10 +887,16 @@ export async function lintProject(
   for (const key of segments) {
     try {
       segmentsByKey[key] = await datasource.readSegment(key);
-    } catch {
+    } catch (error) {
+      if (error instanceof FelExpressionError) {
+        segmentsByKey[key] = error.definition as Segment;
+      }
       // Read errors are reported alongside the segment's schema diagnostics.
     }
   }
+  felLookup.attributes = attributesByKey;
+  felLookup.features = featuresByKey;
+  felLookup.variables = variablesByKey;
   const referenceIndex: ReferenceIndex = {
     attributes: attributesByKey,
     segments: segmentsByKey,
@@ -757,7 +1009,9 @@ export async function lintProject(
       }
 
       try {
-        const parsed = await datasource.readSegment(key);
+        const parsed = segmentsByKey[key] ?? (await datasource.readSegment(key));
+        felContext = { fullPath, records: getFelExpressions(parsed) };
+        await reportFelExpressions("segment", key, fullPath, felContext.records, parsed);
         const archived = isArchived(parsed);
         const result = (archived ? isolatedSegmentZodSchema : segmentZodSchema).safeParse(
           parsed,
@@ -774,6 +1028,8 @@ export async function lintProject(
         reportDeprecatedReferences("segment", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("segment", key, fullPath, error);
+      } finally {
+        felContext = undefined;
       }
     }
   }
@@ -855,6 +1111,8 @@ export async function lintProject(
 
       try {
         parsed = featuresByKey[key] ?? (await datasource.readFeature(key));
+        felContext = { fullPath, records: getFelExpressions(parsed) };
+        await reportFelExpressions("feature", key, fullPath, felContext.records, parsed);
         const archived = isArchived(parsed);
 
         const result = (archived ? isolatedFeatureZodSchema : featureZodSchema).safeParse(
@@ -884,6 +1142,8 @@ export async function lintProject(
         }
       } catch (error) {
         await reportThrownError("feature", key, fullPath, error);
+      } finally {
+        felContext = undefined;
       }
     }
   }
@@ -961,6 +1221,8 @@ export async function lintProject(
 
       try {
         const parsed = variablesByKey[key] ?? (await datasource.readVariable(key));
+        felContext = { fullPath, records: getFelExpressions(parsed) };
+        await reportFelExpressions("variable", key, fullPath, felContext.records, parsed);
         currentVariableKey = key;
         const archived = isArchived(parsed);
         const result = (archived ? isolatedVariableZodSchema : variableZodSchema).safeParse(
@@ -987,6 +1249,8 @@ export async function lintProject(
         }
       } catch (error) {
         await reportThrownError("variable", key, fullPath, error);
+      } finally {
+        felContext = undefined;
       }
     }
   }
@@ -1272,7 +1536,7 @@ export async function lintProject(
           ? variables[0] || ""
           : features[0] || "";
       const message = error instanceof Error ? error.message : String(error);
-      if (error instanceof EntityParseError) {
+      if (error instanceof EntityParseError || error instanceof FelExpressionError) {
         await reportThrownError(entityType, key, getFullPathFromKey(entityType, key), error);
       } else if (
         !message.startsWith("Legacy feature `required` was removed") ||

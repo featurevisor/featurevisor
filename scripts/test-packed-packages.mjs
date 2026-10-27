@@ -10,6 +10,7 @@ const rootDirectory = dirname(dirname(fileURLToPath(import.meta.url)));
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "featurevisor-packages-"));
 const packageDirectories = [
   "types",
+  "fel",
   "sdk",
   "react",
   "vue",

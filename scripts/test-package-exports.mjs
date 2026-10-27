@@ -8,6 +8,19 @@ const require = createRequire(import.meta.url);
 const rootDirectory = dirname(dirname(fileURLToPath(import.meta.url)));
 const packages = [
   {
+    directory: "fel",
+    name: "@featurevisor/fel",
+    runtimeExports: {
+      compile: "function",
+      expandConditions: "function",
+      isEntityKey: "function",
+      isExpression: "function",
+      parse: "function",
+      print: "function",
+      toFel: "function",
+    },
+  },
+  {
     directory: "sdk",
     name: "@featurevisor/sdk",
     runtimeExports: {
@@ -126,7 +139,7 @@ function assertReactClientModules() {
 }
 
 async function main() {
-  for (const directory of ["types", "sdk", "react", "vue"]) {
+  for (const directory of ["types", "fel", "sdk", "react", "vue"]) {
     assertDeclarations(directory);
   }
   assertReactClientModules();

@@ -1,0 +1,30 @@
+variable: paymentPolicy
+assertions:
+  - description: ordinary build time mutations remove every occurrence
+    environment: staging
+    expectedValue: [card]
+  - description: unmatched overrides keep existing duplicates
+    environment: production
+    context: { country: de, device: desktop }
+    expectedValue: [card, paypal, paypal]
+  - description: parent and child contribute the same method only once
+    environment: production
+    context: { country: nl, device: desktop }
+    expectedValue: [card, paypal, paypal, ideal]
+    expectedEvaluation:
+      variableOverridePaths:
+        - [netherlands]
+        - [netherlands, netherlands-confirm]
+  - description: mobile removes all matching methods
+    environment: production
+    context: { country: de, device: mobile }
+    expectedValue: [card]
+  - description: removal composes after the parent and child additions
+    environment: production
+    context: { country: nl, device: mobile }
+    expectedValue: [card, ideal]
+    expectedEvaluation:
+      variableOverridePaths:
+        - [netherlands]
+        - [netherlands, netherlands-confirm]
+        - [mobile]

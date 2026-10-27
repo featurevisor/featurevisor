@@ -1,0 +1,3 @@
+archived: false
+description: users with unknown device
+conditions: device == null

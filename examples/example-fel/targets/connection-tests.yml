@@ -1,0 +1,3 @@
+description: Small datafile used to test connection settings with feature variables
+includeFeatures: [checkout.page]
+includeVariables: [connectionLimit, connectionSettings]

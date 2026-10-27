@@ -1,0 +1,12 @@
+description: Color schema
+type: object
+
+properties:
+  hex:
+    type: string
+  opacity:
+    type: integer
+
+required:
+  - hex
+  - opacity

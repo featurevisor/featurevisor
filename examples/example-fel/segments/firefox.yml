@@ -1,0 +1,2 @@
+description: Firefox browser
+conditions: browser.name == 'firefox'

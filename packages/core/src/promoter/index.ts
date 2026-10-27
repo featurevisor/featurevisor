@@ -27,6 +27,7 @@ import type { CustomParser } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
+import { restoreAuthoredFel } from "../datasource/fel";
 import { lintProject, type LintErrorItem } from "../linter";
 import {
   CLI_COLOR_CYAN,
@@ -1654,11 +1655,48 @@ async function getPromotionPlan(
   return plans;
 }
 
-async function writePlan(destinationDatasource: Datasource, plans: EntityPlan[]) {
-  for (const plan of plans) {
-    if (deepEqual(plan.destination, plan.merged)) {
+/**
+ * Definitions are planned in their expanded form, so FEL strings read as trees. Before
+ * writing, every `conditions` value that still equals an authored FEL value, in the source or
+ * the destination, is written as that FEL again, so promotion never turns FEL into trees.
+ */
+async function withAuthoredFel(
+  sourceDatasource: Datasource,
+  destinationDatasource: Datasource,
+  plan: EntityPlan,
+): Promise<EntityValue> {
+  if (plan.type !== "feature" && plan.type !== "segment" && plan.type !== "variable") {
+    return plan.merged;
+  }
+  const authored: unknown[] = [];
+  for (const datasource of [sourceDatasource, destinationDatasource]) {
+    try {
+      authored.push(await datasource.readAuthoredEntity(plan.type, plan.key));
+    } catch {
+      // A definition that does not exist on one side has nothing to restore from.
+    }
+  }
+  return restoreAuthoredFel(
+    plan.type,
+    plan.merged,
+    authored,
+    destinationDatasource.getFelOptions(),
+  ) as EntityValue;
+}
+
+async function writePlan(
+  sourceDatasource: Datasource,
+  destinationDatasource: Datasource,
+  plans: EntityPlan[],
+) {
+  for (const original of plans) {
+    if (deepEqual(original.destination, original.merged)) {
       continue;
     }
+    const plan = {
+      ...original,
+      merged: await withAuthoredFel(sourceDatasource, destinationDatasource, original),
+    };
 
     if (plan.type === "attribute")
       await destinationDatasource.writeAttribute(plan.key, plan.merged as Attribute);
@@ -1930,7 +1968,7 @@ export async function promoteProjectSets(
 
   await assertPromotionLintsClean(options.to, destinationDatasource, plans);
   if (options.apply === true) {
-    await writePlan(destinationDatasource, plans);
+    await writePlan(sourceDatasource, destinationDatasource, plans);
   }
 
   const created = plans

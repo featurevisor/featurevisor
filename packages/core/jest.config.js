@@ -23,5 +23,6 @@ module.exports = {
     "^(\\.{1,2}/.*)\\.js$": "$1",
     "^@featurevisor/sdk$": "<rootDir>/../sdk/src",
     "^@featurevisor/parsers$": "<rootDir>/../parsers/src",
+    "^@featurevisor/fel$": "<rootDir>/../fel/src",
   },
 };

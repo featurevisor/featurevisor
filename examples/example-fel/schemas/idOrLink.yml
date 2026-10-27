@@ -1,0 +1,4 @@
+description: Either a string id or a full link object
+oneOf:
+  - type: string
+  - schema: link

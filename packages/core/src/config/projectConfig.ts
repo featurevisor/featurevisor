@@ -82,6 +82,11 @@ export interface ProjectConfig {
   requireOverrideKeysInFeatures?: boolean;
   /** Kinds of condition each location accepts. An omitted location accepts every kind. */
   allowedConditions?: AllowedConditions;
+  /**
+   * Allows FEL expressions as strings in `conditions`. Lint reports them while it is false.
+   * Every other command reads them either way. Defaults to false.
+   */
+  allowFEL?: boolean;
 
   enforceCatchAllRule?: boolean;
   maxVariableStringLength?: number;
@@ -111,6 +116,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     allowFeatureAndVariableKeyCollisions: false,
     requireOverrideKeysInFeatures: false,
     allowedConditions: undefined,
+    allowFEL: false,
 
     adapter: FilesystemAdapter,
 
@@ -236,6 +242,10 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
   if (typeof finalConfig.allowedConditions !== "undefined") {
     assertAllowedConditions(finalConfig.allowedConditions);
+  }
+
+  if (typeof finalConfig.allowFEL !== "boolean") {
+    throw new Error(`Invalid allowFEL: ${finalConfig.allowFEL}. It must be a boolean.`);
   }
 
   if (!Array.isArray(finalConfig.reservedKeys)) {

@@ -1,0 +1,61 @@
+archived: false
+description: blah
+tags:
+  - all
+  - sign-in
+  - sign-up
+
+bucketBy: userId
+
+variablesSchema:
+  bar:
+    type: string
+    defaultValue: ""
+  baz:
+    type: string
+    defaultValue: ""
+  qux:
+    type: boolean
+    defaultValue: false
+    description: This is a boolean variable
+
+variations:
+  - value: control
+    weight: 50
+  - value: treatment
+    weight: 50
+    variables:
+      bar: bar_here
+      baz: baz_here
+    variableOverrides:
+      bar:
+        - conditions: countries.germany or countries.switzerland
+          value: bar for DE or CH
+      baz:
+        - conditions: countries.netherlands
+          value: baz for NL
+
+force:
+  staging:
+    - conditions: userId == 'test-force-id'
+      variation: treatment
+  production:
+    - conditions: userId == '123' and device == 'mobile'
+      variation: treatment
+      variables:
+        bar: yoooooo
+
+rules:
+  staging:
+    - key: "1"
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: "1"
+      conditions: mobile and (countries.germany or countries.switzerland)
+      percentage: 80
+      variables:
+        qux: true
+    - key: "2"
+      conditions: "*"
+      percentage: 50

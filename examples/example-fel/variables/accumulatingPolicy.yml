@@ -1,0 +1,89 @@
+description: Accumulating policy items
+tags:
+  - all
+type: object
+properties:
+  items:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        message:
+          type: string
+      required:
+        - id
+        - label
+        - message
+required:
+  - items
+defaultValue:
+  items:
+    - id: base
+      label: Base
+      message: Base policy
+overrides:
+  staging:
+    - key: staging-extra
+      conditions: "*"
+      continue: true
+      mutate:
+        items:append:
+          id: staging-extra
+          label: Temporary
+          message: Temporary staging policy
+    - key: staging-reset
+      conditions: "*"
+      continue: true
+      value:
+        items:
+          - id: staging
+            label: Staging
+            message: Staging policy
+  production:
+    - key: netherlands
+      conditions: country == 'nl'
+      continue: true
+      mutate:
+        items:append:
+          id: nl
+          label: Netherlands
+          message: Dutch policy
+      overrides:
+        - key: amsterdam
+          conditions: city == 'amsterdam'
+          continue: true
+          mutate:
+            items[id=nl].label: Amsterdam
+        - key: amsterdam-message
+          conditions: city == 'amsterdam'
+          mutate:
+            items[id=nl].message: Amsterdam policy
+    - key: mobile-prepend
+      conditions: device == 'mobile'
+      continue: true
+      mutate:
+        items:prepend:
+          id: mobile
+          label: Mobile
+          message: Mobile policy
+    - key: mobile-append
+      conditions: device == 'mobile'
+      continue: true
+      mutate:
+        items:append:
+          id: mobile-tail
+          label: Mobile tail
+          message: Mobile tail policy
+    - key: mobile-select
+      conditions: device == 'mobile'
+      continue: true
+      mutate:
+        items[id=nl].message: Mobile Netherlands policy
+    - key: mobile-remove
+      conditions: device == 'mobile'
+      mutate:
+        items[id=base]:remove: true

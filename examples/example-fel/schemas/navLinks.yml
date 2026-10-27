@@ -1,0 +1,5 @@
+description: List of links
+type: array
+
+items:
+  schema: link

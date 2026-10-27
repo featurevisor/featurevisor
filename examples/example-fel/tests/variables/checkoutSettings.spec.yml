@@ -1,0 +1,31 @@
+variable: checkoutSettings
+assertions:
+  - description: applies the staging mutation
+    environment: staging
+    expectedValue:
+      currency: EUR
+      paymentMethods:
+        - visa
+        - mastercard
+        - paypal
+
+  - description: applies the Netherlands mutation
+    environment: production
+    context:
+      country: nl
+    expectedValue:
+      currency: EUR
+      paymentMethods:
+        - ideal
+        - paypal
+
+  - description: can be selected through the checkout target
+    environment: production
+    target: checkout
+    context:
+      country: de
+    expectedValue:
+      currency: EUR
+      paymentMethods:
+        - visa
+        - mastercard

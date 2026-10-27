@@ -1,0 +1,18 @@
+segment: nonEmptyProfile
+assertions:
+  - description: matches whitespace and shallow entries
+    context:
+      userId: populated-user
+      phone: " "
+      interests: [sports]
+      preferences:
+        theme: null
+    expectedToMatch: true
+
+  - description: does not match empty string, array and object values
+    context:
+      userId: empty-user
+      phone: ""
+      interests: []
+      preferences: {}
+    expectedToMatch: false

@@ -1,0 +1,46 @@
+segment: eu
+assertions:
+  - description: continent is europe, with no country passed should not match
+    context:
+      continent: europe
+    expectedToMatch: false
+
+  - description: continent is asia, so not matching early
+    context:
+      continent: "asia"
+    expectedToMatch: false
+
+  - description: continent is europe, country is nl, should match
+    context:
+      continent: europe
+      country: nl
+    expectedToMatch: true
+
+  - description: continent is europe, country is gb, which is known to be not in EU, therefore should not match
+    context:
+      continent: europe
+      country: gb
+    expectedToMatch: false
+
+  # passing unexpected values in `country`
+  - context:
+      continent: europe
+      country:
+        a: a
+        b: b
+    expectedToMatch: false
+
+  - context:
+      continent: europe
+      country: [a, b, c]
+    expectedToMatch: false
+
+  - context:
+      continent: europe
+      country: 100
+    expectedToMatch: true
+
+  - context:
+      continent: europe
+      country: null
+    expectedToMatch: true

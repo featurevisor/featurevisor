@@ -1,0 +1,2 @@
+description: Users with advanced score label
+conditions: scores includes 'advanced'

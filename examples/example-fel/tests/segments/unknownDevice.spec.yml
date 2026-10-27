@@ -1,0 +1,13 @@
+segment: unknownDevice
+assertions:
+  - context:
+      device: iphone
+    expectedToMatch: false
+
+  - context:
+      device: ""
+    expectedToMatch: false
+
+  - context:
+      device: null
+    expectedToMatch: true

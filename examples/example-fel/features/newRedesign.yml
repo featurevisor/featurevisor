@@ -1,0 +1,52 @@
+description: Test forced with a variation, and variable overrides in it, without any active rolled out rule
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  foo:
+    type: string
+    defaultValue: "default foo"
+  bar:
+    type: string
+    defaultValue: "default bar"
+    deprecated: true
+
+variations:
+  - value: control
+    weight: 50
+
+  - value: treatment
+    weight: 50
+    variables:
+      foo: foo for treatment
+      bar: bar for treatment
+    variableOverrides:
+      foo:
+        - conditions: countries.germany or countries.switzerland
+          value: foo for treatment in DE or CH
+      bar:
+        - conditions: countries.netherlands
+          value: bar for treatment in NL
+
+force:
+  staging:
+    - conditions: userId == 'test-force-id'
+      enabled: true
+      variation: treatment
+
+rules:
+  staging:
+    - key: "1"
+      conditions: qa
+      percentage: 0
+    # # intentionally commented to prove it fails before fixing SDK
+    # - key: "1"
+    #   conditions: "*"
+    #   percentage: 0
+
+  production:
+    - key: "1"
+      conditions: "*"
+      percentage: 100

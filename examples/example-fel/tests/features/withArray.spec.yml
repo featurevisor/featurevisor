@@ -1,0 +1,47 @@
+feature: withArray
+assertions:
+  ##
+  # Staging
+  #
+  - at: 25
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariables:
+      simpleArray:
+        - red
+        - blue
+        - green
+      simpleStringArray:
+        - red
+        - blue
+        - green
+      objectArray:
+        - color: red
+          opacity: 100
+        - color: blue
+          opacity: 90
+        - color: green
+          opacity: 95
+
+  ##
+  # Production
+  #
+  - at: 40
+    environment: production
+    expectedToBeEnabled: true
+    expectedVariables:
+      simpleArray:
+        - red
+        - blue
+        - green
+      simpleStringArray:
+        - red
+        - blue
+        - green
+      objectArray:
+        - color: red
+          opacity: 100
+        - color: blue
+          opacity: 90
+        - color: green
+          opacity: 95

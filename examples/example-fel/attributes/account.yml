@@ -1,0 +1,14 @@
+description: Account details
+type: object
+
+properties:
+  plan:
+    type: string
+    enum:
+      - free
+      - pro
+  locale:
+    type: string
+
+required:
+  - plan

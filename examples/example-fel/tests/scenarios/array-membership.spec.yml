@@ -1,0 +1,52 @@
+description: Array comparisons share their semantics across segments and variables
+environment: staging
+at: 50
+
+context:
+  userId: writer
+  permissions: [read, admin]
+
+checks:
+  - segment: writePermissions
+    matches: true
+  - segment: readOnlyPermissions
+    matches: false
+  - feature: permissionMembership
+    variation: writer
+  - feature: permissionMembership
+    variable: actions
+    operator: includesAny
+    value: [write, admin]
+  - variable: permissionPolicy
+    path: actions
+    operator: includesAny
+    compareTo:
+      variable: permissionPolicy
+      path: candidates
+  - variable: permissionNotice
+    operator: equals
+    value: Write access
+
+children:
+  - context:
+      permissions: []
+    checks:
+      - segment: writePermissions
+        matches: false
+      - segment: readOnlyPermissions
+        matches: true
+      - feature: permissionMembership
+        variation: reader
+      - variable: permissionPolicy
+        path: actions
+        operator: notIncludesAny
+        compareTo:
+          variable: permissionPolicy
+          path: candidates
+      - variable: permissionNotice
+        operator: equals
+        value: Read only access
+      - variable: permissionPolicy
+        path: actions
+        operator: notIncludesAny
+        value: []

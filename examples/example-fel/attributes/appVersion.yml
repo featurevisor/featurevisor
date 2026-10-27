@@ -1,0 +1,4 @@
+description: Application version as semver string
+type: string
+
+pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"

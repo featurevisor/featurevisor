@@ -1,0 +1,13 @@
+segment: proAccounts
+assertions:
+  - context:
+      account:
+        plan: pro
+        locale: nl-NL
+    expectedToMatch: true
+
+  - context:
+      account:
+        plan: free
+        locale: nl-NL
+    expectedToMatch: false

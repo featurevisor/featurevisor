@@ -1,0 +1,18 @@
+segment: prefersDarkMode
+assertions:
+  - context:
+      preferences:
+        theme: dark
+        notifications: email
+    expectedToMatch: true
+
+  - context:
+      preferences:
+        theme: light
+    expectedToMatch: false
+
+  - context:
+      preferences:
+        theme:
+          name: dark
+    expectedToMatch: false

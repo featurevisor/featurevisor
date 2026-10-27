@@ -1,0 +1,20 @@
+description: Feature exercising schema-aware attribute conditions
+tags:
+  - all
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: pro-accounts
+      conditions: proAccounts and admins
+      percentage: 100
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

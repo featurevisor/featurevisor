@@ -1,0 +1,20 @@
+description: Nested overrides combine ancestor conditions with dependency leaves
+tags: [all]
+type: string
+defaultValue: Standard
+disabledValue: Unavailable
+conditions: conditionAudience
+overrides:
+  production:
+    - key: member
+      conditions: loggedIn == true
+      value: Member
+      overrides:
+        - key: treatment
+          conditions: |-
+            feature('conditionSource').variation == 'treatment'
+            and variable('conditionPolicy').enabled == true
+          value: Treatment member
+    - key: visitor
+      conditions: "*"
+      value: Visitor

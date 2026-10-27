@@ -1,0 +1,3 @@
+archived: false
+description: users from Germany
+conditions: country == 'de'

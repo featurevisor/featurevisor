@@ -1,0 +1,24 @@
+description: Enable discount in checkout flow
+tags:
+  - all
+  - checkout
+
+bucketBy: userId
+
+conditions: feature('sidebar')
+
+rules:
+  staging:
+    - key: "1"
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: "2"
+      description: "Black Friday Weekend rule here"
+      conditions:
+        - blackFridayWeekend
+      percentage: 100
+
+    - key: "1"
+      conditions: "*"
+      percentage: 0

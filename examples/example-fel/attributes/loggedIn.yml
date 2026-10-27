@@ -1,0 +1,3 @@
+archived: false
+description: is the user already logged in?
+type: boolean

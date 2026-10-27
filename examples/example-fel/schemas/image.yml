@@ -1,0 +1,11 @@
+description: Image asset with optional alt text
+type: object
+
+properties:
+  url:
+    type: string
+  alt:
+    type: string
+
+required:
+  - url

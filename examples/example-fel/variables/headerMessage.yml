@@ -1,0 +1,16 @@
+description: Message shown when the header feature is available
+tags:
+  - all
+type: string
+defaultValue: Welcome
+disabledValue: Header unavailable
+conditions: feature('showHeader')
+overrides:
+  staging:
+    - key: staging
+      conditions: "*"
+      value: Welcome to staging
+  production:
+    - key: default
+      conditions: "*"
+      value: Welcome

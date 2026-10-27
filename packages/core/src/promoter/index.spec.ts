@@ -101,6 +101,64 @@ async function createProject(options?: { configContent?: string; sets?: string[]
 }
 
 describe("promoteProjectSets", function () {
+  it("writes FEL conditions as FEL, never as trees", async () => {
+    const root = await createProject({
+      configContent: "module.exports = { sets: true, tags: ['all', 'web'], allowFEL: true };",
+    });
+    try {
+      for (const set of ["dev", "staging"]) {
+        await writeFile(
+          root,
+          `sets/${set}/segments/internal.yml`,
+          set === "dev"
+            ? "description: Internal users\nconditions: team == 'engineering' or userId startsWith 'qa-'\n"
+            : "description: Internal users\nconditions: team == 'engineering'\n",
+        );
+      }
+      await writeFile(
+        root,
+        "sets/dev/features/checkoutFlow.yml",
+        [
+          "description: Checkout flow in dev",
+          "tags:",
+          "  - all",
+          "bucketBy: userId",
+          "variablesSchema:",
+          "  payload:",
+          "    schema: payload",
+          "    defaultValue: {}",
+          "rules:",
+          "  - key: everyone",
+          "    conditions: internal and userId notExists",
+          "    percentage: 100",
+          "",
+        ].join("\n"),
+      );
+      const config = getProjectConfig(root);
+      const datasource = new Datasource(config, root);
+      await promoteProjectSets(config, datasource, {
+        from: "dev",
+        to: "staging",
+        includeFeatures: ["checkoutFlow"],
+        conflicts: "source",
+        apply: true,
+      });
+      const staging = datasource.forSet("staging");
+      expect(await staging.readAuthoredEntity("segment", "internal")).toEqual({
+        description: "Internal users",
+        conditions: "team == 'engineering' or userId startsWith 'qa-'",
+      });
+      expect(
+        ((await staging.readAuthoredEntity("feature", "checkoutFlow")) as { rules: unknown[] })
+          .rules,
+      ).toEqual([
+        { key: "everyone", conditions: "internal and userId notExists", percentage: 100 },
+      ]);
+    } finally {
+      await fs.promises.rm(root, { recursive: true, force: true });
+    }
+  });
+
   describe("atomic condition expressions", () => {
     it.each(["source", "destination", "fail"] as const)(
       "keeps variables and rules named conditions distinct from selectors under %s policy",

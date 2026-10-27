@@ -1,0 +1,102 @@
+feature: qux
+assertions:
+  - description: bar allocation and holdout disable qux
+    matrix:
+      environment: [staging, production]
+      bucket: [20, 90]
+    environment: ${{ environment }}
+    at: ${{ bucket }}
+    expectedToBeEnabled: false
+    expectedEvaluations:
+      flag:
+        reason: conditions_unmet
+
+  - at: 33
+    environment: production
+    stickyFeatures:
+      experimentAllocation: { enabled: true, variation: qux }
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      fooConfig:
+        foo: bar
+
+  - at: 33.33
+    environment: production
+    stickyFeatures:
+      experimentAllocation: { enabled: true, variation: qux }
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: control
+
+  - at: 33.34
+    environment: production
+    stickyFeatures:
+      experimentAllocation: { enabled: true, variation: qux }
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: control
+
+  - at: 33.35
+    environment: production
+    stickyFeatures:
+      experimentAllocation: { enabled: true, variation: qux }
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: b
+    expectedVariables:
+      fooConfig: '{ "foo": "bar b" }' # stringified
+
+  - at: 34
+    environment: production
+    stickyFeatures:
+      experimentAllocation: { enabled: true, variation: qux }
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: b
+
+  - at: 66
+    environment: production
+    stickyFeatures:
+      experimentAllocation: { enabled: true, variation: qux }
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: b
+
+  - at: 67
+    environment: production
+    stickyFeatures:
+      experimentAllocation: { enabled: true, variation: qux }
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: c
+
+  - at: 90
+    environment: production
+    stickyFeatures:
+      experimentAllocation: { enabled: true, variation: qux }
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: b
+    expectedVariables:
+      fooConfig: '{ "foo": "bar b" }' # stringified
+
+  - at: 10
+    environment: production
+    stickyFeatures:
+      experimentAllocation: { enabled: true, variation: qux }
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: b
+    expectedVariables:
+      fooConfig: '{ "foo": "bar b" }' # stringified

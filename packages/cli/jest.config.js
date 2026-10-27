@@ -15,5 +15,6 @@ module.exports = {
     "^@featurevisor/core$": "<rootDir>/../core/src",
     "^@featurevisor/sdk$": "<rootDir>/../sdk/src",
     "^@featurevisor/parsers$": "<rootDir>/../parsers/src",
+    "^@featurevisor/fel$": "<rootDir>/../fel/src",
   },
 };

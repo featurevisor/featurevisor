@@ -1,0 +1,2 @@
+description: desktop users
+conditions: device == 'desktop'

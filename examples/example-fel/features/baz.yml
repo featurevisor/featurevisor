@@ -1,0 +1,21 @@
+description: Classic on/off switch
+tags:
+  - all
+
+bucketBy:
+  or:
+    - userId
+    - device
+
+rules:
+  staging:
+    - key: "1"
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: "1"
+      conditions: "*"
+      percentage: 80
+
+expose:
+  production: true

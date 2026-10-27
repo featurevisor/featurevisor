@@ -1,0 +1,3 @@
+description: Users with no write or admin permission, including an empty list
+
+conditions: permissions notIncludesAny ['write', 'admin']

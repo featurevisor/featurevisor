@@ -1,0 +1,49 @@
+description: Example with object variable type
+tags:
+  - all
+
+bucketBy: userId
+
+conditions: feature('experimentAllocation').variation == 'bar'
+
+variablesSchema:
+  color:
+    type: string
+    defaultValue: "red"
+  hero:
+    type: object
+    defaultValue:
+      title: Hero Title
+      subtitle: Hero Subtitle
+      alignment: center
+
+variations:
+  - value: control
+    weight: 33
+  - value: b
+    weight: 33
+    variables:
+      hero:
+        title: Hero Title for B
+        subtitle: Hero Subtitle for B
+        alignment: center for B
+    variableOverrides:
+      hero:
+        - conditions: countries.germany or countries.switzerland
+          value:
+            title: Hero Title for B in DE or CH
+            subtitle: Hero Subtitle for B in DE of CH
+            alignment: center for B in DE or CH
+  - value: c
+    weight: 34
+
+rules:
+  # New rule keys deliberately reset allocations from the former Group.
+  staging:
+    - key: allocated
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: allocated
+      conditions: "*"
+      percentage: 100

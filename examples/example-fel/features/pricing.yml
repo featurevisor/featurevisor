@@ -1,0 +1,27 @@
+description: Testing two variations with first one having weight of 0
+tags:
+  - checkout
+
+bucketBy: userId
+
+disabledVariationValue: control
+
+variations:
+  - value: control
+    weight: 0
+
+  - value: treatment
+    weight: 100
+
+rules:
+  staging:
+    - key: "1"
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: "1"
+      conditions: countries.germany
+      percentage: 100
+    - key: "2"
+      conditions: "*"
+      percentage: 0

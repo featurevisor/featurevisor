@@ -1,0 +1,2 @@
+description: for testing force API in features
+conditions: userId in ['user-1', 'user-2']

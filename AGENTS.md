@@ -82,6 +82,23 @@ specs evaluate it, example-targets and example-1 with that SDK, installed as the
 root dev dependency featurevisor-sdk-3, against the v4 SDK. Keep that comparison
 when changing the converter in packages/core/src/builder/schemaV2.ts.
 
+## FEL
+
+FEL expressions are strings in conditions, read by shape: `*` is everyone, a
+string shaped like an entity key is a segment, and any other string is an
+expression. packages/fel parses, compiles and prints them, and depends only on
+@featurevisor/types. Core expands them when Datasource reads features,
+segments and global variables, so the builder, tests, Catalog and every other
+reader see condition trees. A command that writes definitions back must not
+write those trees over authored FEL. Read with readAuthoredEntity, or restore
+FEL with restoreAuthoredFel as promotion does. Lint reports expressions while
+allowFEL is false, and maps problems inside an expression to the YAML file's
+line and column. Every place a definition can hold conditions is listed once,
+in datasource/conditionLocations.ts, which FEL expansion and allowedConditions
+share. examples/example-fel is Example 1 written in FEL, and Core's
+builder/fel.spec.ts checks that Example 1 read as FEL builds identical
+datafiles.
+
 ## Catalog
 
 Catalog export and React UI live in packages/catalog. Run its package tests

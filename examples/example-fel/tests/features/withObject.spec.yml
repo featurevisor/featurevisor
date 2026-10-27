@@ -1,0 +1,81 @@
+feature: withObject
+assertions:
+  - at: 25
+    environment: staging
+    expectedToBeEnabled: true
+    expectedVariables:
+      themeConfig:
+        theme: light
+        darkMode: false
+      layoutConfig:
+        width: 1200
+        align: center
+      headerConfig:
+        style:
+          fontSize: 18
+          bold: true
+        title: Welcome
+      contentConfig:
+        tags:
+          - news
+          - featured
+        count: 2
+      panelConfig:
+        sections:
+          - id: hero
+            visible: true
+          - id: sidebar
+            visible: false
+      deepConfig:
+        level1:
+          level2:
+            value: deep
+            count: 1
+      mixedConfig:
+        name: mixed
+        enabled: true
+        meta:
+          score: 0.95
+          items:
+            - a
+            - b
+
+  - at: 40
+    environment: production
+    expectedToBeEnabled: true
+    expectedVariables:
+      themeConfig:
+        theme: light
+        darkMode: false
+      layoutConfig:
+        width: 1200
+        align: center
+      headerConfig:
+        style:
+          fontSize: 18
+          bold: true
+        title: Welcome
+      contentConfig:
+        tags:
+          - news
+          - featured
+        count: 2
+      panelConfig:
+        sections:
+          - id: hero
+            visible: true
+          - id: sidebar
+            visible: false
+      deepConfig:
+        level1:
+          level2:
+            value: deep
+            count: 1
+      mixedConfig:
+        name: mixed
+        enabled: true
+        meta:
+          score: 0.95
+          items:
+            - a
+            - b

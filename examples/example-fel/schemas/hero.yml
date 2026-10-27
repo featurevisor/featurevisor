@@ -1,0 +1,12 @@
+description: Hero schema
+type: object
+
+properties:
+  title:
+    type: string
+  subtitle:
+    type: string
+
+required:
+  - title
+  - subtitle

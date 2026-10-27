@@ -1,0 +1,3 @@
+archived: false
+description: users from Switzerland
+conditions: country == 'ch'

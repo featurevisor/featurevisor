@@ -1,0 +1,2 @@
+description: Chrome browser
+conditions: browser.name matches /chrome|chromium/i

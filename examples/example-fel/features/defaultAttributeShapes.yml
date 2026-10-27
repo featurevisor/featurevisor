@@ -1,0 +1,20 @@
+description: Feature exercising default flat object and array attribute behavior
+tags:
+  - all
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: dark-mode-sports
+      conditions: prefersDarkMode and interestedInSports
+      percentage: 100
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

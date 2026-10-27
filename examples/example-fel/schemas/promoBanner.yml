@@ -1,0 +1,12 @@
+description: Promo banner config for campaigns (message + CTA link) – feature management use case
+type: object
+
+properties:
+  message:
+    type: string
+  cta:
+    schema: link
+
+required:
+  - message
+  - cta

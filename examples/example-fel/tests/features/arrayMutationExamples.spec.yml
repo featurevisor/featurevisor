@@ -1,0 +1,18 @@
+feature: arrayMutationExamples
+assertions:
+  - description: rule variables can remove duplicates and avoid appending existing values
+    environment: staging
+    at: 50
+    expectedToBeEnabled: true
+    expectedVariables:
+      methods: [card]
+  - description: mutation maps apply in authored order and support index insertion and selector replacement
+    environment: production
+    at: 50
+    expectedToBeEnabled: true
+    expectedVariables:
+      methods: [card, paypal]
+      navigation:
+        - { id: basket }
+        - { id: payment }
+        - { id: confirmation }

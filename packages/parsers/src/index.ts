@@ -20,3 +20,6 @@ export const parsers: { [key: string]: CustomParser } = {
 export type BuiltInParser = keyof typeof parsers; // keys of parsers object
 
 export type Parser = BuiltInParser | CustomParser;
+
+export { locateYamlString } from "./locate";
+export type { LocatedString, SourcePosition } from "./locate";
