@@ -10,6 +10,7 @@ rules:
     - key: everyone
       conditions: "*"
       percentage: 100
+
   production:
     - key: netherlands
       conditions: countries.netherlands

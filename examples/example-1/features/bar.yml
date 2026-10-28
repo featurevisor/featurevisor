@@ -49,6 +49,7 @@ rules:
     - key: allocated
       conditions: "*"
       percentage: 100
+
   production:
     - key: allocated
       conditions: "*"

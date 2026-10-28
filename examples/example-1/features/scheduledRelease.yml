@@ -10,4 +10,5 @@ rules:
     - key: release-window
       conditions: scheduledReleaseWindow
       percentage: 100
+
   production: *rules

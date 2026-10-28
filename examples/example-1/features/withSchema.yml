@@ -611,6 +611,7 @@ rules:
     - key: everyone
       conditions: "*"
       percentage: 100
+
   production:
     - key: germany
       conditions: countries.germany

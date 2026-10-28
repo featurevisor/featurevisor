@@ -25,6 +25,7 @@ rules:
     - key: disabled
       conditions: "*"
       percentage: 0
+
   production:
     - key: everyone
       conditions: "*"

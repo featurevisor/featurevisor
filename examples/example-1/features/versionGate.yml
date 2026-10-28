@@ -20,4 +20,5 @@ rules:
     - key: available
       conditions: "*"
       percentage: 100
+
   production: *rules

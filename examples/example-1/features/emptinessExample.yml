@@ -23,4 +23,5 @@ rules:
       percentage: 100
       variables:
         status: All values are populated
+
   production: *rules
