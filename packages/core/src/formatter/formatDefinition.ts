@@ -1,6 +1,6 @@
 import { YmlFormatError, type CustomParser } from "@featurevisor/parsers";
 
-import { getFormatLayout, type FormatEntityType } from "./keyOrder";
+import { getFormatLayout, type FormatEntityType } from "./layout";
 
 export interface FormatResult {
   output: string;

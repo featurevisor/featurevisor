@@ -73,7 +73,7 @@ npx featurevisor fmt --diff
 npx featurevisor fmt features/checkout.yml
 ```
 
-Formats every definition and spec in one house style, with no options: a blank line between top level keys and between rules and assertions, Featurevisor's own keys in a fixed order, block lists, quotes only where needed, and comments kept with the key below them. It never changes what a definition means, and the datafiles a build writes stay byte identical. Run it after editing definitions.
+Formats every definition and spec in one house style, with no options: a blank line between top level keys, rules, the environments under `rules`, and assertions, Featurevisor's own keys in a fixed order, block lists, quotes only where needed, and comments kept with the key below them. It never changes what a definition means, and the datafiles a build writes stay byte identical. Run it after editing definitions.
 
 `--check` writes nothing and exits with 1 when a file needs formatting, for CI. `--diff` prints the changes as a unified diff. File paths, `--entity-type` and `--key-pattern` narrow the files, as in `lint`. A file that does not parse is reported and left as it is. Each parser lays out its own files: JSON orders keys, and a custom parser takes part through an optional `format` function ([custom-parsers.md](custom-parsers.md)). Without one, `fmt` leaves its files as they are.
 

@@ -20,7 +20,7 @@ import { getCommit, getHistoryEntity } from "../utils/git";
 import { isScenarioSpec, testSpecKeyFromStorageKey } from "./testSpecs";
 import { EntityParseError } from "./parseError";
 import { formatWrittenDefinition } from "../formatter/formatDefinition";
-import { orderValue } from "../formatter/keyOrder";
+import { orderValue } from "../formatter/layout";
 import {
   AttributeNamespaceError,
   assertFlatAttributeKeys,

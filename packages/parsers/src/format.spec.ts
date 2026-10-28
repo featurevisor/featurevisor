@@ -5,7 +5,11 @@ import { jsonParser } from "./json";
 import type { FormatLayout } from "./layout";
 import { ymlParser } from "./yml";
 
+// a blank line between top level keys, as Featurevisor's layout asks for every definition
+const top: YmlLayout = { spaceEntries: (path) => path.length === 0 };
+
 const layout: YmlLayout = {
+  ...top,
   orderKeys: (path) => {
     if (path.length === 0) return ["description", "bucketBy", "rules"];
     if (path.length === 2 && path[0] === "rules") return ["key", "conditions", "percentage"];
@@ -90,6 +94,31 @@ describe("formatYml", () => {
     );
   });
 
+  it("adds blank lines only where the layout asks, between entries or items", () => {
+    const source = "a: 1\nb:\n  first: 1\n  second: 2\nc:\n  - 1\n  - 2\n";
+
+    expect(formatYml(source)).toBe(source);
+    expect(
+      formatYml(source, {
+        spaceEntries: (path) => path.length === 0 || path[0] === "b",
+        spaceItems: (path) => path[0] === "c",
+      }),
+    ).toBe("a: 1\n\nb:\n  first: 1\n\n  second: 2\n\nc:\n  - 1\n\n  - 2\n");
+  });
+
+  it("stays stable when a list ends in a comment above a spaced entry", () => {
+    const spaced: YmlLayout = { spaceEntries: () => true };
+    const source = "staging:\n  - 1\n  # 2\n\n\nproduction:\n  - 3\n";
+    const output = formatYml(source, spaced);
+
+    expect(output).toBe("staging:\n  - 1\n  # 2\n\nproduction:\n  - 3\n");
+    expect(formatYml(output, spaced)).toBe(output);
+  });
+
+  it("indents by the layout's width", () => {
+    expect(formatYml("a:\n  b: 1\n", { indent: 4 })).toBe("a:\n    b: 1\n");
+  });
+
   it("moves a comment above the first key of a nested map along with that key", () => {
     const nested: YmlLayout = {
       orderKeys: (path) => (path[0] === "settings" ? ["b", "a"] : undefined),
@@ -101,7 +130,7 @@ describe("formatYml", () => {
   });
 
   it("writes flow collections as blocks, but keeps empty ones inline", () => {
-    expect(formatYml("tags: [web, ios]\nvalue: { a: 1 }\nnone: []\nempty: {}\n")).toBe(
+    expect(formatYml("tags: [web, ios]\nvalue: { a: 1 }\nnone: []\nempty: {}\n", top)).toBe(
       "tags:\n  - web\n  - ios\n\nvalue:\n  a: 1\n\nnone: []\n\nempty: {}\n",
     );
   });
@@ -118,7 +147,7 @@ describe("formatYml", () => {
       "",
     ].join("\n");
 
-    expect(formatYml(source)).toBe(
+    expect(formatYml(source, top)).toBe(
       [
         "description: Checkout",
         "",
@@ -139,7 +168,7 @@ describe("formatYml", () => {
   });
 
   it("adds quotes to strings YAML 1.1 tools would read as another type", () => {
-    expect(formatYml("country: no\nanswer: yes\n")).toBe('country: "no"\n\nanswer: "yes"\n');
+    expect(formatYml("country: no\nanswer: yes\n", top)).toBe('country: "no"\n\nanswer: "yes"\n');
   });
 
   it("never folds long strings", () => {
@@ -204,7 +233,9 @@ describe("listYmlComments", () => {
 
 describe("parser formats", () => {
   const layout: FormatLayout = {
+    indent: 2,
     orderKeys: (path) => (path.length === 0 ? ["description", "conditions"] : undefined),
+    spaceEntries: (path) => path.length === 0,
     spaceItems: () => false,
     orderValue: <T>(value: T) => {
       const record = value as Record<string, unknown>;

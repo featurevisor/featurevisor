@@ -15,7 +15,7 @@ import {
   formatDefinition,
 } from "./formatDefinition";
 import { formatProject } from "./formatProject";
-import { getKeyOrder, isSpacedList, orderValue } from "./keyOrder";
+import { getFormatLayout, getKeyOrder, isSpacedList, isSpacedMap, orderValue } from "./layout";
 import { unifiedDiff } from "./unifiedDiff";
 
 describe("key order", () => {
@@ -93,6 +93,26 @@ describe("key order", () => {
     expect(isSpacedList("feature", ["rules", 0, "conditions"])).toBe(false);
   });
 
+  it("spaces top level keys, and the environments that group rules", () => {
+    expect(isSpacedMap("feature", [])).toBe(true);
+    expect(isSpacedMap("segment", [])).toBe(true);
+    expect(isSpacedMap("test", [])).toBe(true);
+    expect(isSpacedMap("feature", ["rules"])).toBe(true);
+    expect(isSpacedMap("feature", ["force"])).toBe(false);
+    expect(isSpacedMap("variable", ["overrides"])).toBe(false);
+    expect(isSpacedMap("feature", ["rules", "production", 0])).toBe(false);
+    expect(isSpacedMap("feature", ["variablesSchema"])).toBe(false);
+  });
+
+  it("gives parsers one layout with the indent and every rule", () => {
+    const layout = getFormatLayout("feature");
+
+    expect(layout.indent).toBe(2);
+    expect(layout.spaceEntries(["rules"])).toBe(true);
+    expect(layout.spaceItems(["rules", "staging"])).toBe(true);
+    expect(layout.orderKeys([], ["rules", "description"])).toEqual(["description", "rules"]);
+  });
+
   it("orders a parsed value the same way", () => {
     const ordered = orderValue("feature", {
       rules: [{ percentage: 100, key: "everyone", conditions: "*" }],
@@ -133,6 +153,35 @@ describe("formatDefinition", () => {
       output: formatted,
       changed: false,
     });
+  });
+
+  it("puts a blank line between rules and between the environments that group them", () => {
+    const source =
+      "description: Checkout\nbucketBy: userId\nrules:\n  staging:\n    - key: everyone\n      conditions: '*'\n      percentage: 100\n  production:\n    - key: netherlands\n      conditions: netherlands\n      percentage: 100\n    - key: everyone\n      conditions: '*'\n      percentage: 25\n";
+
+    expect(formatDefinition("feature", source, yml).output).toBe(
+      [
+        "description: Checkout",
+        "",
+        "bucketBy: userId",
+        "",
+        "rules:",
+        "  staging:",
+        "    - key: everyone",
+        '      conditions: "*"',
+        "      percentage: 100",
+        "",
+        "  production:",
+        "    - key: netherlands",
+        "      conditions: netherlands",
+        "      percentage: 100",
+        "",
+        "    - key: everyone",
+        '      conditions: "*"',
+        "      percentage: 25",
+        "",
+      ].join("\n"),
+    );
   });
 
   it("formats JSON with the key order and two spaces", () => {

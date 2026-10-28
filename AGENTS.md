@@ -40,9 +40,12 @@ release lanes as Sets instead. Verify scaffold content through the init
 archive path, not only by inspecting example files.
 
 Definitions are written in the layout and key order of `featurevisor fmt`.
-Core describes the layout in packages/core/src/formatter/keyOrder.ts and hands
-it to the parser's optional `format`, which applies what its file format can
-express: the YAML parser all of it, JSON the key order. Formatting must
+packages/core/src/formatter/layout.ts holds every rule that does not depend on
+the file format: the indent, the key order, and where blank lines go between
+map entries and list items. Core hands that layout to the parser's optional
+`format`, which applies what its file format can express and adds only what is
+its own, such as YAML's quotes: the YAML parser all of it, JSON the key order
+and indent. Put a new layout rule in layout.ts, not in a parser. Formatting must
 never change a built datafile: the formatter spec builds every example before
 and after formatting and compares the bytes, so order only objects the builder
 rebuilds key by key. Every write through the datasource, including promote,

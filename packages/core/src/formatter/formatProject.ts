@@ -18,7 +18,7 @@ import {
   FormatParseError,
   formatDefinition,
 } from "./formatDefinition";
-import type { FormatEntityType } from "./keyOrder";
+import type { FormatEntityType } from "./layout";
 import { unifiedDiff } from "./unifiedDiff";
 
 export const FORMAT_ENTITY_TYPES: FormatEntityType[] = [

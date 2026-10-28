@@ -3,8 +3,11 @@ import type { Document, Node, Pair, YAMLMap, YAMLSeq } from "yaml";
 
 import type { FormatLayout, FormatPath } from "./layout";
 
-/** The parts of a layout YAML applies. Both are optional, so a bare call lays out only. */
-export type YmlLayout = Partial<Pick<FormatLayout, "orderKeys" | "spaceItems">>;
+/** The parts of a layout YAML applies. All are optional: without them, YAML keeps the
+ * authored key order, adds no blank lines and indents by two. */
+export type YmlLayout = Partial<
+  Pick<FormatLayout, "indent" | "orderKeys" | "spaceEntries" | "spaceItems">
+>;
 
 export class YmlFormatError extends Error {
   linePos?: { line: number; col: number };
@@ -16,10 +19,10 @@ export class YmlFormatError extends Error {
   }
 }
 
-// Long strings never fold. Needed quotes are double, or single when the text has a double
-// quote in it, the choice with the fewest escapes, as Prettier makes it.
+// YAML's own choices, beside the layout: list items indented under their key, long strings
+// never folded, and needed quotes double, or single when the text has a double quote in it,
+// the choice with the fewest escapes, as Prettier makes it.
 const TO_STRING_OPTIONS = {
-  indent: 2,
   indentSeq: true,
   lineWidth: 0,
   minContentWidth: 0,
@@ -76,7 +79,17 @@ function reorder(map: YAMLMap, order: string[]) {
   map.items = items.map((item) => item.pair);
 }
 
+/**
+ * A comment after a value can carry the blank lines that follow it. The layout decides those,
+ * so they are dropped here, or each pass would add the layout's blank line to them.
+ */
+function trimTrailingComment(node: { comment?: string | null }) {
+  if (node.comment) node.comment = node.comment.replace(/\n+$/, "");
+}
+
 function walk(node: unknown, path: FormatPath, layout: YmlLayout, inSequence: boolean) {
+  if (node && typeof node === "object") trimTrailingComment(node as { comment?: string | null });
+
   if (isScalar(node)) {
     formatScalar(node);
     node.spaceBefore = false;
@@ -105,14 +118,15 @@ function walk(node: unknown, path: FormatPath, layout: YmlLayout, inSequence: bo
     const order = layout.orderKeys?.(path, keys);
     if (order) reorder(map, order);
 
-    for (const pair of map.items as Pair[]) {
+    const spaced = layout.spaceEntries?.(path) === true;
+    (map.items as Pair[]).forEach((pair, index) => {
       if (isScalar(pair.key)) {
         formatScalar(pair.key);
-        pair.key.spaceBefore = false;
+        pair.key.spaceBefore = spaced && index > 0;
       }
       const key = keyOf(pair);
       walk(pair.value, key === undefined ? path : [...path, key], layout, false);
-    }
+    });
     return;
   }
 
@@ -155,10 +169,10 @@ export function listYmlComments(source: string): string[] {
 }
 
 /**
- * Formats a YAML document in Featurevisor's layout: two space indentation, block style, one
- * blank line between top level keys, blank lines between the items of the sequences the
- * layout names, no folding, and quotes only where a value needs them. Comments stay with the
- * key or item below them. The layout's key order is applied map by map.
+ * Formats a YAML document with a layout: its indentation, key order, and blank lines between
+ * the entries of the maps and the items of the lists it names. YAML adds its own choices:
+ * block style, no folding, quotes only where a value needs them, and comments kept with the
+ * key or item below them.
  *
  * Throws YmlFormatError when the source is not a single valid YAML document, and an Error
  * when the result would lose a comment.
@@ -187,15 +201,9 @@ export function formatYml(source: string, layout: YmlLayout = {}): string {
 
   walk(root, [], layout, false);
 
-  if (isMap(root)) {
-    (root.items as Pair[]).forEach((pair, index) => {
-      if (isScalar(pair.key)) pair.key.spaceBefore = index > 0;
-    });
-  }
-
   if (doc.directives) doc.directives.docStart = null;
 
-  const output = doc.toString(TO_STRING_OPTIONS);
+  const output = doc.toString({ ...TO_STRING_OPTIONS, indent: layout.indent ?? 2 });
   if (listYmlComments(output).join("\n") !== listYmlComments(source).join("\n")) {
     throw new Error("Formatting would lose or change a comment.");
   }

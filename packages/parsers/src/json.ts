@@ -10,6 +10,6 @@ export const jsonParser: CustomParser = {
   },
   // JSON has no comments or blank lines, so only the key order applies
   format: function (source, layout) {
-    return `${JSON.stringify(layout.orderValue(JSON.parse(source)), null, 2)}\n`;
+    return `${JSON.stringify(layout.orderValue(JSON.parse(source)), null, layout.indent)}\n`;
   },
 };

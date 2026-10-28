@@ -2,11 +2,11 @@ import type { Plugin } from "../cli";
 import { parseRegexOption } from "../cli/validation";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import { formatProject, printFormatResult, type FormatProjectResult } from "./formatProject";
-import type { FormatEntityType } from "./keyOrder";
+import type { FormatEntityType } from "./layout";
 
 export * from "./formatDefinition";
 export * from "./formatProject";
-export * from "./keyOrder";
+export * from "./layout";
 export { unifiedDiff } from "./unifiedDiff";
 
 export const fmtPlugin: Plugin = {
