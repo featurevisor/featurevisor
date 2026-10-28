@@ -1,21 +1,22 @@
 feature: sidebar
+
 assertions:
-  - at: 5
-    environment: production
+  - environment: production
+    at: 5
     context:
       country: nl
     expectedToBeEnabled: true
     expectedVariation: control
 
-  - at: 90
-    environment: production
+  - environment: production
+    at: 90
     context:
       country: nl
     expectedToBeEnabled: true
     expectedVariation: treatment
 
-  - at: 90
-    environment: production
+  - environment: production
+    at: 90
     context:
       country: nl
     expectedToBeEnabled: true
@@ -24,8 +25,8 @@ assertions:
       position: right
       color: red
 
-  - at: 90
-    environment: production
+  - environment: production
+    at: 90
     context:
       country: de
     expectedToBeEnabled: true
@@ -35,30 +36,41 @@ assertions:
       color: yellow
       title: Sidebar Title for production
 
-  - at: 90
-    environment: production
+  - environment: production
+    at: 90
     context:
       country: us
     expectedToBeEnabled: true
     expectedVariation: treatment
     expectedVariables:
-      sections: ["home", "about", "contact"]
+      sections:
+        - home
+        - about
+        - contact
 
-  - at: 90
-    environment: production
+  - environment: production
+    at: 90
     context:
       country: de
     expectedToBeEnabled: true
     expectedVariation: treatment
     expectedVariables:
-      sections: ["home", "about", "contact", "imprint"]
+      sections:
+        - home
+        - about
+        - contact
+        - imprint
 
-  - at: 70
-    environment: production
+  - environment: production
+    at: 70
     context:
       country: nl
       userId: "123"
     expectedToBeEnabled: true
     expectedVariation: treatment
     expectedVariables:
-      sections: ["home", "about", "contact", "bitterballen"]
+      sections:
+        - home
+        - about
+        - contact
+        - bitterballen

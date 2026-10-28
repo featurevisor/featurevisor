@@ -1,4 +1,5 @@
 description: Demonstrate multiple required feature checks
+
 tags:
   - all
 
@@ -8,11 +9,9 @@ conditions:
   # explicitly require an enabled feature
   - feature: redesign
     enabled: true
-
   # enabled defaults to true when omitted
   - feature: sidebar
     variation: treatment
-
   # enabled and variation can be checked together for a disabled feature
   - feature: pricing
     enabled: false

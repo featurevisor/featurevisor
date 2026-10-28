@@ -1,12 +1,9 @@
 description: Array membership selects a variation and feature variable
-tags: [all]
-bucketBy: userId
 
-variations:
-  - value: writer
-    weight: 50
-  - value: reader
-    weight: 50
+tags:
+  - all
+
+bucketBy: userId
 
 variablesSchema:
   actions:
@@ -15,6 +12,12 @@ variablesSchema:
       type: string
     defaultValue: []
 
+variations:
+  - value: writer
+    weight: 50
+  - value: reader
+    weight: 50
+
 rules:
   staging: &rules
     - key: write-access
@@ -22,11 +25,15 @@ rules:
       percentage: 100
       variation: writer
       variables:
-        actions: [read, write]
+        actions:
+          - read
+          - write
+
     - key: read-only-access
       conditions: readOnlyPermissions
       percentage: 100
       variation: reader
       variables:
-        actions: [read]
+        actions:
+          - read
   production: *rules

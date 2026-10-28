@@ -1,12 +1,16 @@
 description: Shared campaign banner using a reusable schema
+
 tags:
   - all
+
 schema: promoBanner
+
 defaultValue:
   message: Welcome
   cta:
     title: Learn more
     url: https://featurevisor.com
+
 overrides:
   staging:
     - key: staging

@@ -1,4 +1,5 @@
 description: Allow signup
+
 tags:
   - all
 
@@ -35,6 +36,7 @@ rules:
         - countries.netherlands
       percentage: 100
       variation: treatment
+
     - key: ch
       conditions:
         - countries.switzerland
@@ -42,6 +44,7 @@ rules:
       variationWeights:
         control: 10
         treatment: 90
+
     - key: everyone
       conditions: everyone
       percentage: 100

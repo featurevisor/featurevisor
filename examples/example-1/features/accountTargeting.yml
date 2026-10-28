@@ -1,4 +1,5 @@
 description: Feature exercising schema-aware attribute conditions
+
 tags:
   - all
 
@@ -9,7 +10,6 @@ rules:
     - key: everyone
       conditions: "*"
       percentage: 100
-
   production:
     - key: pro-accounts
       conditions:

@@ -1,44 +1,83 @@
 variable: orderedMutationCheckout
+
 assertions:
   - description: continuation applies repeated appends and the final sibling when the country misses
     environment: staging
-    context: { country: de }
+    context:
+      country: de
     expectedValue:
       currency: EUR
-      methods: [card, ideal, paypal, final]
+      methods:
+        - card
+        - ideal
+        - paypal
+        - final
       label: Default
+
   - description: the matching parent keeps its label when the nested child misses
     environment: staging
-    context: { country: nl, city: rotterdam }
+    context:
+      country: nl
+      city: rotterdam
     expectedValue:
       currency: EUR
-      methods: [card, ideal, paypal, final]
+      methods:
+        - card
+        - ideal
+        - paypal
+        - final
       label: Netherlands
+
   - description: continuation resumes after the nested repeated appends
     environment: staging
-    context: { country: nl, city: amsterdam }
+    context:
+      country: nl
+      city: amsterdam
     expectedValue:
       currency: EUR
-      methods: [card, ideal, paypal, local, collection, final]
+      methods:
+        - card
+        - ideal
+        - paypal
+        - local
+        - collection
+        - final
       label: Amsterdam
+
   - description: setting the array after an append discards the earlier appended item
     environment: production
-    context: { country: nl, city: rotterdam }
+    context:
+      country: nl
+      city: rotterdam
     expectedValue:
       currency: EUR
-      methods: [card, ideal, paypal]
+      methods:
+        - card
+        - ideal
+        - paypal
       label: Default
+
   - description: nested lists start from the mutated parent value without continuation
     environment: production
-    context: { country: nl, city: amsterdam }
+    context:
+      country: nl
+      city: amsterdam
     expectedValue:
       currency: EUR
-      methods: [card, ideal, paypal, local, collection]
+      methods:
+        - card
+        - ideal
+        - paypal
+        - local
+        - collection
       label: Amsterdam
+
   - description: an empty mutation list preserves the default value
     environment: production
-    context: { country: de }
+    context:
+      country: de
     expectedValue:
       currency: USD
-      methods: [default]
+      methods:
+        - default
       label: Default

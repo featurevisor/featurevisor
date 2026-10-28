@@ -1,4 +1,5 @@
 description: for testing expose property with tags
+
 tags:
   - all
   - checkout
@@ -9,7 +10,6 @@ force:
   staging:
     - conditions: qa
       enabled: true
-
     - conditions:
         - attribute: userId
           operator: equals
@@ -21,7 +21,6 @@ rules:
     - key: "1"
       conditions: "*"
       percentage: 0
-
   production:
     - key: "1"
       conditions: "*"

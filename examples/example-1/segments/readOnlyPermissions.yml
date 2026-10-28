@@ -3,4 +3,6 @@ description: Users with no write or admin permission, including an empty list
 conditions:
   attribute: permissions
   operator: notIncludesAny
-  value: [write, admin]
+  value:
+    - write
+    - admin

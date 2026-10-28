@@ -1,4 +1,5 @@
 description: Users whose shallow profile fields are all populated
+
 conditions:
   and:
     - attribute: phone

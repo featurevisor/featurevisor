@@ -1,4 +1,5 @@
 variable: flexibleIdentifier
+
 assertions:
   - description: returns the string branch of oneOf
     environment: staging

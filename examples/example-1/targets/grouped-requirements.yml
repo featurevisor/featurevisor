@@ -1,5 +1,7 @@
 description: Grouped feature and variable with every referenced dependency
+
 includeFeatures:
   - groupedRequirements
+
 includeVariables:
   - groupedMessage

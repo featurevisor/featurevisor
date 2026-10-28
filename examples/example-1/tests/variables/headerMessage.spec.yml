@@ -1,4 +1,5 @@
 variable: headerMessage
+
 assertions:
   - description: evaluates normally when its required feature is enabled
     environment: staging

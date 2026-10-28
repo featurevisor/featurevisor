@@ -1,7 +1,12 @@
 description: Root gate, force bypass and mixed rule conditions
-tags: [all]
+
+tags:
+  - all
+
 bucketBy: userId
+
 conditions: conditionAudience
+
 force:
   staging: &force
     - conditions:
@@ -10,6 +15,7 @@ force:
         value: conditions-qa
       enabled: true
   production: *force
+
 rules:
   staging: &rules
     - key: member
@@ -21,10 +27,12 @@ rules:
         - feature: conditionSource
           variation: treatment
         - variable: conditionPolicy
-          path: [enabled]
+          path:
+            - enabled
           operator: equals
           value: true
       percentage: 100
+
     - key: visitor
       conditions: "*"
       percentage: 100

@@ -1,20 +1,25 @@
 description: Compose payment methods without duplicates and remove methods by value
+
 tags:
   - all
+
 type: array
+
 items:
   type: string
+
 defaultValue:
   - card
   - paypal
   - paypal
+
 overrides:
   staging:
     - key: card-only
       conditions: "*"
       mutate:
-        ":removeValue": paypal
-        ":appendUnique": card
+        :removeValue: paypal
+        :appendUnique: card
   production:
     - key: netherlands
       conditions:
@@ -23,16 +28,16 @@ overrides:
         value: nl
       continue: true
       mutate:
-        ":appendUnique": ideal
+        :appendUnique: ideal
       overrides:
         - key: netherlands-confirm
           conditions: "*"
           mutate:
-            ":appendUnique": ideal
+            :appendUnique: ideal
     - key: mobile
       conditions:
         attribute: device
         operator: equals
         value: mobile
       mutate:
-        ":removeValue": paypal
+        :removeValue: paypal

@@ -1,4 +1,5 @@
 variable: dependencyMessage
+
 assertions:
   - description: matches attribute and feature conditions together
     environment: production

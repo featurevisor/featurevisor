@@ -1,4 +1,5 @@
 variable: accumulatingPolicy
+
 assertions:
   - description: replaces the complete value in staging
     environment: staging

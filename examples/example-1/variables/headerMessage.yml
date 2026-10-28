@@ -1,11 +1,17 @@
 description: Message shown when the header feature is available
+
 tags:
   - all
+
 type: string
+
 defaultValue: Welcome
-disabledValue: Header unavailable
+
 conditions:
   feature: showHeader
+
+disabledValue: Header unavailable
+
 overrides:
   staging:
     - key: staging

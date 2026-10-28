@@ -1,44 +1,62 @@
 description: Rule and variation mutations precompute ordered lists with repeated appends
-tags: [all]
+
+tags:
+  - all
+
 bucketBy: userId
+
 variablesSchema:
   ruleMethods:
     type: array
-    items: { type: string }
-    defaultValue: [card]
+    items:
+      type: string
+    defaultValue:
+      - card
   variationMethods:
     type: array
-    items: { type: string }
-    defaultValue: [card]
+    items:
+      type: string
+    defaultValue:
+      - card
+
 variations:
   - value: control
     weight: 100
     variables:
-      variationMethods: [card]
+      variationMethods:
+        - card
     variableOverrides:
       variationMethods:
         - key: netherlands
-          conditions: { attribute: country, operator: equals, value: nl }
+          conditions:
+            attribute: country
+            operator: equals
+            value: nl
           mutate:
-            - ":append": ideal
-            - ":append": paypal
+            - :append: ideal
+            - :append: paypal
         - key: unchanged
           conditions: "*"
           mutate: []
+
 rules:
   staging:
     - key: all
       conditions: "*"
       percentage: 100
       variables:
-        ruleMethods: [card]
+        ruleMethods:
+          - card
       variableOverrides:
         ruleMethods:
           - key: netherlands
-            conditions: { attribute: country, operator: equals, value: nl }
+            conditions:
+              attribute: country
+              operator: equals
+              value: nl
             mutate:
-              - ":append": ideal
-              - ":append": paypal
+              - :append: ideal
+              - :append: paypal
           - key: unchanged
             conditions: "*"
             mutate: {}
@@ -47,17 +65,21 @@ rules:
       conditions: "*"
       percentage: 100
       variables:
-        ruleMethods: [card]
+        ruleMethods:
+          - card
       variableOverrides:
         ruleMethods:
           - key: netherlands
-            conditions: { attribute: country, operator: equals, value: nl }
+            conditions:
+              attribute: country
+              operator: equals
+              value: nl
             mutate:
-              - ":append": temporary
+              - :append: temporary
               - "[0]": payment
-              - ":removeValue": temporary
-              - ":append": ideal
-              - ":append": paypal
+              - :removeValue: temporary
+              - :append: ideal
+              - :append: paypal
           - key: unchanged
             conditions: "*"
             mutate: []

@@ -1,7 +1,12 @@
 description: A message selected by an evaluated client version
-tags: [all]
+
+tags:
+  - all
+
 type: string
+
 defaultValue: Upgrade available
+
 overrides:
   staging: &overrides
     - key: stable

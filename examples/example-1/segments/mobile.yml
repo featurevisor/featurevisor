@@ -1,10 +1,11 @@
 archived: false
+
 description: mobile users
+
 conditions:
   and:
     - attribute: device
       operator: equals
       value: mobile
-
     - attribute: phone
       operator: notExists

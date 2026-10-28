@@ -1,4 +1,5 @@
 description: Users with advanced score label
+
 conditions:
   - attribute: scores
     operator: includes

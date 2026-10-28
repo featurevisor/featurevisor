@@ -1,4 +1,8 @@
 description: Client version used by version requirements and scenario checks
-tags: [all]
+
+tags:
+  - all
+
 type: string
+
 defaultValue: 1.0.0-1b

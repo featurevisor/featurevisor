@@ -1,4 +1,5 @@
 variable: headerFallback
+
 assertions:
   - description: returns the default while the required feature is enabled
     environment: staging

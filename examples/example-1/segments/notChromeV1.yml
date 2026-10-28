@@ -1,4 +1,5 @@
 description: Not Chrome v1 browser
+
 conditions:
   - not:
       - attribute: browser.name

@@ -1,6 +1,7 @@
 description: A release controlled by the current date supplied by the application
 
-tags: [all]
+tags:
+  - all
 
 bucketBy: userId
 

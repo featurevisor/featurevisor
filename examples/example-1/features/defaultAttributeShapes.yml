@@ -1,4 +1,5 @@
 description: Feature exercising default flat object and array attribute behavior
+
 tags:
   - all
 
@@ -9,7 +10,6 @@ rules:
     - key: everyone
       conditions: "*"
       percentage: 100
-
   production:
     - key: dark-mode-sports
       conditions:

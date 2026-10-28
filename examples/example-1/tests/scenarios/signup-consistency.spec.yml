@@ -1,11 +1,18 @@
 description: Signup message and feature agree at bucket ${{ bucket }}
-environment: production
+
 matrix:
-  bucket: [0, 100]
+  bucket:
+    - 0
+    - 100
+
+environment: production
+
 at: ${{ bucket }}
+
 context:
   country: gb
   deviceId: customer-1
+
 checks:
   - key: matching-signup-path
     description: The message and variable agree with the selected variation
@@ -24,7 +31,6 @@ checks:
             variable: allowGoogleSignUp
             operator: equals
             value: false
-
       # Named and unnamed sibling groups are both accepted.
       - and:
           - feature: allowSignup

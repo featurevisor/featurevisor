@@ -1,12 +1,28 @@
 description: Shared allocation is exclusive at ${{ bucket }} percent in ${{ environment }}
+
 matrix:
-  environment: [staging, production]
-  bucket: [0, 20, 40, 40.001, 60, 80, 80.001, 90, 100]
+  environment:
+    - staging
+    - production
+  bucket:
+    - 0
+    - 20
+    - 40
+    - 40.001
+    - 60
+    - 80
+    - 80.001
+    - 90
+    - 100
+
 environment: ${{ environment }}
+
 at: ${{ bucket }}
+
 context:
   userId: allocation-example
   country: nl
+
 checks:
   - key: allocation-matches-features
     or:

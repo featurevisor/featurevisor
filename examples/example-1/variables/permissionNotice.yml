@@ -1,6 +1,10 @@
 description: Array prerequisites evaluate both global and feature variables
-tags: [all]
+
+tags:
+  - all
+
 type: string
+
 defaultValue: No evaluated policy
 
 overrides:
@@ -11,11 +15,15 @@ overrides:
           - variable: permissionPolicy
             path: actions
             operator: includesAny
-            value: [write, admin]
+            value:
+              - write
+              - admin
           - feature: permissionMembership
             variable: actions
             operator: includesAny
-            value: [write, admin]
+            value:
+              - write
+              - admin
       value: Write access
     - key: reader-notice
       conditions:
@@ -23,10 +31,14 @@ overrides:
           - variable: permissionPolicy
             path: actions
             operator: notIncludesAny
-            value: [write, admin]
+            value:
+              - write
+              - admin
           - feature: permissionMembership
             variable: actions
             operator: notIncludesAny
-            value: [write, admin]
+            value:
+              - write
+              - admin
       value: Read only access
   production: *overrides

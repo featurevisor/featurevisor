@@ -1,4 +1,5 @@
 description: Enable new design
+
 tags:
   - all
 
@@ -9,7 +10,6 @@ rules:
     - key: "1"
       conditions: "*"
       percentage: 100
-
   production:
     - key: "1"
       conditions: countries.netherlands

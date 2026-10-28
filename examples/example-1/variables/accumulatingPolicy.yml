@@ -1,7 +1,10 @@
 description: Accumulating policy items
+
 tags:
   - all
+
 type: object
+
 properties:
   items:
     type: array
@@ -18,13 +21,16 @@ properties:
         - id
         - label
         - message
+
 required:
   - items
+
 defaultValue:
   items:
     - id: base
       label: Base
       message: Base policy
+
 overrides:
   staging:
     - key: staging-extra

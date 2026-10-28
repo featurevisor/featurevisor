@@ -3,4 +3,6 @@ description: Users with any write or admin permission
 conditions:
   attribute: permissions
   operator: includesAny
-  value: [write, admin]
+  value:
+    - write
+    - admin

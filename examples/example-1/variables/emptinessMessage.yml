@@ -1,7 +1,12 @@
 description: Demonstrates empty and notEmpty required variable expressions
-tags: [all]
+
+tags:
+  - all
+
 type: string
+
 defaultValue: No emptiness requirement matched
+
 overrides:
   staging: &overrides
     - key: empty-source

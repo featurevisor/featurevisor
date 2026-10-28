@@ -1,8 +1,12 @@
 description: Demonstrate feature conditions in global variable overrides
+
 tags:
   - all
+
 type: string
+
 defaultValue: No condition based override matched
+
 overrides:
   production:
     # Attribute and feature leaves use AND semantics
@@ -13,7 +17,6 @@ overrides:
           value: nl
         - feature: showHeader
       value: Attribute and feature conditions matched
-
     # Segment and feature leaves also use AND semantics
     - key: segment-and-feature-conditions
       conditions:
@@ -22,7 +25,6 @@ overrides:
           enabled: true
           variation: treatment
       value: Segment and feature conditions matched
-
     # A feature leaf can be the only condition
     - key: feature-condition-only
       conditions:

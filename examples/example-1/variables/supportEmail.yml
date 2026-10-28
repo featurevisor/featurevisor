@@ -1,8 +1,12 @@
 description: Support email address shown to users
+
 tags:
   - all
+
 type: string
+
 defaultValue: support@example.com
+
 overrides:
   staging:
     - key: staging

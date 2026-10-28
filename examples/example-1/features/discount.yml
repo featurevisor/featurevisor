@@ -1,4 +1,5 @@
 description: Enable discount in checkout flow
+
 tags:
   - all
   - checkout
@@ -15,7 +16,7 @@ rules:
       percentage: 100
   production:
     - key: "2"
-      description: "Black Friday Weekend rule here"
+      description: Black Friday Weekend rule here
       conditions:
         - blackFridayWeekend
       percentage: 100

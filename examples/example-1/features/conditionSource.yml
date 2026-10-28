@@ -1,17 +1,25 @@
 description: Dependency for mixed conditions and segment assertions
-tags: [all]
+
+tags:
+  - all
+
 bucketBy: userId
+
 variablesSchema:
   policy:
     type: object
     properties:
-      enabled: { type: boolean }
-    defaultValue: { enabled: true }
+      enabled:
+        type: boolean
+    defaultValue:
+      enabled: true
+
 variations:
   - value: control
     weight: 50
   - value: treatment
     weight: 50
+
 rules:
   staging:
     - key: disabled

@@ -1,4 +1,5 @@
 description: For testing variables when feature itself is disabled
+
 tags:
   - all
 
@@ -8,12 +9,10 @@ variablesSchema:
   foo:
     type: string
     defaultValue: foo value
-
   bar:
     type: string
     defaultValue: bar value
     useDefaultWhenDisabled: true
-
   baz:
     type: string
     defaultValue: baz value
@@ -22,7 +21,6 @@ variablesSchema:
 variations:
   - value: control
     weight: 50
-
   - value: treatment
     weight: 50
 

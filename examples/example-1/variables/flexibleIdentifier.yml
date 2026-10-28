@@ -1,10 +1,14 @@
 description: Identifier that can be a string or an integer
+
 tags:
   - all
+
 oneOf:
   - type: string
   - type: integer
+
 defaultValue: anonymous
+
 overrides:
   staging:
     - key: staging

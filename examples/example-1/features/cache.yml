@@ -1,4 +1,5 @@
 description: for testing child instances
+
 tags:
   - all
 
@@ -6,15 +7,14 @@ bucketBy: deviceId
 
 rules:
   staging:
-    - key: "everyone"
+    - key: everyone
       conditions: "*"
       percentage: 100
-
   production:
-    - key: "netherlands"
-      conditions: "countries.netherlands"
+    - key: netherlands
+      conditions: countries.netherlands
       percentage: 0
 
-    - key: "everyone"
+    - key: everyone
       conditions: "*"
       percentage: 100
