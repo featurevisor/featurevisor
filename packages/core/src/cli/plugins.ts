@@ -16,6 +16,7 @@ import { infoPlugin } from "../info";
 import { listPlugin } from "../list";
 import { promotePlugin } from "../promoter";
 import { diffPlugin } from "../diff";
+import { fmtPlugin } from "../formatter";
 import { getProjectSetExecutions } from "../sets";
 import { getTestInputFingerprint, getTestInputStatePaths } from "../tester/provenance";
 import {
@@ -39,6 +40,7 @@ const catalogRuntime = {
 // that require an existing Featurevisor project
 export const projectBasedPlugins: Plugin[] = [
   lintPlugin,
+  fmtPlugin,
   buildPlugin,
   testPlugin,
   generateCodePlugin,

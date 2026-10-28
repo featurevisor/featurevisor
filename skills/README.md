@@ -33,7 +33,7 @@ Then ask your agent (Claude Code, Codex, Cursor, OpenCode and others), for examp
 One skill, `featurevisor`, for Featurevisor v4:
 
 - **Authoring**: features, variations, feature variables, force, attributes and their formats, segments, schemas and mutations, with unified `conditions` (attribute, segment, feature and variable leaves) for every selector and gate. Global variables with nested and accumulating overrides, and compositions with `compose`. Mutually exclusive experiments, environments, Sets and promotions.
-- **Verification**: a definition of done the agent follows after every change: `lint`, specs, `evaluate --explain` on representative contexts, `test --uncovered`, and `diff` to summarize the change.
+- **Verification**: a definition of done the agent follows after every change: `fmt`, `lint`, specs, `evaluate --explain` on representative contexts, `test --uncovered`, and `diff` to summarize the change.
 - **Testing**: feature, segment and global variable specs, checks, standalone scenarios, matrices, targets, JSON reports and exact case reruns.
 - **Querying**: `list`, `find-usage`, `find-duplicate-segments`, `evaluate --explain`, `assess-distribution` and `diff` for answering questions without reading YAML by hand.
 - **Visual review**: the Catalog in watch mode, so changes made by prompt appear in the browser as they are saved.

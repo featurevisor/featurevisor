@@ -1,6 +1,9 @@
 import { jsonParser } from "./json";
 import { ymlParser } from "./yml";
 
+export { formatYml, listYmlComments, YmlFormatError } from "./format";
+export type { YmlLayout, YmlPath } from "./format";
+
 export interface CustomParser {
   extension: string;
   parse: <T>(content: string, filePath?: string) => T;

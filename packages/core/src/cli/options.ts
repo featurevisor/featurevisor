@@ -139,6 +139,29 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     importSdkPath: { type: "string", hidden: true },
     importReactPath: { type: "string", hidden: true },
   },
+  fmt: {
+    ...outputOptions,
+    ...setOption,
+    check: {
+      type: "boolean",
+      description: "list files that need formatting and exit with 1 if any do, without writing",
+    },
+    diff: { type: "boolean", description: "print what formatting would change, without writing" },
+    entityType: {
+      type: "string",
+      choices: [
+        "attribute",
+        "schema",
+        "segment",
+        "feature",
+        "variable",
+        "target",
+        "test",
+        "scenario",
+      ],
+    },
+    keyPattern: { type: "string", description: "filter entity keys by regular expression" },
+  },
   info: {
     ...setOption,
     ...targetOption,

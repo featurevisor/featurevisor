@@ -369,6 +369,13 @@ export class Datasource {
     return path.join(this.config.testsDirectoryPath, ...parts) + `.${this.getExtension()}`;
   }
 
+  /** The file an entity is read from, when the adapter keeps entities in files. */
+  getEntitySourcePath(entityType: EntityType, entityKey: string): string | undefined {
+    if (entityType === "test") return this.getTestSourcePath(entityKey);
+    if (entityType === "scenario") return this.adapter.getScenarioSourcePath?.(entityKey);
+    return this.adapter.getEntityPath?.(entityType, entityKey);
+  }
+
   // scenarios
   getScenarioSourcePath(scenarioKey: string) {
     if (!this.adapter.getScenarioSourcePath) {

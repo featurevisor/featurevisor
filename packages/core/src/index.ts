@@ -15,6 +15,7 @@ export * from "./info";
 export * from "./list";
 export * from "./sets";
 export * from "./promoter";
+export * from "./formatter";
 export * from "./cli";
 export * from "./error";
 

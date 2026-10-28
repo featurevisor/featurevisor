@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 
 import { parse, parseDocument, stringify, Scalar as ScalarCtor } from "yaml";
-import type { Pair, YAMLMap, YAMLSeq } from "yaml";
+import type { Document, Pair, YAMLMap, YAMLSeq } from "yaml";
 
 import type { CustomParser } from "./index";
 
@@ -199,12 +199,12 @@ export const ymlParser: CustomParser = {
   },
   stringify: function (content: any, filePath?: string) {
     if (!filePath || !fs.existsSync(filePath)) {
-      return stringify(content);
+      return stringify(content, { lineWidth: 0 });
     }
 
     const fileContent = fs.readFileSync(filePath, "utf8");
     if (!fileContent.trim()) {
-      return stringify(content);
+      return stringify(content, { lineWidth: 0 });
     }
 
     // newObject is the final saved object; existing file is only for ordering/comments
@@ -214,6 +214,7 @@ export const ymlParser: CustomParser = {
 
     const doc = parseDocument(fileContent) as unknown as { contents: unknown } & NodeCreator;
     replaceContentsPreservingComments(doc, content);
-    return doc.toString();
+    // long strings stay on one line, as they were written
+    return (doc as unknown as Document).toString({ lineWidth: 0 });
   },
 };

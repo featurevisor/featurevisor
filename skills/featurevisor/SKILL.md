@@ -146,11 +146,12 @@ Environments, Sets, parser and namespace separator change how the same request i
 
 Run this loop after every change. It is how you prove a change does what the user asked, and it gives you the evidence to report back.
 
-1. **Lint.** `npx featurevisor lint` must pass. With `--json`, each error has `filePath`, `path`, `message` and `code`, so you can fix the exact field. Rerun after fixing: some errors only appear once earlier ones in the same file are gone.
-2. **Specs.** Add or update the matching spec in the same change, then run `npx featurevisor test --key-pattern=<key>`. A failure prints a rerun command with an exact `--case`. `--json` gives each case's `errors` with `path`, `expected` and `actual`.
-3. **Explain representative contexts.** `npx featurevisor evaluate --feature=<key> --context='{…}' --explain` shows the matched rule, the bucket, and pass or fail for each condition. Use one context inside the audience and one outside it.
-4. **Coverage gaps.** `npx featurevisor test --uncovered` lists features and global variables without specs.
-5. **Summarize the change.** `npx featurevisor diff` reports semantic changes against `HEAD`, such as `Rule "everyone" updated, Rollout percentage: 10 → 25`. Use it for your summary to the user.
+1. **Format.** `npx featurevisor fmt` puts the files you edited in the house layout and key order, the way the user's teammates will expect to read them. It never changes what a definition means or what builds. Skip this step if the installed CLI has no `fmt` command.
+2. **Lint.** `npx featurevisor lint` must pass. With `--json`, each error has `filePath`, `path`, `message` and `code`, so you can fix the exact field. Rerun after fixing: some errors only appear once earlier ones in the same file are gone.
+3. **Specs.** Add or update the matching spec in the same change, then run `npx featurevisor test --key-pattern=<key>`. A failure prints a rerun command with an exact `--case`. `--json` gives each case's `errors` with `path`, `expected` and `actual`.
+4. **Explain representative contexts.** `npx featurevisor evaluate --feature=<key> --context='{…}' --explain` shows the matched rule, the bucket, and pass or fail for each condition. Use one context inside the audience and one outside it.
+5. **Coverage gaps.** `npx featurevisor test --uncovered` lists features and global variables without specs.
+6. **Summarize the change.** `npx featurevisor diff` reports semantic changes against `HEAD`, such as `Rule "everyone" updated, Rollout percentage: 10 → 25`. Use it for your summary to the user.
 
 `npx featurevisor build --no-state-files` confirms the datafiles build, and a running `npx featurevisor catalog` shows every change as it is saved.
 
@@ -166,6 +167,7 @@ Every CLI command is local and safe to run without asking, except:
 | `npx featurevisor config --json --pretty`                                                 | Project configuration                                                |
 | `npx featurevisor info`                                                                   | Counts of every definition kind                                      |
 | `npx featurevisor lint [--json]`                                                          | Validate definitions and specs                                       |
+| `npx featurevisor fmt [--check]`                                                          | Format definitions in the house layout and key order                 |
 | `npx featurevisor test [--key-pattern=…] [--json]`                                        | Run specs, with exact reruns through `--case`                        |
 | `npx featurevisor test --uncovered` / `--coverage`                                        | Definitions without specs, and rules or overrides the specs selected |
 | `npx featurevisor evaluate --feature=<k> --context='{…}' --explain`                       | Why a feature has its flag, variation and variables                  |

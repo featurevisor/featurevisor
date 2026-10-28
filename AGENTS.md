@@ -39,6 +39,14 @@ uses staging and production. The existing environments scaffold models
 release lanes as Sets instead. Verify scaffold content through the init
 archive path, not only by inspecting example files.
 
+Definitions are written in the layout and key order of `featurevisor fmt`,
+whose tables live in packages/core/src/formatter/keyOrder.ts. Formatting must
+never change a built datafile: the formatter spec builds every example before
+and after formatting and compares the bytes, so order only objects the builder
+rebuilds key by key. Every write through the datasource, including promote,
+is formatted. example-1 is formatted and its test runs `fmt --check`, while
+the other examples are not formatted yet.
+
 Attribute files belong directly in the configured attributes directory,
 including within each Set. Nested files and dots in attribute names are
 rejected with invalid_attribute_namespace. Do not silently filter these files
