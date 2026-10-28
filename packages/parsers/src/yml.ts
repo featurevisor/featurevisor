@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import { parse, parseDocument, stringify, Scalar as ScalarCtor } from "yaml";
 import type { Document, Pair, YAMLMap, YAMLSeq } from "yaml";
 
+import { formatYml } from "./format";
 import type { CustomParser } from "./index";
 
 function getKeyString(keyNode: unknown): string | undefined {
@@ -216,5 +217,9 @@ export const ymlParser: CustomParser = {
     replaceContentsPreservingComments(doc, content);
     // long strings stay on one line, as they were written
     return (doc as unknown as Document).toString({ lineWidth: 0 });
+  },
+  // YAML applies the whole layout: key order, blank lines, block style, quotes and comments
+  format: function (source, layout) {
+    return formatYml(source, layout);
   },
 };

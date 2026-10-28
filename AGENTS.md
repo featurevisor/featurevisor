@@ -39,8 +39,10 @@ uses staging and production. The existing environments scaffold models
 release lanes as Sets instead. Verify scaffold content through the init
 archive path, not only by inspecting example files.
 
-Definitions are written in the layout and key order of `featurevisor fmt`,
-whose tables live in packages/core/src/formatter/keyOrder.ts. Formatting must
+Definitions are written in the layout and key order of `featurevisor fmt`.
+Core describes the layout in packages/core/src/formatter/keyOrder.ts and hands
+it to the parser's optional `format`, which applies what its file format can
+express: the YAML parser all of it, JSON the key order. Formatting must
 never change a built datafile: the formatter spec builds every example before
 and after formatting and compares the bytes, so order only objects the builder
 rebuilds key by key. Every write through the datasource, including promote,

@@ -1,20 +1,10 @@
 import { isMap, isPair, isScalar, isSeq, parse, parseDocument, Scalar, visit } from "yaml";
 import type { Document, Node, Pair, YAMLMap, YAMLSeq } from "yaml";
 
-/**
- * A position in a YAML document: map keys as strings and sequence indexes as numbers.
- */
-export type YmlPath = (string | number)[];
+import type { FormatLayout, FormatPath } from "./layout";
 
-export interface YmlLayout {
-  /**
-   * Returns the keys of the map at `path` in the order to write them, or undefined to keep
-   * the authored order. Keys left out of the returned list keep their authored order after it.
-   */
-  orderKeys?: (path: YmlPath, keys: string[]) => string[] | undefined;
-  /** Whether the items of the sequence at `path` are separated by a blank line */
-  spaceItems?: (path: YmlPath) => boolean;
-}
+/** The parts of a layout YAML applies. Both are optional, so a bare call lays out only. */
+export type YmlLayout = Partial<Pick<FormatLayout, "orderKeys" | "spaceItems">>;
 
 export class YmlFormatError extends Error {
   linePos?: { line: number; col: number };
@@ -86,7 +76,7 @@ function reorder(map: YAMLMap, order: string[]) {
   map.items = items.map((item) => item.pair);
 }
 
-function walk(node: unknown, path: YmlPath, layout: YmlLayout, inSequence: boolean) {
+function walk(node: unknown, path: FormatPath, layout: YmlLayout, inSequence: boolean) {
   if (isScalar(node)) {
     formatScalar(node);
     node.spaceBefore = false;
@@ -170,7 +160,8 @@ export function listYmlComments(source: string): string[] {
  * layout names, no folding, and quotes only where a value needs them. Comments stay with the
  * key or item below them. The layout's key order is applied map by map.
  *
- * Throws YmlFormatError when the source is not a single valid YAML document.
+ * Throws YmlFormatError when the source is not a single valid YAML document, and an Error
+ * when the result would lose a comment.
  */
 export function formatYml(source: string, layout: YmlLayout = {}): string {
   const doc = parseDocument(source) as Document.Parsed;
@@ -204,5 +195,9 @@ export function formatYml(source: string, layout: YmlLayout = {}): string {
 
   if (doc.directives) doc.directives.docStart = null;
 
-  return doc.toString(TO_STRING_OPTIONS);
+  const output = doc.toString(TO_STRING_OPTIONS);
+  if (listYmlComments(output).join("\n") !== listYmlComments(source).join("\n")) {
+    throw new Error("Formatting would lose or change a comment.");
+  }
+  return output;
 }

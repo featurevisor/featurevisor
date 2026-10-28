@@ -46,6 +46,7 @@ export const fmtPlugin: Plugin = {
           skipped: result.skipped,
           changed: result.changed,
           errors: result.errors,
+          ...(result.unsupported ? { unsupported: true } : {}),
         };
         console.log(parsed.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload));
       } else {

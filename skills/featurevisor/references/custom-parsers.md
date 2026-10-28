@@ -87,6 +87,15 @@ module.exports = {
 
 `parse(content, filePath?)` receives source text and returns the parsed value. `stringify(content, filePath?)` receives a value and returns source text when definitions are written, including `promote --apply`. The optional file path can inform either operation. Keep the same data shape as YAML or JSON.
 
+An optional `format(source, layout)` lets `npx featurevisor fmt` lay out the parser's files. `layout` has `orderKeys(path, keys)`, `spaceItems(path)` and `orderValue(value)`, which returns a parsed definition with its keys in Featurevisor's order. Apply what the format can express and keep what a value cannot hold, such as comments. smol-toml drops comments, so a TOML `format` can order keys only in files without them:
+
+```js
+format: (source, layout) =>
+  /^\s*#/m.test(source) ? source : toml.stringify(layout.orderValue(toml.parse(source))),
+```
+
+Without `format`, `fmt` leaves the parser's files as they are. The built-in YAML parser applies the whole house style, and JSON orders keys.
+
 Configuration loading requires a nonempty `extension` and both functions. A parser with only `parse` prevents project CLI commands from loading, even commands that do not write. The `toml` package is parse only. It cannot supply `stringify`. See [upgrading to v4](upgrading-to-v4.md#project).
 
 These examples omit environments. If the project declares them, keep the environment keyed shape when converting formats. `init --example=json` and `init --example=toml` scaffold projects with staging and production environments, unlike the YAML default.

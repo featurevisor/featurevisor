@@ -12,7 +12,12 @@ import {
   CLI_FORMAT_RED,
   CLI_FORMAT_YELLOW,
 } from "../tester/cliFormat";
-import { FormatGuardError, FormatParseError, formatDefinition } from "./formatDefinition";
+import {
+  canFormat,
+  FormatGuardError,
+  FormatParseError,
+  formatDefinition,
+} from "./formatDefinition";
 import type { FormatEntityType } from "./keyOrder";
 import { unifiedDiff } from "./unifiedDiff";
 
@@ -60,6 +65,8 @@ export interface FormatProjectResult {
   skipped: string[];
   changed: number;
   errors: number;
+  /** The project's parser has no `format`, so its files were left as they are */
+  unsupported?: boolean;
 }
 
 interface Dependencies {
@@ -110,6 +117,8 @@ export async function formatProject(
   const seen = new Set<string>();
 
   const result: FormatProjectResult = { files: [], skipped: [], changed: 0, errors: 0 };
+  const parser = projectConfig.parser as CustomParser;
+  if (!canFormat(parser)) return { ...result, unsupported: true };
   const entityTypes = options.entityType ? [options.entityType] : FORMAT_ENTITY_TYPES;
 
   for (const entityType of entityTypes) {
@@ -144,12 +153,7 @@ export async function formatProject(
 
       const source = fs.readFileSync(filePath, "utf8");
       try {
-        const { output, changed } = formatDefinition(
-          entityType,
-          source,
-          projectConfig.parser as CustomParser,
-          filePath,
-        );
+        const { output, changed } = formatDefinition(entityType, source, parser, filePath);
         if (changed) {
           file.status = "changed";
           result.changed++;
@@ -205,6 +209,14 @@ export function printFormatResult(result: FormatProjectResult, options: FormatPr
       console.log(CLI_FORMAT_RED, `${file.filePath}${where}`);
       console.log(CLI_FORMAT_RED, `  => Error: ${file.error.message}`);
     }
+  }
+
+  if (result.unsupported) {
+    console.log(
+      CLI_FORMAT_YELLOW,
+      "This project's parser has no format function, so fmt leaves its files as they are.",
+    );
+    return;
   }
 
   for (const skipped of result.skipped) {

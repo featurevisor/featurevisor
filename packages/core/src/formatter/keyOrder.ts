@@ -1,4 +1,4 @@
-import type { YmlLayout, YmlPath } from "@featurevisor/parsers";
+import type { FormatLayout, FormatPath } from "@featurevisor/parsers";
 
 /**
  * The house order of Featurevisor's own keys, and which lists get a blank line between items.
@@ -298,7 +298,7 @@ function childShape(shape: Shape, segment: string | number): Shape {
   }
 }
 
-function shapeAt(entityType: FormatEntityType, path: YmlPath): Shape {
+function shapeAt(entityType: FormatEntityType, path: FormatPath): Shape {
   let shape = SHAPES[entityType];
   for (const segment of path) {
     shape = childShape(shape, segment);
@@ -315,32 +315,34 @@ function orderedKeys(order: string[], keys: string[]): string[] {
 
 export function getKeyOrder(
   entityType: FormatEntityType,
-  path: YmlPath,
+  path: FormatPath,
   keys: string[],
 ): string[] | undefined {
   const shape = shapeAt(entityType, path);
   return shape.kind === "map" ? orderedKeys(shape.order, keys) : undefined;
 }
 
-export function isSpacedList(entityType: FormatEntityType, path: YmlPath): boolean {
+export function isSpacedList(entityType: FormatEntityType, path: FormatPath): boolean {
   const shape = shapeAt(entityType, path);
   if (shape.kind === "list") return shape.spaced === true;
   if (shape.kind === "byEnvironment") return shape.list.spaced === true;
   return false;
 }
 
-export function getYmlLayout(entityType: FormatEntityType): YmlLayout {
+/** The layout a parser's `format` applies to one kind of definition. */
+export function getFormatLayout(entityType: FormatEntityType): FormatLayout {
   return {
     orderKeys: (path, keys) => getKeyOrder(entityType, path, keys),
     spaceItems: (path) => isSpacedList(entityType, path),
+    orderValue: <T>(value: T) => orderValue(entityType, value) as T,
   };
 }
 
-/** The same key order for a parsed value, for JSON and custom parsers. */
+/** The key order applied to a parsed value, for parsers that write from values. */
 export function orderValue(
   entityType: FormatEntityType,
   value: unknown,
-  path: YmlPath = [],
+  path: FormatPath = [],
 ): unknown {
   if (Array.isArray(value)) {
     return value.map((item, index) => orderValue(entityType, item, [...path, index]));

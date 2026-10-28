@@ -1,6 +1,9 @@
 import { parse } from "yaml";
 
 import { formatYml, listYmlComments, YmlFormatError, type YmlLayout } from "./format";
+import { jsonParser } from "./json";
+import type { FormatLayout } from "./layout";
+import { ymlParser } from "./yml";
 
 const layout: YmlLayout = {
   orderKeys: (path) => {
@@ -196,5 +199,28 @@ describe("formatYml", () => {
 describe("listYmlComments", () => {
   it("lists every comment line, sorted", () => {
     expect(listYmlComments("# b\nkey: 1 # a\n# c\nother: 2\n")).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("parser formats", () => {
+  const layout: FormatLayout = {
+    orderKeys: (path) => (path.length === 0 ? ["description", "conditions"] : undefined),
+    spaceItems: () => false,
+    orderValue: <T>(value: T) => {
+      const record = value as Record<string, unknown>;
+      return { description: record.description, conditions: record.conditions } as T;
+    },
+  };
+
+  it("lays out YAML in full", () => {
+    expect(ymlParser.format!("conditions: '*'\ndescription: x\n", layout)).toBe(
+      'description: x\n\nconditions: "*"\n',
+    );
+  });
+
+  it("orders JSON keys and indents with two spaces", () => {
+    expect(jsonParser.format!('{"conditions":"*","description":"x"}', layout)).toBe(
+      '{\n  "description": "x",\n  "conditions": "*"\n}\n',
+    );
   });
 });

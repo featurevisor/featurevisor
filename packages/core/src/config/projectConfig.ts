@@ -187,6 +187,11 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
       "Invalid custom parser: stringify must be a function. It is required when writing definitions, including promotions.",
     );
   }
+  if (parser.format !== undefined && typeof parser.format !== "function") {
+    throw new Error(
+      "Invalid custom parser: format must be a function when given. featurevisor fmt calls it to lay out the parser's files.",
+    );
+  }
 
   if (typeof finalConfig.sets !== "boolean") {
     throw new Error(`Invalid sets: ${finalConfig.sets}. It must be a boolean.`);

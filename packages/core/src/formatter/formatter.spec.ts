@@ -8,7 +8,12 @@ import { buildProjectSets } from "../builder/buildProject";
 import { getProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 import { getProjectSetExecutions } from "../sets";
-import { FormatGuardError, FormatParseError, formatDefinition } from "./formatDefinition";
+import {
+  canFormat,
+  FormatGuardError,
+  FormatParseError,
+  formatDefinition,
+} from "./formatDefinition";
 import { formatProject } from "./formatProject";
 import { getKeyOrder, isSpacedList, orderValue } from "./keyOrder";
 import { unifiedDiff } from "./unifiedDiff";
@@ -138,16 +143,31 @@ describe("formatDefinition", () => {
     );
   });
 
-  it("gives custom parsers the key order and leaves the layout to them", () => {
+  it("leaves the layout to a custom parser's format, which receives the key order", () => {
     const custom: CustomParser = {
       extension: "custom",
       parse: (content) => JSON.parse(content),
       stringify: (content) => JSON.stringify(content),
+      format: (source, layout) => JSON.stringify(layout.orderValue(JSON.parse(source))),
     };
 
     expect(formatDefinition("segment", '{"conditions":"*","description":"x"}', custom).output).toBe(
       '{"description":"x","conditions":"*"}',
     );
+  });
+
+  it("leaves a file as it is when its parser has no format", () => {
+    const source = '# who\n{"conditions":"*","description":"x"}';
+    const custom: CustomParser = {
+      extension: "custom",
+      parse: (content) => JSON.parse(content.replace(/^#.*$/m, "")),
+      stringify: (content) => JSON.stringify(content),
+    };
+
+    expect(canFormat(custom)).toBe(false);
+    expect(canFormat(parsers.yml)).toBe(true);
+    expect(canFormat(parsers.json)).toBe(true);
+    expect(formatDefinition("segment", source, custom)).toEqual({ output: source, changed: false });
   });
 
   it("reports a parse error with its line", () => {
@@ -161,11 +181,27 @@ describe("formatDefinition", () => {
     expect((error as FormatParseError).line).toEqual(expect.any(Number));
   });
 
+  it("reports a parser's format that refuses a file, without writing it", () => {
+    const refusing: CustomParser = {
+      extension: "custom",
+      parse: (content) => JSON.parse(content),
+      stringify: (content) => JSON.stringify(content),
+      format: () => {
+        throw new Error("Formatting would lose or change a comment.");
+      },
+    };
+
+    expect(() => formatDefinition("segment", '{"description":"x"}', refusing)).toThrow(
+      new FormatGuardError("Formatting would lose or change a comment."),
+    );
+  });
+
   it("refuses output that would change the parsed value", () => {
     const lossy: CustomParser = {
       extension: "custom",
       parse: (content) => JSON.parse(content),
-      stringify: (content) => JSON.stringify({ ...content, conditions: undefined }),
+      stringify: (content) => JSON.stringify(content),
+      format: (source) => JSON.stringify({ ...JSON.parse(source), conditions: undefined }),
     };
 
     expect(() =>

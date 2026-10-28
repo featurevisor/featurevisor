@@ -1,12 +1,6 @@
-import {
-  formatYml,
-  listYmlComments,
-  parsers,
-  YmlFormatError,
-  type CustomParser,
-} from "@featurevisor/parsers";
+import { YmlFormatError, type CustomParser } from "@featurevisor/parsers";
 
-import { getYmlLayout, orderValue, type FormatEntityType } from "./keyOrder";
+import { getFormatLayout, type FormatEntityType } from "./keyOrder";
 
 export interface FormatResult {
   output: string;
@@ -33,7 +27,7 @@ export class FormatParseError extends Error {
   }
 }
 
-/** Formatting would have changed a value or lost a comment. A formatter bug, never written. */
+/** Formatting would have changed a value, lost something, or was not stable. Never written. */
 export class FormatGuardError extends Error {
   constructor(message: string) {
     super(message);
@@ -41,9 +35,9 @@ export class FormatGuardError extends Error {
   }
 }
 
-function isBuiltIn(parser: CustomParser, name: "yml" | "json") {
-  const builtIn = parsers[name];
-  return parser === builtIn || (parser.extension === name && parser.parse === builtIn.parse);
+/** Whether the parser lays out its own files. Built-in YAML and JSON do. */
+export function canFormat(parser: CustomParser): boolean {
+  return typeof parser.format === "function";
 }
 
 /** Equal as values: maps compare without key order, lists in order. */
@@ -79,30 +73,19 @@ function formatOnce(
   parser: CustomParser,
   filePath?: string,
 ): string {
-  if (isBuiltIn(parser, "yml")) {
-    try {
-      return formatYml(source, getYmlLayout(entityType));
-    } catch (error) {
-      if (error instanceof YmlFormatError) throw new FormatParseError(error.message, error.linePos);
-      throw error;
-    }
+  try {
+    return parser.format!(source, getFormatLayout(entityType), filePath);
+  } catch (error) {
+    if (error instanceof YmlFormatError) throw new FormatParseError(error.message, error.linePos);
+    throw new FormatGuardError((error as Error).message);
   }
-
-  const value = parseSource(parser, source, filePath);
-  const ordered = orderValue(entityType, value);
-
-  if (isBuiltIn(parser, "json")) {
-    return `${JSON.stringify(ordered, null, 2)}\n`;
-  }
-
-  // A custom parser writes its own layout, so only the key order is Featurevisor's.
-  return parser.stringify(ordered, filePath);
 }
 
 /**
- * Formats one definition file's source. YAML gets Featurevisor's layout and key order, JSON
- * and custom parsers get the key order. The result is checked before it is returned: it must
- * parse to the same value, keep every comment, and stay the same when formatted again.
+ * Formats one definition file's source with its parser's `format`, which applies what its
+ * format can express of Featurevisor's layout for this kind of definition. The result is
+ * checked before it is returned: it must parse to the same value and stay the same when
+ * formatted again. Keeping comments is the parser's part, as the YAML parser does.
  */
 export function formatDefinition(
   entityType: FormatEntityType,
@@ -110,21 +93,15 @@ export function formatDefinition(
   parser: CustomParser,
   filePath?: string,
 ): FormatResult {
+  if (!canFormat(parser)) return { output: source, changed: false };
+
+  const before = parseSource(parser, source, filePath);
   const output = formatOnce(entityType, source, parser, filePath);
   if (output === source) return { output, changed: false };
 
-  const before = parseSource(parser, source, filePath);
   const after = parseSource(parser, output, filePath);
   if (!sameValue(before, after)) {
     throw new FormatGuardError("Formatting would change the parsed value.");
-  }
-
-  if (isBuiltIn(parser, "yml")) {
-    const commentsBefore = listYmlComments(source);
-    const commentsAfter = listYmlComments(output);
-    if (!sameValue(commentsBefore, commentsAfter)) {
-      throw new FormatGuardError("Formatting would lose or change a comment.");
-    }
   }
 
   if (formatOnce(entityType, output, parser, filePath) !== output) {
@@ -143,11 +120,10 @@ export function formatWrittenDefinition(
   text: string,
   parser: CustomParser,
 ): string {
+  if (!canFormat(parser)) return text;
   try {
-    if (isBuiltIn(parser, "yml")) return formatYml(text, getYmlLayout(entityType));
-    if (isBuiltIn(parser, "json")) return text.endsWith("\n") ? text : `${text}\n`;
+    return parser.format!(text, getFormatLayout(entityType));
   } catch {
     return text;
   }
-  return text;
 }
