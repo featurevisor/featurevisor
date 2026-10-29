@@ -2,12 +2,20 @@ import type { EntityType } from "@featurevisor/types";
 
 import type { Plugin } from "../cli";
 import { parseRegexOption } from "../cli/validation";
-import { formatProject, printFormatResult } from "./formatProject";
+import { formatProject } from "./formatProject";
+import { printFormatResult } from "./printFormatResult";
 
-export * from "./formatDefinition";
-export * from "./formatProject";
-export * from "./layout";
-export { unifiedDiff } from "./unifiedDiff";
+export {
+  canFormat,
+  formatDefinition,
+  FormatGuardError,
+  FormatParseError,
+} from "./formatDefinition";
+export type { FormatResult } from "./formatDefinition";
+export { formatProject } from "./formatProject";
+export type { FormatFileResult, FormatProjectOptions, FormatProjectResult } from "./formatProject";
+export { FORMAT_ENTITY_TYPES, getFormatLayout } from "./layout";
+export { HOUSE_STYLE } from "./style";
 
 export const fmtPlugin: Plugin = {
   command: "fmt [paths...]",

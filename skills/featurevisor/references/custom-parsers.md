@@ -87,7 +87,7 @@ module.exports = {
 
 `parse(content, filePath?)` receives source text and returns the parsed value. `stringify(content, filePath?)` receives a value and returns source text when definitions are written, including `promote --apply`. The optional file path can inform either operation. Keep the same data shape as YAML or JSON.
 
-An optional `format(source, layout)` lets `npx featurevisor fmt` lay out the parser's files. `layout` has `indent`, `orderKeys(path, keys)`, `spaceEntries(path)`, `spaceItems(path)` and `orderValue(value)`, which returns a parsed definition with its keys in Featurevisor's order. Apply what the format can express and ignore the rest. Keep what a value cannot hold, such as comments, or return `undefined` to leave the file as it is. smol-toml drops comments, so a TOML `format` leaves any file with a `#` alone:
+An optional `format(source, layout)` lets `npx featurevisor fmt` lay out the parser's files. `layout` has `indent`, `orderKeys(path, keys)`, `spaceEntries(path)`, `spaceItems(path)`, `orderValue(value)`, which returns a parsed definition with its keys in Featurevisor's order, and `options`, Featurevisor's choices for the parser's own format when it has some, such as YAML's quotes. Apply what the format can express and ignore the rest. Keep what a value cannot hold, such as comments, or return `undefined` to leave the file as it is. smol-toml drops comments, so a TOML `format` leaves any file with a `#` alone:
 
 ```js
 format: (source, layout) =>

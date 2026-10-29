@@ -39,28 +39,35 @@ uses staging and production. The existing environments scaffold models
 release lanes as Sets instead. Verify scaffold content through the init
 archive path, not only by inspecting example files.
 
-`featurevisor fmt` lays out definitions in one house style.
-packages/core/src/formatter/layout.ts holds every rule that does not depend on
-the file format: the indent, the key order, and where blank lines go between
-map entries and list items. Core hands that layout to the parser's optional
-`format`, which applies what its file format can express and adds only what is
-its own, such as YAML's quotes: the YAML parser all of it, JSON the key order
-and indent. A `format` may return undefined to leave a file as it is. Put a new
-layout rule in layout.ts, not in a parser. Whatever is the same in every format
-stays in Core's formatDefinition.ts: line endings, a byte order mark, the final
-newline, and the checks that values and comments (through the parser's optional
-`listComments`) survive and that a second pass changes nothing. Formatting must
-never change a built datafile, so order only objects the builder rebuilds key
-by key. The formatter spec proves it on every example: it writes a copy with
-every ordered map in reverse house order, formats another such copy, and
-requires the same datafile bytes from both. It also requires each example in
-the repository to be formatted already. fmt runs across every Set in one pass. It is separate from
-promote and every other write: those write files as the parser does and never
-format them. Every example is formatted, and a change to the house style fails
-users' `fmt --check` after they upgrade, so say so in the release notes. JSON
-is laid out as Prettier writes it at its default width of 80, so Prettier
-leaves example-json's definitions to fmt (see .prettierignore), since that
-example sets a width of 40.
+`featurevisor fmt` lays out definitions in one house style, in four layers:
+
+- packages/core/src/formatter/style.ts is the house style: the indent, every
+  key order, every blank line by name, and the choices only one file format
+  can express, such as YAML's quotes and JSON's line width. Every opinion
+  lives there, and nothing in it can change a datafile. To change the style,
+  edit it, run `make build` and `make fmt-examples`, update style.spec.ts and
+  the docs Formatting page, and note it in the release notes, since it fails
+  users' `fmt --check` once they upgrade.
+- layout.ts places each kind of object in a definition, so the style reaches
+  the right maps and lists. It keeps the promise that formatting never changes
+  a datafile: only objects the builder rebuilds key by key get a key order.
+  examples.spec.ts proves it on every example, by building a copy in reverse
+  house key order beside a formatted one and requiring the same bytes. It also
+  requires every example to be formatted already.
+- formatDefinition.ts does what is the same in every format: line endings, a
+  byte order mark, the final newline, and the checks that values and comments
+  (through the parser's optional `listComments`) survive and that a second
+  pass changes nothing. formatProject.ts runs it over every Set in one pass.
+- The parser's optional `format` applies the layout and its own section of
+  the style: packages/parsers/src/ymlFormat.ts all of it, jsonFormat.ts the
+  key order and indent, laying out lists as Prettier does. A `format` may
+  return undefined to leave a file as it is.
+
+Only style.spec.ts pins the style's output. The other formatter tests hold
+whatever style.ts says, so a change to the style fails nothing else. fmt is
+separate from promote and every other write: those write files as the parser
+does and never format them. Prettier leaves example-json's definitions to fmt
+(see .prettierignore), since that example sets a Prettier width of 40.
 
 Attribute files belong directly in the configured attributes directory,
 including within each Set. Nested files and dots in attribute names are

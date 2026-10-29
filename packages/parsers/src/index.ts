@@ -2,8 +2,10 @@ import { jsonParser } from "./json";
 import type { FormatLayout } from "./layout";
 import { ymlParser } from "./yml";
 
-export { formatYml, listYmlComments } from "./format";
-export type { YmlLayout } from "./format";
+export { formatJson } from "./jsonFormat";
+export type { JsonFormatOptions } from "./jsonFormat";
+export { formatYml, listYmlComments } from "./ymlFormat";
+export type { YmlFormatOptions, YmlLayout } from "./ymlFormat";
 export type { FormatLayout, FormatPath } from "./layout";
 
 export interface CustomParser {

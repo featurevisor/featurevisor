@@ -1,9 +1,8 @@
 import { parse } from "yaml";
 
-import { formatYml, listYmlComments, type YmlLayout } from "./format";
-import { jsonParser } from "./json";
 import type { FormatLayout } from "./layout";
 import { ymlParser } from "./yml";
+import { formatYml, listYmlComments, type YmlLayout } from "./ymlFormat";
 
 // a blank line between top level keys, as Featurevisor's layout asks for every definition
 const top: YmlLayout = { spaceEntries: (path) => path.length === 0 };
@@ -239,69 +238,54 @@ describe("listYmlComments", () => {
   });
 });
 
-describe("parser formats", () => {
+describe("YAML options", () => {
+  it("prefers single quotes when asked, and double around text with a single quote", () => {
+    const options = { quote: "single" as const };
+
+    expect(formatYml(`a: "*"\nb: "it's: x"\nc: "no"\n`, { options })).toBe(
+      `a: '*'\nb: "it's: x"\nc: 'no'\n`,
+    );
+  });
+
+  it("leaves text YAML 1.1 reads as another type bare when asked", () => {
+    expect(formatYml('country: "no"\n', { options: { quoteYaml11Types: false } })).toBe(
+      "country: no\n",
+    );
+  });
+
+  it("folds long text at a line width", () => {
+    const text = "word ".repeat(20).trim();
+    const output = formatYml(`description: ${text}\n`, { options: { lineWidth: 40 } });
+
+    expect(output.split("\n").length).toBeGreaterThan(3);
+    expect(output.split("\n").every((line) => line.length <= 40)).toBe(true);
+    expect(parse(output)).toEqual({ description: text });
+  });
+
+  it("writes list items level with their key when asked", () => {
+    expect(formatYml("tags:\n  - web\n", { options: { indentSequences: false } })).toBe(
+      "tags:\n- web\n",
+    );
+  });
+});
+
+describe("the YAML parser", () => {
   const layout: FormatLayout = {
     indent: 2,
     orderKeys: (path) => (path.length === 0 ? ["description", "conditions"] : undefined),
     spaceEntries: (path) => path.length === 0,
     spaceItems: () => false,
-    orderValue: <T>(value: T) => {
-      const record = value as Record<string, unknown>;
-      return { description: record.description, conditions: record.conditions } as T;
-    },
+    orderValue: <T>(value: T) => value,
+    options: { quote: "single" },
   };
 
-  it("lays out YAML in full", () => {
-    expect(ymlParser.format!("conditions: '*'\ndescription: x\n", layout)).toBe(
-      'description: x\n\nconditions: "*"\n',
+  it("formats with the layout and its options", () => {
+    expect(ymlParser.format!('conditions: "*"\ndescription: x\n', layout)).toBe(
+      "description: x\n\nconditions: '*'\n",
     );
   });
 
-  it("orders JSON keys and indents with two spaces", () => {
-    expect(jsonParser.format!('{"conditions":"*","description":"x"}', layout)).toBe(
-      '{\n  "description": "x",\n  "conditions": "*"\n}',
-    );
-  });
-
-  it("lays out JSON as Prettier does at its default width", async () => {
-    // Prettier's standalone build, since its main entry loads plugins in a way Jest refuses
-    const prettier = require("prettier/standalone");
-    const plugins = [require("prettier/plugins/babel"), require("prettier/plugins/estree")];
-    const keep: FormatLayout = { ...layout, orderValue: <T>(value: T) => value };
-    const word = (length: number) => "x".repeat(length);
-    const shapes: unknown[] = [
-      { description: "x", conditions: ["nl", "de"] },
-      { tags: Array.from({ length: 12 }, (_, index) => `tag-${index}`) },
-      // the 80th column, with and without a comma after the list
-      { conditions: [word(62)], z: 1 },
-      { conditions: [word(63)], z: 1 },
-      { conditions: [word(64)] },
-      { conditions: [word(65)] },
-      { value: [["a", "b"]] },
-      { value: [["a"], ["b"]] },
-      {
-        value: [
-          ["a", "b"],
-          ["c", "d"],
-        ],
-      },
-      { value: [["a", "b"], "c"] },
-      { value: Array.from({ length: 30 }, (_, index) => index * 1000) },
-      { value: [-1, 2.5, 1e21, 0] },
-      { value: [{}], other: [[]], empty: {}, none: [] },
-      { value: [{ a: 1 }], mixed: [1, "a", null, true] },
-      { description: "caf\u00e9 \u2028 \u0007" },
-      { a: { b: { c: { d: { e: ["one", "two", "three", "four", "five", "six", "seven"] } } } } },
-      [1, 2, 3],
-    ];
-
-    for (const shape of shapes) {
-      const output = `${jsonParser.format!(JSON.stringify(shape), keep)}\n`;
-      expect(output).toBe(await prettier.format(output, { parser: "json", plugins }));
-    }
-  });
-
-  it("lists YAML comments for Featurevisor to check", () => {
+  it("lists comments for Featurevisor to check", () => {
     expect(ymlParser.listComments!("# a\nkey: 1 # b\n")).toEqual(["a", "b"]);
   });
 });

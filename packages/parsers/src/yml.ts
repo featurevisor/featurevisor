@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import { parse, parseDocument, stringify, Scalar as ScalarCtor } from "yaml";
 import type { Pair, YAMLMap, YAMLSeq } from "yaml";
 
-import { formatYml, listYmlComments } from "./format";
+import { formatYml, listYmlComments, type YmlFormatOptions } from "./ymlFormat";
 import type { CustomParser } from "./index";
 
 function getKeyString(keyNode: unknown): string | undefined {
@@ -219,7 +219,7 @@ export const ymlParser: CustomParser = {
   },
   // YAML applies the whole layout: key order, blank lines, block style, quotes and comments
   format: function (source, layout) {
-    return formatYml(source, layout);
+    return formatYml(source, { ...layout, options: layout.options as YmlFormatOptions });
   },
   listComments: listYmlComments,
 };

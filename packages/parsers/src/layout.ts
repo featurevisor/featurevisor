@@ -21,4 +21,9 @@ export interface FormatLayout {
   spaceItems: (path: FormatPath) => boolean;
   /** The parsed value with every map's keys in order, for parsers that write from values */
   orderValue: <T>(value: T) => T;
+  /**
+   * Choices only this file format can express, such as YAML's quotes, from the house style's
+   * section for the parser's extension. Empty when the house style has none for it.
+   */
+  options: Record<string, unknown>;
 }

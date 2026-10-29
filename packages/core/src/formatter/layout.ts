@@ -1,17 +1,19 @@
 import type { FormatLayout, FormatPath } from "@featurevisor/parsers";
 import type { EntityType } from "@featurevisor/types";
 
+import { HOUSE_STYLE } from "./style";
+
 /**
- * Featurevisor's house layout for definitions, whatever their file format: the indentation,
- * the order of Featurevisor's own keys, and where blank lines go. It reaches a parser's
- * `format` as a FormatLayout, and each parser applies what its format can express. Only what
- * is particular to one format, such as YAML's quotes, belongs in the parser.
+ * Where each kind of object sits in a definition, so the house style in style.ts reaches the
+ * right maps and lists. A parser's `format` receives the result as a FormatLayout.
  *
- * Key order only reaches objects the builder rebuilds key by key, so formatting never changes
- * a datafile. Values stay as written: variable values, context, condition leaves, compose
- * references, and maps keyed by the author, such as variablesSchema or properties. Lists are
- * never reordered, because rules, overrides, variations, conditions and mutations depend on
- * their order.
+ * This file keeps the promise that formatting never changes a datafile. Only objects the
+ * builder rebuilds key by key are given a key order here: features, rules, force entries,
+ * variations, variablesSchema entries, segments, global variables and their overrides, and
+ * everything in test specs, which datafiles never hold. Values stay as written: variable
+ * values, context, condition leaves, compose references, and maps keyed by the author, such
+ * as variablesSchema or properties. Lists are never reordered, since rules, overrides,
+ * variations, conditions and mutations depend on their order.
  */
 
 /** Every kind of definition fmt formats, in the order it formats them */
@@ -26,304 +28,122 @@ export const FORMAT_ENTITY_TYPES: EntityType[] = [
   "scenario",
 ];
 
-/** Spaces per level of nesting */
-export const INDENT = 2;
-
-type ListShape = { kind: "list"; item: Shape; spaceItems: boolean };
-
 type Shape =
-  /** A map of Featurevisor's own keys, written in `order`, with known children */
-  | { kind: "map"; order: string[]; children?: Record<string, Shape>; spaceEntries: boolean }
-  /** A map keyed by the author, each value of the same shape */
-  | { kind: "dict"; value: Shape }
-  | ListShape
+  /** Featurevisor's own keys, written in `order`, with the shapes of some of their values */
+  | { kind: "map"; order: string[]; space: boolean; children: () => Record<string, Shape> }
+  /** Keys chosen by the author, every value of the same shape */
+  | { kind: "dict"; value: Shape; space: boolean }
+  | { kind: "list"; item: Shape; space: boolean }
   /** A list, or a map of environments to lists */
-  | { kind: "byEnvironment"; list: ListShape; spaceEnvironments: boolean }
+  | { kind: "byEnvironment"; item: Shape; space: boolean; spaceEnvironments: boolean }
   /** A value, left as written */
   | { kind: "value" };
 
 const VALUE: Shape = { kind: "value" };
 
-/** A whole file: a blank line between its top level keys */
-function definition(order: string[], children?: Record<string, Shape>): Shape {
-  return { kind: "map", order, children, spaceEntries: true };
+/** Children are given as a function, so a shape can hold itself, as schemas and overrides do */
+function map(order: string[], space = false, children?: () => Record<string, Shape>): Shape {
+  let resolved: Record<string, Shape> | undefined;
+  return { kind: "map", order, space, children: () => (resolved ??= children?.() ?? {}) };
 }
 
-function map(order: string[], children?: Record<string, Shape>): Shape {
-  return { kind: "map", order, children, spaceEntries: false };
+function dict(value: Shape, space = false): Shape {
+  return { kind: "dict", value, space };
 }
 
-function list(item: Shape, options: { spaceItems?: boolean } = {}): ListShape {
-  return { kind: "list", item, spaceItems: options.spaceItems === true };
+function list(item: Shape, space = false): Shape {
+  return { kind: "list", item, space };
 }
 
-function dict(value: Shape): Shape {
-  return { kind: "dict", value };
+function byEnvironment(item: Shape, space: boolean, spaceEnvironments: boolean): Shape {
+  return { kind: "byEnvironment", item, space, spaceEnvironments };
 }
 
-function byEnvironment(
-  item: Shape,
-  options: { spaceItems?: boolean; spaceEnvironments?: boolean } = {},
-): Shape {
+const { keyOrder, blankLines } = HOUSE_STYLE;
+
+/** A whole file */
+function file(order: string[], children?: () => Record<string, Shape>): Shape {
+  return map(order, blankLines.topLevelKeys, children);
+}
+
+const schema: Shape = map(keyOrder.schema, false, () => schemaChildren());
+
+function schemaChildren(): Record<string, Shape> {
   return {
-    kind: "byEnvironment",
-    list: list(item, options),
-    spaceEnvironments: options.spaceEnvironments === true,
+    properties: dict(schema, blankLines.schemaProperties),
+    items: schema,
+    oneOf: list(schema),
   };
 }
 
-const LIFECYCLE = ["archived", "deprecated", "promotable"];
-
-const SCHEMA_KEYS = [
-  "type",
-  "schema",
-  "oneOf",
-  "format",
-  "enum",
-  "const",
-  "minimum",
-  "maximum",
-  "minLength",
-  "maxLength",
-  "pattern",
-  "items",
-  "minItems",
-  "maxItems",
-  "uniqueItems",
-  "properties",
-  "required",
-  "additionalProperties",
-];
-
-// schemas nest, so their children are filled in after the shape exists
-const schema = map(["description", ...SCHEMA_KEYS]);
-(schema as { children?: Record<string, Shape> }).children = {
-  properties: dict(schema),
-  items: schema,
-  oneOf: list(schema),
-};
-
-const featureVariableOverride = map([
-  "key",
-  "description",
-  "promotable",
-  "conditions",
-  "value",
-  "mutate",
-]);
-
-const variableOverrides = dict(list(featureVariableOverride));
-
-const variableSchema = map(
-  [
-    "description",
-    "deprecated",
-    ...SCHEMA_KEYS,
-    "defaultValue",
-    "disabledValue",
-    "useDefaultWhenDisabled",
-  ],
-  { properties: dict(schema), items: schema, oneOf: list(schema) },
+const featureVariableOverrides = dict(
+  list(map(keyOrder.featureVariableOverride), blankLines.featureVariableOverrides),
 );
 
-const variation = map(["value", "description", "weight", "variables", "variableOverrides"], {
-  variableOverrides,
-});
+const variableOverride: Shape = map(keyOrder.variableOverride, false, () => ({
+  overrides: list(variableOverride, blankLines.variableOverrides),
+}));
 
-const rule = map(
-  [
-    "key",
-    "description",
-    "promotable",
-    "conditions",
-    "percentage",
-    "enabled",
-    "variation",
-    "variationWeights",
-    "variables",
-    "variableOverrides",
-  ],
-  { variableOverrides },
-);
+const check: Shape = map(keyOrder.check, false, () => ({
+  and: list(check, blankLines.checks),
+  or: list(check, blankLines.checks),
+  not: list(check, blankLines.checks),
+}));
 
-const force = map(["conditions", "enabled", "variation", "variables"]);
+function assertionChildren(): Record<string, Shape> {
+  return {
+    checks: list(check, blankLines.checks),
+    children: list(assertion, blankLines.assertionChildren),
+  };
+}
 
-const feature = definition(
-  [
-    ...LIFECYCLE,
-    "description",
-    "tags",
-    "bucketBy",
-    "conditions",
-    "disabledVariationValue",
-    "variablesSchema",
-    "variations",
-    "force",
-    "rules",
-    "expose",
-  ],
-  {
-    variablesSchema: dict(variableSchema),
-    variations: list(variation),
-    force: byEnvironment(force),
-    // a blank line between rules, and between the environments that group them
-    rules: byEnvironment(rule, { spaceItems: true, spaceEnvironments: true }),
-  },
-);
-
-const globalVariableOverride = map([
-  "key",
-  "description",
-  "promotable",
-  "conditions",
-  "continue",
-  "value",
-  "mutate",
-  "overrides",
-]);
-(globalVariableOverride as { children?: Record<string, Shape> }).children = {
-  overrides: list(globalVariableOverride),
-};
-
-const variable = definition(
-  [
-    ...LIFECYCLE,
-    "description",
-    "tags",
-    "compose",
-    ...SCHEMA_KEYS,
-    "defaultValue",
-    "conditions",
-    "disabledValue",
-    "useDefaultWhenDisabled",
-    "overrides",
-  ],
-  {
-    properties: dict(schema),
-    items: schema,
-    oneOf: list(schema),
-    overrides: byEnvironment(globalVariableOverride),
-  },
-);
-
-const segment = definition([...LIFECYCLE, "description", "conditions"]);
-
-const attribute = definition([...LIFECYCLE, "description", ...SCHEMA_KEYS], {
-  properties: dict(schema),
-  items: schema,
-  oneOf: list(schema),
-});
-
-const schemaFile = definition([...LIFECYCLE, "description", ...SCHEMA_KEYS], {
-  properties: dict(schema),
-  items: schema,
-  oneOf: list(schema),
-});
-
-const target = definition([
-  "promotable",
-  "description",
-  "tag",
-  "tags",
-  "includeFeatures",
-  "excludeFeatures",
-  "includeVariables",
-  "excludeVariables",
-  "context",
-  "schemaVersion",
-]);
-
-const CHECK_ORDER = [
-  "feature",
-  "segment",
-  "variable",
-  "key",
-  "description",
-  "path",
-  "operator",
-  "value",
-  "compareTo",
-  "regexFlags",
-  "enabled",
-  "variation",
-  "matches",
-  "and",
-  "or",
-  "not",
-];
-
-// a group of checks holds checks of its own
-const check = map(CHECK_ORDER);
-(check as { children?: Record<string, Shape> }).children = {
-  and: list(check),
-  or: list(check),
-  not: list(check),
-};
-
-const ASSERTION_ORDER = [
-  "key",
-  "description",
-  "promotable",
-  "matrix",
-  "environment",
-  "target",
-  "at",
-  "context",
-  "stickyFeatures",
-  "stickyVariables",
-  "defaultVariationValue",
-  "defaultVariableValues",
-  "defaultVariableValue",
-  "expectedToBeEnabled",
-  "expectedToMatch",
-  "expectedVariation",
-  "expectedVariables",
-  "expectedValue",
-  "expectedEvaluations",
-  "expectedEvaluation",
-  "checks",
-  "children",
-];
-
-const assertion = map(ASSERTION_ORDER);
-(assertion as { children?: Record<string, Shape> }).children = {
-  checks: list(check),
-  // a blank line between assertions, as between rules
-  children: list(assertion, { spaceItems: true }),
-};
-
-const test = definition(["feature", "segment", "variable", "promotable", "assertions"], {
-  assertions: list(assertion, { spaceItems: true }),
-});
-
-// a scenario spec is one assertion at the top level of its file
-const scenario = definition(ASSERTION_ORDER, {
-  checks: list(check),
-  children: list(assertion, { spaceItems: true }),
-});
+const assertion: Shape = map(keyOrder.assertion, false, assertionChildren);
 
 const SHAPES: Record<EntityType, Shape> = {
-  attribute,
-  segment,
-  feature,
-  variable,
-  schema: schemaFile,
-  target,
-  test,
-  scenario,
+  attribute: file(keyOrder.attribute, schemaChildren),
+  schema: file(keyOrder.schema, schemaChildren),
+  segment: file(keyOrder.segment),
+  feature: file(keyOrder.feature, () => ({
+    variablesSchema: dict(
+      map(keyOrder.variableSchema, false, schemaChildren),
+      blankLines.variablesSchema,
+    ),
+    variations: list(
+      map(keyOrder.variation, false, () => ({ variableOverrides: featureVariableOverrides })),
+      blankLines.variations,
+    ),
+    force: byEnvironment(map(keyOrder.force), blankLines.force, blankLines.forceEnvironments),
+    rules: byEnvironment(
+      map(keyOrder.rule, false, () => ({ variableOverrides: featureVariableOverrides })),
+      blankLines.rules,
+      blankLines.ruleEnvironments,
+    ),
+  })),
+  variable: file(keyOrder.variable, () => ({
+    ...schemaChildren(),
+    overrides: byEnvironment(
+      variableOverride,
+      blankLines.variableOverrides,
+      blankLines.variableOverrideEnvironments,
+    ),
+  })),
+  target: file(keyOrder.target),
+  test: file(keyOrder.test, () => ({ assertions: list(assertion, blankLines.assertions) })),
+  // a scenario spec is one assertion at the top level of its file
+  scenario: file(keyOrder.assertion, assertionChildren),
 };
 
-function childShape(shape: Shape, segment: string | number): Shape {
+function childShape(shape: Shape, key: string | number): Shape {
   switch (shape.kind) {
     case "map":
-      return typeof segment === "string" ? shape.children?.[segment] || VALUE : VALUE;
+      return typeof key === "string" ? shape.children()[key] || VALUE : VALUE;
     case "dict":
-      return typeof segment === "string" ? shape.value : VALUE;
+      return typeof key === "string" ? shape.value : VALUE;
     case "list":
-      return typeof segment === "number" ? shape.item : VALUE;
+      return typeof key === "number" ? shape.item : VALUE;
     case "byEnvironment":
       // a list's item, or an environment's list
-      return typeof segment === "number" ? shape.list.item : shape.list;
+      return typeof key === "number" ? shape.item : list(shape.item, shape.space);
     default:
       return VALUE;
   }
@@ -331,32 +151,32 @@ function childShape(shape: Shape, segment: string | number): Shape {
 
 function shapeAt(entityType: EntityType, path: FormatPath): Shape {
   let shape = SHAPES[entityType];
-  for (const segment of path) {
-    shape = childShape(shape, segment);
+  for (const key of path) {
+    shape = childShape(shape, key);
     if (shape.kind === "value") return shape;
   }
   return shape;
 }
 
-/** Known keys in house order, then any others in the order they were written. */
-function orderedKeys(order: string[], keys: string[]): string[] {
-  const known = new Set(order);
-  return [...order.filter((key) => keys.includes(key)), ...keys.filter((key) => !known.has(key))];
-}
-
+/** The keys of the map at `path` in house order, then any others as they were written */
 export function getKeyOrder(
   entityType: EntityType,
   path: FormatPath,
   keys: string[],
 ): string[] | undefined {
   const shape = shapeAt(entityType, path);
-  return shape.kind === "map" ? orderedKeys(shape.order, keys) : undefined;
+  if (shape.kind !== "map") return undefined;
+  const known = new Set(shape.order);
+  return [
+    ...shape.order.filter((key) => keys.includes(key)),
+    ...keys.filter((key) => !known.has(key)),
+  ];
 }
 
 /** Whether the map at `path` has a blank line between its entries */
 export function isSpacedMap(entityType: EntityType, path: FormatPath): boolean {
   const shape = shapeAt(entityType, path);
-  if (shape.kind === "map") return shape.spaceEntries;
+  if (shape.kind === "map" || shape.kind === "dict") return shape.space;
   // the node at a byEnvironment path is a map only when it groups lists by environment
   if (shape.kind === "byEnvironment") return shape.spaceEnvironments;
   return false;
@@ -365,23 +185,10 @@ export function isSpacedMap(entityType: EntityType, path: FormatPath): boolean {
 /** Whether the list at `path` has a blank line between its items */
 export function isSpacedList(entityType: EntityType, path: FormatPath): boolean {
   const shape = shapeAt(entityType, path);
-  if (shape.kind === "list") return shape.spaceItems;
-  if (shape.kind === "byEnvironment") return shape.list.spaceItems;
-  return false;
+  return (shape.kind === "list" || shape.kind === "byEnvironment") && shape.space;
 }
 
-/** The layout a parser's `format` applies to one kind of definition. */
-export function getFormatLayout(entityType: EntityType): FormatLayout {
-  return {
-    indent: INDENT,
-    orderKeys: (path, keys) => getKeyOrder(entityType, path, keys),
-    spaceEntries: (path) => isSpacedMap(entityType, path),
-    spaceItems: (path) => isSpacedList(entityType, path),
-    orderValue: <T>(value: T) => orderValue(entityType, value) as T,
-  };
-}
-
-/** The key order applied to a parsed value, for parsers that write from values. */
+/** The key order applied to a parsed value, for parsers that write from values */
 export function orderValue(entityType: EntityType, value: unknown, path: FormatPath = []): unknown {
   if (Array.isArray(value)) {
     return value.map((item, index) => orderValue(entityType, item, [...path, index]));
@@ -389,11 +196,21 @@ export function orderValue(entityType: EntityType, value: unknown, path: FormatP
   if (!value || typeof value !== "object") return value;
 
   const record = value as Record<string, unknown>;
-  const keys = Object.keys(record);
-  const order = getKeyOrder(entityType, path, keys) || keys;
-  const result: Record<string, unknown> = {};
-  for (const key of order) {
-    result[key] = orderValue(entityType, record[key], [...path, key]);
-  }
-  return result;
+  const keys = getKeyOrder(entityType, path, Object.keys(record)) || Object.keys(record);
+  return Object.fromEntries(
+    keys.map((key) => [key, orderValue(entityType, record[key], [...path, key])]),
+  );
+}
+
+/** The layout a parser's `format` applies to one kind of definition */
+export function getFormatLayout(entityType: EntityType, extension?: string): FormatLayout {
+  const formats: Record<string, object | undefined> = HOUSE_STYLE.formats;
+  return {
+    indent: HOUSE_STYLE.indent,
+    orderKeys: (path, keys) => getKeyOrder(entityType, path, keys),
+    spaceEntries: (path) => isSpacedMap(entityType, path),
+    spaceItems: (path) => isSpacedList(entityType, path),
+    orderValue: <T>(value: T) => orderValue(entityType, value) as T,
+    options: { ...(extension ? formats[extension] : undefined) },
+  };
 }

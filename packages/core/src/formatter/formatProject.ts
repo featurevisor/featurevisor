@@ -9,12 +9,6 @@ import type { Datasource } from "../datasource";
 import { FeaturevisorCLIError } from "../error";
 import { getProjectSetExecutions } from "../sets";
 import {
-  CLI_FORMAT_DIM,
-  CLI_FORMAT_GREEN,
-  CLI_FORMAT_RED,
-  CLI_FORMAT_YELLOW,
-} from "../tester/cliFormat";
-import {
   canFormat,
   FormatGuardError,
   FormatParseError,
@@ -77,26 +71,16 @@ interface WantedPath {
   matched: boolean;
 }
 
-function listKeys(datasource: Datasource, entityType: EntityType): Promise<string[]> {
-  switch (entityType) {
-    case "attribute":
-      return datasource.listAttributes();
-    case "schema":
-      return datasource.listSchemas();
-    case "segment":
-      return datasource.listSegments();
-    case "feature":
-      return datasource.listFeatures();
-    case "variable":
-      return datasource.listVariables();
-    case "target":
-      return datasource.listTargets();
-    case "test":
-      return datasource.listTests();
-    case "scenario":
-      return datasource.listScenarios();
-  }
-}
+const LIST_KEYS: Record<EntityType, (datasource: Datasource) => Promise<string[]>> = {
+  attribute: (datasource) => datasource.listAttributes(),
+  schema: (datasource) => datasource.listSchemas(),
+  segment: (datasource) => datasource.listSegments(),
+  feature: (datasource) => datasource.listFeatures(),
+  variable: (datasource) => datasource.listVariables(),
+  target: (datasource) => datasource.listTargets(),
+  test: (datasource) => datasource.listTests(),
+  scenario: (datasource) => datasource.listScenarios(),
+};
 
 function relative(filePath: string) {
   return path.relative(process.cwd(), filePath) || filePath;
@@ -114,6 +98,49 @@ function isWanted(wanted: WantedPath, filePath: string) {
         wanted.absolute.endsWith(path.sep) ? wanted.absolute : wanted.absolute + path.sep,
       )
     : filePath === wanted.absolute;
+}
+
+function toFileError(error: unknown): FormatFileResult["error"] {
+  if (error instanceof FormatParseError) {
+    return { code: "parse_error", message: error.message, line: error.line, column: error.column };
+  }
+  // a guard caught a fault in the parser's format, which is never the author's
+  const message =
+    error instanceof FormatGuardError
+      ? `${error.message} The file was left as it is. Please report this.`
+      : (error as Error).message;
+  return { code: "format_guard", message };
+}
+
+/** Formats one file, writing it only when it changes and `write` is set */
+function formatFile(
+  file: FormatFileResult,
+  parser: CustomParser,
+  options: FormatProjectOptions,
+): FormatFileResult["status"] {
+  const filePath = path.resolve(file.filePath);
+  if (!fs.existsSync(filePath)) {
+    file.error = { code: "missing_file", message: "File not found" };
+    return "error";
+  }
+
+  const source = fs.readFileSync(filePath, "utf8");
+  try {
+    const { output, changed, declined } = formatDefinition(
+      file.entityType,
+      source,
+      parser,
+      filePath,
+    );
+    if (declined) return "declined";
+    if (!changed) return "unchanged";
+    if (options.diff) file.diff = unifiedDiff(file.filePath, file.filePath, source, output);
+    if (!options.check && !options.diff) fs.writeFileSync(filePath, output);
+    return "changed";
+  } catch (error) {
+    file.error = toFileError(error);
+    return "error";
+  }
 }
 
 /**
@@ -137,7 +164,6 @@ export async function formatProject(
   const parser = projectConfig.parser as CustomParser;
   if (!canFormat(parser)) return { ...result, unsupported: true };
 
-  const write = !options.check && !options.diff;
   const wanted = (options.paths || []).map(toWantedPath);
   const entityTypes = options.entityType ? [options.entityType] : FORMAT_ENTITY_TYPES;
   const executions = await getProjectSetExecutions(projectConfig, datasource, options.set);
@@ -145,7 +171,7 @@ export async function formatProject(
 
   for (const execution of executions) {
     for (const entityType of entityTypes) {
-      const keys = await listKeys(execution.datasource, entityType);
+      const keys = await LIST_KEYS[entityType](execution.datasource);
 
       for (const key of keys) {
         if (options.keyPattern && !options.keyPattern.test(key)) continue;
@@ -174,128 +200,17 @@ export async function formatProject(
           filePath: relative(filePath),
           status: "unchanged",
         };
+        file.status = formatFile(file, parser, options);
         result.files.push(file);
-
-        if (!fs.existsSync(filePath)) {
-          file.status = "error";
-          file.error = { code: "missing_file", message: "File not found" };
-          result.errors++;
-          continue;
-        }
-
-        const source = fs.readFileSync(filePath, "utf8");
-        try {
-          const { output, changed, declined } = formatDefinition(
-            entityType,
-            source,
-            parser,
-            filePath,
-          );
-          if (declined) {
-            file.status = "declined";
-            result.declined++;
-          } else if (changed) {
-            file.status = "changed";
-            result.changed++;
-            if (options.diff) file.diff = unifiedDiff(file.filePath, file.filePath, source, output);
-            if (write) fs.writeFileSync(filePath, output);
-          }
-        } catch (error) {
-          file.status = "error";
-          file.error =
-            error instanceof FormatParseError
-              ? {
-                  code: "parse_error",
-                  message: error.message,
-                  line: error.line,
-                  column: error.column,
-                }
-              : {
-                  code: "format_guard",
-                  message:
-                    error instanceof FormatGuardError
-                      ? `${error.message} The file was left as it is. Please report this.`
-                      : (error as Error).message,
-                };
-          result.errors++;
-        }
       }
     }
   }
 
+  const count = (status: FormatFileResult["status"]) =>
+    result.files.filter((file) => file.status === status).length;
+  result.changed = count("changed");
+  result.declined = count("declined");
+  result.errors = count("error");
   result.skipped = wanted.filter((item) => !item.matched).map((item) => relative(item.absolute));
   return result;
-}
-
-export function printFormatResult(result: FormatProjectResult, options: FormatProjectOptions) {
-  const write = !options.check && !options.diff;
-
-  if (result.unsupported) {
-    console.log(
-      CLI_FORMAT_YELLOW,
-      "This project's parser has no format function, so fmt leaves its files as they are.",
-    );
-    return;
-  }
-
-  for (const file of result.files) {
-    if (file.status === "changed") {
-      if (options.diff && file.diff) {
-        process.stdout.write(file.diff);
-      } else {
-        console.log(write ? `Formatted ${file.filePath}` : file.filePath);
-      }
-    } else if (file.status === "declined") {
-      console.log(CLI_FORMAT_DIM, `Left ${file.filePath} as it is: the parser could not format it`);
-    } else if (file.status === "error" && file.error) {
-      const { line, column } = file.error;
-      const where = line ? `:${line}${column ? `:${column}` : ""}` : "";
-      console.log(CLI_FORMAT_RED, `${file.filePath}${where}`);
-      console.log(CLI_FORMAT_RED, `  => Error: ${file.error.message}`);
-    }
-  }
-
-  for (const skipped of result.skipped) {
-    console.log(CLI_FORMAT_DIM, `Skipped ${skipped}, no definitions of this project there`);
-  }
-
-  const total = result.files.length;
-  const files = (count: number) => `${count} ${count === 1 ? "file" : "files"}`;
-
-  console.log("");
-  if (total === 0) {
-    console.log(CLI_FORMAT_YELLOW, "No definition files matched");
-    return;
-  }
-  if (result.errors > 0) {
-    console.log(CLI_FORMAT_RED, `${files(result.errors)} could not be formatted`);
-  }
-  if (result.declined > 0) {
-    console.log(CLI_FORMAT_YELLOW, `${files(result.declined)} left unformatted by the parser`);
-  }
-
-  if (result.changed > 0) {
-    if (write) {
-      console.log(CLI_FORMAT_GREEN, `✔ Formatted ${files(result.changed)} of ${total}`);
-    } else {
-      const verb = result.changed === 1 ? "needs" : "need";
-      console.log(
-        CLI_FORMAT_YELLOW,
-        `${files(result.changed)} of ${total} ${verb} formatting. Run: npx featurevisor fmt`,
-      );
-    }
-  } else if (result.errors === 0) {
-    const formatted = total - result.declined;
-    if (formatted === 1) {
-      console.log(
-        CLI_FORMAT_GREEN,
-        `✔ ${result.declined > 0 ? "The other file" : "The file"} is formatted`,
-      );
-    } else if (formatted > 1) {
-      console.log(
-        CLI_FORMAT_GREEN,
-        `✔ ${result.declined > 0 ? "The other" : "All"} ${files(formatted)} are formatted`,
-      );
-    }
-  }
 }

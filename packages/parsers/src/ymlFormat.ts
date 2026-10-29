@@ -3,20 +3,30 @@ import type { Document, Node, Pair, YAMLMap, YAMLSeq } from "yaml";
 
 import type { FormatLayout, FormatPath } from "./layout";
 
+/** Choices only YAML can express. Featurevisor passes its own from Core's house style. */
+export interface YmlFormatOptions {
+  /** The quote a value gets when it needs one. The other is used when it saves escapes. */
+  quote?: "double" | "single";
+  /** Quote text YAML 1.1 tools read as another type, such as `no` or `2026-10-28` */
+  quoteYaml11Types?: boolean;
+  /** Fold text longer than this many columns. 0 never folds. */
+  lineWidth?: number;
+  /** Indent list items under their key */
+  indentSequences?: boolean;
+}
+
+const DEFAULT_OPTIONS: Required<YmlFormatOptions> = {
+  quote: "double",
+  quoteYaml11Types: true,
+  lineWidth: 0,
+  indentSequences: true,
+};
+
 /** The parts of a layout YAML applies. All are optional: without them, YAML keeps the
- * authored key order, adds no blank lines and indents by two. */
+ * authored key order, adds no blank lines, indents by two and uses its default options. */
 export type YmlLayout = Partial<
   Pick<FormatLayout, "indent" | "orderKeys" | "spaceEntries" | "spaceItems">
->;
-
-// YAML's own choices, beside the layout: list items indented under their key, long strings
-// never folded, and needed quotes double, or single when the text has a double quote in it,
-// the choice with the fewest escapes, as Prettier makes it.
-const TO_STRING_OPTIONS = {
-  indentSeq: true,
-  lineWidth: 0,
-  minContentWidth: 0,
-} as const;
+> & { options?: YmlFormatOptions };
 
 /** A comment above a key belongs to it. Text above a blank line is the file's own header. */
 function splitHeader(comment: string): { header?: string; own?: string } {
@@ -27,7 +37,7 @@ function splitHeader(comment: string): { header?: string; own?: string } {
 
 /**
  * A string YAML 1.2 reads back as itself can still be read as something else by YAML 1.1
- * tools: `no` as false, `2026-10-28` as a date. Those keep double quotes.
+ * tools: `no` as false, `2026-10-28` as a date.
  */
 function readsAsAnotherType(value: string): boolean {
   try {
@@ -37,16 +47,17 @@ function readsAsAnotherType(value: string): boolean {
   }
 }
 
-function formatScalar(node: Scalar) {
+function formatScalar(node: Scalar, options: Required<YmlFormatOptions>) {
   if (typeof node.value !== "string") return;
   if (node.type === Scalar.BLOCK_LITERAL || node.type === Scalar.BLOCK_FOLDED) return;
-  if (readsAsAnotherType(node.value)) {
-    node.type =
-      node.value.includes('"') && !node.value.includes("'")
-        ? Scalar.QUOTE_SINGLE
-        : Scalar.QUOTE_DOUBLE;
+  if (options.quoteYaml11Types && readsAsAnotherType(node.value)) {
+    // the preferred quote, unless the text holds it and not the other
+    const holds = (quote: string) => (node.value as string).includes(quote);
+    const single =
+      options.quote === "single" ? !(holds("'") && !holds('"')) : holds('"') && !holds("'");
+    node.type = single ? Scalar.QUOTE_SINGLE : Scalar.QUOTE_DOUBLE;
   } else {
-    // plain where YAML allows it, quoted where it does not
+    // plain where YAML allows it, quoted as toString's singleQuote picks where it does not
     delete node.type;
   }
 }
@@ -77,11 +88,17 @@ function trimTrailingComment(node: { comment?: string | null }) {
   if (node.comment) node.comment = node.comment.replace(/\n+$/, "");
 }
 
-function walk(node: unknown, path: FormatPath, layout: YmlLayout, inSequence: boolean) {
+interface Context {
+  layout: YmlLayout;
+  options: Required<YmlFormatOptions>;
+}
+
+function walk(node: unknown, path: FormatPath, inSequence: boolean, context: Context) {
+  const { layout, options } = context;
   if (node && typeof node === "object") trimTrailingComment(node as { comment?: string | null });
 
   if (isScalar(node)) {
-    formatScalar(node);
+    formatScalar(node, options);
     node.spaceBefore = false;
     return;
   }
@@ -111,11 +128,11 @@ function walk(node: unknown, path: FormatPath, layout: YmlLayout, inSequence: bo
     const spaced = layout.spaceEntries?.(path) === true;
     (map.items as Pair[]).forEach((pair, index) => {
       if (isScalar(pair.key)) {
-        formatScalar(pair.key);
+        formatScalar(pair.key, options);
         pair.key.spaceBefore = spaced && index > 0;
       }
       const key = keyOf(pair);
-      walk(pair.value, key === undefined ? path : [...path, key], layout, false);
+      walk(pair.value, key === undefined ? path : [...path, key], false, context);
     });
     return;
   }
@@ -127,7 +144,7 @@ function walk(node: unknown, path: FormatPath, layout: YmlLayout, inSequence: bo
     const spaced = layout.spaceItems?.(path) === true;
 
     seq.items.forEach((item, index) => {
-      walk(item, [...path, index], layout, true);
+      walk(item, [...path, index], true, context);
       if (item && typeof item === "object" && !isPair(item)) {
         (item as Node).spaceBefore = spaced && index > 0;
       }
@@ -158,7 +175,7 @@ export function listYmlComments(source: string): string[] {
   return comments.sort();
 }
 
-function layOut(source: string, layout: YmlLayout): string {
+function layOut(source: string, layout: YmlLayout, options: Required<YmlFormatOptions>): string {
   const doc = parseDocument(source) as Document.Parsed;
   // a YAMLParseError, with the position in its linePos
   if (doc.errors.length > 0) throw doc.errors[0];
@@ -177,7 +194,7 @@ function layOut(source: string, layout: YmlLayout): string {
     }
   }
 
-  walk(root, [], layout, false);
+  walk(root, [], false, { layout, options });
 
   // one document a file, so neither --- nor ... marks where it starts or ends
   if (doc.directives) {
@@ -185,26 +202,34 @@ function layOut(source: string, layout: YmlLayout): string {
     doc.directives.docEnd = false;
   }
 
-  return doc.toString({ ...TO_STRING_OPTIONS, indent: layout.indent ?? 2 });
+  return doc.toString({
+    indent: layout.indent ?? 2,
+    indentSeq: options.indentSequences,
+    lineWidth: options.lineWidth,
+    minContentWidth: options.lineWidth === 0 ? 0 : undefined,
+    // null prefers double quotes and true single, each falling back to the other to save escapes
+    singleQuote: options.quote === "single" ? true : null,
+  });
 }
 
 /**
  * Formats a YAML document with a layout: its indentation, key order, and blank lines between
- * the entries of the maps and the items of the lists it names. YAML adds its own choices:
- * block style, no folding, quotes only where a value needs them, and comments kept with the
- * key or item below them.
+ * the entries of the maps and the items of the lists it names, and the YAML options in it.
+ * Lists and maps are always written in block style, quotes only where a value needs them, and
+ * comments stay with the key or item below them.
  *
  * Throws the YAML parse error, with its linePos, when the source is not a single valid YAML
  * document.
  */
 export function formatYml(source: string, layout: YmlLayout = {}): string {
+  const options = { ...DEFAULT_OPTIONS, ...layout.options };
   try {
-    return layOut(source, layout);
+    return layOut(source, layout, options);
   } catch (error) {
     // Key order can move an alias above its anchor, which YAML cannot write. Such a file
     // keeps the order it was written in, and the rest of the layout still applies.
     if (layout.orderKeys && /Unresolved alias/.test((error as Error).message)) {
-      return layOut(source, { ...layout, orderKeys: undefined });
+      return layOut(source, { ...layout, orderKeys: undefined }, options);
     }
     throw error;
   }

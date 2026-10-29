@@ -109,7 +109,7 @@ function formatOnce(
   try {
     output = parser.format!(
       crlf ? text.replace(/\r\n/g, "\n") : text,
-      getFormatLayout(entityType),
+      getFormatLayout(entityType, parser.extension),
       filePath,
     );
   } catch (error) {
