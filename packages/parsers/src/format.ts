@@ -179,7 +179,11 @@ function layOut(source: string, layout: YmlLayout): string {
 
   walk(root, [], layout, false);
 
-  if (doc.directives) doc.directives.docStart = null;
+  // one document a file, so neither --- nor ... marks where it starts or ends
+  if (doc.directives) {
+    doc.directives.docStart = null;
+    doc.directives.docEnd = false;
+  }
 
   return doc.toString({ ...TO_STRING_OPTIONS, indent: layout.indent ?? 2 });
 }

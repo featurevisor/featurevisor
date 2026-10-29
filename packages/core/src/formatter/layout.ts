@@ -116,7 +116,6 @@ const variableOverrides = dict(list(featureVariableOverride));
 
 const variableSchema = map(
   [
-    "key",
     "description",
     "deprecated",
     ...SCHEMA_KEYS,
@@ -248,9 +247,18 @@ const CHECK_ORDER = [
   "enabled",
   "variation",
   "matches",
+  "and",
+  "or",
+  "not",
 ];
 
+// a group of checks holds checks of its own
 const check = map(CHECK_ORDER);
+(check as { children?: Record<string, Shape> }).children = {
+  and: list(check),
+  or: list(check),
+  not: list(check),
+};
 
 const ASSERTION_ORDER = [
   "key",
@@ -284,12 +292,12 @@ const assertion = map(ASSERTION_ORDER);
   children: list(assertion, { spaceItems: true }),
 };
 
-const test = definition(
-  ["feature", "segment", "variable", "key", "promotable", "description", "assertions"],
-  { assertions: list(assertion, { spaceItems: true }) },
-);
+const test = definition(["feature", "segment", "variable", "promotable", "assertions"], {
+  assertions: list(assertion, { spaceItems: true }),
+});
 
-const scenario = definition(["scenario", ...ASSERTION_ORDER], {
+// a scenario spec is one assertion at the top level of its file
+const scenario = definition(ASSERTION_ORDER, {
   checks: list(check),
   children: list(assertion, { spaceItems: true }),
 });

@@ -177,8 +177,8 @@ describe("formatYml", () => {
     expect(formatYml(`description: ${long}\n`)).toBe(`description: ${long}\n`);
   });
 
-  it("keeps block scalars and drops a document start marker", () => {
-    expect(formatYml("---\nmessage: |\n  line one\n  line two\n")).toBe(
+  it("keeps block scalars and drops the document start and end markers", () => {
+    expect(formatYml("---\nmessage: |\n  line one\n  line two\n...\n")).toBe(
       "message: |\n  line one\n  line two\n",
     );
   });
@@ -263,15 +263,42 @@ describe("parser formats", () => {
     );
   });
 
-  it("keeps a JSON list of plain values on one line when it fits, as Prettier does", () => {
-    const tags = Array.from({ length: 12 }, (_, index) => `tag-${index}`);
+  it("lays out JSON as Prettier does at its default width", async () => {
+    // Prettier's standalone build, since its main entry loads plugins in a way Jest refuses
+    const prettier = require("prettier/standalone");
+    const plugins = [require("prettier/plugins/babel"), require("prettier/plugins/estree")];
+    const keep: FormatLayout = { ...layout, orderValue: <T>(value: T) => value };
+    const word = (length: number) => "x".repeat(length);
+    const shapes: unknown[] = [
+      { description: "x", conditions: ["nl", "de"] },
+      { tags: Array.from({ length: 12 }, (_, index) => `tag-${index}`) },
+      // the 80th column, with and without a comma after the list
+      { conditions: [word(62)], z: 1 },
+      { conditions: [word(63)], z: 1 },
+      { conditions: [word(64)] },
+      { conditions: [word(65)] },
+      { value: [["a", "b"]] },
+      { value: [["a"], ["b"]] },
+      {
+        value: [
+          ["a", "b"],
+          ["c", "d"],
+        ],
+      },
+      { value: [["a", "b"], "c"] },
+      { value: Array.from({ length: 30 }, (_, index) => index * 1000) },
+      { value: [-1, 2.5, 1e21, 0] },
+      { value: [{}], other: [[]], empty: {}, none: [] },
+      { value: [{ a: 1 }], mixed: [1, "a", null, true] },
+      { description: "caf\u00e9 \u2028 \u0007" },
+      { a: { b: { c: { d: { e: ["one", "two", "three", "four", "five", "six", "seven"] } } } } },
+      [1, 2, 3],
+    ];
 
-    expect(jsonParser.format!('{"description":"x","conditions":["nl","de"]}', layout)).toBe(
-      '{\n  "description": "x",\n  "conditions": ["nl", "de"]\n}',
-    );
-    expect(jsonParser.format!(JSON.stringify({ description: "x", conditions: tags }), layout)).toBe(
-      `{\n  "description": "x",\n  "conditions": [\n${tags.map((tag) => `    "${tag}"`).join(",\n")}\n  ]\n}`,
-    );
+    for (const shape of shapes) {
+      const output = `${jsonParser.format!(JSON.stringify(shape), keep)}\n`;
+      expect(output).toBe(await prettier.format(output, { parser: "json", plugins }));
+    }
   });
 
   it("lists YAML comments for Featurevisor to check", () => {

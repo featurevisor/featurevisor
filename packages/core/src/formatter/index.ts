@@ -22,13 +22,13 @@ export const fmtPlugin: Plugin = {
           : undefined,
       paths: (parsed.paths as string[] | undefined) || [],
       set: parsed.set as string | undefined,
-      json: parsed.json === true,
     };
+    const json = parsed.json === true;
 
     // one run across every Set, so a project is formatted, checked and reported as a whole
     const result = await formatProject({ rootDirectoryPath, projectConfig, datasource }, options);
 
-    if (options.json) {
+    if (json) {
       const payload = {
         files: result.files.map(({ diff, ...file }) => (options.diff ? { ...file, diff } : file)),
         skipped: result.skipped,

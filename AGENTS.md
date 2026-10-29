@@ -50,12 +50,17 @@ layout rule in layout.ts, not in a parser. Whatever is the same in every format
 stays in Core's formatDefinition.ts: line endings, a byte order mark, the final
 newline, and the checks that values and comments (through the parser's optional
 `listComments`) survive and that a second pass changes nothing. Formatting must
-never change a built datafile: the formatter spec builds every example before
-and after formatting and compares the bytes, so order only objects the builder
-rebuilds key by key. fmt runs across every Set in one pass. It is separate from
+never change a built datafile, so order only objects the builder rebuilds key
+by key. The formatter spec proves it on every example: it writes a copy with
+every ordered map in reverse house order, formats another such copy, and
+requires the same datafile bytes from both. It also requires each example in
+the repository to be formatted already. fmt runs across every Set in one pass. It is separate from
 promote and every other write: those write files as the parser does and never
 format them. Every example is formatted, and a change to the house style fails
-users' `fmt --check` after they upgrade, so say so in the release notes.
+users' `fmt --check` after they upgrade, so say so in the release notes. JSON
+is laid out as Prettier writes it at its default width of 80, so Prettier
+leaves example-json's definitions to fmt (see .prettierignore), since that
+example sets a width of 40.
 
 Attribute files belong directly in the configured attributes directory,
 including within each Set. Nested files and dots in attribute names are

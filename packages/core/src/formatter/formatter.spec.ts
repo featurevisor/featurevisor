@@ -2,7 +2,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { parsers, type CustomParser } from "@featurevisor/parsers";
+import { parsers, type CustomParser, type FormatPath } from "@featurevisor/parsers";
+import type { EntityType } from "@featurevisor/types";
 
 import { buildProjectSets } from "../builder/buildProject";
 import { getBuiltinCLIOptions } from "../cli/options";
@@ -67,6 +68,17 @@ describe("key order", () => {
       "conditions",
       "enabled",
     ]);
+  });
+
+  it("orders checks inside and, or and not groups as it orders checks", () => {
+    expect(getKeyOrder("scenario", ["checks", 0], ["or", "key"])).toEqual(["key", "or"]);
+    expect(getKeyOrder("scenario", ["checks", 0, "or", 1], ["matches", "segment"])).toEqual([
+      "segment",
+      "matches",
+    ]);
+    expect(
+      getKeyOrder("test", ["assertions", 0, "checks", 0, "not", 0, "and", 0], ["value", "path"]),
+    ).toEqual(["path", "value"]);
   });
 
   it("never orders maps whose keys belong to the author, or values", () => {
@@ -388,13 +400,13 @@ describe("written definitions", () => {
 describe("formatProject", () => {
   const examples = path.resolve(__dirname, "../../../../examples");
   let root: string;
-  let log: jest.SpyInstance;
 
   beforeEach(() => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-fmt-sets-"));
     fs.cpSync(path.join(examples, "example-sets"), root, {
       recursive: true,
-      filter: (source) => !/node_modules|datafiles|\.featurevisor/.test(source),
+      filter: (source) =>
+        !/node_modules|datafiles|\.featurevisor/.test(path.relative(examples, source)),
     });
     // one unformatted feature in each set
     for (const set of ["admin", "storefront"]) {
@@ -403,11 +415,11 @@ describe("formatProject", () => {
         "bucketBy: userId\ndescription: Promo banner\n",
       );
     }
-    log = jest.spyOn(console, "log").mockImplementation(() => undefined);
+    jest.spyOn(console, "log").mockImplementation(() => undefined);
   });
 
   afterEach(() => {
-    log.mockRestore();
+    jest.restoreAllMocks();
     fs.rmSync(root, { recursive: true, force: true });
   });
 
@@ -472,7 +484,6 @@ describe("formatProject", () => {
 
     expect(await run({})).toBeUndefined();
     expect(await run({ check: true })).toBeUndefined();
-    (process.stdout.write as unknown as jest.SpyInstance).mockRestore();
   });
 });
 
@@ -507,6 +518,38 @@ describe("formatProject on the examples", () => {
       { check },
     );
     return { changed, errors };
+  }
+
+  function reverseOrdered(entityType: EntityType, value: unknown, at: FormatPath = []): unknown {
+    if (Array.isArray(value)) {
+      return value.map((item, index) => reverseOrdered(entityType, item, [...at, index]));
+    }
+    if (!value || typeof value !== "object" || value instanceof Date) return value;
+    const record = value as Record<string, unknown>;
+    const keys = Object.keys(record);
+    // the house order reversed, so the formatted copy always differs where fmt orders keys
+    const order = [...(getKeyOrder(entityType, at, keys) || keys)];
+    if (getKeyOrder(entityType, at, keys)) order.reverse();
+    return Object.fromEntries(
+      order.map((key) => [key, reverseOrdered(entityType, record[key], [...at, key])]),
+    );
+  }
+
+  // Undoes the house layout without changing a value: every map fmt orders gets its keys in
+  // reverse house order, and the file is written by the parser's stringify, without blank lines.
+  async function unformat(root: string) {
+    const projectConfig = getProjectConfig(root);
+    const parser = projectConfig.parser as CustomParser;
+    const datasource = new Datasource(projectConfig, root);
+    const { files } = await formatProject(
+      { rootDirectoryPath: root, projectConfig, datasource },
+      { check: true },
+    );
+    for (const file of files) {
+      const filePath = path.resolve(file.filePath);
+      const value = parser.parse(fs.readFileSync(filePath, "utf8"), filePath);
+      fs.writeFileSync(filePath, parser.stringify(reverseOrdered(file.entityType, value)));
+    }
   }
 
   async function build(root: string) {
@@ -550,19 +593,25 @@ describe("formatProject on the examples", () => {
     });
 
   it.each(projects)(
-    "%s builds byte identical datafiles after formatting, and stays formatted",
+    "%s is formatted, and formatting it builds byte identical datafiles",
     async (example) => {
-      const before = copy(example);
-      const after = copy(example);
+      // the example as it is in the repository
+      expect(await formatAll(copy(example), true)).toEqual({ changed: 0, errors: 0 });
 
-      expect((await formatAll(after)).errors).toBe(0);
-      expect(await formatAll(after, true)).toEqual({ changed: 0, errors: 0 });
+      // a key order that reached a datafile would build differently in the two copies
+      const unformatted = copy(example);
+      const formatted = copy(example);
+      await unformat(unformatted);
+      await unformat(formatted);
+      expect((await formatAll(formatted, true)).changed).toBeGreaterThan(0);
+      expect((await formatAll(formatted)).errors).toBe(0);
+      expect(await formatAll(formatted, true)).toEqual({ changed: 0, errors: 0 });
 
-      await build(before);
-      await build(after);
-      const built = outputs(before);
+      await build(unformatted);
+      await build(formatted);
+      const built = outputs(unformatted);
       expect(Object.keys(built).length).toBeGreaterThan(0);
-      expect(outputs(after)).toEqual(built);
+      expect(outputs(formatted)).toEqual(built);
     },
     120000,
   );

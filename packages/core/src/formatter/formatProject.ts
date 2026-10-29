@@ -34,7 +34,6 @@ export interface FormatProjectOptions {
   paths?: string[];
   /** Only this Set, in a project with Sets. Without it, every Set is formatted in one run. */
   set?: string;
-  json?: boolean;
 }
 
 export interface FormatFileResult {
@@ -272,11 +271,7 @@ export function printFormatResult(result: FormatProjectResult, options: FormatPr
     console.log(CLI_FORMAT_RED, `${files(result.errors)} could not be formatted`);
   }
   if (result.declined > 0) {
-    const verb = result.declined === 1 ? "was" : "were";
-    console.log(
-      CLI_FORMAT_YELLOW,
-      `${files(result.declined)} ${verb} left as the parser found them`,
-    );
+    console.log(CLI_FORMAT_YELLOW, `${files(result.declined)} left unformatted by the parser`);
   }
 
   if (result.changed > 0) {
