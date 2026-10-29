@@ -1,6 +1,7 @@
 description: JSON configuration
 
-tags: [source]
+tags:
+  - source
 
 type: json
 

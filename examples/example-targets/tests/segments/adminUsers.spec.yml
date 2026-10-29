@@ -1,4 +1,5 @@
 segment: adminUsers
+
 assertions:
   - description: Admin user should match
     context:

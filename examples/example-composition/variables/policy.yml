@@ -1,6 +1,7 @@
 description: Shipping policy
 
-tags: [source]
+tags:
+  - source
 
 type: object
 
@@ -8,7 +9,8 @@ properties:
   limit:
     type: integer
 
-required: [limit]
+required:
+  - limit
 
 defaultValue:
   limit: 50

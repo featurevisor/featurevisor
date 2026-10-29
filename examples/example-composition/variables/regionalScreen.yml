@@ -1,6 +1,7 @@
 description: Regional overrides applied after the screen is composed
 
-tags: [web]
+tags:
+  - web
 
 compose:
   label:

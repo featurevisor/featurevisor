@@ -1,6 +1,7 @@
 description: Product flags
 
-tags: [web]
+tags:
+  - web
 
 compose:
   checkout:

@@ -1,6 +1,7 @@
 description: Policy available only while checkout is enabled
 
-tags: [source]
+tags:
+  - source
 
 type: object
 
@@ -8,7 +9,8 @@ properties:
   limit:
     type: integer
 
-required: [limit]
+required:
+  - limit
 
 defaultValue:
   limit: 10

@@ -2,16 +2,16 @@ feature: chatFileUpload
 
 assertions:
   - description: Requires liveChat for v3 releases too
-    target: ios
     environment: production
+    target: ios
     at: 10
-    stickyFeatures:
-      liveChat:
-        enabled: false
     context:
       userId: user-4
       country: nl
       plan: paid
+    stickyFeatures:
+      liveChat:
+        enabled: false
     expectedToBeEnabled: false
 
   - description: Dutch paying accounts get it once liveChat is on
@@ -19,16 +19,16 @@ assertions:
       target:
         - ios-v4
         - ios
-    target: ${{ target }}
     environment: production
+    target: ${{ target }}
     at: 10
-    stickyFeatures:
-      liveChat:
-        enabled: true
     context:
       userId: user-4
       country: nl
       plan: paid
+    stickyFeatures:
+      liveChat:
+        enabled: true
     expectedToBeEnabled: true
 
   - description: Recent German apps join the 50% rule
@@ -36,16 +36,16 @@ assertions:
       target:
         - ios-v4
         - ios
-    target: ${{ target }}
     environment: production
+    target: ${{ target }}
     at: 40
-    stickyFeatures:
-      liveChat:
-        enabled: true
     context:
       userId: user-5
       country: de
       appVersion: 5.1.0
+    stickyFeatures:
+      liveChat:
+        enabled: true
     expectedToBeEnabled: true
 
   - description: Older German apps fall through to the 0% rule
@@ -53,14 +53,14 @@ assertions:
       target:
         - ios-v4
         - ios
-    target: ${{ target }}
     environment: production
+    target: ${{ target }}
     at: 40
-    stickyFeatures:
-      liveChat:
-        enabled: true
     context:
       userId: user-5
       country: de
       appVersion: 4.9.0
+    stickyFeatures:
+      liveChat:
+        enabled: true
     expectedToBeEnabled: false

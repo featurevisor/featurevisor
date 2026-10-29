@@ -1,9 +1,11 @@
 description: Checkout redesign with two variations
+
 tags:
   - all
   - checkout
 
 bucketBy: user.id
+
 disabledVariationValue: control
 
 variations:
@@ -17,11 +19,13 @@ rules:
     - key: everyone
       conditions: "*"
       percentage: 100
+
   production:
     - key: netherlands
       conditions: audience/netherlands
       percentage: 100
       variation: redesigned
+
     - key: everyone
       conditions: "*"
       percentage: 50

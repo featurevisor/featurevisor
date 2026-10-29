@@ -10,7 +10,6 @@ bucketBy: userId
 variations:
   - value: control
     weight: 50
-
   - value: treatment
     weight: 50
 
@@ -21,7 +20,6 @@ force:
           operator: equals
           value: qa-user-1
       variation: treatment
-
   production:
     - conditions:
         - attribute: userId

@@ -9,6 +9,7 @@ assertions:
       limit: 50
     expectedEvaluation:
       reason: variable_composed
+
   - description: Applies source overrides before alias overrides
     target: aliases
     context:
@@ -17,9 +18,11 @@ assertions:
       limit: 90
     checks:
       - variable: policy
-        path: [limit]
+        path:
+          - limit
         operator: equals
         value: 75
+
   - description: Uses nested alias overrides without changing the source
     target: aliases
     context:
@@ -29,9 +32,11 @@ assertions:
       limit: 100
     checks:
       - variable: policy
-        path: [limit]
+        path:
+          - limit
         operator: equals
         value: 75
+
   - description: A null source stays null when a mutation cannot reach its path
     target: aliases
     context:
@@ -39,6 +44,7 @@ assertions:
     stickyVariables:
       policy: null
     expectedValue: null
+
   - description: Whole alias sticky values bypass the source
     target: aliases
     context:

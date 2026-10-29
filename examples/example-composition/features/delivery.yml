@@ -1,6 +1,7 @@
 description: Delivery offer when available
 
-tags: [source]
+tags:
+  - source
 
 bucketBy: userId
 

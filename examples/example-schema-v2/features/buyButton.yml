@@ -11,11 +11,9 @@ variablesSchema:
   label:
     type: string
     defaultValue: Buy
-
   colour:
     type: string
     defaultValue: "#111827"
-
   maxQuantity:
     type: number
     defaultValue: 5
@@ -23,7 +21,6 @@ variablesSchema:
 variations:
   - value: control
     weight: 50
-
   - value: treatment
     weight: 50
     variables:
@@ -53,7 +50,6 @@ rules:
                 operator: equals
                 value: paid
             value: 10
-
           - key: pricingTreatment
             conditions:
               - feature: pricing

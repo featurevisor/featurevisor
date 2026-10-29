@@ -1,5 +1,6 @@
 description: Reuse the final overridden policy alias without another wrapper
 
-tags: [web]
+tags:
+  - web
 
 compose: policyAlias

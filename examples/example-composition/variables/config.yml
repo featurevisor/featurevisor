@@ -1,6 +1,7 @@
 description: Variable configuration
 
-tags: [web]
+tags:
+  - web
 
 compose:
   policy:

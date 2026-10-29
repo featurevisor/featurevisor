@@ -1,46 +1,56 @@
 feature: adminDashboard
+
 assertions:
   ##
   # Staging - everyone enabled
   #
-  - at: 50
-    environment: staging
+  - environment: staging
+    at: 50
     context: {}
     expectedToBeEnabled: true
 
   ##
   # Production - admin users only
   #
-  - matrix:
-      at: [10, 50, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, admin user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
     environment: production
-    description: "At ${{ at }}% in production, admin user should be enabled"
+    at: ${{ at }}
     context:
       userRole: admin
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [10, 50, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, regular user should be disabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
     environment: production
-    description: "At ${{ at }}% in production, regular user should be disabled"
+    at: ${{ at }}
     context:
       userRole: user
     expectedToBeEnabled: false
 
-  - matrix:
-      at: [10, 50, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, guest user should be disabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
     environment: production
-    description: "At ${{ at }}% in production, guest user should be disabled"
+    at: ${{ at }}
     context:
       userRole: guest
     expectedToBeEnabled: false
 
-  - at: 50
+  - description: Feature outside includeFeatures should not exist in selected web target
     environment: production
     target: selected-web
-    description: Feature outside includeFeatures should not exist in selected web target
+    at: 50
     context: {}
     expectedToBeEnabled: false

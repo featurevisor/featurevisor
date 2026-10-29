@@ -1,16 +1,17 @@
 feature: platform/maintenance
+
 assertions:
   - description: Maintenance mode is enabled in staging
-    at: 50
     environment: staging
+    at: 50
     context:
       user:
         id: user-123
     expectedToBeEnabled: true
 
   - description: Maintenance mode is disabled in production
-    at: 50
     environment: production
+    at: 50
     context:
       user:
         id: user-123

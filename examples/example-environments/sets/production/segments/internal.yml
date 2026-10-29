@@ -1,4 +1,5 @@
 description: Internal users
+
 conditions:
   - attribute: team
     operator: equals

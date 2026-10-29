@@ -1,6 +1,7 @@
 description: Screen configuration
 
-tags: [web]
+tags:
+  - web
 
 compose:
   flag:

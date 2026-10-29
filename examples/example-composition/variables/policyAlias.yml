@@ -1,6 +1,7 @@
 description: Reuse the evaluated policy and refine it for Amsterdam
 
-tags: [web]
+tags:
+  - web
 
 compose: policy
 

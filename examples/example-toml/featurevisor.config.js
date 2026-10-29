@@ -15,10 +15,10 @@ module.exports = {
       require("smol-toml").stringify(
         content,
       ),
-    // smol-toml writes values, not comments, so fmt orders keys only in a file without them
+    // smol-toml writes values, not comments, so a file with a # is left as it is
     format: (source, layout) =>
-      /^\s*#/m.test(source)
-        ? source
+      source.includes("#")
+        ? undefined
         : require("smol-toml").stringify(
             layout.orderValue(
               require("smol-toml").parse(

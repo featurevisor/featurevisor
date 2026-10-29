@@ -14,12 +14,10 @@ overrides:
     - key: dutch
       conditions: netherlands
       value: support-nl@example.com
-
   production:
     - key: dutch
       conditions: netherlands
       value: support-nl@example.com
-
     - key: pricingTreatment
       conditions:
         - feature: pricing

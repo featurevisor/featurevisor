@@ -2,8 +2,11 @@ description: Screen and its dependency closure
 
 tag: web
 
-includeVariables: [screen]
-
 excludeFeatures: "*"
 
-excludeVariables: [policy, raw]
+includeVariables:
+  - screen
+
+excludeVariables:
+  - policy
+  - raw

@@ -1,23 +1,28 @@
 feature: ultraComplexFeature
+
 assertions:
   ##
   # Staging - everyone enabled
   #
-  - at: 50
-    environment: staging
+  - environment: staging
+    at: 50
     context: {}
     expectedToBeEnabled: true
 
   ##
   # Production - Premium Chrome users (100% - highest priority rule)
   #
-  - matrix:
-      at: [10, 50, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium Chrome user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, premium Chrome user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "premium-chrome-${{ at }}"
+      userId: premium-chrome-${{ at }}
       subscription: premium
       browser: chrome
     expectedToBeEnabled: true
@@ -25,35 +30,44 @@ assertions:
   ##
   # Production - Premium OR Admin users (90%)
   #
-  - matrix:
-      at: [10, 50, 80]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 80
     environment: production
-    description: "At ${{ at }}% in production, premium user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "premium-${{ at }}"
+      userId: premium-${{ at }}
       subscription: premium
       browser: firefox
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [10, 50, 80]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, admin user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 80
     environment: production
-    description: "At ${{ at }}% in production, admin user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "admin-${{ at }}"
+      userId: admin-${{ at }}
       userRole: admin
       browser: firefox
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [91, 95, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium user should be disabled
+    matrix:
+      at:
+        - 91
+        - 95
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, premium user should be disabled"
+    at: ${{ at }}
     context:
-      userId: "premium-${{ at }}"
+      userId: premium-${{ at }}
       subscription: premium
       browser: firefox
     expectedToBeEnabled: false
@@ -61,24 +75,30 @@ assertions:
   ##
   # Production - Premium users on web or mobile (85%)
   #
-  - matrix:
-      at: [10, 50, 80]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium web user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 80
     environment: production
-    description: "At ${{ at }}% in production, premium web user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "premium-web-${{ at }}"
+      userId: premium-web-${{ at }}
       subscription: premium
       platform: web
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [10, 50, 80]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium iOS user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 80
     environment: production
-    description: "At ${{ at }}% in production, premium iOS user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "premium-ios-${{ at }}"
+      userId: premium-ios-${{ at }}
       subscription: premium
       platform: ios
     expectedToBeEnabled: true
@@ -90,35 +110,44 @@ assertions:
   ##
   # Production - Chrome OR Firefox browsers (75%)
   #
-  - matrix:
-      at: [10, 50, 70]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, Chrome user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 70
     environment: production
-    description: "At ${{ at }}% in production, Chrome user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "chrome-${{ at }}"
+      userId: chrome-${{ at }}
       browser: chrome
       subscription: free
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [10, 50, 70]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, Firefox user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 70
     environment: production
-    description: "At ${{ at }}% in production, Firefox user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "firefox-${{ at }}"
+      userId: firefox-${{ at }}
       browser: firefox
       subscription: free
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [76, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, Chrome user should be disabled
+    matrix:
+      at:
+        - 76
+        - 90
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, Chrome user should be disabled"
+    at: ${{ at }}
     context:
-      userId: "chrome-${{ at }}"
+      userId: chrome-${{ at }}
       browser: chrome
       subscription: free
     expectedToBeEnabled: false
@@ -126,25 +155,31 @@ assertions:
   ##
   # Production - Non-premium Chrome users (65%)
   #
-  - matrix:
-      at: [10, 50, 60]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, free Chrome user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 60
     environment: production
-    description: "At ${{ at }}% in production, free Chrome user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "free-chrome-${{ at }}"
+      userId: free-chrome-${{ at }}
       subscription: free
       browser: chrome
     expectedToBeEnabled: true
 
   # Note: Free Chrome users also match "chrome OR firefox" rule (75%), so they're enabled up to 75%
-  - matrix:
-      at: [76, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, free Chrome user should be disabled
+    matrix:
+      at:
+        - 76
+        - 90
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, free Chrome user should be disabled"
+    at: ${{ at }}
     context:
-      userId: "free-chrome-${{ at }}"
+      userId: free-chrome-${{ at }}
       subscription: free
       browser: chrome
     expectedToBeEnabled: false
@@ -152,25 +187,30 @@ assertions:
   ##
   # Production - Chrome users simple (55%)
   #
-  - matrix:
-      at: [10, 50]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, Chrome user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
     environment: production
-    description: "At ${{ at }}% in production, Chrome user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "chrome-simple-${{ at }}"
+      userId: chrome-simple-${{ at }}
       browser: chrome
       subscription: basic
     expectedToBeEnabled: true
 
   # Note: Chrome users also match "chrome OR firefox" rule (75%), so they're enabled up to 75%
-  - matrix:
-      at: [76, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, Chrome user should be disabled
+    matrix:
+      at:
+        - 76
+        - 90
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, Chrome user should be disabled"
+    at: ${{ at }}
     context:
-      userId: "chrome-simple-${{ at }}"
+      userId: chrome-simple-${{ at }}
       browser: chrome
       subscription: basic
     expectedToBeEnabled: false
@@ -178,25 +218,30 @@ assertions:
   ##
   # Production - Premium users simple (45%)
   #
-  - matrix:
-      at: [10, 40]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium user should be enabled
+    matrix:
+      at:
+        - 10
+        - 40
     environment: production
-    description: "At ${{ at }}% in production, premium user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "premium-simple-${{ at }}"
+      userId: premium-simple-${{ at }}
       subscription: premium
       browser: safari
     expectedToBeEnabled: true
 
   # Note: Premium users match "premium OR admin" rule (90%), so they're enabled up to 90%
-  - matrix:
-      at: [91, 95, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium user should be disabled
+    matrix:
+      at:
+        - 91
+        - 95
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, premium user should be disabled"
+    at: ${{ at }}
     context:
-      userId: "premium-simple-${{ at }}"
+      userId: premium-simple-${{ at }}
       subscription: premium
       browser: safari
     expectedToBeEnabled: false
@@ -204,47 +249,56 @@ assertions:
   ##
   # Production - Not admin users (35%)
   #
-  - matrix:
-      at: [10, 30]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, regular user should be enabled
+    matrix:
+      at:
+        - 10
+        - 30
     environment: production
-    description: "At ${{ at }}% in production, regular user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "regular-${{ at }}"
+      userId: regular-${{ at }}
       userRole: user
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [36, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, regular user should be disabled
+    matrix:
+      at:
+        - 36
+        - 90
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, regular user should be disabled"
+    at: ${{ at }}
     context:
-      userId: "regular-${{ at }}"
+      userId: regular-${{ at }}
       userRole: user
     expectedToBeEnabled: false
 
   ##
   # Production - Complex nested segment (25%)
   #
-  - matrix:
-      at: [10, 20]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium Chrome user (complex nested) should be enabled
+    matrix:
+      at:
+        - 10
+        - 20
     environment: production
-    description: "At ${{ at }}% in production, premium Chrome user (complex nested) should be enabled"
+    at: ${{ at }}
     context:
-      userId: "complex-${{ at }}"
+      userId: complex-${{ at }}
       subscription: premium
       browser: chrome
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [10, 20]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, admin Chrome user (complex nested) should be enabled
+    matrix:
+      at:
+        - 10
+        - 20
     environment: production
-    description: "At ${{ at }}% in production, admin Chrome user (complex nested) should be enabled"
+    at: ${{ at }}
     context:
-      userId: "admin-chrome-${{ at }}"
+      userId: admin-chrome-${{ at }}
       userRole: admin
       browser: chrome
     expectedToBeEnabled: true
@@ -254,26 +308,30 @@ assertions:
   ##
   # Production - Everyone else (15%)
   #
-  - matrix:
-      at: [10]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, regular user should be enabled
+    matrix:
+      at:
+        - 10
     environment: production
-    description: "At ${{ at }}% in production, regular user should be enabled"
+    at: ${{ at }}
     context:
-      userId: "everyone-${{ at }}"
+      userId: everyone-${{ at }}
       subscription: free
       browser: safari
       userRole: user
     expectedToBeEnabled: true
 
   # Note: Regular users match "not admin" rule (35%), so they're enabled up to 35%
-  - matrix:
-      at: [36, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, regular user should be disabled
+    matrix:
+      at:
+        - 36
+        - 90
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, regular user should be disabled"
+    at: ${{ at }}
     context:
-      userId: "everyone-${{ at }}"
+      userId: everyone-${{ at }}
       subscription: free
       browser: safari
       userRole: user
@@ -282,13 +340,17 @@ assertions:
   ##
   # Force entries - Admin users always get treatment
   #
-  - matrix:
-      at: [10, 50, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, admin user should be enabled with treatment variation
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, admin user should be enabled with treatment variation"
+    at: ${{ at }}
     context:
-      userId: "admin-force-${{ at }}"
+      userId: admin-force-${{ at }}
       userRole: admin
       browser: safari
     expectedToBeEnabled: true
@@ -302,13 +364,17 @@ assertions:
   ##
   # Force entries - Premium Chrome Admin users get experimental
   #
-  - matrix:
-      at: [10, 50, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium Chrome admin user should get experimental
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, premium Chrome admin user should get experimental"
+    at: ${{ at }}
     context:
-      userId: "premium-chrome-admin-${{ at }}"
+      userId: premium-chrome-admin-${{ at }}
       subscription: premium
       browser: chrome
       userRole: admin
@@ -322,13 +388,17 @@ assertions:
   ##
   # Force entries - Premium OR Admin on Chrome get treatment
   #
-  - matrix:
-      at: [10, 50, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium Chrome user should get treatment via force
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, premium Chrome user should get treatment via force"
+    at: ${{ at }}
     context:
-      userId: "premium-chrome-force-${{ at }}"
+      userId: premium-chrome-force-${{ at }}
       subscription: premium
       browser: chrome
     expectedToBeEnabled: true
@@ -337,13 +407,17 @@ assertions:
       theme: dark
       fontSize: 18
 
-  - matrix:
-      at: [10, 50, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, admin Chrome user should get treatment via force (Premium OR Admin on Chrome)
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
+        - 100
     environment: production
-    description: "At ${{ at }}% in production, admin Chrome user should get treatment via force (Premium OR Admin on Chrome)"
+    at: ${{ at }}
     context:
-      userId: "admin-chrome-force-${{ at }}"
+      userId: admin-chrome-force-${{ at }}
       userRole: admin
       browser: chrome
     expectedToBeEnabled: true
@@ -355,11 +429,11 @@ assertions:
   ##
   # Variable overrides - Control variation with premium users
   #
-  - at: 10
+  - description: Premium user at 10% should get control variation with dark theme
     environment: production
-    description: "Premium user at 10% should get control variation with dark theme"
+    at: 10
     context:
-      userId: "premium-control-10"
+      userId: premium-control-10
       subscription: premium
       browser: firefox
     expectedToBeEnabled: true
@@ -373,11 +447,11 @@ assertions:
   ##
   # Variable overrides - Control variation with Chrome users
   #
-  - at: 10
+  - description: Chrome user at 10% should get control variation with auto theme
     environment: production
-    description: "Chrome user at 10% should get control variation with auto theme"
+    at: 10
     context:
-      userId: "chrome-control-10"
+      userId: chrome-control-10
       subscription: free
       browser: chrome
     expectedToBeEnabled: true
@@ -393,11 +467,11 @@ assertions:
   # Note: Premium Chrome users match force entry "Premium OR Admin on Chrome" which gives treatment
   # So we test with a user that doesn't match force entries (e.g., premium Chrome but not matching the OR condition)
   # Actually, premium Chrome always matches the force entry, so let's test the force entry result instead
-  - at: 10
+  - description: Premium Chrome user at 10% should get treatment via force entry
     environment: production
-    description: "Premium Chrome user at 10% should get treatment via force entry"
+    at: 10
     context:
-      userId: "premium-chrome-force-10"
+      userId: premium-chrome-force-10
       subscription: premium
       browser: chrome
     expectedToBeEnabled: true
@@ -410,11 +484,11 @@ assertions:
   # Variable overrides - Control variation with premium OR admin users
   # Note: Admin users match force entry, so they get treatment, not control
   #
-  - at: 10
+  - description: Premium user at 10% should get control variation with compact layout
     environment: production
-    description: "Premium user at 10% should get control variation with compact layout"
+    at: 10
     context:
-      userId: "premium-layout-10"
+      userId: premium-layout-10
       subscription: premium
       browser: safari
     expectedToBeEnabled: true
@@ -425,11 +499,11 @@ assertions:
       layout: compact
       animation: none
 
-  - at: 10
+  - description: Admin user at 10% should get treatment via force entry, not control
     environment: production
-    description: "Admin user at 10% should get treatment via force entry, not control"
+    at: 10
     context:
-      userId: "admin-layout-10"
+      userId: admin-layout-10
       userRole: admin
       browser: safari
     expectedToBeEnabled: true
@@ -445,11 +519,11 @@ assertions:
   # Note: At 90%, with 40/40/20 weights (control/treatment/experimental),
   # 0-40% = control, 40-80% = treatment, 80-100% = experimental
   # So 90% falls in experimental range
-  - at: 90
+  - description: Premium user at 90% should get experimental variation
     environment: production
-    description: "Premium user at 90% should get experimental variation"
+    at: 90
     context:
-      userId: "premium-exp-90"
+      userId: premium-exp-90
       subscription: premium
       browser: firefox
     expectedToBeEnabled: true
@@ -464,11 +538,11 @@ assertions:
   # Variable overrides - Treatment variation with Chrome OR Firefox users
   # Note: With 40/40/20 weights: 0-40% = control, 40-80% = treatment, 80-100% = experimental
   # But bucketing might work differently, so let's use 50% to ensure treatment
-  - at: 50
+  - description: Free Chrome user at 50% should get treatment variation
     environment: production
-    description: "Free Chrome user at 50% should get treatment variation"
+    at: 50
     context:
-      userId: "chrome-treatment-50"
+      userId: chrome-treatment-50
       subscription: free
       browser: chrome
     expectedToBeEnabled: true
@@ -480,11 +554,11 @@ assertions:
       layout: minimal
       animation: slide
 
-  - at: 50
+  - description: Firefox user at 50% should get treatment variation
     environment: production
-    description: "Firefox user at 50% should get treatment variation"
+    at: 50
     context:
-      userId: "firefox-treatment-50"
+      userId: firefox-treatment-50
       subscription: free
       browser: firefox
     expectedToBeEnabled: true
@@ -504,11 +578,11 @@ assertions:
   # Treatment variation has: layout: minimal for chromeUsers, layout: full for premium OR admin
   # Premium Chrome users match both chromeUsers and premiumUsers, so the more specific override might win
   #
-  - at: 90
+  - description: Premium Chrome user at 90% should get treatment via force entry with fontSize 18
     environment: production
-    description: "Premium Chrome user at 90% should get treatment via force entry with fontSize 18"
+    at: 90
     context:
-      userId: "premium-chrome-treatment-90"
+      userId: premium-chrome-treatment-90
       subscription: premium
       browser: chrome
     expectedToBeEnabled: true
@@ -525,11 +599,11 @@ assertions:
   # Variable overrides - Treatment variation with premium OR admin users
   # Note: Admin users match force entry, so they get treatment with fontSize 20 from force
   #
-  - at: 90
+  - description: Premium admin user at 90% should get treatment via force entry with fontSize 20
     environment: production
-    description: "Premium admin user at 90% should get treatment via force entry with fontSize 20"
+    at: 90
     context:
-      userId: "premium-admin-treatment-90"
+      userId: premium-admin-treatment-90
       subscription: premium
       userRole: admin
       browser: safari
@@ -545,11 +619,11 @@ assertions:
   # Variable overrides - Experimental variation with premium Chrome admin users
   # Note: Only premium Chrome ADMIN users get experimental via force entry
   #
-  - at: 50
+  - description: Premium Chrome admin user at 50% should get experimental via force entry
     environment: production
-    description: "Premium Chrome admin user at 50% should get experimental via force entry"
+    at: 50
     context:
-      userId: "premium-chrome-admin-exp-50"
+      userId: premium-chrome-admin-exp-50
       subscription: premium
       browser: chrome
       userRole: admin
@@ -567,23 +641,29 @@ assertions:
   # However, if scoping doesn't work perfectly, we can test with adminUsers to match the "premium-or-admin" rule
   # Or we can test with browser context to match the first rule
   #
-  - matrix:
-      at: [10, 50, 80]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production with premium target, should be enabled via premium-or-admin rule
+    matrix:
+      at:
+        - 10
+        - 50
+        - 80
     environment: production
     target: premium
-    description: "At ${{ at }}% in production with premium target, should be enabled via premium-or-admin rule"
+    at: ${{ at }}
     # Provide adminUsers context to ensure the "premium-or-admin" rule matches
     context:
       userRole: admin
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [91, 95, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production with premium target, should be disabled (above 90% threshold)
+    matrix:
+      at:
+        - 91
+        - 95
+        - 100
     environment: production
     target: premium
-    description: "At ${{ at }}% in production with premium target, should be disabled (above 90% threshold)"
+    at: ${{ at }}
     # Use a context that doesn't match adminUsers to test the rule threshold
     # The premium-or-admin rule is 90%, so above 90% should be disabled
     context:
@@ -596,24 +676,30 @@ assertions:
   # However, if target simplification doesn't simplify segments correctly, we need to provide the target context
   # Rules that require chromeUsers should match with browser: chrome context
   #
-  - matrix:
-      at: [10, 50, 70]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production with chrome target, should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 70
     environment: production
     target: chrome
-    description: "At ${{ at }}% in production with chrome target, should be enabled"
+    at: ${{ at }}
     # Provide target context since segments might not be simplified in target datafile
     context:
       browser: chrome
       subscription: free
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [76, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production with chrome target, should be disabled
+    matrix:
+      at:
+        - 76
+        - 90
+        - 100
     environment: production
     target: chrome
-    description: "At ${{ at }}% in production with chrome target, should be disabled"
+    at: ${{ at }}
     context:
       browser: chrome
       subscription: free
@@ -625,12 +711,16 @@ assertions:
   # However, if target simplification doesn't simplify segments correctly, we need to provide the target context
   # The first rule "premium-chrome-complex" should match (100% rule)
   #
-  - matrix:
-      at: [10, 50, 90, 100]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production with premium-chrome target, should be enabled (premium-chrome-complex rule at 100%)
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
+        - 100
     environment: production
     target: premium-chrome
-    description: "At ${{ at }}% in production with premium-chrome target, should be enabled (premium-chrome-complex rule at 100%)"
+    at: ${{ at }}
     # Provide target context since segments might not be simplified in target datafile
     context:
       subscription: premium
