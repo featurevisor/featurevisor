@@ -5,6 +5,7 @@
   "description": "Featurevisor project using sets as test release environments",
   "scripts": {
     "lint": "featurevisor lint",
+    "fmt": "featurevisor fmt",
     "build": "featurevisor build --no-state-files",
     "test": "featurevisor test"
   },

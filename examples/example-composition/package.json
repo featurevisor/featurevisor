@@ -5,6 +5,7 @@
   "description": "For testing only",
   "scripts": {
     "lint": "node ../../packages/cli/bin.js lint",
+    "fmt": "node ../../packages/cli/bin.js fmt",
     "build": "node ../../packages/cli/bin.js build",
     "test": "node ../../packages/cli/bin.js test"
   },

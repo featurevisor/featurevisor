@@ -20,8 +20,8 @@ checks:
       - key: control-path
         description: Control keeps the basic signup path
         and:
-          - key: control-variation
-            feature: allowSignup
+          - feature: allowSignup
+            key: control-variation
             enabled: true
             variation: control
           - variable: signupMessage
