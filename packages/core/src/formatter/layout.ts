@@ -202,15 +202,20 @@ export function orderValue(entityType: EntityType, value: unknown, path: FormatP
   );
 }
 
+/** Extensions that take another one's section of the house style's formats */
+const FORMAT_ALIASES: Record<string, string> = { yaml: "yml" };
+
 /** The layout a parser's `format` applies to one kind of definition */
 export function getFormatLayout(entityType: EntityType, extension?: string): FormatLayout {
   const formats: Record<string, object | undefined> = HOUSE_STYLE.formats;
+  const format = extension && (FORMAT_ALIASES[extension] ?? extension);
   return {
     indent: HOUSE_STYLE.indent,
     orderKeys: (path, keys) => getKeyOrder(entityType, path, keys),
     spaceEntries: (path) => isSpacedMap(entityType, path),
     spaceItems: (path) => isSpacedList(entityType, path),
+    keepBlankLines: HOUSE_STYLE.keepBlankLines,
     orderValue: <T>(value: T) => orderValue(entityType, value) as T,
-    options: { ...(extension ? formats[extension] : undefined) },
+    options: { ...(format ? formats[format] : undefined) },
   };
 }

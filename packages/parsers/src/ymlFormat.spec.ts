@@ -230,6 +230,126 @@ describe("formatYml", () => {
     expect(formatYml("")).toBe("");
     expect(formatYml("# only a comment\n")).toBe("# only a comment\n");
   });
+
+  it("keeps a comment on the line of a key whose list or map is below it", () => {
+    const source =
+      "rules: # most specific first\n  - key: a\nsettings: # nested\n  # first\n  a: 1\n";
+
+    expect(formatYml(source)).toBe(source);
+  });
+});
+
+describe("blank lines the author wrote", () => {
+  const keep: YmlLayout = { keepBlankLines: true };
+
+  it("keeps one between entries and between items, and none above the first", () => {
+    const source = [
+      "settings:",
+      "",
+      "  a: 1",
+      "",
+      "",
+      "  b: 2",
+      "  c: 3 # three",
+      "",
+      "  # about d",
+      "  d: 4",
+      "tags:",
+      "  - web",
+      "",
+      "  - ios",
+      "",
+    ].join("\n");
+
+    expect(formatYml(source, keep)).toBe(
+      [
+        "settings:",
+        "  a: 1",
+        "",
+        "  b: 2",
+        "  c: 3 # three",
+        "",
+        "  # about d",
+        "  d: 4",
+        "tags:",
+        "  - web",
+        "",
+        "  - ios",
+        "",
+      ].join("\n"),
+    );
+    expect(formatYml(source)).toBe(
+      "settings:\n  a: 1\n  b: 2\n  c: 3 # three\n  # about d\n  d: 4\ntags:\n  - web\n  - ios\n",
+    );
+  });
+
+  it("moves a blank line with the entry below it, and adds the layout's own", () => {
+    const source = "rules:\n  - percentage: 50\n\n    key: a\n    conditions: nl\n";
+
+    expect(formatYml(source, { ...layout, ...keep })).toBe(
+      "rules:\n  - key: a\n    conditions: nl\n    percentage: 50\n",
+    );
+    expect(
+      formatYml("zeta: 1\nalpha: 2\n\nomega: 3\n", { ...keep, orderKeys: () => ["omega"] }),
+    ).toBe("omega: 3\nzeta: 1\nalpha: 2\n");
+  });
+});
+
+describe("the ignore line comment", () => {
+  const ignore = "# featurevisor-ignore-line";
+
+  it("keeps the key and value on the line as written, and their place", () => {
+    const source = [
+      `rules: []`,
+      `tags: [web,ios]  ${ignore}`,
+      `bucketBy: 'userId' ${ignore}`,
+      `description: 'Checkout'`,
+      "",
+    ].join("\n");
+    const output = formatYml(source, layout);
+
+    expect(output).toBe(
+      [
+        "description: Checkout",
+        "",
+        `tags: [web,ios] ${ignore}`,
+        "",
+        `bucketBy: 'userId' ${ignore}`,
+        "",
+        "rules: []",
+        "",
+      ].join("\n"),
+    );
+    expect(parse(output)).toEqual(parse(source));
+    expect(formatYml(output, layout)).toBe(output);
+  });
+
+  it("keeps a list item as written", () => {
+    const source = `tags:\n  - 'web'\n  - {name: ios} ${ignore}\n  - {name: android}\n`;
+
+    expect(formatYml(source)).toBe(
+      `tags:\n  - web\n  - {name: ios} ${ignore}\n  - name: android\n`,
+    );
+  });
+
+  it("keeps a key in its place and lays out the list or map below it", () => {
+    const source = `rules: ${ignore}\n  - percentage: 5\n    key: 'a'\ndescription: x\n`;
+    const output = formatYml(source, layout);
+
+    expect(output).toBe(`rules: ${ignore}\n  - key: a\n    percentage: 5\n\ndescription: x\n`);
+    expect(formatYml(output, layout)).toBe(output);
+  });
+
+  it("lays out a value over several lines as usual, with the comment on its key's line", () => {
+    const output = formatYml(`tags: [web,\n  ios] ${ignore}\nempty: ${ignore}\n`);
+
+    expect(output).toBe(`tags: ${ignore}\n  - web\n  - ios\nempty: ${ignore}\n`);
+    expect(formatYml(output)).toBe(output);
+  });
+
+  it("leaves the comment as text inside a quoted value", () => {
+    expect(formatYml(`a: '${ignore}'\n`)).toBe(`a: "${ignore}"\n`);
+  });
 });
 
 describe("listYmlComments", () => {
@@ -275,6 +395,7 @@ describe("the YAML parser", () => {
     orderKeys: (path) => (path.length === 0 ? ["description", "conditions"] : undefined),
     spaceEntries: (path) => path.length === 0,
     spaceItems: () => false,
+    keepBlankLines: false,
     orderValue: <T>(value: T) => value,
     options: { quote: "single" },
   };

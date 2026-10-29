@@ -1,3 +1,5 @@
+import type { FormatPath } from "./layout";
+
 /** Choices only JSON can express. Featurevisor passes its own from Core's house style. */
 export interface JsonFormatOptions {
   /**
@@ -35,21 +37,94 @@ function mustBreak(list: unknown[]): boolean {
   return list.length > 1 && list.every((item) => Array.isArray(item) && item.length > 1);
 }
 
-/** Prettier fills each line of a broken list of numbers, rather than one number a line */
-function fillNumbers(list: number[], pad: string, lineWidth: number): string[] {
+/**
+ * Prettier fills each line of a broken list of numbers, rather than one number a line, and
+ * starts a new line after a blank one
+ */
+function fillNumbers(list: number[], pad: string, lineWidth: number, blank: boolean[]): string[] {
   const lines: string[] = [];
   let line = "";
   list.forEach((item, index) => {
     const text = plain(item) + (index < list.length - 1 ? "," : "");
-    if (line && pad.length + line.length + 1 + text.length > lineWidth) {
-      lines.push(line);
+    if (line && blank[index]) {
+      lines.push(pad + line, "");
+      line = text;
+    } else if (line && pad.length + line.length + 1 + text.length > lineWidth) {
+      lines.push(pad + line);
       line = text;
     } else {
       line = line ? `${line} ${text}` : text;
     }
   });
-  lines.push(line);
-  return lines.map((text) => pad + text);
+  lines.push(pad + line);
+  return lines;
+}
+
+function endOfString(source: string, start: number): number {
+  let index = start + 1;
+  while (source[index] !== '"') index += source[index] === "\\" ? 2 : 1;
+  return index;
+}
+
+/**
+ * The paths of the members and items written after a blank line, other than the first of
+ * their object or list, as JSON.stringify gives them. The source must be valid JSON.
+ */
+function findBlankLines(source: string): Set<string> {
+  const found = new Set<string>();
+  const open: { path: FormatPath; list: boolean; index: number; key?: string; inKey: boolean }[] =
+    [];
+  let newlines = 0;
+
+  for (let index = 0; index < source.length; index++) {
+    const char = source[index];
+    const parent = open[open.length - 1];
+    if (char === "\n") newlines++;
+    if (/\s/.test(char)) continue;
+
+    if (char === "," || char === ":" || char === "}" || char === "]") {
+      if (char === "," && parent.list) parent.index++;
+      if (char === "," && !parent.list) parent.inKey = true;
+      if (char === "}" || char === "]") open.pop();
+      newlines = 0;
+      continue;
+    }
+
+    if (parent && !parent.list && parent.inKey) {
+      const end = endOfString(source, index);
+      parent.key = JSON.parse(source.slice(index, end + 1));
+      if (newlines > 1 && parent.index > 0)
+        found.add(JSON.stringify([...parent.path, parent.key!]));
+      parent.index++;
+      parent.inKey = false;
+      index = end;
+      newlines = 0;
+      continue;
+    }
+
+    if (parent?.list && newlines > 1 && parent.index > 0) {
+      found.add(JSON.stringify([...parent.path, parent.index]));
+    }
+    newlines = 0;
+
+    const path = parent ? [...parent.path, parent.list ? parent.index : parent.key!] : [];
+    if (char === "{" || char === "[") {
+      open.push({ path, list: char === "[", index: 0, inKey: char === "{" });
+    } else if (char === '"') {
+      index = endOfString(source, index);
+    } else {
+      while (index + 1 < source.length && !/[\s,\]}]/.test(source[index + 1])) index++;
+    }
+  }
+
+  return found;
+}
+
+interface Writer {
+  indent: number;
+  lineWidth: number;
+  /** Where the author wrote a blank line, from findBlankLines */
+  blank: Set<string>;
 }
 
 /**
@@ -58,30 +133,37 @@ function fillNumbers(list: number[], pad: string, lineWidth: number): string[] {
  */
 function writeJson(
   value: unknown,
-  indent: number,
-  lineWidth: number,
-  level = 0,
+  writer: Writer,
+  path: FormatPath = [],
   lead = 0,
   trail = 0,
 ): string {
   if (isPlain(value)) return plain(value);
 
-  const pad = " ".repeat(indent * (level + 1));
-  const close = " ".repeat(indent * level);
+  const { indent, lineWidth } = writer;
+  const pad = " ".repeat(indent * (path.length + 1));
+  const close = " ".repeat(indent * path.length);
+  const blankBefore = (key: string | number, index: number) =>
+    index > 0 && writer.blank.has(JSON.stringify([...path, key]));
 
   if (Array.isArray(value)) {
     if (value.length === 0) return "[]";
-    if (lineWidth > 0 && isFlat(value) && !mustBreak(value)) {
+    const blank = value.map((_, index) => blankBefore(index, index));
+    const numbers = value.length > 1 && value.every((item) => typeof item === "number");
+    // Prettier keeps a blank line between numbers, which breaks the list, and drops one
+    // between other items when the list fits on a line
+    if (lineWidth > 0 && isFlat(value) && !mustBreak(value) && !(numbers && blank.includes(true))) {
       const inline = flat(value);
       if (lead + inline.length + trail <= lineWidth) return inline;
     }
-    if (lineWidth > 0 && value.length > 1 && value.every((item) => typeof item === "number")) {
-      return `[\n${fillNumbers(value, pad, lineWidth).join("\n")}\n${close}]`;
+    if (lineWidth > 0 && numbers) {
+      return `[\n${fillNumbers(value, pad, lineWidth, blank).join("\n")}\n${close}]`;
     }
     const items = value.map(
       (item, index) =>
+        (blank[index] ? "\n" : "") +
         pad +
-        writeJson(item, indent, lineWidth, level + 1, pad.length, index < value.length - 1 ? 1 : 0),
+        writeJson(item, writer, [...path, index], pad.length, index < value.length - 1 ? 1 : 0),
     );
     return `[\n${items.join(",\n")}\n${close}]`;
   }
@@ -94,13 +176,26 @@ function writeJson(
     const name = `${JSON.stringify(key)}: `;
     const comma = index < entries.length - 1 ? 1 : 0;
     return (
-      pad + name + writeJson(item, indent, lineWidth, level + 1, pad.length + name.length, comma)
+      (blankBefore(key, index) ? "\n" : "") +
+      pad +
+      name +
+      writeJson(item, writer, [...path, key], pad.length + name.length, comma)
     );
   });
   return `{\n${lines.join(",\n")}\n${close}}`;
 }
 
-/** Writes a JSON value as Prettier does, without a final newline. */
-export function formatJson(value: unknown, indent = 2, options: JsonFormatOptions = {}): string {
-  return writeJson(value, indent, options.lineWidth ?? 80);
+/**
+ * Writes a JSON value as Prettier does, without a final newline. Given the source the value
+ * was parsed from, it keeps the blank lines written between members and items, as Prettier
+ * does.
+ */
+export function formatJson(
+  value: unknown,
+  indent = 2,
+  options: JsonFormatOptions = {},
+  source?: string,
+): string {
+  const blank = source === undefined ? new Set<string>() : findBlankLines(source);
+  return writeJson(value, { indent, lineWidth: options.lineWidth ?? 80, blank });
 }

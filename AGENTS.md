@@ -41,10 +41,12 @@ archive path, not only by inspecting example files.
 
 `featurevisor fmt` lays out definitions in one house style, in four layers:
 
-- packages/core/src/formatter/style.ts is the house style: the indent, every
-  key order, every blank line by name, and the choices only one file format
-  can express, such as YAML's quotes and JSON's line width. Every opinion
-  lives there, and nothing in it can change a datafile. To change the style,
+- packages/core/src/formatter/style.ts is the house style: the indent, line
+  endings, every key order, every blank line by name, whether the author's own
+  blank lines stay, and the choices only one file format can express, such as
+  YAML's quotes and JSON's line width. Every opinion lives there, and nothing
+  in it can change a datafile. Its notes say which values keep Prettier
+  leaving fmt's output alone, which examples.spec.ts checks on every example. To change the style,
   edit it, run `make build` and `make fmt-examples`, update style.spec.ts and
   the docs Formatting page, and note it in the release notes, since it fails
   users' `fmt --check` once they upgrade.
@@ -55,19 +57,25 @@ archive path, not only by inspecting example files.
   house key order beside a formatted one and requiring the same bytes. It also
   requires every example to be formatted already.
 - formatDefinition.ts does what is the same in every format: line endings, a
-  byte order mark, the final newline, and the checks that values and comments
-  (through the parser's optional `listComments`) survive and that a second
-  pass changes nothing. formatProject.ts runs it over every Set in one pass.
+  byte order mark, the final newline, the `# featurevisor-ignore` comment that
+  leaves a whole file alone, and the checks that values and comments (through
+  the parser's optional `listComments`) survive and that a second pass changes
+  nothing. formatProject.ts runs it over every Set in one pass, or over the
+  files changed since a Git reference (since.ts), or over source from stdin.
 - The parser's optional `format` applies the layout and its own section of
-  the style: packages/parsers/src/ymlFormat.ts all of it, jsonFormat.ts the
-  key order and indent, laying out lists as Prettier does. A `format` may
+  the style: packages/parsers/src/ymlFormat.ts all of it, including the
+  `# featurevisor-ignore-line` comment, jsonFormat.ts the key order, indent
+  and kept blank lines, laying out lists as Prettier does. A `format` may
   return undefined to leave a file as it is.
 
 Only style.spec.ts pins the style's output. The other formatter tests hold
 whatever style.ts says, so a change to the style fails nothing else. fmt is
 separate from promote and every other write: those write files as the parser
 does and never format them. Prettier leaves example-json's definitions to fmt
-(see .prettierignore), since that example sets a Prettier width of 40.
+(see .prettierignore), since that example sets a Prettier width of 40. fmt
+exits with 1 when `--check` finds work and 2 on errors, as Prettier does, so
+plugin handlers may return an exit code. Every example ships an .editorconfig
+that a test keeps in step with style.ts.
 
 Attribute files belong directly in the configured attributes directory,
 including within each Set. Nested files and dots in attribute names are

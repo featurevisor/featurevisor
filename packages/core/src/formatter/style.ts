@@ -13,6 +13,9 @@ import type { JsonFormatOptions, YmlFormatOptions } from "@featurevisor/parsers"
  * 3. Update the expectations in style.spec.ts and the Formatting page in the docs.
  *
  * A change fails users' `fmt --check` once they upgrade, so note it in the release notes.
+ *
+ * Projects often run Prettier over the same files. Prettier leaves fmt's output as it is today,
+ * and the notes below say which values keep it that way.
  */
 
 const LIFECYCLE = ["archived", "deprecated", "promotable"];
@@ -39,8 +42,21 @@ const SCHEMA_KEYS = [
 ];
 
 export const HOUSE_STYLE = {
-  /** Spaces per level of nesting */
+  /** Spaces per level of nesting. Prettier's tabWidth must match. */
   indent: 2,
+
+  /**
+   * The line endings fmt writes: "auto" keeps each file's own, judged by its first line break,
+   * and "lf" or "crlf" writes every file with that one, as Prettier's endOfLine does.
+   */
+  endOfLine: "auto" as "auto" | "lf" | "crlf",
+
+  /**
+   * Keep a blank line the author wrote between two entries or two items, besides the ones
+   * blankLines asks for, as Prettier does. A run of blank lines becomes one, and a blank line
+   * moves with the entry below it. false keeps only the ones blankLines asks for.
+   */
+  keepBlankLines: true,
 
   /**
    * The order of Featurevisor's own keys in each kind of object. Keys an object has that its
@@ -202,15 +218,18 @@ export const HOUSE_STYLE = {
     checks: false,
   },
 
-  /** Choices only one file format can express, by parser extension */
+  /** Choices only one file format can express, by parser extension. `yaml` uses yml's. */
   formats: {
     yml: {
+      /** "single" needs Prettier's singleQuote too */
       quote: "double",
       quoteYaml11Types: true,
       lineWidth: 0,
+      /** false fights Prettier, which always indents list items under their key */
       indentSequences: true,
     } satisfies YmlFormatOptions,
     json: {
+      /** Prettier's printWidth must match */
       lineWidth: 80,
     } satisfies JsonFormatOptions,
   },

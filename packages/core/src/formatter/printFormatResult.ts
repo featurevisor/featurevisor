@@ -4,7 +4,32 @@ import {
   CLI_FORMAT_RED,
   CLI_FORMAT_YELLOW,
 } from "../tester/cliFormat";
-import type { FormatProjectOptions, FormatProjectResult } from "./formatProject";
+import type { FormatFileResult, FormatProjectOptions, FormatProjectResult } from "./formatProject";
+
+function printError(file: FormatFileResult, log: (...lines: string[]) => void) {
+  const { line, column, message } = file.error!;
+  const where = line ? `:${line}${column ? `:${column}` : ""}` : "";
+  log(CLI_FORMAT_RED, `${file.filePath}${where}`);
+  log(CLI_FORMAT_RED, `  => Error: ${message}`);
+}
+
+/**
+ * Prints the result of formatting source given on stdin. The formatted source goes to stdout
+ * for an editor, or what --check and --diff report, and an error goes to stderr. Source for a
+ * path that holds no definition comes back as it is.
+ */
+export function printStdinResult(result: FormatProjectResult, options: FormatProjectOptions) {
+  const file = result.files[0];
+  if (file?.status === "error") {
+    printError(file, console.error);
+  } else if (options.diff) {
+    if (file?.diff) process.stdout.write(file.diff);
+  } else if (options.check) {
+    if (file?.status === "changed") console.log(file.filePath);
+  } else {
+    process.stdout.write(file?.output ?? options.stdin!.source);
+  }
+}
 
 export function printFormatResult(result: FormatProjectResult, options: FormatProjectOptions) {
   const write = !options.check && !options.diff;
@@ -27,10 +52,7 @@ export function printFormatResult(result: FormatProjectResult, options: FormatPr
     } else if (file.status === "declined") {
       console.log(CLI_FORMAT_DIM, `Left ${file.filePath} as it is: the parser could not format it`);
     } else if (file.status === "error" && file.error) {
-      const { line, column } = file.error;
-      const where = line ? `:${line}${column ? `:${column}` : ""}` : "";
-      console.log(CLI_FORMAT_RED, `${file.filePath}${where}`);
-      console.log(CLI_FORMAT_RED, `  => Error: ${file.error.message}`);
+      printError(file, console.log);
     }
   }
 
@@ -43,7 +65,12 @@ export function printFormatResult(result: FormatProjectResult, options: FormatPr
 
   console.log("");
   if (total === 0) {
-    console.log(CLI_FORMAT_YELLOW, "No definition files matched");
+    console.log(
+      CLI_FORMAT_YELLOW,
+      options.since === undefined
+        ? "No definition files matched"
+        : `No definition files changed since ${options.since}`,
+    );
     return;
   }
   if (result.errors > 0) {
@@ -52,28 +79,30 @@ export function printFormatResult(result: FormatProjectResult, options: FormatPr
   if (result.declined > 0) {
     console.log(CLI_FORMAT_YELLOW, `${files(result.declined)} left unformatted by the parser`);
   }
+  if (result.ignored > 0) {
+    console.log(CLI_FORMAT_DIM, `${files(result.ignored)} left as written by featurevisor-ignore`);
+  }
 
   if (result.changed > 0) {
     if (write) {
       console.log(CLI_FORMAT_GREEN, `✔ Formatted ${files(result.changed)} of ${total}`);
     } else {
       const verb = result.changed === 1 ? "needs" : "need";
+      const since = options.since === undefined ? "" : ` --since=${options.since}`;
       console.log(
         CLI_FORMAT_YELLOW,
-        `${files(result.changed)} of ${total} ${verb} formatting. Run: npx featurevisor fmt`,
+        `${files(result.changed)} of ${total} ${verb} formatting. Run: npx featurevisor fmt${since}`,
       );
     }
   } else if (result.errors === 0) {
-    const formatted = total - result.declined;
+    const left = result.declined + result.ignored;
+    const formatted = total - left;
     if (formatted === 1) {
-      console.log(
-        CLI_FORMAT_GREEN,
-        `✔ ${result.declined > 0 ? "The other file" : "The file"} is formatted`,
-      );
+      console.log(CLI_FORMAT_GREEN, `✔ ${left > 0 ? "The other file" : "The file"} is formatted`);
     } else if (formatted > 1) {
       console.log(
         CLI_FORMAT_GREEN,
-        `✔ ${result.declined > 0 ? "The other" : "All"} ${files(formatted)} are formatted`,
+        `✔ ${left > 0 ? "The other" : "All"} ${files(formatted)} are formatted`,
       );
     }
   }

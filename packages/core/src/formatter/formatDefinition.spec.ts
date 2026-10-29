@@ -5,7 +5,9 @@ import {
   FormatGuardError,
   FormatParseError,
   formatDefinition,
+  isIgnoredFile,
 } from "./formatDefinition";
+import { HOUSE_STYLE } from "./style";
 
 // How a file goes through its parser's format and the guards, whatever the house style is
 
@@ -74,13 +76,32 @@ describe("formatDefinition", () => {
     });
   });
 
-  it("keeps a file's own line endings and byte order mark", () => {
+  it("writes the house style's line endings, and keeps a byte order mark", () => {
     const lf = "bucketBy: userId\ndescription: Checkout\n";
-    const expected = formatDefinition("feature", lf, yml).output.replace(/\n/g, "\r\n");
-    const { output } = formatDefinition("feature", `﻿${lf.replace(/\n/g, "\r\n")}`, yml);
+    const formatted = formatDefinition("feature", lf, yml).output;
+    const crlf = (text: string) => text.replace(/\n/g, "\r\n");
 
-    expect(output).toBe(`﻿${expected}`);
-    expect(formatDefinition("feature", output, yml).changed).toBe(false);
+    for (const source of [lf, crlf(lf)]) {
+      const own = source.includes("\r\n") ? "crlf" : "lf";
+      const ending = HOUSE_STYLE.endOfLine === "auto" ? own : HOUSE_STYLE.endOfLine;
+      const { output } = formatDefinition("feature", `\uFEFF${source}`, yml);
+
+      expect(output).toBe(`\uFEFF${ending === "crlf" ? crlf(formatted) : formatted}`);
+      expect(formatDefinition("feature", output, yml).changed).toBe(false);
+    }
+  });
+
+  it("leaves a file with the ignore comment at its top as it is", () => {
+    const source = "# Owned by the growth team\n#featurevisor-ignore\ntags: [web]\n";
+
+    expect(formatDefinition("feature", source, yml)).toEqual({
+      output: source,
+      changed: false,
+      ignored: true,
+    });
+    expect(isIgnoredFile("\uFEFF\r\n// featurevisor-ignore\r\n{}")).toBe(true);
+    expect(isIgnoredFile("tags: [web]\n# featurevisor-ignore\n")).toBe(false);
+    expect(isIgnoredFile("# featurevisor-ignore-line\n")).toBe(false);
   });
 
   it("reports a parse error with its line", () => {
@@ -131,6 +152,14 @@ describe("formatDefinition", () => {
     expect(() =>
       formatDefinition("segment", '{"conditions":"*","description":"x"}', lossy),
     ).toThrow(new FormatGuardError("Formatting would change the parsed value."));
+  });
+
+  it("refuses output that does not parse", () => {
+    const broken = jsonWith((source) => source.replace("}", ""));
+
+    expect(() => formatDefinition("segment", '{"description":"x"}', broken)).toThrow(
+      new FormatGuardError("Formatting would change the parsed value."),
+    );
   });
 
   it("refuses output that changes a date", () => {

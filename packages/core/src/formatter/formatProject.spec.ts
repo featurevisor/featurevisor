@@ -1,3 +1,4 @@
+import * as childProcess from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -8,6 +9,7 @@ import { Datasource } from "../datasource";
 import { formatProject } from "./formatProject";
 import { fmtPlugin } from "./index";
 import { FORMAT_ENTITY_TYPES } from "./layout";
+import { printStdinResult } from "./printFormatResult";
 
 // YAML lists are always written in block style, so this needs formatting in any house style
 const UNFORMATTED = "tags: [all]\ndescription: Promo banner\n";
@@ -109,17 +111,92 @@ describe("formatProject", () => {
     expect(getBuiltinCLIOptions("fmt")?.entityType.choices).toEqual(FORMAT_ENTITY_TYPES);
   });
 
-  it("fails with --check, with or without --diff, and not with --diff alone", async () => {
+  it("leaves a file with the ignore comment at its top as it is", async () => {
+    const ignored = `# featurevisor-ignore\n${UNFORMATTED}`;
+    fs.writeFileSync(feature("admin"), ignored);
+    const result = await formatProject(deps(), { entityType: "feature" });
+
+    expect(result.files.map(({ set, status }) => ({ set, status }))).toEqual([
+      { set: "admin", status: "ignored" },
+      { set: "storefront", status: "changed" },
+    ]);
+    expect(result.ignored).toBe(1);
+    expect(fs.readFileSync(feature("admin"), "utf8")).toBe(ignored);
+  });
+
+  it("formats only the files changed since a Git reference, untracked ones too", async () => {
+    const git = (...args: string[]) =>
+      childProcess.execFileSync("git", args, {
+        cwd: root,
+        encoding: "utf8",
+        env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" },
+      });
+    git("init", "-q");
+    git("add", ".");
+    git("-c", "user.name=fmt", "-c", "user.email=test@example.com", "commit", "-qm", "Start");
+
+    fs.writeFileSync(feature("storefront"), `${UNFORMATTED}bucketBy: userId\n`);
+    const added = path.join(root, "sets", "admin", "features", "added.yml");
+    fs.writeFileSync(added, UNFORMATTED);
+    const result = await formatProject(deps(), { check: true, since: "HEAD" });
+
+    expect(result.files.map((file) => file.filePath).sort()).toEqual(
+      [relative(added), relative(feature("storefront"))].sort(),
+    );
+    await expect(formatProject(deps(), { since: "no-such-branch" })).rejects.toMatchObject({
+      code: "since_error",
+    });
+  });
+
+  it("formats source from stdin as the file at its path, and prints it", async () => {
+    const written: string[] = [];
+    jest.spyOn(process.stdout, "write").mockImplementation((text) => {
+      written.push(String(text));
+      return true;
+    });
+    const stdin = { filePath: feature("admin"), source: UNFORMATTED };
+    const result = await formatProject(deps(), { stdin });
+    printStdinResult(result, { stdin });
+
+    expect(result.files).toHaveLength(1);
+    expect(result.files[0]).toMatchObject({ set: "admin", status: "changed" });
+    expect(fs.readFileSync(feature("admin"), "utf8")).toBe(UNFORMATTED);
+    await formatProject(deps(), { paths: [feature("admin")] });
+    expect(written).toEqual([fs.readFileSync(feature("admin"), "utf8")]);
+  });
+
+  it("prints source from stdin as it is for a path that holds no definition", async () => {
+    const written: string[] = [];
+    jest.spyOn(process.stdout, "write").mockImplementation((text) => {
+      written.push(String(text));
+      return true;
+    });
+    const stdin = { filePath: path.join(root, "notes.yml"), source: "b: [1]\na: 2\n" };
+    const result = await formatProject(deps(), { stdin });
+    printStdinResult(result, { stdin });
+
+    expect(result.files).toEqual([]);
+    expect(result.skipped).toEqual([relative(stdin.filePath)]);
+    expect(written).toEqual([stdin.source]);
+  });
+
+  it("exits with 1 when --check finds files to format, and with 2 on errors", async () => {
     jest.spyOn(process.stdout, "write").mockImplementation(() => true);
+    jest.spyOn(console, "error").mockImplementation(() => undefined);
     const run = (parsed: Record<string, unknown>) =>
       fmtPlugin.handler({ ...deps(), parsed } as never);
 
+    // --diff alone shows the changes, and --check fails on them, with or without --diff
     expect(await run({ diff: true })).toBeUndefined();
-    expect(await run({ check: true })).toBe(false);
-    expect(await run({ check: true, diff: true })).toBe(false);
+    expect(await run({ check: true })).toBe(1);
+    expect(await run({ check: true, diff: true })).toBe(1);
     expect(fs.readFileSync(feature("admin"), "utf8")).toBe(UNFORMATTED);
 
     expect(await run({})).toBeUndefined();
     expect(await run({ check: true })).toBeUndefined();
+
+    fs.writeFileSync(feature("admin"), "description: [unclosed\n");
+    expect(await run({ check: true })).toBe(2);
+    expect(await run({ stdinFilepath: feature("admin"), paths: [feature("admin")] })).toBe(2);
   });
 });

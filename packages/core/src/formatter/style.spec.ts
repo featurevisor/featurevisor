@@ -98,6 +98,24 @@ describe("the house style", () => {
     );
   });
 
+  it("keeps a blank line the author wrote, as one", () => {
+    const source = "conditions:\n  - attribute: country\n\n\n    operator: equals\n    value: nl\n";
+
+    expect(formatDefinition("segment", source, parsers.yml).output).toBe(
+      "conditions:\n  - attribute: country\n\n    operator: equals\n    value: nl\n",
+    );
+    expect(
+      formatDefinition("segment", '{"description": "x",\n\n"conditions": "*"}', parsers.json)
+        .output,
+    ).toBe('{\n  "description": "x",\n\n  "conditions": "*"\n}\n');
+  });
+
+  it("keeps each file's line endings", () => {
+    expect(formatDefinition("segment", "conditions: '*'\r\n", parsers.yml).output).toBe(
+      'conditions: "*"\r\n',
+    );
+  });
+
   it("lays out JSON as Prettier writes it", () => {
     const source = '{"conditions":["nl","de"],"description":"Everyone"}';
 

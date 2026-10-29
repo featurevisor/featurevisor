@@ -6,6 +6,7 @@ export { formatJson } from "./jsonFormat";
 export type { JsonFormatOptions } from "./jsonFormat";
 export { formatYml, listYmlComments } from "./ymlFormat";
 export type { YmlFormatOptions, YmlLayout } from "./ymlFormat";
+export { IGNORE_FILE_COMMENT, IGNORE_LINE_COMMENT } from "./layout";
 export type { FormatLayout, FormatPath } from "./layout";
 
 export interface CustomParser {
@@ -16,9 +17,11 @@ export interface CustomParser {
    * Optional. Rewrites a file's source in Featurevisor's layout, for `featurevisor fmt`.
    * Apply what the format can express and ignore the rest, since the layout may grow. Keep
    * anything the source has that a value does not, such as comments, or return undefined to
-   * leave the file as it is. The source has `\n` line endings and no byte order mark, and
-   * Featurevisor restores the file's own and ends it with one newline. Without `format`, fmt
-   * leaves the parser's files as they are.
+   * leave the file as it is. In a format with comments, keep a line that ends with
+   * IGNORE_LINE_COMMENT as written. The source has `\n` line endings and no byte order mark,
+   * and Featurevisor writes the house style's and ends the file with one newline. Featurevisor
+   * leaves a file with IGNORE_FILE_COMMENT at its top as it is, without calling `format`.
+   * Without `format`, fmt leaves the parser's files as they are.
    */
   format?: (source: string, layout: FormatLayout, filePath?: string) => string | undefined;
   /**

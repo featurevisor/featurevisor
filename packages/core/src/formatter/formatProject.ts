@@ -15,6 +15,7 @@ import {
   formatDefinition,
 } from "./formatDefinition";
 import { FORMAT_ENTITY_TYPES } from "./layout";
+import { getChangedFiles } from "./since";
 import { unifiedDiff } from "./unifiedDiff";
 
 export interface FormatProjectOptions {
@@ -26,8 +27,12 @@ export interface FormatProjectOptions {
   keyPattern?: RegExp;
   /** Only these files, or the files in these directories, absolute or relative to the working directory */
   paths?: string[];
+  /** Only files changed since HEAD left this Git reference, uncommitted and untracked ones too */
+  since?: string;
   /** Only this Set, in a project with Sets. Without it, every Set is formatted in one run. */
   set?: string;
+  /** Format this source as the file at `filePath`, reading and writing no files, for editors */
+  stdin?: { filePath: string; source: string };
 }
 
 export interface FormatFileResult {
@@ -37,8 +42,11 @@ export interface FormatFileResult {
   key: string;
   /** Relative to the working directory */
   filePath: string;
-  /** `declined` when the parser's format left the file as it is */
-  status: "unchanged" | "changed" | "declined" | "error";
+  /**
+   * `declined` when the parser's format left the file as it is, and `ignored` when the file
+   * asks to be left as it is
+   */
+  status: "unchanged" | "changed" | "declined" | "ignored" | "error";
   error?: {
     code: "parse_error" | "format_guard" | "missing_file";
     message: string;
@@ -46,6 +54,8 @@ export interface FormatFileResult {
     column?: number;
   };
   diff?: string;
+  /** The formatted source, when formatting the source given on stdin */
+  output?: string;
 }
 
 export interface FormatProjectResult {
@@ -54,6 +64,7 @@ export interface FormatProjectResult {
   skipped: string[];
   changed: number;
   declined: number;
+  ignored: number;
   errors: number;
   /** The project's parser has no `format`, so its files were left as they are */
   unsupported?: boolean;
@@ -112,30 +123,32 @@ function toFileError(error: unknown): FormatFileResult["error"] {
   return { code: "format_guard", message };
 }
 
-/** Formats one file, writing it only when it changes and `write` is set */
+/** Formats one file, writing it only when it changes and fmt is neither checking nor diffing */
 function formatFile(
   file: FormatFileResult,
   parser: CustomParser,
   options: FormatProjectOptions,
 ): FormatFileResult["status"] {
   const filePath = path.resolve(file.filePath);
-  if (!fs.existsSync(filePath)) {
+  if (!options.stdin && !fs.existsSync(filePath)) {
     file.error = { code: "missing_file", message: "File not found" };
     return "error";
   }
 
-  const source = fs.readFileSync(filePath, "utf8");
+  const source = options.stdin ? options.stdin.source : fs.readFileSync(filePath, "utf8");
   try {
-    const { output, changed, declined } = formatDefinition(
+    const { output, changed, declined, ignored } = formatDefinition(
       file.entityType,
       source,
       parser,
       filePath,
     );
+    if (options.stdin) file.output = output;
+    if (ignored) return "ignored";
     if (declined) return "declined";
     if (!changed) return "unchanged";
     if (options.diff) file.diff = unifiedDiff(file.filePath, file.filePath, source, output);
-    if (!options.check && !options.diff) fs.writeFileSync(filePath, output);
+    if (!options.stdin && !options.check && !options.diff) fs.writeFileSync(filePath, output);
     return "changed";
   } catch (error) {
     file.error = toFileError(error);
@@ -143,28 +156,12 @@ function formatFile(
   }
 }
 
-/**
- * Formats every definition file of a project in one run: attributes, schemas, segments,
- * features, variables, targets, tests and scenarios, across every Set unless one is picked.
- * Writes only files that change, unless checking or diffing.
- */
-export async function formatProject(
+/** Every definition file of the project, once each, across every Set unless one is picked */
+async function* listDefinitionFiles(
   deps: Dependencies,
-  options: FormatProjectOptions = {},
-): Promise<FormatProjectResult> {
+  options: FormatProjectOptions,
+): AsyncGenerator<FormatFileResult & { absolute: string }> {
   const { projectConfig, datasource } = deps;
-  const result: FormatProjectResult = {
-    files: [],
-    skipped: [],
-    changed: 0,
-    declined: 0,
-    errors: 0,
-  };
-
-  const parser = projectConfig.parser as CustomParser;
-  if (!canFormat(parser)) return { ...result, unsupported: true };
-
-  const wanted = (options.paths || []).map(toWantedPath);
   const entityTypes = options.entityType ? [options.entityType] : FORMAT_ENTITY_TYPES;
   const executions = await getProjectSetExecutions(projectConfig, datasource, options.set);
   const seen = new Set<string>();
@@ -185,31 +182,69 @@ export async function formatProject(
         }
 
         const absolute = path.resolve(filePath);
-        if (wanted.length > 0) {
-          const matches = wanted.filter((item) => isWanted(item, absolute));
-          if (matches.length === 0) continue;
-          matches.forEach((item) => (item.matched = true));
-        }
         if (seen.has(absolute)) continue;
         seen.add(absolute);
 
-        const file: FormatFileResult = {
+        yield {
           ...(projectConfig.sets ? { set: execution.set } : {}),
           entityType,
           key,
           filePath: relative(filePath),
           status: "unchanged",
+          absolute,
         };
-        file.status = formatFile(file, parser, options);
-        result.files.push(file);
       }
     }
+  }
+}
+
+/**
+ * Formats every definition file of a project in one run: attributes, schemas, segments,
+ * features, variables, targets, tests and scenarios, across every Set unless one is picked.
+ * Writes only files that change, unless checking or diffing. Given source on stdin, formats it
+ * as the file at its path instead, and writes nothing.
+ */
+export async function formatProject(
+  deps: Dependencies,
+  options: FormatProjectOptions = {},
+): Promise<FormatProjectResult> {
+  const result: FormatProjectResult = {
+    files: [],
+    skipped: [],
+    changed: 0,
+    declined: 0,
+    ignored: 0,
+    errors: 0,
+  };
+
+  const parser = deps.projectConfig.parser as CustomParser;
+  if (!canFormat(parser)) return { ...result, unsupported: true };
+
+  const paths = options.stdin ? [options.stdin.filePath] : options.paths || [];
+  const wanted = paths.map(toWantedPath);
+  const changedFiles =
+    options.since === undefined
+      ? undefined
+      : getChangedFiles(deps.rootDirectoryPath, options.since);
+
+  for await (const { absolute, ...file } of listDefinitionFiles(deps, options)) {
+    if (wanted.length > 0) {
+      const matches = wanted.filter((item) => isWanted(item, absolute));
+      if (matches.length === 0) continue;
+      matches.forEach((item) => (item.matched = true));
+    }
+    // Git gives real paths, which a project reached through a symbolic link differs from
+    if (changedFiles && !changedFiles.has(fs.realpathSync(absolute))) continue;
+
+    file.status = formatFile(file, parser, options);
+    result.files.push(file);
   }
 
   const count = (status: FormatFileResult["status"]) =>
     result.files.filter((file) => file.status === status).length;
   result.changed = count("changed");
   result.declined = count("declined");
+  result.ignored = count("ignored");
   result.errors = count("error");
   result.skipped = wanted.filter((item) => !item.matched).map((item) => relative(item.absolute));
   return result;

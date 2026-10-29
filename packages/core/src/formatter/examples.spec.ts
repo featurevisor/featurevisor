@@ -10,6 +10,7 @@ import { getProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 import { formatProject } from "./formatProject";
 import { getKeyOrder } from "./layout";
+import { HOUSE_STYLE } from "./style";
 
 // Every example is formatted, and formatting never changes what it builds
 
@@ -141,4 +142,47 @@ describe("formatProject on the examples", () => {
     },
     120000,
   );
+
+  it.each(projects)("%s stays as it is when Prettier formats it", async (example) => {
+    // Prettier's standalone build, since its main entry loads plugins in a way Jest refuses
+    const prettier = require("prettier/standalone");
+    const plugins = [
+      require("prettier/plugins/yaml"),
+      require("prettier/plugins/babel"),
+      require("prettier/plugins/estree"),
+    ];
+    // Prettier set up as the notes in style.ts say
+    const options = {
+      plugins,
+      tabWidth: HOUSE_STYLE.indent,
+      printWidth: HOUSE_STYLE.formats.json.lineWidth,
+      singleQuote: (HOUSE_STYLE.formats.yml.quote as string) === "single",
+    };
+    const parsers: Record<string, string> = { yml: "yaml", json: "json" };
+    const root = path.join(examples, example);
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+    const { files } = await formatProject(
+      { rootDirectoryPath: root, projectConfig, datasource },
+      { check: true },
+    );
+
+    for (const file of files) {
+      const parser = parsers[path.extname(file.filePath).slice(1)];
+      if (!parser) continue;
+      const source = fs.readFileSync(path.resolve(file.filePath), "utf8");
+      expect(await prettier.format(source, { ...options, parser })).toBe(source);
+    }
+  });
+
+  it.each(projects)("%s has an .editorconfig that matches the house style", (example) => {
+    const config = fs.readFileSync(path.join(examples, example, ".editorconfig"), "utf8");
+    const setting = (name: string) => new RegExp(`^${name}\\s*=\\s*(\\S+)`, "m").exec(config)?.[1];
+
+    expect(setting("indent_style")).toBe("space");
+    expect(setting("indent_size")).toBe(String(HOUSE_STYLE.indent));
+    expect(setting("insert_final_newline")).toBe("true");
+    if (HOUSE_STYLE.endOfLine !== "auto")
+      expect(setting("end_of_line")).toBe(HOUSE_STYLE.endOfLine);
+  });
 });

@@ -152,7 +152,9 @@ describe("getFormatLayout", () => {
       getKeyOrder("feature", ["rules", 0], ["percentage", "key"]),
     );
     expect(layout.spaceItems(["rules"])).toBe(HOUSE_STYLE.blankLines.rules);
+    expect(layout.keepBlankLines).toBe(HOUSE_STYLE.keepBlankLines);
     expect(layout.options).toEqual(HOUSE_STYLE.formats.yml);
+    expect(getFormatLayout("feature", "yaml").options).toEqual(HOUSE_STYLE.formats.yml);
     expect(getFormatLayout("feature", "json").options).toEqual(HOUSE_STYLE.formats.json);
     expect(getFormatLayout("feature", "toml").options).toEqual({});
   });

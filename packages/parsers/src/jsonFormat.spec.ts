@@ -40,6 +40,27 @@ describe("formatJson", () => {
     }
   });
 
+  it("keeps the blank lines written between members and items as Prettier does", async () => {
+    const prettier = require("prettier/standalone");
+    const plugins = [require("prettier/plugins/babel"), require("prettier/plugins/estree")];
+    const sources = [
+      '{\n\n  "a": 1,\n\n\n  "b": {\n\n    "c": 1,\n\n    "d": 2\n  }\n}',
+      '{\n  "a": [1,\n\n 2],\n  "b": ["x",\n\n "y"],\n  "c": [\n    {\n      "d": 1\n    },\n\n    {\n      "e": 2\n    }\n  ]\n}',
+      `{\n  "a": [${Array.from({ length: 40 }, (_, index) => index * 100).join(", ")},\n\n 1, 2]\n}`,
+      `{\n  "a": ["${"x".repeat(40)}",\n\n "${"y".repeat(40)}"],\n  "b": "a\\"\\n\\n,b"\n}`,
+      "[\n  [1, 2],\n\n  [3, 4]\n]",
+    ];
+
+    for (const source of sources) {
+      const output = formatJson(JSON.parse(source), 2, { lineWidth: 80 }, source);
+      expect(`${output}\n`).toBe(await prettier.format(source, { parser: "json", plugins }));
+    }
+  });
+
+  it("writes no blank lines without the source", () => {
+    expect(formatJson({ a: 1, b: 2 })).toBe('{\n  "a": 1,\n  "b": 2\n}');
+  });
+
   it("gives every list item its own line at a line width of 0", () => {
     expect(formatJson({ tags: ["web", "ios"] }, 2, { lineWidth: 0 })).toBe(
       '{\n  "tags": [\n    "web",\n    "ios"\n  ]\n}',
@@ -54,6 +75,7 @@ describe("the JSON parser", () => {
       orderKeys: () => undefined,
       spaceEntries: () => false,
       spaceItems: () => false,
+      keepBlankLines: true,
       orderValue: <T>(value: T) => {
         const record = value as Record<string, unknown>;
         return { description: record.description, conditions: record.conditions } as T;
@@ -62,6 +84,9 @@ describe("the JSON parser", () => {
     };
 
     expect(jsonParser.format!('{"conditions":["nl"],"description":"x"}', layout)).toBe(
+      '{\n    "description": "x",\n    "conditions": ["nl"]\n}',
+    );
+    expect(jsonParser.format!('{\n"conditions":["nl"],\n\n"description":"x"}', layout)).toBe(
       '{\n    "description": "x",\n    "conditions": ["nl"]\n}',
     );
   });

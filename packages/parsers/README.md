@@ -10,7 +10,7 @@ npm install @featurevisor/parsers
 
 ## Usage
 
-Custom parsers provide both `parse` and `stringify`. For `featurevisor fmt`, a parser can also give an optional `format(source, layout)`, which lays out a file with the `FormatLayout` Featurevisor passes it, options for its format included, and an optional `listComments(source)`, so fmt can check that formatting kept every comment. Use a built in parser directly:
+Custom parsers provide both `parse` and `stringify`. For `featurevisor fmt`, a parser can also give an optional `format(source, layout)`, which lays out a file with the `FormatLayout` Featurevisor passes it, options for its format included, and an optional `listComments(source)`, so fmt can check that formatting kept every comment. In a format with comments, `format` keeps a line that ends with `IGNORE_LINE_COMMENT` as written. Use a built in parser directly:
 
 ```ts
 import { parsers } from "@featurevisor/parsers";

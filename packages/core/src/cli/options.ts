@@ -147,6 +147,15 @@ const definitions: Record<string, CLIOptionDefinitions> = {
       description: "list files that need formatting and exit with 1 if any do, without writing",
     },
     diff: { type: "boolean", description: "print what formatting would change, without writing" },
+    since: {
+      type: "string",
+      description:
+        "only files changed since HEAD left this Git reference, with uncommitted and untracked ones",
+    },
+    stdinFilepath: {
+      type: "string",
+      description: "format text from stdin as the definition at this path, and print it",
+    },
     // the formatter's FORMAT_ENTITY_TYPES, which a test keeps in step
     entityType: {
       type: "string",
