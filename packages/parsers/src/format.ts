@@ -9,16 +9,6 @@ export type YmlLayout = Partial<
   Pick<FormatLayout, "indent" | "orderKeys" | "spaceEntries" | "spaceItems">
 >;
 
-export class YmlFormatError extends Error {
-  linePos?: { line: number; col: number };
-
-  constructor(message: string, linePos?: { line: number; col: number }) {
-    super(message);
-    this.name = "YmlFormatError";
-    this.linePos = linePos;
-  }
-}
-
 // YAML's own choices, beside the layout: list items indented under their key, long strings
 // never folded, and needed quotes double, or single when the text has a double quote in it,
 // the choice with the fewest escapes, as Prettier makes it.
@@ -168,22 +158,10 @@ export function listYmlComments(source: string): string[] {
   return comments.sort();
 }
 
-/**
- * Formats a YAML document with a layout: its indentation, key order, and blank lines between
- * the entries of the maps and the items of the lists it names. YAML adds its own choices:
- * block style, no folding, quotes only where a value needs them, and comments kept with the
- * key or item below them.
- *
- * Throws YmlFormatError when the source is not a single valid YAML document, and an Error
- * when the result would lose a comment.
- */
-export function formatYml(source: string, layout: YmlLayout = {}): string {
+function layOut(source: string, layout: YmlLayout): string {
   const doc = parseDocument(source) as Document.Parsed;
-
-  if (doc.errors.length > 0) {
-    const error = doc.errors[0];
-    throw new YmlFormatError(error.message, error.linePos?.[0]);
-  }
+  // a YAMLParseError, with the position in its linePos
+  if (doc.errors.length > 0) throw doc.errors[0];
 
   const root = doc.contents;
   if (root === null || root === undefined) return source;
@@ -203,9 +181,27 @@ export function formatYml(source: string, layout: YmlLayout = {}): string {
 
   if (doc.directives) doc.directives.docStart = null;
 
-  const output = doc.toString({ ...TO_STRING_OPTIONS, indent: layout.indent ?? 2 });
-  if (listYmlComments(output).join("\n") !== listYmlComments(source).join("\n")) {
-    throw new Error("Formatting would lose or change a comment.");
+  return doc.toString({ ...TO_STRING_OPTIONS, indent: layout.indent ?? 2 });
+}
+
+/**
+ * Formats a YAML document with a layout: its indentation, key order, and blank lines between
+ * the entries of the maps and the items of the lists it names. YAML adds its own choices:
+ * block style, no folding, quotes only where a value needs them, and comments kept with the
+ * key or item below them.
+ *
+ * Throws the YAML parse error, with its linePos, when the source is not a single valid YAML
+ * document.
+ */
+export function formatYml(source: string, layout: YmlLayout = {}): string {
+  try {
+    return layOut(source, layout);
+  } catch (error) {
+    // Key order can move an alias above its anchor, which YAML cannot write. Such a file
+    // keeps the order it was written in, and the rest of the layout still applies.
+    if (layout.orderKeys && /Unresolved alias/.test((error as Error).message)) {
+      return layOut(source, { ...layout, orderKeys: undefined });
+    }
+    throw error;
   }
-  return output;
 }

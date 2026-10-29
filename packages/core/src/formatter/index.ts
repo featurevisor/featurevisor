@@ -1,8 +1,8 @@
+import type { EntityType } from "@featurevisor/types";
+
 import type { Plugin } from "../cli";
 import { parseRegexOption } from "../cli/validation";
-import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
-import { formatProject, printFormatResult, type FormatProjectResult } from "./formatProject";
-import type { FormatEntityType } from "./layout";
+import { formatProject, printFormatResult } from "./formatProject";
 
 export * from "./formatDefinition";
 export * from "./formatProject";
@@ -12,52 +12,38 @@ export { unifiedDiff } from "./unifiedDiff";
 export const fmtPlugin: Plugin = {
   command: "fmt [paths...]",
   handler: async function ({ rootDirectoryPath, projectConfig, datasource, parsed }) {
-    assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
-
-    const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
     const options = {
       check: parsed.check === true,
       diff: parsed.diff === true,
-      entityType: parsed.entityType as FormatEntityType | undefined,
+      entityType: parsed.entityType as EntityType | undefined,
       keyPattern:
         parsed.keyPattern !== undefined
           ? parseRegexOption("--key-pattern", parsed.keyPattern)
           : undefined,
       paths: (parsed.paths as string[] | undefined) || [],
+      set: parsed.set as string | undefined,
       json: parsed.json === true,
     };
 
-    let failed = false;
-    for (const execution of executions) {
-      printSetHeader(projectConfig, execution.set, options.json);
+    // one run across every Set, so a project is formatted, checked and reported as a whole
+    const result = await formatProject({ rootDirectoryPath, projectConfig, datasource }, options);
 
-      const result: FormatProjectResult = await formatProject(
-        {
-          rootDirectoryPath,
-          projectConfig: execution.projectConfig,
-          datasource: execution.datasource,
-        },
-        options,
-      );
-
-      if (options.json) {
-        const payload = {
-          files: result.files.map(({ diff, ...file }) => (options.diff ? { ...file, diff } : file)),
-          skipped: result.skipped,
-          changed: result.changed,
-          errors: result.errors,
-          ...(result.unsupported ? { unsupported: true } : {}),
-        };
-        console.log(parsed.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload));
-      } else {
-        printFormatResult(result, options);
-      }
-
-      if (result.errors > 0) failed = true;
-      if ((options.check || options.diff) && result.changed > 0) failed = true;
+    if (options.json) {
+      const payload = {
+        files: result.files.map(({ diff, ...file }) => (options.diff ? { ...file, diff } : file)),
+        skipped: result.skipped,
+        changed: result.changed,
+        declined: result.declined,
+        errors: result.errors,
+        ...(result.unsupported ? { unsupported: true } : {}),
+      };
+      console.log(parsed.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload));
+    } else {
+      printFormatResult(result, options);
     }
 
-    if (failed) return false;
+    // --diff alone shows the changes, and --check fails on them, with or without --diff
+    if (result.errors > 0 || (options.check && result.changed > 0)) return false;
   },
   examples: [
     {
@@ -73,8 +59,12 @@ export const fmtPlugin: Plugin = {
       description: "Show what formatting would change, without writing",
     },
     {
-      command: "fmt features/checkout.yml",
-      description: "Format only the given files",
+      command: "fmt --check --diff",
+      description: "Show what formatting would change and exit with 1 if anything would, for CI",
+    },
+    {
+      command: "fmt features/checkout.yml segments",
+      description: "Format only the given files, and the files in the given directories",
     },
     {
       command: "fmt --entity-type=feature --key-pattern=checkout",

@@ -2,7 +2,7 @@ import { jsonParser } from "./json";
 import type { FormatLayout } from "./layout";
 import { ymlParser } from "./yml";
 
-export { formatYml, listYmlComments, YmlFormatError } from "./format";
+export { formatYml, listYmlComments } from "./format";
 export type { YmlLayout } from "./format";
 export type { FormatLayout, FormatPath } from "./layout";
 
@@ -11,12 +11,19 @@ export interface CustomParser {
   parse: <T>(content: string, filePath?: string) => T;
   stringify: (content: any, filePath?: string) => string;
   /**
-   * Optional. Rewrites a file's source in Featurevisor's layout, for `featurevisor fmt` and
-   * for the definitions the CLI writes. Apply what the format can express, and keep anything
-   * the source has that a value does not, such as comments. Without it, fmt leaves the
-   * parser's files as they are.
+   * Optional. Rewrites a file's source in Featurevisor's layout, for `featurevisor fmt`.
+   * Apply what the format can express and ignore the rest, since the layout may grow. Keep
+   * anything the source has that a value does not, such as comments, or return undefined to
+   * leave the file as it is. The source has `\n` line endings and no byte order mark, and
+   * Featurevisor restores the file's own and ends it with one newline. Without `format`, fmt
+   * leaves the parser's files as they are.
    */
-  format?: (source: string, layout: FormatLayout, filePath?: string) => string;
+  format?: (source: string, layout: FormatLayout, filePath?: string) => string | undefined;
+  /**
+   * Optional. Every comment in a file's source, one entry per line, in any order. fmt checks
+   * that formatting kept them all, as it checks that values stay the same.
+   */
+  listComments?: (source: string) => string[];
 }
 
 /**

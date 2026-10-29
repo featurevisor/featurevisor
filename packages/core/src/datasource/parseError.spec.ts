@@ -6,7 +6,7 @@ import { parsers } from "@featurevisor/parsers";
 import { getProjectConfig } from "../config";
 import { formatFeaturevisorCLIError } from "../error";
 import { FilesystemAdapter } from "./filesystemAdapter";
-import { EntityParseError } from "./parseError";
+import { describeParseError, EntityParseError } from "./parseError";
 
 describe("datasource parse diagnostics", () => {
   let root: string;
@@ -117,5 +117,18 @@ describe("datasource parse diagnostics", () => {
     expect(new EntityParseError("features/custom.toml", positioned).message).toBe(
       "features/custom.toml:2:4: Invalid TOML Expected a closing bracket",
     );
+  });
+
+  it("reads a position given as line and column, as smol-toml gives it", () => {
+    const cause = Object.assign(new Error("Invalid TOML document: invalid value"), {
+      line: 1,
+      column: 5,
+    });
+    expect(new EntityParseError("features/custom.toml", cause).message).toBe(
+      "features/custom.toml:1:5: Invalid TOML document: invalid value",
+    );
+    expect(describeParseError(Object.assign(new Error("x"), { line: 0, column: 5 }))).toEqual({
+      message: "x",
+    });
   });
 });

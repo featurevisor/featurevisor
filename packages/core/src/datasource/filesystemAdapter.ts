@@ -19,8 +19,6 @@ import { ProjectConfig } from "../config";
 import { getCommit, getHistoryEntity } from "../utils/git";
 import { isScenarioSpec, testSpecKeyFromStorageKey } from "./testSpecs";
 import { EntityParseError } from "./parseError";
-import { formatWrittenDefinition } from "../formatter/formatDefinition";
-import { orderValue } from "../formatter/layout";
 import {
   AttributeNamespaceError,
   assertFlatAttributeKeys,
@@ -418,10 +416,7 @@ export class FilesystemAdapter extends Adapter {
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
     }
 
-    // Written in the same layout and key order as featurevisor fmt, so a written file is
-    // already formatted and its diff shows only what changed.
-    const text = this.parser.stringify(orderValue(entityType, entity), filePath);
-    fs.writeFileSync(filePath, formatWrittenDefinition(entityType, text, this.parser));
+    fs.writeFileSync(filePath, this.parser.stringify(entity, filePath));
     this.testSpecCache.delete(filePath);
     if (entityType === "test" || entityType === "scenario") {
       this.scenarioPathIndex = undefined;

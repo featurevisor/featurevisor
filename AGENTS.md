@@ -39,18 +39,23 @@ uses staging and production. The existing environments scaffold models
 release lanes as Sets instead. Verify scaffold content through the init
 archive path, not only by inspecting example files.
 
-Definitions are written in the layout and key order of `featurevisor fmt`.
+`featurevisor fmt` lays out definitions in one house style.
 packages/core/src/formatter/layout.ts holds every rule that does not depend on
 the file format: the indent, the key order, and where blank lines go between
 map entries and list items. Core hands that layout to the parser's optional
 `format`, which applies what its file format can express and adds only what is
 its own, such as YAML's quotes: the YAML parser all of it, JSON the key order
-and indent. Put a new layout rule in layout.ts, not in a parser. Formatting must
+and indent. A `format` may return undefined to leave a file as it is. Put a new
+layout rule in layout.ts, not in a parser. Whatever is the same in every format
+stays in Core's formatDefinition.ts: line endings, a byte order mark, the final
+newline, and the checks that values and comments (through the parser's optional
+`listComments`) survive and that a second pass changes nothing. Formatting must
 never change a built datafile: the formatter spec builds every example before
 and after formatting and compares the bytes, so order only objects the builder
-rebuilds key by key. Every write through the datasource, including promote,
-is formatted. example-1 is formatted and its test runs `fmt --check`, while
-the other examples are not formatted yet.
+rebuilds key by key. fmt runs across every Set in one pass. It is separate from
+promote and every other write: those write files as the parser does and never
+format them. Every example is formatted, and a change to the house style fails
+users' `fmt --check` after they upgrade, so say so in the release notes.
 
 Attribute files belong directly in the configured attributes directory,
 including within each Set. Nested files and dots in attribute names are

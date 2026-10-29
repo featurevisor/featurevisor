@@ -4,7 +4,8 @@ export type FormatPath = (string | number)[];
 /**
  * How Featurevisor lays out a definition, whatever its file format. Featurevisor builds one
  * per kind of definition and passes it to a parser's `format`, which applies what its format
- * can express and ignores the rest.
+ * can express and ignores the rest. Featurevisor may add fields in a later version, and a
+ * parser that does not know them keeps working.
  */
 export interface FormatLayout {
   /** Spaces per level of nesting, for formats that indent */

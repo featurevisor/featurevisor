@@ -147,6 +147,7 @@ const definitions: Record<string, CLIOptionDefinitions> = {
       description: "list files that need formatting and exit with 1 if any do, without writing",
     },
     diff: { type: "boolean", description: "print what formatting would change, without writing" },
+    // the formatter's FORMAT_ENTITY_TYPES, which a test keeps in step
     entityType: {
       type: "string",
       choices: [

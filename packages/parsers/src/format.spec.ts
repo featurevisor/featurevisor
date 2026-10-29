@@ -1,6 +1,6 @@
 import { parse } from "yaml";
 
-import { formatYml, listYmlComments, YmlFormatError, type YmlLayout } from "./format";
+import { formatYml, listYmlComments, type YmlLayout } from "./format";
 import { jsonParser } from "./json";
 import type { FormatLayout } from "./layout";
 import { ymlParser } from "./yml";
@@ -202,9 +202,9 @@ describe("formatYml", () => {
     expect(formatYml(output, layout)).toBe(output);
   });
 
-  it("throws YmlFormatError with a position for invalid YAML and for several documents", () => {
-    expect(() => formatYml("description: [unclosed\n")).toThrow(YmlFormatError);
-    expect(() => formatYml("a: 1\n---\nb: 2\n")).toThrow(YmlFormatError);
+  it("throws YAML's parse error, with its position, for invalid YAML and for several documents", () => {
+    expect(() => formatYml("description: [unclosed\n")).toThrow();
+    expect(() => formatYml("a: 1\n---\nb: 2\n")).toThrow(/multiple documents/);
 
     let error: unknown;
     try {
@@ -212,11 +212,19 @@ describe("formatYml", () => {
     } catch (thrown) {
       error = thrown;
     }
-    expect(error).toBeInstanceOf(YmlFormatError);
-    expect((error as YmlFormatError).linePos).toEqual({
+    expect((error as { linePos?: unknown[] }).linePos?.[0]).toEqual({
       line: expect.any(Number),
       col: expect.any(Number),
     });
+  });
+
+  it("keeps the authored key order when the house order would put an alias above its anchor", () => {
+    // the house order is description, bucketBy, rules, which would put *all before &all
+    const source = "rules: &all [everyone]\ndescription: 'x'\nbucketBy: *all\n";
+    const output = formatYml(source, layout);
+
+    expect(output).toBe("rules: &all\n  - everyone\n\ndescription: x\n\nbucketBy: *all\n");
+    expect(formatYml(output, layout)).toBe(output);
   });
 
   it("returns an empty document as it is", () => {
@@ -251,7 +259,22 @@ describe("parser formats", () => {
 
   it("orders JSON keys and indents with two spaces", () => {
     expect(jsonParser.format!('{"conditions":"*","description":"x"}', layout)).toBe(
-      '{\n  "description": "x",\n  "conditions": "*"\n}\n',
+      '{\n  "description": "x",\n  "conditions": "*"\n}',
     );
+  });
+
+  it("keeps a JSON list of plain values on one line when it fits, as Prettier does", () => {
+    const tags = Array.from({ length: 12 }, (_, index) => `tag-${index}`);
+
+    expect(jsonParser.format!('{"description":"x","conditions":["nl","de"]}', layout)).toBe(
+      '{\n  "description": "x",\n  "conditions": ["nl", "de"]\n}',
+    );
+    expect(jsonParser.format!(JSON.stringify({ description: "x", conditions: tags }), layout)).toBe(
+      `{\n  "description": "x",\n  "conditions": [\n${tags.map((tag) => `    "${tag}"`).join(",\n")}\n  ]\n}`,
+    );
+  });
+
+  it("lists YAML comments for Featurevisor to check", () => {
+    expect(ymlParser.listComments!("# a\nkey: 1 # b\n")).toEqual(["a", "b"]);
   });
 });

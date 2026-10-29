@@ -1,9 +1,9 @@
 import * as fs from "node:fs";
 
 import { parse, parseDocument, stringify, Scalar as ScalarCtor } from "yaml";
-import type { Document, Pair, YAMLMap, YAMLSeq } from "yaml";
+import type { Pair, YAMLMap, YAMLSeq } from "yaml";
 
-import { formatYml } from "./format";
+import { formatYml, listYmlComments } from "./format";
 import type { CustomParser } from "./index";
 
 function getKeyString(keyNode: unknown): string | undefined {
@@ -200,12 +200,12 @@ export const ymlParser: CustomParser = {
   },
   stringify: function (content: any, filePath?: string) {
     if (!filePath || !fs.existsSync(filePath)) {
-      return stringify(content, { lineWidth: 0 });
+      return stringify(content);
     }
 
     const fileContent = fs.readFileSync(filePath, "utf8");
     if (!fileContent.trim()) {
-      return stringify(content, { lineWidth: 0 });
+      return stringify(content);
     }
 
     // newObject is the final saved object; existing file is only for ordering/comments
@@ -215,11 +215,11 @@ export const ymlParser: CustomParser = {
 
     const doc = parseDocument(fileContent) as unknown as { contents: unknown } & NodeCreator;
     replaceContentsPreservingComments(doc, content);
-    // long strings stay on one line, as they were written
-    return (doc as unknown as Document).toString({ lineWidth: 0 });
+    return doc.toString();
   },
   // YAML applies the whole layout: key order, blank lines, block style, quotes and comments
   format: function (source, layout) {
     return formatYml(source, layout);
   },
+  listComments: listYmlComments,
 };

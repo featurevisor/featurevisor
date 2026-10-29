@@ -5,17 +5,25 @@ import * as path from "node:path";
 import { parsers, type CustomParser } from "@featurevisor/parsers";
 
 import { buildProjectSets } from "../builder/buildProject";
+import { getBuiltinCLIOptions } from "../cli/options";
 import { getProjectConfig } from "../config";
 import { Datasource } from "../datasource";
-import { getProjectSetExecutions } from "../sets";
 import {
   canFormat,
   FormatGuardError,
   FormatParseError,
   formatDefinition,
 } from "./formatDefinition";
+import { fmtPlugin } from "./index";
 import { formatProject } from "./formatProject";
-import { getFormatLayout, getKeyOrder, isSpacedList, isSpacedMap, orderValue } from "./layout";
+import {
+  FORMAT_ENTITY_TYPES,
+  getFormatLayout,
+  getKeyOrder,
+  isSpacedList,
+  isSpacedMap,
+  orderValue,
+} from "./layout";
 import { unifiedDiff } from "./unifiedDiff";
 
 describe("key order", () => {
@@ -201,7 +209,7 @@ describe("formatDefinition", () => {
     };
 
     expect(formatDefinition("segment", '{"conditions":"*","description":"x"}', custom).output).toBe(
-      '{"description":"x","conditions":"*"}',
+      '{"description":"x","conditions":"*"}\n',
     );
   });
 
@@ -257,6 +265,79 @@ describe("formatDefinition", () => {
       formatDefinition("segment", '{"conditions":"*","description":"x"}', lossy),
     ).toThrow(FormatGuardError);
   });
+
+  it("refuses output that changes a date", () => {
+    const dated: CustomParser = {
+      extension: "custom",
+      parse: (content) => ({ description: "x", startsAt: new Date(content.trim()) }) as never,
+      stringify: (content) => String(content),
+      format: () => "1999-01-01",
+    };
+
+    expect(() => formatDefinition("segment", "2026-10-28\n", dated)).toThrow(
+      new FormatGuardError("Formatting would change the parsed value."),
+    );
+  });
+
+  it("refuses output that loses a comment, when the parser lists them", () => {
+    const commented: CustomParser = {
+      extension: "custom",
+      parse: (content) => JSON.parse(content.replace(/#.*$/gm, "")),
+      stringify: (content) => JSON.stringify(content),
+      format: (source) => source.replace(/ *#.*$/gm, ""),
+      listComments: (source) => source.match(/#.*$/gm) || [],
+    };
+
+    expect(() => formatDefinition("segment", '{"description": "x"} # who\n', commented)).toThrow(
+      new FormatGuardError("Formatting would lose or change a comment."),
+    );
+  });
+
+  it("leaves a file as it is when the parser's format declines it", () => {
+    const declining: CustomParser = {
+      extension: "custom",
+      parse: (content) => JSON.parse(content),
+      stringify: (content) => JSON.stringify(content),
+      format: () => undefined,
+    };
+
+    expect(formatDefinition("segment", '{"description":"x"}', declining)).toEqual({
+      output: '{"description":"x"}',
+      changed: false,
+      declined: true,
+    });
+  });
+
+  it("keeps a file's own line endings and byte order mark", () => {
+    const source = "\uFEFFbucketBy: userId\r\ndescription: Checkout\r\n";
+    const { output } = formatDefinition("feature", source, yml);
+
+    expect(output).toBe("\uFEFFdescription: Checkout\r\n\r\nbucketBy: userId\r\n");
+    expect(formatDefinition("feature", output, yml).changed).toBe(false);
+  });
+
+  it("reports where a parser that gives a line and column failed", () => {
+    const toml: CustomParser = {
+      extension: "toml",
+      parse: () => {
+        throw Object.assign(new Error("Invalid TOML document: invalid value"), {
+          line: 1,
+          column: 5,
+        });
+      },
+      stringify: (content) => String(content),
+      format: (source) => source,
+    };
+
+    expect(() => formatDefinition("feature", "a = \n", toml)).toThrow(
+      expect.objectContaining({
+        name: "FormatParseError",
+        message: "Invalid TOML document: invalid value",
+        line: 1,
+        column: 5,
+      }),
+    );
+  });
 });
 
 describe("unifiedDiff", () => {
@@ -278,27 +359,120 @@ describe("unifiedDiff", () => {
 });
 
 describe("written definitions", () => {
-  it("are written formatted, as promote writes them", async () => {
+  it("are written as the parser writes them, apart from fmt", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-fmt-write-"));
     try {
       fs.writeFileSync(path.join(root, "featurevisor.config.js"), "module.exports = {};\n");
+      fs.mkdirSync(path.join(root, "features"));
+      const filePath = path.join(root, "features", "checkout.yml");
+      fs.writeFileSync(
+        filePath,
+        "bucketBy: userId\ndescription: Checkout\nrules:\n  - key: netherlands\n    percentage: 100\n    conditions: netherlands\n",
+      );
       const projectConfig = getProjectConfig(root);
       const datasource = new Datasource(projectConfig, root);
-      const long =
-        "A description well past eighty characters, which the writer used to fold onto two lines";
 
-      await datasource.writeFeature("checkout", {
-        rules: [{ percentage: 100, conditions: "*", key: "everyone" }],
-        bucketBy: "userId",
-        description: long,
-      } as never);
+      const feature = await datasource.readFeature("checkout");
+      await datasource.writeFeature("checkout", { ...feature, bucketBy: "accountId" });
 
-      expect(fs.readFileSync(path.join(root, "features", "checkout.yml"), "utf8")).toBe(
-        `description: ${long}\n\nbucketBy: userId\n\nrules:\n  - key: everyone\n    conditions: "*"\n    percentage: 100\n`,
+      // promote and other writes keep the key order and blank lines, and leave layout to fmt
+      expect(fs.readFileSync(filePath, "utf8")).toBe(
+        "bucketBy: accountId\ndescription: Checkout\nrules:\n  - key: netherlands\n    percentage: 100\n    conditions: netherlands\n",
       );
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe("formatProject", () => {
+  const examples = path.resolve(__dirname, "../../../../examples");
+  let root: string;
+  let log: jest.SpyInstance;
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-fmt-sets-"));
+    fs.cpSync(path.join(examples, "example-sets"), root, {
+      recursive: true,
+      filter: (source) => !/node_modules|datafiles|\.featurevisor/.test(source),
+    });
+    // one unformatted feature in each set
+    for (const set of ["admin", "storefront"]) {
+      fs.writeFileSync(
+        path.join(root, "sets", set, "features", "promoBanner.yml"),
+        "bucketBy: userId\ndescription: Promo banner\n",
+      );
+    }
+    log = jest.spyOn(console, "log").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    log.mockRestore();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  function deps() {
+    const projectConfig = getProjectConfig(root);
+    return {
+      rootDirectoryPath: root,
+      projectConfig,
+      datasource: new Datasource(projectConfig, root),
+    };
+  }
+
+  const feature = (set: string) => path.join(root, "sets", set, "features", "promoBanner.yml");
+  const relative = (filePath: string) => path.relative(process.cwd(), filePath);
+
+  it("formats every set in one run, and names each file's set", async () => {
+    const result = await formatProject(deps(), { check: true, entityType: "feature" });
+
+    expect(result.changed).toBe(2);
+    expect(result.files.map(({ set, status }) => ({ set, status }))).toEqual([
+      { set: "admin", status: "changed" },
+      { set: "storefront", status: "changed" },
+    ]);
+  });
+
+  it("matches given paths across sets, and skips a path only when no set has it", async () => {
+    const missing = path.join(root, "sets", "storefront", "features", "missing.yml");
+    const result = await formatProject(deps(), {
+      check: true,
+      paths: [feature("storefront"), missing],
+    });
+
+    expect(result.files.map((file) => file.filePath)).toEqual([relative(feature("storefront"))]);
+    expect(result.skipped).toEqual([relative(missing)]);
+  });
+
+  it("formats the files in a given directory", async () => {
+    const result = await formatProject(deps(), {
+      check: true,
+      paths: [path.join(root, "sets", "admin", "features")],
+    });
+
+    expect(result.files.map((file) => file.filePath)).toEqual([relative(feature("admin"))]);
+    expect(result.skipped).toEqual([]);
+  });
+
+  it("offers every kind of definition to --entity-type", () => {
+    expect(getBuiltinCLIOptions("fmt")?.entityType.choices).toEqual(FORMAT_ENTITY_TYPES);
+  });
+
+  it("fails with --check, with or without --diff, and not with --diff alone", async () => {
+    jest.spyOn(process.stdout, "write").mockImplementation(() => true);
+    const run = (parsed: Record<string, unknown>) =>
+      fmtPlugin.handler({ ...deps(), parsed } as never);
+
+    expect(await run({ diff: true })).toBeUndefined();
+    expect(await run({ check: true })).toBe(false);
+    expect(await run({ check: true, diff: true })).toBe(false);
+    expect(fs.readFileSync(feature("admin"), "utf8")).toBe(
+      "bucketBy: userId\ndescription: Promo banner\n",
+    );
+
+    expect(await run({})).toBeUndefined();
+    expect(await run({ check: true })).toBeUndefined();
+    (process.stdout.write as unknown as jest.SpyInstance).mockRestore();
   });
 });
 
@@ -325,19 +499,13 @@ describe("formatProject on the examples", () => {
     return root;
   }
 
-  async function executions(root: string) {
-    const projectConfig = getProjectConfig(root);
-    return getProjectSetExecutions(projectConfig, new Datasource(projectConfig, root), undefined);
-  }
-
   async function formatAll(root: string, check = false) {
-    let changed = 0;
-    let errors = 0;
-    for (const execution of await executions(root)) {
-      const result = await formatProject({ rootDirectoryPath: root, ...execution }, { check });
-      changed += result.changed;
-      errors += result.errors;
-    }
+    const projectConfig = getProjectConfig(root);
+    const datasource = new Datasource(projectConfig, root);
+    const { changed, errors } = await formatProject(
+      { rootDirectoryPath: root, projectConfig, datasource },
+      { check },
+    );
     return { changed, errors };
   }
 

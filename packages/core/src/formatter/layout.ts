@@ -1,4 +1,5 @@
 import type { FormatLayout, FormatPath } from "@featurevisor/parsers";
+import type { EntityType } from "@featurevisor/types";
 
 /**
  * Featurevisor's house layout for definitions, whatever their file format: the indentation,
@@ -13,15 +14,17 @@ import type { FormatLayout, FormatPath } from "@featurevisor/parsers";
  * their order.
  */
 
-export type FormatEntityType =
-  | "attribute"
-  | "segment"
-  | "feature"
-  | "variable"
-  | "schema"
-  | "target"
-  | "test"
-  | "scenario";
+/** Every kind of definition fmt formats, in the order it formats them */
+export const FORMAT_ENTITY_TYPES: EntityType[] = [
+  "attribute",
+  "schema",
+  "segment",
+  "feature",
+  "variable",
+  "target",
+  "test",
+  "scenario",
+];
 
 /** Spaces per level of nesting */
 export const INDENT = 2;
@@ -291,7 +294,7 @@ const scenario = definition(["scenario", ...ASSERTION_ORDER], {
   children: list(assertion, { spaceItems: true }),
 });
 
-const SHAPES: Record<FormatEntityType, Shape> = {
+const SHAPES: Record<EntityType, Shape> = {
   attribute,
   segment,
   feature,
@@ -318,7 +321,7 @@ function childShape(shape: Shape, segment: string | number): Shape {
   }
 }
 
-function shapeAt(entityType: FormatEntityType, path: FormatPath): Shape {
+function shapeAt(entityType: EntityType, path: FormatPath): Shape {
   let shape = SHAPES[entityType];
   for (const segment of path) {
     shape = childShape(shape, segment);
@@ -334,7 +337,7 @@ function orderedKeys(order: string[], keys: string[]): string[] {
 }
 
 export function getKeyOrder(
-  entityType: FormatEntityType,
+  entityType: EntityType,
   path: FormatPath,
   keys: string[],
 ): string[] | undefined {
@@ -343,7 +346,7 @@ export function getKeyOrder(
 }
 
 /** Whether the map at `path` has a blank line between its entries */
-export function isSpacedMap(entityType: FormatEntityType, path: FormatPath): boolean {
+export function isSpacedMap(entityType: EntityType, path: FormatPath): boolean {
   const shape = shapeAt(entityType, path);
   if (shape.kind === "map") return shape.spaceEntries;
   // the node at a byEnvironment path is a map only when it groups lists by environment
@@ -352,7 +355,7 @@ export function isSpacedMap(entityType: FormatEntityType, path: FormatPath): boo
 }
 
 /** Whether the list at `path` has a blank line between its items */
-export function isSpacedList(entityType: FormatEntityType, path: FormatPath): boolean {
+export function isSpacedList(entityType: EntityType, path: FormatPath): boolean {
   const shape = shapeAt(entityType, path);
   if (shape.kind === "list") return shape.spaceItems;
   if (shape.kind === "byEnvironment") return shape.list.spaceItems;
@@ -360,7 +363,7 @@ export function isSpacedList(entityType: FormatEntityType, path: FormatPath): bo
 }
 
 /** The layout a parser's `format` applies to one kind of definition. */
-export function getFormatLayout(entityType: FormatEntityType): FormatLayout {
+export function getFormatLayout(entityType: EntityType): FormatLayout {
   return {
     indent: INDENT,
     orderKeys: (path, keys) => getKeyOrder(entityType, path, keys),
@@ -371,11 +374,7 @@ export function getFormatLayout(entityType: FormatEntityType): FormatLayout {
 }
 
 /** The key order applied to a parsed value, for parsers that write from values. */
-export function orderValue(
-  entityType: FormatEntityType,
-  value: unknown,
-  path: FormatPath = [],
-): unknown {
+export function orderValue(entityType: EntityType, value: unknown, path: FormatPath = []): unknown {
   if (Array.isArray(value)) {
     return value.map((item, index) => orderValue(entityType, item, [...path, index]));
   }
