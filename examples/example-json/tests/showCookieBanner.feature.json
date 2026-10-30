@@ -1,5 +1,6 @@
 {
   "feature": "showCookieBanner",
+
   "assertions": [
     {
       "description": "At 10%, the feature should be enabled for NL",
@@ -10,6 +11,7 @@
       },
       "expectedToBeEnabled": true
     },
+
     {
       "description": "At 70%, the feature should be enabled for NL",
       "environment": "production",
@@ -19,6 +21,7 @@
       },
       "expectedToBeEnabled": true
     },
+
     {
       "description": "At 90%, the feature should be disabled for US",
       "environment": "production",
@@ -28,6 +31,7 @@
       },
       "expectedToBeEnabled": false
     },
+
     {
       "description": "At 90%, the feature should be disabled for Canada",
       "environment": "production",

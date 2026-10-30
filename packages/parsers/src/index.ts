@@ -3,7 +3,7 @@ import type { FormatLayout } from "./layout";
 import { ymlParser } from "./yml";
 
 export { formatJson } from "./jsonFormat";
-export type { JsonFormatOptions } from "./jsonFormat";
+export type { JsonFormatOptions, JsonLayout } from "./jsonFormat";
 export { formatYml, listYmlComments } from "./ymlFormat";
 export type { YmlFormatOptions, YmlLayout } from "./ymlFormat";
 export { IGNORE_FILE_COMMENT, IGNORE_LINE_COMMENT } from "./layout";

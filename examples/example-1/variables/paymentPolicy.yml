@@ -20,6 +20,7 @@ overrides:
       mutate:
         :removeValue: paypal
         :appendUnique: card
+
   production:
     - key: netherlands
       conditions:
@@ -34,6 +35,7 @@ overrides:
           conditions: "*"
           mutate:
             :appendUnique: ideal
+
     - key: mobile
       conditions:
         attribute: device

@@ -1,5 +1,6 @@
 {
   "segment": "netherlands",
+
   "assertions": [
     {
       "context": {
@@ -7,6 +8,7 @@
       },
       "expectedToMatch": true
     },
+
     {
       "context": {
         "country": "de",
@@ -14,6 +16,7 @@
       },
       "expectedToMatch": false
     },
+
     {
       "context": {
         "country": "notNl"

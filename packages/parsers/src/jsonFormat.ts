@@ -1,4 +1,4 @@
-import type { FormatPath } from "./layout";
+import type { FormatLayout, FormatPath } from "./layout";
 
 /** Choices only JSON can express. Featurevisor passes its own from Core's house style. */
 export interface JsonFormatOptions {
@@ -120,9 +120,16 @@ function findBlankLines(source: string): Set<string> {
   return found;
 }
 
+/** The parts of a layout JSON applies besides the indent. All are optional. */
+export type JsonLayout = Partial<Pick<FormatLayout, "spaceEntries" | "spaceItems">> & {
+  /** The JSON the value was parsed from, to keep the blank lines written in it */
+  source?: string;
+};
+
 interface Writer {
   indent: number;
   lineWidth: number;
+  layout: JsonLayout;
   /** Where the author wrote a blank line, from findBlankLines */
   blank: Set<string>;
 }
@@ -143,8 +150,11 @@ function writeJson(
   const { indent, lineWidth } = writer;
   const pad = " ".repeat(indent * (path.length + 1));
   const close = " ".repeat(indent * path.length);
+  const spaced = Array.isArray(value)
+    ? writer.layout.spaceItems?.(path)
+    : writer.layout.spaceEntries?.(path);
   const blankBefore = (key: string | number, index: number) =>
-    index > 0 && writer.blank.has(JSON.stringify([...path, key]));
+    index > 0 && (spaced === true || writer.blank.has(JSON.stringify([...path, key])));
 
   if (Array.isArray(value)) {
     if (value.length === 0) return "[]";
@@ -186,16 +196,16 @@ function writeJson(
 }
 
 /**
- * Writes a JSON value as Prettier does, without a final newline. Given the source the value
- * was parsed from, it keeps the blank lines written between members and items, as Prettier
- * does.
+ * Writes a JSON value as Prettier does, without a final newline, with blank lines between the
+ * members and items the layout names. Given the source the value was parsed from, it keeps the
+ * blank lines written there too, as Prettier does. A list on one line has none.
  */
 export function formatJson(
   value: unknown,
   indent = 2,
   options: JsonFormatOptions = {},
-  source?: string,
+  layout: JsonLayout = {},
 ): string {
-  const blank = source === undefined ? new Set<string>() : findBlankLines(source);
-  return writeJson(value, { indent, lineWidth: options.lineWidth ?? 80, blank });
+  const blank = layout.source === undefined ? new Set<string>() : findBlankLines(layout.source);
+  return writeJson(value, { indent, lineWidth: options.lineWidth ?? 80, layout, blank });
 }

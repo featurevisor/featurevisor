@@ -123,6 +123,7 @@ force:
         theme: dark
         fontSize: 18
         layout: full
+
     # Premium OR Admin on Chrome (must come before general admin)
     - conditions:
         and:
@@ -135,6 +136,7 @@ force:
       variables:
         theme: dark
         fontSize: 18
+
     # Admin users always get treatment (general case, comes last)
     - conditions: adminUsers
       enabled: true

@@ -19,6 +19,7 @@ overrides:
         - feature: allowSignup
           variation: treatment
       value: Sign up with your preferred provider
+
     - key: control
       conditions:
         - feature: allowSignup

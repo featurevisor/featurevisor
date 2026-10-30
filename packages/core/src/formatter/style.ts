@@ -197,17 +197,21 @@ export const HOUSE_STYLE = {
     rules: true,
     /** Between the environments that group a feature's rules */
     ruleEnvironments: true,
-    force: false,
-    forceEnvironments: false,
+    /** Between a feature's force entries, in a list or under each environment */
+    force: true,
+    /** Between the environments that group a feature's force entries */
+    forceEnvironments: true,
+    /** Between the environments under a feature's expose */
+    exposeEnvironments: true,
     variations: false,
     /** Between the variables of a feature's variablesSchema */
     variablesSchema: false,
     /** Between the overrides in a variation's or a rule's variableOverrides */
     featureVariableOverrides: false,
     /** Between a global variable's overrides, nested ones too */
-    variableOverrides: false,
+    variableOverrides: true,
     /** Between the environments that group a global variable's overrides */
-    variableOverrideEnvironments: false,
+    variableOverrideEnvironments: true,
     /** Between the properties of a schema */
     schemaProperties: false,
     /** Between a spec's assertions */

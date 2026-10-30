@@ -52,13 +52,49 @@ describe("formatJson", () => {
     ];
 
     for (const source of sources) {
-      const output = formatJson(JSON.parse(source), 2, { lineWidth: 80 }, source);
+      const output = formatJson(JSON.parse(source), 2, { lineWidth: 80 }, { source });
       expect(`${output}\n`).toBe(await prettier.format(source, { parser: "json", plugins }));
     }
   });
 
-  it("writes no blank lines without the source", () => {
+  it("writes no blank lines without the source or a layout", () => {
     expect(formatJson({ a: 1, b: 2 })).toBe('{\n  "a": 1,\n  "b": 2\n}');
+  });
+
+  it("puts blank lines where the layout asks, which Prettier keeps", async () => {
+    const prettier = require("prettier/standalone");
+    const plugins = [require("prettier/plugins/babel"), require("prettier/plugins/estree")];
+    const layout = {
+      spaceEntries: (path: (string | number)[]) => path.length === 0,
+      spaceItems: (path: (string | number)[]) => path[0] === "rules" || path[0] === "tags",
+    };
+    const output = formatJson(
+      { description: "x", tags: ["web", "ios"], rules: [{ key: "a" }, { key: "b" }] },
+      2,
+      { lineWidth: 80 },
+      layout,
+    );
+
+    expect(output).toBe(
+      [
+        "{",
+        '  "description": "x",',
+        "",
+        '  "tags": ["web", "ios"],',
+        "",
+        '  "rules": [',
+        "    {",
+        '      "key": "a"',
+        "    },",
+        "",
+        "    {",
+        '      "key": "b"',
+        "    }",
+        "  ]",
+        "}",
+      ].join("\n"),
+    );
+    expect(`${output}\n`).toBe(await prettier.format(output, { parser: "json", plugins }));
   });
 
   it("gives every list item its own line at a line width of 0", () => {
@@ -89,5 +125,11 @@ describe("the JSON parser", () => {
     expect(jsonParser.format!('{\n"conditions":["nl"],\n\n"description":"x"}', layout)).toBe(
       '{\n    "description": "x",\n    "conditions": ["nl"]\n}',
     );
+    expect(
+      jsonParser.format!('{"conditions":["nl"],"description":"x"}', {
+        ...layout,
+        spaceEntries: (path) => path.length === 0,
+      }),
+    ).toBe('{\n    "description": "x",\n\n    "conditions": ["nl"]\n}');
   });
 });

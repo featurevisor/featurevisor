@@ -32,6 +32,7 @@ overrides:
         candidates:
           - write
           - admin
+
     - key: reader-policy
       conditions: readOnlyPermissions
       value:
@@ -40,4 +41,5 @@ overrides:
         candidates:
           - write
           - admin
+
   production: *overrides

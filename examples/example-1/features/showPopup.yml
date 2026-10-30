@@ -9,6 +9,7 @@ force:
   staging:
     - conditions: qa
       enabled: true
+
     - conditions:
         - attribute: userId
           operator: equals

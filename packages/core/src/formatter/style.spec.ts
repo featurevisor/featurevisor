@@ -105,9 +105,86 @@ describe("the house style", () => {
       "conditions:\n  - attribute: country\n\n    operator: equals\n    value: nl\n",
     );
     expect(
-      formatDefinition("segment", '{"description": "x",\n\n"conditions": "*"}', parsers.json)
-        .output,
-    ).toBe('{\n  "description": "x",\n\n  "conditions": "*"\n}\n');
+      formatDefinition(
+        "segment",
+        '{"conditions": ["nl",\n\n"de", "be", "fr", "es", "it", "pt", "at", "ch", "dk", "se"]}',
+        parsers.json,
+      ).output,
+    ).toBe(
+      '{\n  "conditions": [\n    "nl",\n\n    "de",\n    "be",\n    "fr",\n    "es",\n    "it",\n    "pt",\n    "at",\n    "ch",\n    "dk",\n    "se"\n  ]\n}\n',
+    );
+  });
+
+  it("spaces force entries, global variable overrides and expose as rules", () => {
+    const feature = [
+      "bucketBy: userId",
+      "force:",
+      "  staging:",
+      "    - conditions: qa",
+      "      enabled: true",
+      "    - conditions: testers",
+      "      enabled: true",
+      "  production:",
+      "    - conditions: qa",
+      "      enabled: true",
+      "expose:",
+      "  staging: true",
+      "  production: false",
+      "",
+    ].join("\n");
+    const variable = [
+      "type: string",
+      "defaultValue: Buy now",
+      "overrides:",
+      "  - key: nl",
+      "    conditions: netherlands",
+      "    value: Nu kopen",
+      "  - key: de",
+      "    conditions: germany",
+      "    value: Jetzt kaufen",
+      "",
+    ].join("\n");
+
+    expect(formatDefinition("feature", feature, parsers.yml).output).toBe(
+      [
+        "bucketBy: userId",
+        "",
+        "force:",
+        "  staging:",
+        "    - conditions: qa",
+        "      enabled: true",
+        "",
+        "    - conditions: testers",
+        "      enabled: true",
+        "",
+        "  production:",
+        "    - conditions: qa",
+        "      enabled: true",
+        "",
+        "expose:",
+        "  staging: true",
+        "",
+        "  production: false",
+        "",
+      ].join("\n"),
+    );
+    expect(formatDefinition("variable", variable, parsers.yml).output).toBe(
+      [
+        "type: string",
+        "",
+        "defaultValue: Buy now",
+        "",
+        "overrides:",
+        "  - key: nl",
+        "    conditions: netherlands",
+        "    value: Nu kopen",
+        "",
+        "  - key: de",
+        "    conditions: germany",
+        "    value: Jetzt kaufen",
+        "",
+      ].join("\n"),
+    );
   });
 
   it("keeps each file's line endings", () => {
@@ -116,11 +193,11 @@ describe("the house style", () => {
     );
   });
 
-  it("lays out JSON as Prettier writes it", () => {
+  it("lays out JSON as Prettier writes it, with the YAML's blank lines", () => {
     const source = '{"conditions":["nl","de"],"description":"Everyone"}';
 
     expect(formatDefinition("segment", source, parsers.json).output).toBe(
-      '{\n  "description": "Everyone",\n  "conditions": ["nl", "de"]\n}\n',
+      '{\n  "description": "Everyone",\n\n  "conditions": ["nl", "de"]\n}\n',
     );
   });
 });

@@ -94,7 +94,7 @@ format: (source, layout) =>
   source.includes("#") ? undefined : toml.stringify(layout.orderValue(toml.parse(source))),
 ```
 
-An optional `listComments(source)` returns every comment, and `fmt` then refuses output that loses one. In a format with comments, `format` keeps a line ending in the `IGNORE_LINE_COMMENT` that `@featurevisor/parsers` exports as written. Featurevisor itself leaves a file with `# featurevisor-ignore` at its top alone, handles line endings and ends each file with one newline, so `format` does not need to. Without `format`, `fmt` leaves the parser's files as they are. The built-in YAML parser applies the whole house style, and JSON orders keys.
+An optional `listComments(source)` returns every comment, and `fmt` then refuses output that loses one. In a format with comments, `format` keeps a line ending in the `IGNORE_LINE_COMMENT` that `@featurevisor/parsers` exports as written. Featurevisor itself leaves a file with `# featurevisor-ignore` at its top alone, handles line endings and ends each file with one newline, so `format` does not need to. Without `format`, `fmt` leaves the parser's files as they are. The built-in YAML parser applies the whole house style, and JSON its key order, indentation and blank lines.
 
 Configuration loading requires a nonempty `extension` and both functions. A parser with only `parse` prevents project CLI commands from loading, even commands that do not write. The `toml` package is parse only. It cannot supply `stringify`. See [upgrading to v4](upgrading-to-v4.md#project).
 

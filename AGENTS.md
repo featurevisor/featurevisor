@@ -65,7 +65,7 @@ archive path, not only by inspecting example files.
 - The parser's optional `format` applies the layout and its own section of
   the style: packages/parsers/src/ymlFormat.ts all of it, including the
   `# featurevisor-ignore-line` comment, jsonFormat.ts the key order, indent
-  and kept blank lines, laying out lists as Prettier does. A `format` may
+  and blank lines, laying out lists as Prettier does. A `format` may
   return undefined to leave a file as it is.
 
 Only style.spec.ts pins the style's output. The other formatter tests hold

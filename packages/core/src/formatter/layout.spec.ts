@@ -126,6 +126,7 @@ describe("blank lines", () => {
     ["scenario", [], "topLevelKeys"],
     ["feature", ["rules"], "ruleEnvironments"],
     ["feature", ["force"], "forceEnvironments"],
+    ["feature", ["expose"], "exposeEnvironments"],
     ["variable", ["overrides"], "variableOverrideEnvironments"],
     ["feature", ["variablesSchema"], "variablesSchema"],
     ["attribute", ["properties"], "schemaProperties"],
@@ -137,6 +138,7 @@ describe("blank lines", () => {
 
   it("never spaces values or the maps inside lists", () => {
     expect(isSpacedList("feature", ["tags"])).toBe(false);
+    expect(isSpacedList("feature", ["expose", "production"])).toBe(false);
     expect(isSpacedList("feature", ["rules", 0, "conditions"])).toBe(false);
     expect(isSpacedMap("feature", ["rules", 0])).toBe(false);
     expect(isSpacedMap("test", ["assertions", 0, "context"])).toBe(false);

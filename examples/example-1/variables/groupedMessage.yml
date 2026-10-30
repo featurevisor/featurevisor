@@ -30,6 +30,7 @@ overrides:
             feature: sidebar
             enabled: true
           value: Redesigned sidebar message
+
     - key: sidebar-only
       conditions:
         not:

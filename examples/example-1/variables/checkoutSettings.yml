@@ -32,6 +32,7 @@ overrides:
           - visa
           - mastercard
           - paypal
+
   production:
     - key: netherlands
       conditions: countries.netherlands
@@ -39,6 +40,7 @@ overrides:
         paymentMethods:
           - ideal
           - paypal
+
     - key: default
       conditions: "*"
       value:

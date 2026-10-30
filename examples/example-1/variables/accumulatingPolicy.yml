@@ -41,6 +41,7 @@ overrides:
           id: staging-extra
           label: Temporary
           message: Temporary staging policy
+
     - key: staging-reset
       conditions: "*"
       continue: true
@@ -49,6 +50,7 @@ overrides:
           - id: staging
             label: Staging
             message: Staging policy
+
   production:
     - key: netherlands
       conditions:
@@ -70,6 +72,7 @@ overrides:
           continue: true
           mutate:
             items[id=nl].label: Amsterdam
+
         - key: amsterdam-message
           conditions:
             attribute: city
@@ -77,6 +80,7 @@ overrides:
             value: amsterdam
           mutate:
             items[id=nl].message: Amsterdam policy
+
     - key: mobile-prepend
       conditions:
         attribute: device
@@ -88,6 +92,7 @@ overrides:
           id: mobile
           label: Mobile
           message: Mobile policy
+
     - key: mobile-append
       conditions:
         attribute: device
@@ -99,6 +104,7 @@ overrides:
           id: mobile-tail
           label: Mobile tail
           message: Mobile tail policy
+
     - key: mobile-select
       conditions:
         attribute: device
@@ -107,6 +113,7 @@ overrides:
       continue: true
       mutate:
         items[id=nl].message: Mobile Netherlands policy
+
     - key: mobile-remove
       conditions:
         attribute: device

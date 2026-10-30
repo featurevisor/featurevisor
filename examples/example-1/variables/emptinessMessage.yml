@@ -22,6 +22,7 @@ overrides:
             path: metadata
             operator: empty
       value: Source values are empty
+
     - key: populated-source
       conditions:
         and:
@@ -35,4 +36,5 @@ overrides:
             path: metadata
             operator: notEmpty
       value: Source values are populated
+
   production: *overrides

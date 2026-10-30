@@ -113,6 +113,8 @@ const SHAPES: Record<EntityType, Shape> = {
       blankLines.variations,
     ),
     force: byEnvironment(map(keyOrder.force), blankLines.force, blankLines.forceEnvironments),
+    // true, false or a list of tags, or one of those by environment
+    expose: dict(VALUE, blankLines.exposeEnvironments),
     rules: byEnvironment(
       map(keyOrder.rule, false, () => ({ variableOverrides: featureVariableOverrides })),
       blankLines.rules,

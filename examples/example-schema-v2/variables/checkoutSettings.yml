@@ -37,6 +37,7 @@ overrides:
         paymentMethods:
           - card
           - sofort
+
   production:
     - key: germany
       conditions: germany

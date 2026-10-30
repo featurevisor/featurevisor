@@ -37,6 +37,7 @@ overrides:
         - methods:append: ideal
         - methods:append: paypal
         - currency: EUR
+
     - key: netherlands
       conditions:
         attribute: country
@@ -55,10 +56,12 @@ overrides:
             - methods:append: local
             - methods:append: collection
             - label: Amsterdam
+
     - key: finish
       conditions: "*"
       mutate:
         - methods:append: final
+
   production:
     - key: netherlands
       conditions:
@@ -82,6 +85,7 @@ overrides:
             - label: Amsterdam
             - methods:append: local
             - methods:append: collection
+
     - key: unchanged
       conditions: "*"
       mutate: []

@@ -20,6 +20,7 @@ force:
           operator: equals
           value: qa-user-1
       variation: treatment
+
   production:
     - conditions:
         - attribute: userId

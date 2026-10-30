@@ -17,6 +17,7 @@ overrides:
       conditions: "*"
       mutate:
         message: Welcome to staging
+
   production:
     - key: netherlands
       conditions:
@@ -38,6 +39,7 @@ overrides:
               conditions: mobile
               mutate:
                 cta.url: https://featurevisor.com/mobile
+
     - key: default
       conditions: "*"
       value:
