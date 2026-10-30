@@ -252,16 +252,23 @@ function sameComments(parser: CustomParser, before: string, after: string): bool
 }
 
 /**
- * The file's new text. Throws a WriteError when the text would not parse to the migrated
- * value or would lose a comment, so nothing is written that migration did not mean.
+ * The file's new text, with the file's own line endings and byte order mark. Throws a
+ * WriteError when the text would not parse to the migrated value or would lose a comment, so
+ * nothing is written that migration did not mean.
  */
 export function writeDefinition(
-  source: string,
+  file: string,
   before: unknown,
   after: unknown,
   renames: Rename[],
   parser: CustomParser,
 ): string {
+  // the merge works on lines ending in \n, as the renderers write them
+  const bom = file.startsWith("\uFEFF") ? "\uFEFF" : "";
+  const crlf = file.match(/\r?\n/)?.[0] === "\r\n";
+  const source = file.slice(bom.length).replace(/\r\n/g, "\n");
+  const restore = (text: string) => bom + (crlf ? text.replace(/\n/g, "\r\n") : text);
+
   let rendered: { base: string; changed: string };
   if (parser === parsers.yml) {
     rendered = renderYaml(source, after, renames);
@@ -285,7 +292,7 @@ export function writeDefinition(
       JSON.stringify(parsed) === JSON.stringify(after) &&
       sameComments(parser, source, candidate)
     ) {
-      return candidate;
+      return restore(candidate);
     }
   }
   throw new WriteError(

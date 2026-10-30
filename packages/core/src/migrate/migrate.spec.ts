@@ -315,6 +315,21 @@ describe("writing", () => {
     );
   });
 
+  it("keeps a file's line endings and byte order mark", () => {
+    const lf = "description: x\n\n# Dutch users\nrules:\n  - key: nl\n    segments: netherlands\n";
+    const source = `\uFEFF${lf.replace(/\n/g, "\r\n")}`;
+    const before = parsers.yml.parse(source) as { rules: Record<string, unknown>[] };
+    const migration = new Migration();
+    const after = {
+      ...before,
+      rules: [migrateSelector(before.rules[0], ["rules", 0], "rule", migration)],
+    };
+
+    expect(writeDefinition(source, before, after, migration.renames, parsers.yml)).toBe(
+      source.replace("segments:", "conditions:"),
+    );
+  });
+
   it("applies a change only where the rendered and written lines agree", () => {
     expect(mergeLines("a\nB\nc\n", "a\nb\nc\n", "a\nb\nC\n")).toBe("a\nB\nC\n");
     expect(mergeLines("a\nB\nc\n", "a\nb\nc\n", "a\nX\nc\n")).toBeUndefined();
@@ -478,7 +493,10 @@ describe("migrateProject", () => {
 
     expect(result.errors).toBe(0);
     expect(
-      result.files.map((file) => [path.relative(root, path.resolve(file.filePath)), file.changes]),
+      result.files.map((file) => [
+        path.relative(root, path.resolve(file.filePath)).split(path.sep).join("/"),
+        file.changes,
+      ]),
     ).toEqual([
       ["attributes/score.yml", ["types"]],
       ["segments/adults.yml", ["operators"]],

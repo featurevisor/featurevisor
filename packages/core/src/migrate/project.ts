@@ -149,15 +149,15 @@ export function readProject(rootDirectoryPath: string): Project {
     roots.push({ directory, groups: path.join(rootDirectoryPath, "groups") });
   }
 
-  const groups = [
-    ...(typeof config.groupsDirectoryPath === "string" ? ["groupsDirectoryPath"] : []),
-    ...roots.flatMap((root) => filesIn(root.groups, parser.extension)),
-  ];
+  const groups = roots
+    .flatMap((root) => filesIn(root.groups, parser.extension))
+    .map((group) => path.relative(rootDirectoryPath, group));
+  if (typeof config.groupsDirectoryPath === "string") {
+    groups.push(`groupsDirectoryPath in ${CONFIG_MODULE_NAME}`);
+  }
   if (groups.length > 0) {
     blockers.push({
-      message: `Groups were removed in v4, and this project still has them: ${groups
-        .map((group) => path.relative(rootDirectoryPath, group) || group)
-        .join(", ")}. Convert them with the v3 CLI and publish their datafiles first.`,
+      message: `Groups were removed in v4, and this project still has them: ${groups.join(", ")}. Convert them with the v3 CLI and publish their datafiles first.`,
       section: "groups-removed",
     });
   }

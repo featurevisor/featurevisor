@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { FeaturevisorCLIError } from "../error";
@@ -19,12 +20,13 @@ function sinceError(message: string, ref: string): FeaturevisorCLIError {
 
 /**
  * The real paths of the files changed since HEAD left `ref`: committed since the commit they
- * share, staged, unstaged and untracked. Deleted files are left out.
+ * share, staged, unstaged and untracked. Deleted files are left out. Compare them with
+ * fs.realpathSync.native, which writes a path as Git does, also on Windows.
  */
 export function getChangedFiles(directory: string, ref: string): Set<string> {
   let root: string;
   try {
-    root = git(directory, ["rev-parse", "--show-toplevel"]).trim();
+    root = fs.realpathSync.native(git(directory, ["rev-parse", "--show-toplevel"]).trim());
   } catch {
     throw sinceError("fmt --since needs the project in a Git working tree.", ref);
   }

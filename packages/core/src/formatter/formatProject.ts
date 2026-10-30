@@ -233,8 +233,9 @@ export async function formatProject(
       if (matches.length === 0) continue;
       matches.forEach((item) => (item.matched = true));
     }
-    // Git gives real paths, which a project reached through a symbolic link differs from
-    if (changedFiles && !changedFiles.has(fs.realpathSync(absolute))) continue;
+    // Git gives real paths, which a project reached through a symbolic link, or a Windows
+    // short name such as RUNNER~1, differs from
+    if (changedFiles && !changedFiles.has(fs.realpathSync.native(absolute))) continue;
 
     file.status = formatFile(file, parser, options);
     result.files.push(file);

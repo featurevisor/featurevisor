@@ -155,6 +155,8 @@ describe("formatProject on the examples", () => {
     const options = {
       plugins,
       tabWidth: HOUSE_STYLE.indent,
+      // a Windows checkout writes CRLF, which fmt keeps
+      endOfLine: HOUSE_STYLE.endOfLine,
       printWidth: HOUSE_STYLE.formats.json.lineWidth,
       singleQuote: (HOUSE_STYLE.formats.yml.quote as string) === "single",
     };
