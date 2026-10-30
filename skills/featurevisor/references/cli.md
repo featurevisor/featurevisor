@@ -78,6 +78,16 @@ Formats every definition and spec in one house style, with no options: a blank l
 
 `--check` writes nothing and exits with 1 when a file needs formatting, for CI. Errors, such as a file that does not parse, exit with 2. `--diff` prints the changes as a unified diff and writes nothing. Add `--check` to it to fail as well. File and directory paths, `--entity-type` and `--key-pattern` narrow the files, as in `lint`, and `--since=<git ref>` keeps the files changed since HEAD left that reference, uncommitted and untracked ones too. `--stdin-filepath=<path>` formats text from stdin as that file and prints it, for editors. A file whose top comments include `# featurevisor-ignore` is left as written, and so is a line ending in `# featurevisor-ignore-line`. Blank lines the author wrote between entries stay, one at most. In a project with Sets, run it without `--set` so every set is formatted together. A file that does not parse is reported and left as it is. Each parser lays out its own files: JSON gets the key order and blank lines, and a custom parser takes part through an optional `format` function ([custom-parsers.md](custom-parsers.md)). Without one, `fmt` leaves its files as they are. `promote` does not format the files it writes, so run `fmt` after a promotion when `--check` reports files.
 
+## migrate
+
+```bash
+npx featurevisor migrate --diff
+npx featurevisor migrate
+npx featurevisor migrate --check
+```
+
+Rewrites a v3 project's definitions and specs for v4, run once after installing the v4 CLI. It converts what has one right answer, as [upgrading-to-v4.md](upgrading-to-v4.md) lists, keeps comments, line endings and every line it does not change, and lists what needs a person under "Needs you". It writes files, so show `--diff` first and run it on the user's go ahead. `--check` writes nothing and exits with 1 while anything is left. It exits with 2, writing nothing, while Groups remain or a custom parser has no `stringify`. It needs no project configuration v4 can load, so it runs before anything else works.
+
 ## test
 
 ```bash
