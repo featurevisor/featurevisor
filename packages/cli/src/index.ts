@@ -90,6 +90,12 @@ async function main() {
     return;
   }
 
+  // migrate reads a v3 configuration that v4 cannot load yet, so it loads the project itself
+  if (command === "migrate") {
+    await runCLI({ rootDirectoryPath: projectRootDirectoryPath });
+    return;
+  }
+
   try {
     const projectConfig = getProjectConfig(projectRootDirectoryPath);
     const datasource = new Datasource(projectConfig, projectRootDirectoryPath);

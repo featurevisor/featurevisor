@@ -17,6 +17,7 @@ import { listPlugin } from "../list";
 import { promotePlugin } from "../promoter";
 import { diffPlugin } from "../diff";
 import { fmtPlugin } from "../formatter";
+import { migratePlugin } from "../migrate";
 import { getProjectSetExecutions } from "../sets";
 import { getTestInputFingerprint, getTestInputStatePaths } from "../tester/provenance";
 import {
@@ -57,4 +58,5 @@ export const projectBasedPlugins: Plugin[] = [
   createCatalogPlugin(catalogRuntime),
 ];
 
-export const commonPlugins: Plugin[] = [];
+// that load the project themselves, since its configuration may not load yet
+export const commonPlugins: Plugin[] = [migratePlugin];

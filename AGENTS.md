@@ -77,6 +77,15 @@ exits with 1 when `--check` finds work and 2 on errors, as Prettier does, so
 plugin handlers may return an exit code. Every example ships an .editorconfig
 that a test keeps in step with style.ts.
 
+`featurevisor migrate` rewrites a v3 project for v4 in packages/core/src/migrate,
+and only there. A project runs it once, so the CLI loads that folder only when
+the command runs: plugins.ts registers a small plugin object whose handler
+requires the rest, the CLI entry skips loading the configuration for it, since
+v4 rejects v3 settings, and Core exports nothing from it. Selectors convert as
+the SDK's normalize.ts reads v3 datafiles, which migrate.spec.ts checks against
+the SDK directly. Changes are merged into each file's own lines, so a review
+sees only what migration changed. It was verified on every example of v3.11.0.
+
 Attribute files belong directly in the configured attributes directory,
 including within each Set. Nested files and dots in attribute names are
 rejected with invalid_attribute_namespace. Do not silently filter these files

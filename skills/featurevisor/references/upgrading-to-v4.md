@@ -40,12 +40,16 @@ Give every formerly grouped feature's rules fresh keys, such as `everyone` to `a
 
 ```bash
 npm install --save-dev @featurevisor/cli@4
+npx featurevisor migrate --diff
+npx featurevisor migrate
 npx featurevisor lint --json --pretty
 ```
 
 The CLI needs Node.js 24 or later. If the project has a custom parser, add its `stringify` function first, or no command will load ([custom-parsers.md](custom-parsers.md)).
 
-**The lint output is the worklist.** Fix errors by code, rerun, and repeat until clean:
+**`migrate` rewrites what has one right answer**, keeping comments and every line it does not change. It moves `segments`, `requiredFeatures` and a feature's `required` into `conditions` as v4 SDKs read v3 datafiles, converts `double`, `date` and `semver`, rewrites `in` and `notIn` on numbers, renames `sticky` and the removed evaluation reasons in specs, puts mutation maps in the order v3 applied them where values would differ, and renames the configuration settings v4 renamed. It stops before writing anything while Groups remain or a custom parser lacks `stringify`, and lists what needs a person under "Needs you". Review its diff with the user before committing. `migrate --check` exits 1 while anything is left.
+
+**The lint output is the worklist for the rest.** Fix errors by code, rerun, and repeat until clean. After `migrate`, the first rows are already done:
 
 | Lint code or message                                                                       | Fix                                                                                                           |
 | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
@@ -97,8 +101,8 @@ npx featurevisor test
 npx featurevisor build --no-state-files
 ```
 
-- `--v3-mutation-order` lists values that change because v4 applies mutation maps in authored order instead of shortest path first. Review and test each.
-- Rename `allowFeatureAndGlobalVariableKeyCollisions` to `allowFeatureAndVariableKeyCollisions` if configured.
+- `--v3-mutation-order` lists values that change because v4 applies mutation maps in authored order instead of shortest path first. After `migrate` it reports none, since migration kept v3's order for those maps.
+- Rename `allowFeatureAndGlobalVariableKeyCollisions` to `allowFeatureAndVariableKeyCollisions` if configured. `migrate` does this.
 - Regenerate TypeScript code with `generate-code` and compile the applications. Generated feature variable helpers are `FeatureVariableKey` and `FeatureVariableType`.
 - Update test expectations and analytics that compared the reason `required`: unmet prerequisites now report `conditions_unmet`.
 - Compare important results before and after with `npx featurevisor evaluate` on the same contexts.

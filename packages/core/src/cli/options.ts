@@ -176,6 +176,15 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     ...setOption,
     ...targetOption,
   },
+  migrate: {
+    ...outputOptions,
+    check: {
+      type: "boolean",
+      description:
+        "list what migration would change and exit with 1 if anything would, without writing",
+    },
+    diff: { type: "boolean", description: "print what migration would change, without writing" },
+  },
   init: {
     example: { type: "string", description: "initialize from an example project" },
   },
