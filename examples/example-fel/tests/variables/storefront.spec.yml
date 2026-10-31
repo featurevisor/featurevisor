@@ -3,18 +3,33 @@ variable: storefront
 assertions:
   - description: the default shelf
     environment: production
-    context: { country: us }
+    context:
+      country: us
     expectedValue:
       banners:
-        black-friday: { active: true, discount: 30 }
-        spring-sale: { active: false, discount: 10 }
-      featuredSkus: [sku-1, sku-2, sku-3]
+        black-friday:
+          active: true
+          discount: 30
+        spring-sale:
+          active: false
+          discount: 10
+      featuredSkus:
+        - sku-1
+        - sku-2
+        - sku-3
 
   - description: the Benelux assortment
     environment: staging
-    context: { country: lu }
+    context:
+      country: lu
     expectedValue:
       banners:
-        black-friday: { active: true, discount: 30 }
-        spring-sale: { active: false, discount: 10 }
-      featuredSkus: [sku-7, sku-1]
+        black-friday:
+          active: true
+          discount: 30
+        spring-sale:
+          active: false
+          discount: 10
+      featuredSkus:
+        - sku-7
+        - sku-1

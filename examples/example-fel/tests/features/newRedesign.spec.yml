@@ -1,10 +1,11 @@
 feature: newRedesign
+
 assertions:
   ##
   # production
   #
-  - at: 40
-    environment: production
+  - environment: production
+    at: 40
     context:
       country: us
     expectedToBeEnabled: true
@@ -13,8 +14,8 @@ assertions:
       foo: default foo
       bar: default bar
 
-  - at: 60
-    environment: production
+  - environment: production
+    at: 60
     context:
       country: us
     expectedToBeEnabled: true
@@ -23,8 +24,8 @@ assertions:
       foo: foo for treatment
       bar: bar for treatment
 
-  - at: 60
-    environment: production
+  - environment: production
+    at: 60
     context:
       country: de
     expectedToBeEnabled: true
@@ -36,8 +37,8 @@ assertions:
   ##
   # staging
   #
-  - at: 40
-    environment: staging
+  - environment: staging
+    at: 40
     context:
       userId: someone-else
       country: us
@@ -45,8 +46,8 @@ assertions:
     expectedVariables:
       foo: null
 
-  - at: 40
-    environment: staging
+  - environment: staging
+    at: 40
     context:
       userId: test-force-id
       country: us
@@ -56,8 +57,8 @@ assertions:
       foo: foo for treatment
       bar: bar for treatment
 
-  - at: 40
-    environment: staging
+  - environment: staging
+    at: 40
     context:
       userId: test-force-id
       country: de
@@ -67,8 +68,8 @@ assertions:
       foo: foo for treatment in DE or CH
       bar: bar for treatment
 
-  - at: 40
-    environment: staging
+  - environment: staging
+    at: 40
     context:
       userId: test-force-id
       country: nl

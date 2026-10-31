@@ -1,4 +1,5 @@
 segment: prefersDarkMode
+
 assertions:
   - context:
       preferences:

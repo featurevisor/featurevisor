@@ -1,4 +1,5 @@
 description: Buckets users by a single attribute (plain bucketBy)
+
 tags:
   - all
 
@@ -9,6 +10,7 @@ rules:
     - key: "1"
       conditions: "*"
       percentage: 100
+
   production:
     - key: "1"
       conditions: "*"

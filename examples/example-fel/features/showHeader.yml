@@ -1,4 +1,5 @@
 description: For testing wrong semver parsing
+
 tags:
   - all
 
@@ -10,16 +11,17 @@ rules:
     - key: "1"
       conditions: "*"
       percentage: 100
+
   production:
-    - key: "desktop"
+    - key: desktop
       conditions: version_gt5 and desktop
       percentage: 100
 
-    - key: "mobile"
+    - key: mobile
       conditions:
         - mobile
       percentage: 100
 
-    - key: "all"
+    - key: all
       conditions: "*"
       percentage: 0

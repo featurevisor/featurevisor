@@ -3,17 +3,17 @@ segment: markets.dach
 assertions:
   - description: Austria matches
     context:
-      country: "at"
+      country: at
     expectedToMatch: true
 
   - description: Switzerland matches
     context:
-      country: "ch"
+      country: ch
     expectedToMatch: true
 
   - description: the Netherlands does not
     context:
-      country: "nl"
+      country: nl
     expectedToMatch: false
 
   - description: a missing country does not

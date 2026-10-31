@@ -3,17 +3,17 @@ segment: audiences.partnerTraffic
 assertions:
   - description: a partner site matches by its prefix
     context:
-      referrer: "https://partners.example.com/deals"
+      referrer: https://partners.example.com/deals
     expectedToMatch: true
 
   - description: a partner campaign link matches by its parameter
     context:
-      referrer: "https://shop.example.com/?utm_source=partner"
+      referrer: https://shop.example.com/?utm_source=partner
     expectedToMatch: true
 
   - description: plain http does not start with the https prefix
     context:
-      referrer: "http://partners.example.com/deals"
+      referrer: http://partners.example.com/deals
     expectedToMatch: false
 
   - description: a missing referrer does not

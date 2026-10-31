@@ -1,13 +1,15 @@
 description: Message selected through the signup feature rollout
+
 tags:
   - all
 
 type: string
 
 defaultValue: Create your account
-disabledValue: Sign up is unavailable
 
 conditions: feature('allowSignup')
+
+disabledValue: Sign up is unavailable
 
 overrides:
   production:

@@ -17,5 +17,5 @@ assertions:
 
   - description: a chosen locale does not match
     context:
-      locale: "nl-NL"
+      locale: nl-NL
     expectedToMatch: false

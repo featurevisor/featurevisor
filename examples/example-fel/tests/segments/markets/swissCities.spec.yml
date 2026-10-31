@@ -3,17 +3,17 @@ segment: markets.swissCities
 assertions:
   - description: Zürich matches with its umlaut
     context:
-      city: "Zürich"
+      city: Zürich
     expectedToMatch: true
 
   - description: Genève matches with its accent
     context:
-      city: "Genève"
+      city: Genève
     expectedToMatch: true
 
   - description: Zurich without the umlaut is a different string
     context:
-      city: "Zurich"
+      city: Zurich
     expectedToMatch: false
 
   - description: a missing city does not match

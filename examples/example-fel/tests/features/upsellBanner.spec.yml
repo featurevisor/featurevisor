@@ -4,7 +4,11 @@ assertions:
   - description: Dutch staff on express pay in euros with iDEAL, evaluated end to end
     environment: staging
     at: 10
-    context: { userId: user-1, loggedIn: true, country: nl, email: alex@featurevisor.com }
+    context:
+      userId: user-1
+      loggedIn: true
+      country: nl
+      email: alex@featurevisor.com
     expectedToBeEnabled: true
     expectedVariables:
       message: Pay with iDEAL in one tap
@@ -17,11 +21,16 @@ assertions:
         enabled: true
         variation: express
         variables:
-          paymentMethods: [card]
-          limits: { maxItems: 10, maxTotal: 1000 }
+          paymentMethods:
+            - card
+          limits:
+            maxItems: 10
+            maxTotal: 1000
       regionalPricing:
         enabled: true
-        variables: { currency: EUR, discountPercent: 0 }
+        variables:
+          currency: EUR
+          discountPercent: 0
     expectedToBeEnabled: true
     expectedVariables:
       message: Check out faster with saved details
@@ -34,11 +43,16 @@ assertions:
         enabled: true
         variation: control
         variables:
-          paymentMethods: [card]
-          limits: { maxItems: 50, maxTotal: 25000 }
+          paymentMethods:
+            - card
+          limits:
+            maxItems: 50
+            maxTotal: 25000
       regionalPricing:
         enabled: true
-        variables: { currency: EUR, discountPercent: 0 }
+        variables:
+          currency: EUR
+          discountPercent: 0
     expectedVariables:
       message: Order up to 50 items at once
 
@@ -50,11 +64,16 @@ assertions:
         enabled: true
         variation: control
         variables:
-          paymentMethods: [card]
-          limits: { maxItems: 10, maxTotal: 1000 }
+          paymentMethods:
+            - card
+          limits:
+            maxItems: 10
+            maxTotal: 1000
       regionalPricing:
         enabled: true
-        variables: { currency: EUR, discountPercent: 5 }
+        variables:
+          currency: EUR
+          discountPercent: 5
     expectedVariables:
       message: Your team saves on every seat
 
@@ -66,11 +85,17 @@ assertions:
         enabled: true
         variation: control
         variables:
-          paymentMethods: [card, paypal]
-          limits: { maxItems: 10, maxTotal: 1000 }
+          paymentMethods:
+            - card
+            - paypal
+          limits:
+            maxItems: 10
+            maxTotal: 1000
       regionalPricing:
         enabled: true
-        variables: { currency: USD, discountPercent: 15 }
+        variables:
+          currency: USD
+          discountPercent: 15
     expectedVariables:
       message: More ways to pay
 
@@ -82,16 +107,22 @@ assertions:
         enabled: true
         variation: control
         variables:
-          paymentMethods: [card]
-          limits: { maxItems: 10, maxTotal: 1000 }
+          paymentMethods:
+            - card
+          limits:
+            maxItems: 10
+            maxTotal: 1000
       regionalPricing:
         enabled: true
-        variables: { currency: USD, discountPercent: 0 }
+        variables:
+          currency: USD
+          discountPercent: 0
     expectedToBeEnabled: false
 
   - description: without smartCheckout the root conditions fail
     environment: staging
     at: 50
     stickyFeatures:
-      smartCheckout: { enabled: false }
+      smartCheckout:
+        enabled: false
     expectedToBeEnabled: false

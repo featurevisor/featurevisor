@@ -1,8 +1,12 @@
 description: Demonstrate feature conditions in global variable overrides
+
 tags:
   - all
+
 type: string
+
 defaultValue: No condition based override matched
+
 overrides:
   production:
     # Attribute and feature leaves use AND semantics

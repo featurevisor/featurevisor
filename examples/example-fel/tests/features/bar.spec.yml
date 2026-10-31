@@ -1,9 +1,14 @@
 feature: bar
+
 assertions:
   - description: qux allocation and holdout disable bar
     matrix:
-      environment: [staging, production]
-      bucket: [60, 90]
+      environment:
+        - staging
+        - production
+      bucket:
+        - 60
+        - 90
     environment: ${{ environment }}
     at: ${{ bucket }}
     expectedToBeEnabled: false
@@ -11,12 +16,14 @@ assertions:
       flag:
         reason: conditions_unmet
 
-  - at: 30
-    environment: staging
-    stickyFeatures:
-      experimentAllocation: { enabled: true, variation: bar }
+  - environment: staging
+    at: 30
     context:
       country: us
+    stickyFeatures:
+      experimentAllocation:
+        enabled: true
+        variation: bar
     expectedToBeEnabled: true
     expectedVariation: control
     expectedVariables:
@@ -26,12 +33,14 @@ assertions:
         subtitle: Hero Subtitle
         alignment: center
 
-  - at: 40
-    environment: staging
-    stickyFeatures:
-      experimentAllocation: { enabled: true, variation: bar }
+  - environment: staging
+    at: 40
     context:
       country: us
+    stickyFeatures:
+      experimentAllocation:
+        enabled: true
+        variation: bar
     expectedToBeEnabled: true
     expectedVariation: b
     expectedVariables:
@@ -41,12 +50,14 @@ assertions:
         subtitle: Hero Subtitle for B
         alignment: center for B
 
-  - at: 40
-    environment: staging
-    stickyFeatures:
-      experimentAllocation: { enabled: true, variation: bar }
+  - environment: staging
+    at: 40
     context:
       country: de
+    stickyFeatures:
+      experimentAllocation:
+        enabled: true
+        variation: bar
     expectedToBeEnabled: true
     expectedVariation: b
     expectedVariables:

@@ -1,6 +1,8 @@
 description: Live platform status. Staging overrides simulate incidents for drills
 
-tags: [all, fel]
+tags:
+  - all
+  - fel
 
 type: object
 
@@ -35,7 +37,9 @@ overrides:
         incident:
           active: true
           severity: 2
-          regions: [eu, global]
+          regions:
+            - eu
+            - global
 
     - key: us-drill
       conditions: cohorts includes 'incident-drill-us'
@@ -44,4 +48,5 @@ overrides:
         incident:
           active: true
           severity: 4
-          regions: [us]
+          regions:
+            - us

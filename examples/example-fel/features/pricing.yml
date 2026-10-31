@@ -1,4 +1,5 @@
 description: Testing two variations with first one having weight of 0
+
 tags:
   - checkout
 
@@ -18,10 +19,12 @@ rules:
     - key: "1"
       conditions: "*"
       percentage: 100
+
   production:
     - key: "1"
       conditions: countries.germany
       percentage: 100
+
     - key: "2"
       conditions: "*"
       percentage: 0

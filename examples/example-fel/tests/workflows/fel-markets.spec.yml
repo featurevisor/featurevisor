@@ -1,11 +1,16 @@
 description: Market segments and prices agree for ${{ country }} in the FEL showcase datafile
 
+matrix:
+  country:
+    - nl
+    - be
+    - lu
+    - de
+    - at
+
 environment: staging
 
 target: fel-showcase
-
-matrix:
-  country: [nl, be, lu, de, at]
 
 context:
   userId: user-3

@@ -3,12 +3,12 @@ segment: audiences.notOnFreePlan
 assertions:
   - description: pro is not free
     context:
-      plan: "pro"
+      plan: pro
     expectedToMatch: true
 
   - description: free is excluded
     context:
-      plan: "free"
+      plan: free
     expectedToMatch: false
 
   - description: a missing plan does not match notIn

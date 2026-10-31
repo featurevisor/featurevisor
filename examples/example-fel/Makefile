@@ -37,6 +37,7 @@ test-evaluate:
 
 test:
 	npx featurevisor test
+	npx featurevisor fmt --check
 
 	make test-datafiles
 	make test-assess-distribution

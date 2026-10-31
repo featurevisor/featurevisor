@@ -7,18 +7,18 @@ assertions:
 
   - description: a user ID alone is not signed in, since a missing loggedIn is != true
     context:
-      userId: "user-1"
+      userId: user-1
     expectedToMatch: true
 
   - description: a signed in user is not anonymous
     context:
-      userId: "user-1"
+      userId: user-1
       loggedIn: true
     expectedToMatch: false
 
   - description: a signed out user is anonymous
     context:
-      userId: "user-1"
+      userId: user-1
       loggedIn: false
     expectedToMatch: true
 

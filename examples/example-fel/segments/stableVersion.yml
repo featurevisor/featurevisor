@@ -1,2 +1,3 @@
 description: The supplied version is a stable release or newer
+
 conditions: version >= semver('1.0.0')

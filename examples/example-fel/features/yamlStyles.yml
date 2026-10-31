@@ -1,6 +1,8 @@
 description: The same kind of expression written in each YAML style
 
-tags: [all, fel]
+tags:
+  - all
+  - fel
 
 bucketBy: userId
 
@@ -10,7 +12,7 @@ variablesSchema:
     defaultValue: none
 
 rules:
-  staging: &rules
+  staging:
     - key: plain
       conditions: country == 'nl' and device == 'mobile'
       percentage: 100
@@ -18,7 +20,7 @@ rules:
         style: plain
 
     - key: double-quoted
-      conditions: "country == 'de' and device == 'mobile'"
+      conditions: "country == 'de' and device == 'mobile'" # featurevisor-ignore-line
       percentage: 100
       variables:
         style: double-quoted
@@ -34,8 +36,7 @@ rules:
 
     - key: folded-block
       conditions: >-
-        country == 'ch'
-        and device == 'mobile'
+        country == 'ch' and device == 'mobile'
       percentage: 100
       variables:
         style: folded-block
@@ -71,4 +72,62 @@ rules:
       conditions: "*"
       percentage: 0
 
-  production: *rules
+  production:
+    - key: plain
+      conditions: country == 'nl' and device == 'mobile'
+      percentage: 100
+      variables:
+        style: plain
+
+    - key: double-quoted
+      conditions: "country == 'de' and device == 'mobile'" # featurevisor-ignore-line
+      percentage: 100
+      variables:
+        style: double-quoted
+
+    - key: literal-block
+      conditions: |
+        # A literal block keeps line breaks, so comment lines work
+        country == 'at'
+        and device == 'mobile'
+      percentage: 100
+      variables:
+        style: literal-block
+
+    - key: folded-block
+      conditions: >-
+        country == 'ch' and device == 'mobile'
+      percentage: 100
+      variables:
+        style: folded-block
+
+    - key: list
+      conditions:
+        - country == 'lu'
+        - device == 'mobile'
+      percentage: 100
+      variables:
+        style: list
+
+    - key: tree-group
+      conditions:
+        or:
+          - country == 'dk' and device == 'mobile'
+          - country == 'se' and device == 'tablet'
+      percentage: 100
+      variables:
+        style: tree-group
+
+    - key: mixed
+      conditions:
+        - markets.nordics
+        - attribute: device
+          operator: equals
+          value: desktop
+      percentage: 100
+      variables:
+        style: mixed
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

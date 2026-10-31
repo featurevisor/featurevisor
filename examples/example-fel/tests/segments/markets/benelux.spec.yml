@@ -3,22 +3,22 @@ segment: markets.benelux
 assertions:
   - description: a Dutch shopper matches
     context:
-      country: "nl"
+      country: nl
     expectedToMatch: true
 
   - description: Luxembourg is in the list too
     context:
-      country: "lu"
+      country: lu
     expectedToMatch: true
 
   - description: Germany is not
     context:
-      country: "de"
+      country: de
     expectedToMatch: false
 
   - description: comparison is case sensitive
     context:
-      country: "NL"
+      country: NL
     expectedToMatch: false
 
   - description: a missing country never matches in

@@ -1,4 +1,5 @@
 description: Account details
+
 type: object
 
 properties:

@@ -8,13 +8,16 @@ assertions:
 
   - description: the beta cohort matches
     context:
-      cohorts: ["canary", "beta"]
+      cohorts:
+        - canary
+        - beta
     expectedToMatch: true
 
   - description: neither does not
     context:
       betaOptIn: false
-      cohorts: ["canary"]
+      cohorts:
+        - canary
     expectedToMatch: false
 
   - description: an empty context does not

@@ -1,6 +1,9 @@
 description: Prices in the shopper's currency, with discounts by team size
 
-tags: [all, checkout, fel]
+tags:
+  - all
+  - checkout
+  - fel
 
 bucketBy: userId
 
@@ -14,7 +17,8 @@ variablesSchema:
     defaultValue: 0
 
 rules:
-  staging: &rules # Switzerland is in markets.dach, so it comes before the euro markets
+  staging:
+    # Switzerland is in markets.dach, so it comes before the euro markets
     - key: switzerland
       conditions: country == 'ch'
       percentage: 100
@@ -47,4 +51,34 @@ rules:
       conditions: "*"
       percentage: 100
 
-  production: *rules
+  production:
+    - key: switzerland
+      conditions: country == 'ch'
+      percentage: 100
+      variables:
+        currency: CHF
+
+    - key: sweden
+      conditions: country == 'se'
+      percentage: 100
+      variables:
+        currency: SEK
+
+    - key: euro-markets
+      conditions: markets.benelux or markets.dach or country in ['fi', 'fr', 'it', 'es']
+      percentage: 100
+      variables:
+        currency: EUR
+      variableOverrides:
+        discountPercent:
+          - key: small-teams
+            conditions: seats in [1, 2, 3] and plan != 'free'
+            value: 5
+
+          - key: large-teams
+            conditions: seats >= 50
+            value: 15
+
+    - key: everyone
+      conditions: "*"
+      percentage: 100

@@ -50,9 +50,12 @@ assertions:
 
   - description: a sticky disabled feature disables the variable
     matrix:
-      at: [75]
-      enabled: [false]
-      variation: [control]
+      at:
+        - 75
+      enabled:
+        - false
+      variation:
+        - control
     environment: production
     at: ${{ at }}
     stickyFeatures:

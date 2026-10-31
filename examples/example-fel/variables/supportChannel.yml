@@ -1,13 +1,15 @@
 description: Where to send people for help, reading another global variable and a feature
 
-tags: [all, fel]
+tags:
+  - all
+  - fel
 
 type: string
 
 defaultValue: email
 
 overrides:
-  staging: &overrides
+  staging:
     - key: incident
       conditions: |
         variable('platformStatus').incident.active == true
@@ -22,4 +24,17 @@ overrides:
       conditions: feature('adminConsole')
       value: chat
 
-  production: *overrides
+  production:
+    - key: incident
+      conditions: |
+        variable('platformStatus').incident.active == true
+        and variable('platformStatus').incident.severity >= 3
+      value: status-page
+
+    - key: priority
+      conditions: audiences.priorityCustomers or audiences.verifiedEnterprise
+      value: phone
+
+    - key: admins
+      conditions: feature('adminConsole')
+      value: chat

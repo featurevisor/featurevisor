@@ -3,31 +3,54 @@ variable: platformStatus
 assertions:
   - description: by default nothing is wrong
     environment: staging
-    context: { country: nl }
+    context:
+      country: nl
     expectedValue:
       maintenance: false
-      incident: { active: false, severity: 0, regions: [] }
+      incident:
+        active: false
+        severity: 0
+        regions: []
 
   - description: the European drill cohort sees a simulated incident
     environment: staging
-    context: { cohorts: [beta, incident-drill-eu] }
+    context:
+      cohorts:
+        - beta
+        - incident-drill-eu
     expectedValue:
       maintenance: false
-      incident: { active: true, severity: 2, regions: [eu, global] }
+      incident:
+        active: true
+        severity: 2
+        regions:
+          - eu
+          - global
     expectedEvaluation:
       reason: variable_override_rule
       variableOverrideKey: europe-drill
 
   - description: the US drill cohort sees a severe one
     environment: staging
-    context: { cohorts: [incident-drill-us] }
+    context:
+      cohorts:
+        - incident-drill-us
     expectedValue:
       maintenance: false
-      incident: { active: true, severity: 4, regions: [us] }
+      incident:
+        active: true
+        severity: 4
+        regions:
+          - us
 
   - description: production has no drills
     environment: production
-    context: { cohorts: [incident-drill-eu] }
+    context:
+      cohorts:
+        - incident-drill-eu
     expectedValue:
       maintenance: false
-      incident: { active: false, severity: 0, regions: [] }
+      incident:
+        active: false
+        severity: 0
+        regions: []

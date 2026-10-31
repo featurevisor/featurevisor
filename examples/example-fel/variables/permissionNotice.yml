@@ -1,18 +1,35 @@
 description: Array prerequisites evaluate both global and feature variables
-tags: [all]
+
+tags:
+  - all
+
 type: string
+
 defaultValue: No evaluated policy
 
 overrides:
-  staging: &overrides
+  staging:
     - key: writer-notice
       conditions: |-
         variable('permissionPolicy').actions includesAny ['write', 'admin']
         and feature('permissionMembership').actions includesAny ['write', 'admin']
       value: Write access
+
     - key: reader-notice
       conditions: |-
         variable('permissionPolicy').actions notIncludesAny ['write', 'admin']
         and feature('permissionMembership').actions notIncludesAny ['write', 'admin']
       value: Read only access
-  production: *overrides
+
+  production:
+    - key: writer-notice
+      conditions: |-
+        variable('permissionPolicy').actions includesAny ['write', 'admin']
+        and feature('permissionMembership').actions includesAny ['write', 'admin']
+      value: Write access
+
+    - key: reader-notice
+      conditions: |-
+        variable('permissionPolicy').actions notIncludesAny ['write', 'admin']
+        and feature('permissionMembership').actions notIncludesAny ['write', 'admin']
+      value: Read only access

@@ -1,4 +1,5 @@
 description: Money amount with currency (reusable for prices, totals, etc.)
+
 type: object
 
 properties:

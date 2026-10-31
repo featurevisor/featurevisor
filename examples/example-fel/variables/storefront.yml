@@ -1,6 +1,8 @@
 description: Storefront merchandising, with banner keys that need bracket paths in FEL
 
-tags: [all, fel]
+tags:
+  - all
+  - fel
 
 type: object
 
@@ -35,10 +37,13 @@ defaultValue:
     spring-sale:
       active: false
       discount: 10
-  featuredSkus: [sku-1, sku-2, sku-3]
+  featuredSkus:
+    - sku-1
+    - sku-2
+    - sku-3
 
 overrides:
-  staging: &overrides
+  staging:
     - key: benelux-assortment
       conditions: markets.benelux
       value:
@@ -49,6 +54,21 @@ overrides:
           spring-sale:
             active: false
             discount: 10
-        featuredSkus: [sku-7, sku-1]
+        featuredSkus:
+          - sku-7
+          - sku-1
 
-  production: *overrides
+  production:
+    - key: benelux-assortment
+      conditions: markets.benelux
+      value:
+        banners:
+          black-friday:
+            active: true
+            discount: 30
+          spring-sale:
+            active: false
+            discount: 10
+        featuredSkus:
+          - sku-7
+          - sku-1

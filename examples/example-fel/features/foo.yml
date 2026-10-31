@@ -1,5 +1,7 @@
 archived: false
+
 description: blah
+
 tags:
   - all
   - sign-in
@@ -15,13 +17,14 @@ variablesSchema:
     type: string
     defaultValue: ""
   qux:
+    description: This is a boolean variable
     type: boolean
     defaultValue: false
-    description: This is a boolean variable
 
 variations:
   - value: control
     weight: 50
+
   - value: treatment
     weight: 50
     variables:
@@ -39,6 +42,7 @@ force:
   staging:
     - conditions: userId == 'test-force-id'
       variation: treatment
+
   production:
     - conditions: userId == '123' and device == 'mobile'
       variation: treatment
@@ -50,12 +54,14 @@ rules:
     - key: "1"
       conditions: "*"
       percentage: 100
+
   production:
     - key: "1"
       conditions: mobile and (countries.germany or countries.switzerland)
       percentage: 80
       variables:
         qux: true
+
     - key: "2"
       conditions: "*"
       percentage: 50

@@ -8,10 +8,10 @@ assertions:
 
   - description: Sweden matches
     context:
-      country: "se"
+      country: se
     expectedToMatch: true
 
   - description: the United Kingdom does not
     context:
-      country: "gb"
+      country: gb
     expectedToMatch: false

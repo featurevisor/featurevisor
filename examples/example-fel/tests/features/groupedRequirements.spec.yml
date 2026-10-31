@@ -1,42 +1,56 @@
 feature: groupedRequirements
+
 assertions:
   - description: neither OR branch matches
     environment: production
     target: grouped-requirements
     at: 50
     stickyFeatures:
-      redesign: { enabled: false }
-      sidebar: { enabled: false }
+      redesign:
+        enabled: false
+      sidebar:
+        enabled: false
     expectedToBeEnabled: false
+
   - description: first OR branch and negated override match
     environment: production
     target: grouped-requirements
     at: 50
     stickyFeatures:
-      redesign: { enabled: true }
-      sidebar: { enabled: false }
-      pricing: { enabled: false }
+      redesign:
+        enabled: true
+      sidebar:
+        enabled: false
+      pricing:
+        enabled: false
     expectedToBeEnabled: true
     expectedVariables:
       message: Redesigned checkout
+
   - description: second OR branch matches but override does not
     environment: production
     target: grouped-requirements
     at: 50
     stickyFeatures:
-      redesign: { enabled: false }
-      sidebar: { enabled: true }
+      redesign:
+        enabled: false
+      sidebar:
+        enabled: true
     expectedToBeEnabled: true
     expectedVariables:
       message: Standard checkout
+
   - description: both OR branches match but pricing prevents the override
     environment: production
     target: grouped-requirements
     at: 50
     stickyFeatures:
-      redesign: { enabled: true }
-      sidebar: { enabled: true }
-      pricing: { enabled: true }
+      redesign:
+        enabled: true
+      sidebar:
+        enabled: true
+      pricing:
+        enabled: true
     expectedToBeEnabled: true
     expectedVariables:
       message: Standard checkout

@@ -1,4 +1,5 @@
 segment: interestedInSports
+
 assertions:
   - context:
       interests:

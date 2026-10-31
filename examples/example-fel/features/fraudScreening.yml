@@ -1,6 +1,9 @@
 description: Fraud checks mixing numbers, null, not groups, and tree leaves beside FEL
 
-tags: [all, checkout, fel]
+tags:
+  - all
+  - checkout
+  - fel
 
 bucketBy: userId
 
@@ -12,7 +15,7 @@ variablesSchema:
     defaultValue: allow
 
 rules:
-  staging: &rules
+  staging:
     - key: manual-review
       conditions:
         or:
@@ -24,7 +27,7 @@ rules:
           # A tree leaf sits beside FEL strings in the same group
           - attribute: couponCode
             operator: matches
-            value: "^test-"
+            value: ^test-
             regexFlags: i
       percentage: 100
       variables:
@@ -43,4 +46,31 @@ rules:
       conditions: "*"
       percentage: 100
 
-  production: *rules
+  production:
+    - key: manual-review
+      conditions:
+        or:
+          - riskScore >= 0.75
+
+          - riskScore isNull and cartTotal >= 500
+
+          - attribute: couponCode
+            operator: matches
+            value: ^test-
+            regexFlags: i
+      percentage: 100
+      variables:
+        action: review
+
+    - key: step-up
+      conditions:
+        - riskScore >= 0.4
+        - not:
+            - audiences.verifiedEnterprise
+      percentage: 100
+      variables:
+        action: challenge
+
+    - key: everyone
+      conditions: "*"
+      percentage: 100

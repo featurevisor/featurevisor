@@ -1,7 +1,10 @@
 description: Accumulating policy items
+
 tags:
   - all
+
 type: object
+
 properties:
   items:
     type: array
@@ -18,13 +21,16 @@ properties:
         - id
         - label
         - message
+
 required:
   - items
+
 defaultValue:
   items:
     - id: base
       label: Base
       message: Base policy
+
 overrides:
   staging:
     - key: staging-extra
@@ -35,6 +41,7 @@ overrides:
           id: staging-extra
           label: Temporary
           message: Temporary staging policy
+
     - key: staging-reset
       conditions: "*"
       continue: true
@@ -43,6 +50,7 @@ overrides:
           - id: staging
             label: Staging
             message: Staging policy
+
   production:
     - key: netherlands
       conditions: country == 'nl'
@@ -58,10 +66,12 @@ overrides:
           continue: true
           mutate:
             items[id=nl].label: Amsterdam
+
         - key: amsterdam-message
           conditions: city == 'amsterdam'
           mutate:
             items[id=nl].message: Amsterdam policy
+
     - key: mobile-prepend
       conditions: device == 'mobile'
       continue: true
@@ -70,6 +80,7 @@ overrides:
           id: mobile
           label: Mobile
           message: Mobile policy
+
     - key: mobile-append
       conditions: device == 'mobile'
       continue: true
@@ -78,11 +89,13 @@ overrides:
           id: mobile-tail
           label: Mobile tail
           message: Mobile tail policy
+
     - key: mobile-select
       conditions: device == 'mobile'
       continue: true
       mutate:
         items[id=nl].message: Mobile Netherlands policy
+
     - key: mobile-remove
       conditions: device == 'mobile'
       mutate:

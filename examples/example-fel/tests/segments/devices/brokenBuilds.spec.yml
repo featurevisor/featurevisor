@@ -3,17 +3,19 @@ segment: devices.brokenBuilds
 assertions:
   - description: 17.4.0 is broken
     context:
-      osVersion: "17.4.0"
+      osVersion: 17.4.0
     expectedToMatch: true
 
   - description: 17.4.1 has the fix
     context:
-      osVersion: "17.4.1"
+      osVersion: 17.4.1
     expectedToMatch: false
 
   - description: a nested browser version is compared as a version too
     context:
-      browser: { name: "chrome", version: "120.0.1" }
+      browser:
+        name: chrome
+        version: 120.0.1
     expectedToMatch: true
 
   - description: a missing version is not broken

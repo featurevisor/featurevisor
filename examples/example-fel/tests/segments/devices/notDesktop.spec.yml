@@ -3,12 +3,12 @@ segment: devices.notDesktop
 assertions:
   - description: a phone matches
     context:
-      device: "mobile"
+      device: mobile
     expectedToMatch: true
 
   - description: a desktop does not
     context:
-      device: "desktop"
+      device: desktop
     expectedToMatch: false
 
   - description: a missing device matches, since != matches a missing value

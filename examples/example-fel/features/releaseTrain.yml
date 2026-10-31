@@ -1,6 +1,8 @@
 description: Release channels picked by operating system and browser versions
 
-tags: [all, fel]
+tags:
+  - all
+  - fel
 
 bucketBy: userId
 
@@ -10,7 +12,7 @@ variablesSchema:
     defaultValue: stable
 
 rules:
-  staging: &rules
+  staging:
     - key: broken-builds
       conditions: devices.brokenBuilds
       percentage: 0
@@ -31,4 +33,23 @@ rules:
       conditions: "*"
       percentage: 100
 
-  production: *rules
+  production:
+    - key: broken-builds
+      conditions: devices.brokenBuilds
+      percentage: 0
+
+    - key: canary
+      conditions: devices.prereleaseOs or cohorts includes 'canary'
+      percentage: 100
+      variables:
+        channel: canary
+
+    - key: fast
+      conditions: devices.modernIos or browser.version >= semver('121.0.0')
+      percentage: 100
+      variables:
+        channel: fast
+
+    - key: everyone
+      conditions: "*"
+      percentage: 100

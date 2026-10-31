@@ -1,17 +1,23 @@
 description: Checkout offered when either supporting feature is enabled
+
 tags:
   - all
+
 bucketBy: userId
+
 conditions: feature('redesign') or feature('sidebar')
+
 variablesSchema:
   message:
     type: string
     defaultValue: Standard checkout
+
 rules:
   staging:
     - key: everyone
       conditions: "*"
       percentage: 100
+
   production:
     - key: everyone
       conditions: "*"

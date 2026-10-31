@@ -3,7 +3,7 @@ segment: audiences.freeOrUnknownPlan
 assertions:
   - description: free matches
     context:
-      plan: "free"
+      plan: free
     expectedToMatch: true
 
   - description: a missing plan matches through notExists
@@ -12,5 +12,5 @@ assertions:
 
   - description: pro does not
     context:
-      plan: "pro"
+      plan: pro
     expectedToMatch: false

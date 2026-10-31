@@ -92,21 +92,13 @@ when changing the converter in packages/core/src/builder/schemaV2.ts.
 
 ## FEL
 
-FEL expressions are strings in conditions, read by shape: `*` is everyone, a
-string shaped like an entity key is a segment, and any other string is an
-expression. packages/fel parses, compiles and prints them, and depends only on
-@featurevisor/types. Core expands them when Datasource reads features,
-segments and global variables, so the builder, tests, Catalog and every other
-reader see condition trees. A command that writes definitions back must not
-write those trees over authored FEL. Read with readAuthoredEntity, or restore
-FEL with restoreAuthoredFel as promotion does. Lint reports expressions while
-allowFEL is false, and maps problems inside an expression to the YAML file's
-line and column. Every place a definition can hold conditions is listed once,
-in datasource/conditionLocations.ts, which FEL expansion and allowedConditions
-share. Core's builder/fel.spec.ts checks that Example 1 read as FEL builds
-identical datafiles. examples/example-fel began as Example 1 written in FEL
-and is now its own showcase, kept apart from Example 1. Give each expression
-added there a spec that covers matches, near misses and missing values.
+packages/fel parses, compiles and prints FEL, the expression strings in
+conditions, and depends only on @featurevisor/types. Datasource expands them
+when reading features, segments and global variables, so readers see condition
+trees. A command writing definitions back must keep authored FEL: read files
+with the parser, as fmt, migrate and convert do, or restore it with
+restoreAuthoredFel, as promote does. examples/example-fel shows FEL, with a
+spec for each expression.
 
 ## Catalog
 

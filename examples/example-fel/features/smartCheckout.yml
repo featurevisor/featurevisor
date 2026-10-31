@@ -1,6 +1,9 @@
 description: One page checkout, with FEL in every place a feature holds conditions
 
-tags: [all, checkout, fel]
+tags:
+  - all
+  - checkout
+  - fel
 
 bucketBy: userId
 
@@ -22,7 +25,8 @@ variablesSchema:
     type: array
     items:
       type: string
-    defaultValue: [card]
+    defaultValue:
+      - card
 
   limits:
     type: object
@@ -51,22 +55,30 @@ variations:
       paymentMethods:
         - key: benelux
           conditions: markets.benelux
-          value: [ideal, card]
+          value:
+            - ideal
+            - card
 
         - key: dach-small-carts
           conditions: markets.dach and cartTotal < 1000
-          value: [sofort, card]
+          value:
+            - sofort
+            - card
 
 force:
-  staging: &force # QA accounts can try express anywhere, even where the legacy checkout is on
+  staging:
+    # QA accounts can try express anywhere, even where the legacy checkout is on
     - conditions: userId startsWith 'qa-' and couponCode == 'FORCE-EXPRESS'
       enabled: true
       variation: express
 
-  production: *force
+  production:
+    - conditions: userId startsWith 'qa-' and couponCode == 'FORCE-EXPRESS'
+      enabled: true
+      variation: express
 
 rules:
-  staging: &rules
+  staging:
     - key: staff
       conditions: audiences.staff
       percentage: 100
@@ -98,4 +110,34 @@ rules:
       conditions: "*"
       percentage: 0
 
-  production: *rules
+  production:
+    - key: staff
+      conditions: audiences.staff
+      percentage: 100
+      variation: express
+
+    - key: priority
+      conditions: audiences.priorityCustomers
+      percentage: 100
+      variableOverrides:
+        limits:
+          - key: large-orders
+            conditions: audiences.highValueCart or organization.employees > 999
+            value:
+              maxItems: 50
+              maxTotal: 25000
+
+        trustBadge:
+          - key: low-risk
+            conditions: audiences.lowRisk
+            value: true
+
+    - key: europe
+      conditions: |
+        markets.europe
+        and not audiences.anonymous
+      percentage: 50
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

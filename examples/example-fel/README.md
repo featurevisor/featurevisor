@@ -61,7 +61,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
 `features/yamlStyles.yml` writes one kind of expression in each YAML style: a plain scalar, a double quoted scalar, a literal block with a comment line, a folded block, a list of expressions, expressions inside a tree `or` group, and a segment name beside a tree leaf.
 
-Prettier turns single quoted YAML into double quotes, so expressions read best plain, double quoted or in a block. `"*"` stays quoted, since a bare `*` starts a YAML alias.
+The project is formatted with `npx featurevisor fmt`, which never changes an expression's value. It writes an expression as a plain scalar wherever YAML allows, so the double quoted rule keeps its quotes with a `# featurevisor-ignore-line` comment. It keeps a literal block as written, comment lines included, and joins a folded block's lines, so write a long expression as a literal block. `"*"` stays quoted, since a bare `*` starts a YAML alias.
 
 Some leaves stay as YAML objects beside FEL strings. A disabled feature's variation has no FEL form, as in `features/requiredFeaturesExample.yml`. `features/fraudScreening.yml` puts a tree leaf in the same group as expressions on purpose.
 

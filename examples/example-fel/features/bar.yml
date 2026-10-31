@@ -1,4 +1,5 @@
 description: Example with object variable type
+
 tags:
   - all
 
@@ -9,7 +10,7 @@ conditions: feature('experimentAllocation').variation == 'bar'
 variablesSchema:
   color:
     type: string
-    defaultValue: "red"
+    defaultValue: red
   hero:
     type: object
     defaultValue:
@@ -20,6 +21,7 @@ variablesSchema:
 variations:
   - value: control
     weight: 33
+
   - value: b
     weight: 33
     variables:
@@ -34,6 +36,7 @@ variations:
             title: Hero Title for B in DE or CH
             subtitle: Hero Subtitle for B in DE of CH
             alignment: center for B in DE or CH
+
   - value: c
     weight: 34
 
@@ -43,6 +46,7 @@ rules:
     - key: allocated
       conditions: "*"
       percentage: 100
+
   production:
     - key: allocated
       conditions: "*"

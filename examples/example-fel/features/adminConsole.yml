@@ -1,6 +1,8 @@
 description: Workspace administration, gated on roles and permissions held in arrays
 
-tags: [all, fel]
+tags:
+  - all
+  - fel
 
 bucketBy: userId
 
@@ -11,14 +13,15 @@ variablesSchema:
     type: array
     items:
       type: string
-    defaultValue: [overview]
+    defaultValue:
+      - overview
 
   readOnly:
     type: boolean
     defaultValue: false
 
 rules:
-  staging: &rules
+  staging:
     - key: admins
       conditions: audiences.workspaceAdmins and permissions includesAny ['write', 'admin']
       percentage: 100
@@ -26,11 +29,18 @@ rules:
         sections:
           - key: owners
             conditions: roles includes 'owner'
-            value: [overview, invoices, seats, security]
+            value:
+              - overview
+              - invoices
+              - seats
+              - security
 
           - key: billing
             conditions: roles includes 'billing'
-            value: [overview, invoices, seats]
+            value:
+              - overview
+              - invoices
+              - seats
 
     - key: auditors
       conditions: |
@@ -45,4 +55,36 @@ rules:
       conditions: "*"
       percentage: 0
 
-  production: *rules
+  production:
+    - key: admins
+      conditions: audiences.workspaceAdmins and permissions includesAny ['write', 'admin']
+      percentage: 100
+      variableOverrides:
+        sections:
+          - key: owners
+            conditions: roles includes 'owner'
+            value:
+              - overview
+              - invoices
+              - seats
+              - security
+
+          - key: billing
+            conditions: roles includes 'billing'
+            value:
+              - overview
+              - invoices
+              - seats
+
+    - key: auditors
+      conditions: |
+        roles includes 'viewer'
+        and permissions notIncludesAny ['write', 'admin']
+        and cohorts notIncludes 'suspended'
+      percentage: 100
+      variables:
+        readOnly: true
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

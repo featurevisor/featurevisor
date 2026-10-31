@@ -1,3 +1,7 @@
 description: Includes portable global mutation coverage and its prerequisites
-includeFeatures: [unrelatedMutationFeature]
-includeVariables: [mutationConformance]
+
+includeFeatures:
+  - unrelatedMutationFeature
+
+includeVariables:
+  - mutationConformance

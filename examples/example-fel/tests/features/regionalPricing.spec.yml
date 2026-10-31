@@ -4,55 +4,101 @@ assertions:
   - description: Switzerland pays in francs, ahead of the euro markets rule that also covers it
     environment: staging
     at: 50
-    context: { userId: user-1, country: ch, seats: 2, plan: pro }
+    context:
+      userId: user-1
+      country: ch
+      seats: 2
+      plan: pro
     expectedToBeEnabled: true
-    expectedVariables: { currency: CHF, discountPercent: 0 }
+    expectedVariables:
+      currency: CHF
+      discountPercent: 0
 
   - description: Sweden pays in kronor
     environment: staging
     at: 50
-    context: { userId: user-1, country: se }
-    expectedVariables: { currency: SEK, discountPercent: 0 }
+    context:
+      userId: user-1
+      country: se
+    expectedVariables:
+      currency: SEK
+      discountPercent: 0
 
   - description: a small paid team in the Netherlands gets the small team discount
     environment: staging
     at: 50
-    context: { userId: user-1, country: nl, seats: 2, plan: pro }
-    expectedVariables: { currency: EUR, discountPercent: 5 }
+    context:
+      userId: user-1
+      country: nl
+      seats: 2
+      plan: pro
+    expectedVariables:
+      currency: EUR
+      discountPercent: 5
 
   - description: the free plan does not
     environment: staging
     at: 50
-    context: { userId: user-1, country: nl, seats: 2, plan: free }
-    expectedVariables: { currency: EUR, discountPercent: 0 }
+    context:
+      userId: user-1
+      country: nl
+      seats: 2
+      plan: free
+    expectedVariables:
+      currency: EUR
+      discountPercent: 0
 
   - description: a missing plan is != 'free', so it gets the discount
     environment: staging
     at: 50
-    context: { userId: user-1, country: be, seats: 2 }
-    expectedVariables: { currency: EUR, discountPercent: 5 }
+    context:
+      userId: user-1
+      country: be
+      seats: 2
+    expectedVariables:
+      currency: EUR
+      discountPercent: 5
 
   - description: fifty seats or more get the large team discount
     environment: production
     at: 50
-    context: { userId: user-1, country: de, seats: 80, plan: enterprise }
-    expectedVariables: { currency: EUR, discountPercent: 15 }
+    context:
+      userId: user-1
+      country: de
+      seats: 80
+      plan: enterprise
+    expectedVariables:
+      currency: EUR
+      discountPercent: 15
 
   - description: a country from the inline list pays in euros
     environment: production
     at: 50
-    context: { userId: user-1, country: fi, seats: 10 }
-    expectedVariables: { currency: EUR, discountPercent: 0 }
+    context:
+      userId: user-1
+      country: fi
+      seats: 10
+    expectedVariables:
+      currency: EUR
+      discountPercent: 0
 
   - description: everyone else pays in dollars
     environment: production
     at: 50
-    context: { userId: user-1, country: us, seats: 2, plan: pro }
-    expectedVariables: { currency: USD, discountPercent: 0 }
+    context:
+      userId: user-1
+      country: us
+      seats: 2
+      plan: pro
+    expectedVariables:
+      currency: USD
+      discountPercent: 0
 
   - description: an empty context reaches the catch all too
     environment: staging
     at: 50
     context: {}
     expectedToBeEnabled: true
-    expectedVariables: { currency: USD, discountPercent: 0 }
+    expectedVariables:
+      currency: USD
+      discountPercent: 0

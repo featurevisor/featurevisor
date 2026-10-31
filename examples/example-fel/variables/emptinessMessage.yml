@@ -1,19 +1,39 @@
 description: Demonstrates empty and notEmpty required variable expressions
-tags: [all]
+
+tags:
+  - all
+
 type: string
+
 defaultValue: No emptiness requirement matched
+
 overrides:
-  staging: &overrides
+  staging:
     - key: empty-source
       conditions: |-
         variable('emptinessSource').label empty
         and variable('emptinessSource').items empty
         and variable('emptinessSource').metadata empty
       value: Source values are empty
+
     - key: populated-source
       conditions: |-
         variable('emptinessSource').label notEmpty
         and variable('emptinessSource').items notEmpty
         and variable('emptinessSource').metadata notEmpty
       value: Source values are populated
-  production: *overrides
+
+  production:
+    - key: empty-source
+      conditions: |-
+        variable('emptinessSource').label empty
+        and variable('emptinessSource').items empty
+        and variable('emptinessSource').metadata empty
+      value: Source values are empty
+
+    - key: populated-source
+      conditions: |-
+        variable('emptinessSource').label notEmpty
+        and variable('emptinessSource').items notEmpty
+        and variable('emptinessSource').metadata notEmpty
+      value: Source values are populated

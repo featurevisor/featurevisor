@@ -1,10 +1,11 @@
 feature: checkout.page
+
 assertions:
   ##
   # Everyone
   #
-  - at: 60
-    environment: production
+  - environment: production
+    at: 60
     context:
       country: us
     expectedToBeEnabled: true
@@ -26,8 +27,8 @@ assertions:
   ##
   # NL
   #
-  - at: 60
-    environment: production
+  - environment: production
+    at: 60
     context:
       country: nl
     expectedToBeEnabled: true
@@ -45,8 +46,8 @@ assertions:
   ##
   # CH
   #
-  - at: 80
-    environment: production
+  - environment: production
+    at: 80
     context:
       country: ch
     expectedToBeEnabled: false
@@ -57,8 +58,8 @@ assertions:
   ##
   # DE
   #
-  - at: 80
-    environment: production
+  - environment: production
+    at: 80
     context:
       country: de
     expectedToBeEnabled: true

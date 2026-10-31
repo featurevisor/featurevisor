@@ -1,4 +1,5 @@
 description: Variable overrides from variations and rules (including layered rule overrides)
+
 tags:
   - all
 
@@ -186,10 +187,10 @@ variations:
       variationOnly:
         mode: treatment
         level: 2
-      "partialMutationShowcase.text": variation
-      "partialMutationShowcase.nested.count": 5
-      "partialMutationShowcase.list:append": v
-      "partialMutationShowcase.rows[id=2].label": two-v
+      partialMutationShowcase.text: variation
+      partialMutationShowcase.nested.count: 5
+      partialMutationShowcase.list:append: v
+      partialMutationShowcase.rows[id=2].label: two-v
       bothLayered:
         source: variation
         nested:
@@ -205,27 +206,27 @@ variations:
           description: Netherlands values when pricing is in treatment
           conditions: countries.netherlands and feature('pricing').variation == 'treatment'
           mutate:
-            "deep.count": 10
-            "deep.tags:append": nl
+            deep.count: 10
+            deep.tags:append: nl
         - conditions: country == 'de'
           value:
             base: variation-de
-            "deep.count": 20
+            deep.count: 20
       partialMutationShowcase:
         - conditions: countries.netherlands
           value:
-            "nested.meta.region": nl-variation-override
-            "list:prepend": nl
+            nested.meta.region: nl-variation-override
+            list:prepend: nl
         - conditions: country == 'de'
           value:
-            "nested.count": 8
-            "rows[id=1]:after":
+            nested.count: 8
+            rows[id=1]:after:
               id: 15
               label: one-half
       bothLayered:
         - conditions: mobile
           value:
-            "nested.value": 6
+            nested.value: 6
 
 rules:
   staging:
@@ -233,10 +234,10 @@ rules:
       conditions: countries.germany
       percentage: 100
       variables:
-        "partialMutationShowcase.text": rule-de
-        "partialMutationShowcase.nested.meta.region": de-rule
-        "partialMutationShowcase.rows[0].label": one-rule
-        "partialMutationShowcase.list:append": de
+        partialMutationShowcase.text: rule-de
+        partialMutationShowcase.nested.meta.region: de-rule
+        partialMutationShowcase.rows[0].label: one-rule
+        partialMutationShowcase.list:append: de
         ruleVariablesOnly:
           - id: r1
             active: true
@@ -264,31 +265,31 @@ rules:
           - key: mobile
             conditions: mobile and feature('pricing').variation == 'treatment'
             mutate:
-              "options.threshold": 75
-              "entries:append":
+              options.threshold: 75
+              entries:append:
                 code: mobile
                 score: 2
           - conditions: country == 'de'
             value:
               style: de
-              "options.enabled": true
+              options.enabled: true
         bothLayered:
           - conditions: mobile
             value:
-              "nested.value": 200
-              "list[0].label": rule-mobile
+              nested.value: 200
+              list[0].label: rule-mobile
           - conditions: country == 'de'
             value:
-              "nested.meta.from": rule-override
+              nested.meta.from: rule-override
         partialMutationShowcase:
           - conditions: mobile
             value:
-              "list:prepend": mobile
-              "nested.count": 200
+              list:prepend: mobile
+              nested.count: 200
           - conditions: country == 'de'
             value:
-              "nested.meta.region": de-rule-override
-              "rows[id=2]:remove": null
+              nested.meta.region: de-rule-override
+              rows[id=2]:remove: null
 
     - key: netherlands_variables_only
       conditions: countries.netherlands
@@ -317,8 +318,8 @@ rules:
               text: eu-desktop
           - conditions: mobile
             value:
-              "nested.meta.region": eu-mobile
-              "rows[1].label": two-eu
+              nested.meta.region: eu-mobile
+              rows[1].label: two-eu
         ruleOverrideOnly:
           - conditions: device == 'desktop'
             value:
@@ -326,7 +327,7 @@ rules:
         bothLayered:
           - conditions: mobile
             value:
-              "nested.value": 400
+              nested.value: 400
 
     - key: everyone
       conditions: "*"

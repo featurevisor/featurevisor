@@ -1,4 +1,5 @@
 description: Segment combining all condition leaf kinds
+
 conditions: |-
   countries.netherlands
   and device == 'mobile'

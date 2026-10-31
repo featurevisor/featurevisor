@@ -1,4 +1,5 @@
 description: Testing feature with object variable type
+
 tags:
   - all
 
@@ -45,6 +46,7 @@ rules:
     - key: everyone
       conditions: "*"
       percentage: 50
+
   production:
     - key: everyone
       conditions: "*"

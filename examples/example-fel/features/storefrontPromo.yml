@@ -1,6 +1,9 @@
 description: Black Friday promotion that reads the storefront global variable through bracket paths
 
-tags: [all, ecommerce, fel]
+tags:
+  - all
+  - ecommerce
+  - fel
 
 bucketBy: userId
 
@@ -12,7 +15,7 @@ variablesSchema:
     defaultValue: Black Friday deals
 
 rules:
-  staging: &rules
+  staging:
     - key: big-discount
       conditions: variable('storefront').banners['black-friday'].discount >= 30 and audiences.couponHunters
       percentage: 100
@@ -35,4 +38,25 @@ rules:
       conditions: "*"
       percentage: 0
 
-  production: *rules
+  production:
+    - key: big-discount
+      conditions: variable('storefront').banners['black-friday'].discount >= 30 and audiences.couponHunters
+      percentage: 100
+      variables:
+        headline: 30% off with your code
+
+    - key: local-favourites
+      conditions: variable('storefront').featuredSkus.0 == 'sku-7'
+      percentage: 100
+      variables:
+        headline: Local favourites on sale
+
+    - key: full-shelf
+      conditions: variable('storefront').featuredSkus.length >= 3
+      percentage: 100
+      variables:
+        headline: Shop the full Black Friday shelf
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

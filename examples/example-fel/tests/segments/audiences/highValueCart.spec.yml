@@ -13,18 +13,18 @@ assertions:
 
   - description: enterprise carts match from 99.5
     context:
-      plan: "enterprise"
+      plan: enterprise
       cartTotal: 99.5
     expectedToMatch: true
 
   - description: enterprise carts just below 99.5 do not
     context:
-      plan: "enterprise"
+      plan: enterprise
       cartTotal: 99.49
     expectedToMatch: false
 
   - description: the lower bar is for enterprise only
     context:
-      plan: "pro"
+      plan: pro
       cartTotal: 100
     expectedToMatch: false

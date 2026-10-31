@@ -13,8 +13,11 @@ context:
   email: sam@shop.example
   cartTotal: 300
   riskScore: 0.1
-  roles: [owner]
-  permissions: [read, write]
+  roles:
+    - owner
+  permissions:
+    - read
+    - write
 
 checks:
   - segment: audiences.priorityCustomers
@@ -122,7 +125,8 @@ children:
         incident:
           active: true
           severity: 4
-          regions: [apac]
+          regions:
+            - apac
     checks:
       - feature: statusPage
         variable: banner

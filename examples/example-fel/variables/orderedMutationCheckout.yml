@@ -1,25 +1,43 @@
 description: Ordered checkout mutations preserve repeated paths and accumulate matching overrides
-tags: [all]
+
+tags:
+  - all
+
 type: object
+
 properties:
-  currency: { type: string }
-  methods: { type: array, items: { type: string } }
-  label: { type: string }
-required: [currency, methods, label]
+  currency:
+    type: string
+  methods:
+    type: array
+    items:
+      type: string
+  label:
+    type: string
+
+required:
+  - currency
+  - methods
+  - label
+
 defaultValue:
   currency: USD
-  methods: [default]
+  methods:
+    - default
   label: Default
+
 overrides:
   staging:
     - key: bootstrap
       conditions: "*"
       continue: true
       mutate:
-        - methods: [card]
-        - "methods:append": ideal
-        - "methods:append": paypal
+        - methods:
+            - card
+        - methods:append: ideal
+        - methods:append: paypal
         - currency: EUR
+
     - key: netherlands
       conditions: country == 'nl'
       continue: true
@@ -29,29 +47,33 @@ overrides:
         - key: amsterdam
           conditions: city == 'amsterdam'
           mutate:
-            - "methods:append": local
-            - "methods:append": collection
+            - methods:append: local
+            - methods:append: collection
             - label: Amsterdam
+
     - key: finish
       conditions: "*"
       mutate:
-        - "methods:append": final
+        - methods:append: final
+
   production:
     - key: netherlands
       conditions: country == 'nl'
       mutate:
-        - "methods:append": discarded
-        - methods: [card]
-        - "methods:append": ideal
-        - "methods:append": paypal
+        - methods:append: discarded
+        - methods:
+            - card
+        - methods:append: ideal
+        - methods:append: paypal
         - currency: EUR
       overrides:
         - key: amsterdam
           conditions: city == 'amsterdam'
           mutate:
             - label: Amsterdam
-            - "methods:append": local
-            - "methods:append": collection
+            - methods:append: local
+            - methods:append: collection
+
     - key: unchanged
       conditions: "*"
       mutate: []

@@ -1,4 +1,5 @@
 description: Exhaustive example using reusable schemas (link, color, hero, navLinks) plus inline variable schemas
+
 tags:
   - all
 
@@ -39,7 +40,7 @@ variablesSchema:
 
   pageTitle:
     type: string
-    defaultValue: "Default Title"
+    defaultValue: Default Title
 
   enabled:
     type: boolean
@@ -105,12 +106,12 @@ variablesSchema:
   # --- const: inline and reusable schema ---
   status:
     type: string
-    const: "active"
-    defaultValue: "active"
+    const: active
+    defaultValue: active
 
   draftStatus:
     schema: statusConst
-    defaultValue: "draft"
+    defaultValue: draft
 
   # --- object with a property using const ---
   statusInfo:
@@ -118,15 +119,15 @@ variablesSchema:
     properties:
       kind:
         type: string
-        const: "active"
+        const: active
       label:
         type: string
     required:
       - kind
       - label
     defaultValue:
-      kind: "active"
-      label: "Default"
+      kind: active
+      label: Default
 
   # --- enum: inline and reusable schema ---
   theme:
@@ -157,21 +158,21 @@ variablesSchema:
       - label
     defaultValue:
       theme: light
-      label: "Default"
+      label: Default
 
   # --- oneOf: reusable schema only (string | number, or id | link) ---
   stringOrNumberVar:
     schema: stringOrNumber
-    defaultValue: "id-1"
+    defaultValue: id-1
 
   mixedList:
     type: array
     items:
       schema: stringOrNumber
     defaultValue:
-      - "a"
+      - a
       - 1
-      - "b"
+      - b
 
   refOrLink:
     schema: idOrLink
@@ -216,18 +217,18 @@ variablesSchema:
   # --- minLength/maxLength/pattern: reusable schemas ---
   slugVar:
     schema: slugString
-    defaultValue: "home"
+    defaultValue: home
 
   promoCodeVar:
     schema: promoCode
-    defaultValue: "WELCOME"
+    defaultValue: WELCOME
 
   # --- minLength/maxLength: inline string (no pattern) ---
   shortLabel:
     type: string
     minLength: 1
     maxLength: 10
-    defaultValue: "OK"
+    defaultValue: OK
 
   # --- minItems/maxItems/uniqueItems: reusable schemas ---
   boundedTagsVar:
@@ -242,10 +243,10 @@ variablesSchema:
   # --- minItems/maxItems: inline array (no uniqueItems) ---
   shortList:
     type: array
-    minItems: 0
-    maxItems: 3
     items:
       type: string
+    minItems: 0
+    maxItems: 3
     defaultValue: []
 
   # --- Inline string with pattern (minLength, maxLength, pattern) ---
@@ -253,47 +254,47 @@ variablesSchema:
     type: string
     minLength: 1
     maxLength: 30
-    pattern: "^[a-z0-9-]+$"
-    defaultValue: "home"
+    pattern: ^[a-z0-9-]+$
+    defaultValue: home
 
   # --- Inline array with uniqueItems ---
   inlineUniqueTags:
     type: array
+    items:
+      type: string
     minItems: 0
     maxItems: 5
     uniqueItems: true
-    items:
-      type: string
     defaultValue: []
 
 variations:
   - value: control
     weight: 50
     variables:
-      pageTitle: "Control Title"
+      pageTitle: Control Title
       enabled: true
       statusInfo:
-        kind: "active"
-        label: "Control"
+        kind: active
+        label: Control
       theme: light
       themeVariant: light
       themeConfig:
         theme: light
-        label: "Control"
-      stringOrNumberVar: "control-id"
+        label: Control
+      stringOrNumberVar: control-id
       mixedList:
-        - "x"
+        - x
         - 10
-      refOrLink: "control-ref"
-      inlineStringOrNumber: "control-inline"
+      refOrLink: control-ref
+      inlineStringOrNumber: control-inline
       percentVar: 25
       ratingVar: 2.5
       levelInline: 3
       discountRateInline: 0.1
       fixedLevel: 5
-      slugVar: "control-page"
-      promoCodeVar: "CTRL2024"
-      shortLabel: "Control"
+      slugVar: control-page
+      promoCodeVar: CTRL2024
+      shortLabel: Control
       boundedTagsVar:
         - control
         - a
@@ -302,7 +303,7 @@ variations:
         - A1
       shortList:
         - one
-      inlineSlug: "control-page"
+      inlineSlug: control-page
       inlineUniqueTags: []
       singleLink:
         title: Control Link
@@ -320,14 +321,14 @@ variations:
         theme: light
         compact: true
       labels:
-        title: "Control title"
-        subtitle: "Control subtitle"
+        title: Control title
+        subtitle: Control subtitle
       linksByLocale:
         en:
-          title: "Control Home"
+          title: Control Home
           url: /control
         de:
-          title: "Kontrolle"
+          title: Kontrolle
           url: /de/control
       tagList:
         - control
@@ -337,21 +338,21 @@ variations:
   - value: treatment
     weight: 50
     variables:
-      pageTitle: "Treatment Title"
+      pageTitle: Treatment Title
       enabled: true
       statusInfo:
-        kind: "active"
-        label: "Treatment"
+        kind: active
+        label: Treatment
       theme: dark
       themeVariant: dark
       themeConfig:
         theme: dark
-        label: "Treatment"
+        label: Treatment
       stringOrNumberVar: 42
       mixedList:
         - 1
         - 2
-        - "three"
+        - three
       refOrLink:
         title: Treatment Link
         url: /treatment
@@ -361,20 +362,20 @@ variations:
       levelInline: 8
       discountRateInline: 0.9
       fixedLevel: 5
-      slugVar: "treatment-page"
-      promoCodeVar: "TREAT2024"
-      shortLabel: "Treatment"
+      slugVar: treatment-page
+      promoCodeVar: TREAT2024
+      shortLabel: Treatment
       boundedTagsVar:
         - treatment
         - x
-        - y
+        - "y"
       uniqueCodesVar:
         - TREAT
         - B2
       shortList:
         - one
         - two
-      inlineSlug: "treatment-page"
+      inlineSlug: treatment-page
       inlineUniqueTags:
         - a
         - b
@@ -394,28 +395,28 @@ variations:
         theme: dark
         compact: false
       labels:
-        title: "Treatment title"
-        subtitle: "Treatment subtitle"
+        title: Treatment title
+        subtitle: Treatment subtitle
       linksByLocale:
         en:
-          title: "Treatment Home"
+          title: Treatment Home
           url: /treatment
         de:
-          title: "Behandlung"
+          title: Behandlung
           url: /de/treatment
       tagList:
         - treatment
         - x
-        - y
+        - "y"
     variableOverrides:
       shortLabel:
         - conditions: countries.germany
-          value: "Treat DE"
+          value: Treat DE
         - conditions: countries.netherlands
-          value: "Treat NL"
+          value: Treat NL
       inlineSlug:
         - conditions: countries.germany
-          value: "treatment-de"
+          value: treatment-de
 
 rules:
   staging:
@@ -424,16 +425,16 @@ rules:
       conditions: countries.germany
       percentage: 100
       variables:
-        pageTitle: "Germany Title"
+        pageTitle: Germany Title
         singleLink:
-          title: "DE Link"
+          title: DE Link
           url: /de
         themeColor:
           hex: "#dd0000"
           opacity: 100
         heroBlock:
-          title: "Willkommen"
-          subtitle: "Deutschland"
+          title: Willkommen
+          subtitle: Deutschland
         navLinks:
           - title: Start
             url: /de
@@ -443,14 +444,14 @@ rules:
           theme: dark
           compact: true
         labels:
-          title: "DE title"
-          subtitle: "DE subtitle"
+          title: DE title
+          subtitle: DE subtitle
         linksByLocale:
           en:
-            title: "Germany Home"
+            title: Germany Home
             url: /de
           de:
-            title: "Deutschland"
+            title: Deutschland
             url: /de/start
         tagList:
           - de
@@ -461,16 +462,16 @@ rules:
           - title: Zweite
             url: /de/second
         statusInfo:
-          kind: "active"
-          label: "Deutsch"
+          kind: active
+          label: Deutsch
         theme: light
         themeVariant: system
         themeConfig:
           theme: light
-          label: "Deutsch"
+          label: Deutsch
         stringOrNumberVar: 99
         mixedList:
-          - "de"
+          - de
           - 1
         refOrLink:
           title: Start
@@ -481,9 +482,9 @@ rules:
         levelInline: 10
         discountRateInline: 1.0
         fixedLevel: 5
-        slugVar: "de-home"
-        promoCodeVar: "DE2024"
-        shortLabel: "Germany"
+        slugVar: de-home
+        promoCodeVar: DE2024
+        shortLabel: Germany
         boundedTagsVar:
           - de
           - germany
@@ -492,7 +493,7 @@ rules:
           - DE2
         shortList:
           - a
-        inlineSlug: "de-home"
+        inlineSlug: de-home
         inlineUniqueTags:
           - de
           - tag
@@ -501,16 +502,16 @@ rules:
       conditions: countries.netherlands or countries.switzerland
       percentage: 100
       variables:
-        pageTitle: "NL/CH Title"
+        pageTitle: NL/CH Title
         singleLink:
-          title: "NL/CH Link"
+          title: NL/CH Link
           url: /nl-ch
         themeColor:
           hex: "#ff8800"
           opacity: 90
         heroBlock:
-          title: "NL or CH Hero"
-          subtitle: "Multi-country"
+          title: NL or CH Hero
+          subtitle: Multi-country
         navLinks:
           - title: Home
             url: /
@@ -533,9 +534,9 @@ rules:
         levelInline: 5
         discountRateInline: 0.5
         fixedLevel: 5
-        slugVar: "nl-ch"
-        promoCodeVar: "NLCH24"
-        shortLabel: "NL/CH"
+        slugVar: nl-ch
+        promoCodeVar: NLCH24
+        shortLabel: NL/CH
         boundedTagsVar:
           - nl
           - ch
@@ -544,8 +545,8 @@ rules:
           - CH
         shortList:
           - x
-          - y
-        inlineSlug: "nl-ch"
+          - "y"
+        inlineSlug: nl-ch
         inlineUniqueTags:
           - nl
           - ch
@@ -554,16 +555,16 @@ rules:
       conditions: mobile and eu
       percentage: 100
       variables:
-        pageTitle: "Mobile EU"
+        pageTitle: Mobile EU
         singleLink:
-          title: "Mobile Link"
+          title: Mobile Link
           url: /mobile
         themeColor:
           hex: "#0000aa"
           opacity: 80
         heroBlock:
-          title: "Mobile EU Hero"
-          subtitle: "EU mobile users"
+          title: Mobile EU Hero
+          subtitle: EU mobile users
         navLinks:
           - title: Mobile Nav
             url: /m
@@ -584,14 +585,14 @@ rules:
         levelInline: 1
         discountRateInline: 0
         fixedLevel: 5
-        slugVar: "mobile-eu"
-        promoCodeVar: "MOB-EU"
-        shortLabel: "Mobile"
+        slugVar: mobile-eu
+        promoCodeVar: MOB-EU
+        shortLabel: Mobile
         boundedTagsVar:
           - mobile
         uniqueCodesVar: []
         shortList: []
-        inlineSlug: "mobile-eu"
+        inlineSlug: mobile-eu
         inlineUniqueTags:
           - mobile
 
@@ -599,13 +600,13 @@ rules:
       conditions: desktop and eu
       percentage: 100
       variables:
-        pageTitle: "Desktop EU"
+        pageTitle: Desktop EU
         themeColor:
           hex: "#008800"
           opacity: 95
         heroBlock:
-          title: "Desktop EU Hero"
-          subtitle: "EU desktop"
+          title: Desktop EU Hero
+          subtitle: EU desktop
         enabled: false
         itemCount: 99
         score: 99.5
@@ -614,9 +615,9 @@ rules:
         levelInline: 9
         discountRateInline: 0.99
         fixedLevel: 5
-        slugVar: "desktop-eu"
-        promoCodeVar: "DESK-EU"
-        shortLabel: "Desktop"
+        slugVar: desktop-eu
+        promoCodeVar: DESK-EU
+        shortLabel: Desktop
         boundedTagsVar:
           - desktop
           - eu
@@ -629,7 +630,7 @@ rules:
           - p
           - q
           - r
-        inlineSlug: "desktop-eu"
+        inlineSlug: desktop-eu
         inlineUniqueTags:
           - desktop
           - eu
@@ -643,9 +644,9 @@ rules:
       conditions: countries.germany
       percentage: 100
       variables:
-        pageTitle: "Germany (Prod)"
+        pageTitle: Germany (Prod)
         singleLink:
-          title: "DE Prod"
+          title: DE Prod
           url: /de/prod
         themeColor:
           hex: "#dd0000"
@@ -655,9 +656,9 @@ rules:
         levelInline: 10
         discountRateInline: 1.0
         fixedLevel: 5
-        slugVar: "de-prod"
-        promoCodeVar: "DEPROD"
-        shortLabel: "DE Prod"
+        slugVar: de-prod
+        promoCodeVar: DEPROD
+        shortLabel: DE Prod
         boundedTagsVar:
           - de
           - prod
@@ -666,7 +667,7 @@ rules:
         shortList:
           - a
           - b
-        inlineSlug: "de-prod"
+        inlineSlug: de-prod
         inlineUniqueTags:
           - prod
 
@@ -674,7 +675,7 @@ rules:
       conditions: countries.netherlands or countries.switzerland
       percentage: 100
       variables:
-        pageTitle: "NL/CH (Prod)"
+        pageTitle: NL/CH (Prod)
         itemCount: 42
         score: 4.2
         percentVar: 42
@@ -682,9 +683,9 @@ rules:
         levelInline: 4
         discountRateInline: 0.42
         fixedLevel: 5
-        slugVar: "nl-ch-prod"
-        promoCodeVar: "NLCH42"
-        shortLabel: "NL-CH"
+        slugVar: nl-ch-prod
+        promoCodeVar: NLCH42
+        shortLabel: NL-CH
         boundedTagsVar:
           - nl-ch
           - prod
@@ -693,7 +694,7 @@ rules:
           - N2
         shortList:
           - z
-        inlineSlug: "nl-ch-prod"
+        inlineSlug: nl-ch-prod
         inlineUniqueTags:
           - n1
           - n2
@@ -702,7 +703,7 @@ rules:
       conditions: mobile and eu
       percentage: 100
       variables:
-        pageTitle: "Mobile EU (Prod)"
+        pageTitle: Mobile EU (Prod)
         enabled: false
         tagList:
           - prod
@@ -712,15 +713,15 @@ rules:
         levelInline: 2
         discountRateInline: 0.1
         fixedLevel: 5
-        slugVar: "mobile-prod"
-        promoCodeVar: "MOB10"
-        shortLabel: "Mob"
+        slugVar: mobile-prod
+        promoCodeVar: MOB10
+        shortLabel: Mob
         boundedTagsVar:
           - mob
         uniqueCodesVar:
           - M1
         shortList: []
-        inlineSlug: "mobile-prod"
+        inlineSlug: mobile-prod
         inlineUniqueTags:
           - mob
 

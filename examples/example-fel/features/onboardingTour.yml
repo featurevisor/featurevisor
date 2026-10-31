@@ -1,6 +1,9 @@
 description: Guided tour whose length depends on when the user signed up and last ordered
 
-tags: [all, sign-up, fel]
+tags:
+  - all
+  - sign-up
+  - fel
 
 bucketBy: userId
 
@@ -12,7 +15,7 @@ variablesSchema:
     defaultValue: 3
 
 rules:
-  staging: &rules
+  staging:
     - key: launch-week
       conditions: |
         signupDate after '2026-10-01T00:00:00Z'
@@ -35,4 +38,25 @@ rules:
       conditions: "*"
       percentage: 0
 
-  production: *rules
+  production:
+    - key: launch-week
+      conditions: |
+        signupDate after '2026-10-01T00:00:00Z'
+        and signupDate before '2026-10-08T00:00:00Z'
+      percentage: 100
+      variables:
+        steps: 5
+
+    - key: newcomers
+      conditions: lifecycle.newcomers
+      percentage: 100
+
+    - key: returning
+      conditions: audiences.dormant and lastOrderAt exists
+      percentage: 100
+      variables:
+        steps: 2
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

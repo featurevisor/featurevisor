@@ -1,18 +1,27 @@
 description: Feature variable whose value depends on global configuration
-tags: [all]
+
+tags:
+  - all
+
 bucketBy: userId
+
 variablesSchema:
   config.policy:
     type: object
     properties:
-      retries: { type: integer }
-    defaultValue: { retries: 3 }
-    disabledValue: { retries: 0 }
+      retries:
+        type: integer
+    defaultValue:
+      retries: 3
+    disabledValue:
+      retries: 0
+
 rules:
   staging:
     - key: everyone
       conditions: "*"
       percentage: 100
+
   production:
     - key: everyone
       conditions: "*"
@@ -21,4 +30,5 @@ rules:
         config.policy:
           - key: priority
             conditions: variable('runtimePolicy').routing.priority == true
-            value: { retries: 5 }
+            value:
+              retries: 5

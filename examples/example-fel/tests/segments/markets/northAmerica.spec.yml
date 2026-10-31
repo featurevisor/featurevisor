@@ -3,15 +3,15 @@ segment: markets.northAmerica
 assertions:
   - description: the United States matches
     context:
-      country: "us"
+      country: us
     expectedToMatch: true
 
   - description: Canada matches
     context:
-      country: "ca"
+      country: ca
     expectedToMatch: true
 
   - description: Mexico does not
     context:
-      country: "mx"
+      country: mx
     expectedToMatch: false

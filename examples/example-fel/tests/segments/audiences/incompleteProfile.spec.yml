@@ -12,17 +12,18 @@ assertions:
 
   - description: an email without roles
     context:
-      email: "sam@shop.example"
+      email: sam@shop.example
       roles: []
     expectedToMatch: true
 
   - description: an email and a role make a complete profile
     context:
-      email: "sam@shop.example"
-      roles: ["viewer"]
+      email: sam@shop.example
+      roles:
+        - viewer
     expectedToMatch: false
 
   - description: missing roles are not empty, so an email alone is complete
     context:
-      email: "sam@shop.example"
+      email: sam@shop.example
     expectedToMatch: false

@@ -1,4 +1,5 @@
 description: Shared allocation for bar and qux with an explicit holdout
+
 tags:
   - all
 
@@ -7,8 +8,10 @@ bucketBy: userId
 variations:
   - value: bar
     weight: 40
+
   - value: qux
     weight: 40
+
   - value: holdout
     weight: 20
 
@@ -17,6 +20,7 @@ rules:
     - key: everyone
       conditions: "*"
       percentage: 100
+
   production:
     - key: everyone
       conditions: "*"

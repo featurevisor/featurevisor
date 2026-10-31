@@ -1,11 +1,18 @@
 description: Signup message and feature agree at bucket ${{ bucket }}
-environment: production
+
 matrix:
-  bucket: [0, 100]
+  bucket:
+    - 0
+    - 100
+
+environment: production
+
 at: ${{ bucket }}
+
 context:
   country: gb
   deviceId: customer-1
+
 checks:
   - key: matching-signup-path
     description: The message and variable agree with the selected variation
@@ -13,8 +20,8 @@ checks:
       - key: control-path
         description: Control keeps the basic signup path
         and:
-          - key: control-variation
-            feature: allowSignup
+          - feature: allowSignup
+            key: control-variation
             enabled: true
             variation: control
           - variable: signupMessage

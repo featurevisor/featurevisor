@@ -3,36 +3,36 @@ segment: devices.modernIos
 assertions:
   - description: iOS 17.0.0 on a phone matches
     context:
-      device: "mobile"
-      osVersion: "17.0.0"
+      device: mobile
+      osVersion: 17.0.0
     expectedToMatch: true
 
   - description: iOS 18.4.1 matches
     context:
-      device: "mobile"
-      osVersion: "18.4.1"
+      device: mobile
+      osVersion: 18.4.1
     expectedToMatch: true
 
   - description: versions compare by number, so 17.10.0 is above 17.9.0
     context:
-      device: "mobile"
-      osVersion: "17.10.0"
+      device: mobile
+      osVersion: 17.10.0
     expectedToMatch: true
 
   - description: 19.0.0 is outside the range
     context:
-      device: "mobile"
-      osVersion: "19.0.0"
+      device: mobile
+      osVersion: 19.0.0
     expectedToMatch: false
 
   - description: 16.7.2 is too old
     context:
-      device: "mobile"
-      osVersion: "16.7.2"
+      device: mobile
+      osVersion: 16.7.2
     expectedToMatch: false
 
   - description: a desktop does not match
     context:
-      device: "desktop"
-      osVersion: "18.1.0"
+      device: desktop
+      osVersion: 18.1.0
     expectedToMatch: false
