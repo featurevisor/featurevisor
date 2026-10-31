@@ -75,10 +75,10 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
       `  State files: ${written.state} ${apply ? "written" : "to write"}, ${removed.state} ${apply ? "removed" : "to remove"}`,
     );
   }
-  if (plan.configByHand) {
+  if (plan.config.byHand) {
     console.log(`  ${CONFIG_MODULE_NAME}: for you to edit after converting, as below`);
-  } else if (plan.configEdits.length > 0) {
-    console.log(`  ${CONFIG_MODULE_NAME}: ${plan.configEdits.join(", ")}`);
+  } else if (plan.config.edits.length > 0) {
+    console.log(`  ${CONFIG_MODULE_NAME}: ${plan.config.edits.join(", ")}`);
   }
 
   if (plan.differences.length > 0) {
@@ -110,7 +110,7 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
     }
   }
 
-  if (plan.configByHand && (!check || check.passed)) printConfigByHand(plan, apply);
+  if (plan.config.byHand && (!check || check.passed)) printConfigByHand(plan, apply);
 
   if (plan.next.length > 0 && (!check || check.passed)) {
     console.log("");
@@ -124,22 +124,22 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
   } else if (apply) {
     console.log(
       CLI_FORMAT_GREEN,
-      plan.configByHand ? `✔ Converted, except ${CONFIG_MODULE_NAME}` : "✔ Converted",
+      plan.config.byHand ? `✔ Converted, except ${CONFIG_MODULE_NAME}` : "✔ Converted",
     );
   } else {
     console.log(
-      `Nothing was written. Run with --apply to convert${plan.configByHand ? `, then edit ${CONFIG_MODULE_NAME}` : ""}.`,
+      `Nothing was written. Run with --apply to convert${plan.config.byHand ? `, then edit ${CONFIG_MODULE_NAME}` : ""}.`,
     );
   }
 }
 
 /** The edits to featurevisor.config.js convert leaves to the user, as text to copy */
 function printConfigByHand(plan: Plan, apply: boolean) {
-  const { remove, add } = plan.configChange;
+  const { remove, add } = plan.config;
   console.log("");
   console.log(
     CLI_FORMAT_YELLOW,
-    `Edit ${CONFIG_MODULE_NAME} by hand${apply ? "" : " after converting"}, since ${plan.configByHand}:`,
+    `Edit ${CONFIG_MODULE_NAME} by hand${apply ? "" : " after converting"}, since ${plan.config.byHand}:`,
   );
   for (const name of remove) console.log(`  - Remove ${name}`);
   if (add.length > 0) {
@@ -194,13 +194,13 @@ export async function runConversion(options: PluginHandlerOptions): Promise<numb
         ...(plan.keep ? { keep: plan.keep } : {}),
         writes: paths.writes,
         removes: paths.removes,
-        config: plan.configEdits,
-        ...(plan.configByHand
+        config: plan.config.edits,
+        ...(plan.config.byHand
           ? {
               configByHand: {
-                reason: plan.configByHand,
-                remove: plan.configChange.remove,
-                add: plan.configChange.add.map(
+                reason: plan.config.byHand,
+                remove: plan.config.remove,
+                add: plan.config.add.map(
                   ([name, value]) =>
                     `${name}: ${Array.isArray(value) ? `[${value.join(", ")}]` : value}`,
                 ),

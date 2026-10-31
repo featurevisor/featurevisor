@@ -17,7 +17,8 @@ import {
   migrateVariable,
   Migration,
 } from "./definitions";
-import { migrateProject, runMigration } from "./run";
+import { migrateProject } from "./migrateProject";
+import { runMigration } from "./run";
 import { mergeLines } from "../rewrite/lines";
 import { writeDefinition } from "./write";
 

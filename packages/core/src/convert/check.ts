@@ -11,7 +11,7 @@ import { getProjectSetExecutions } from "../sets";
 import { createTestReport } from "../tester/report";
 import { testProject } from "../tester/testProject";
 import { writeSetting } from "./config";
-import type { Plan } from "./plan";
+import { leaveConfigByHand, type Plan } from "./plan";
 
 /**
  * Converts a temporary copy of the project, then lints, builds and tests both. Every lane's
@@ -112,8 +112,8 @@ function writeConfigByHand(root: string, copy: string, plan: Plan) {
   const own = "featurevisor.config.before-convert.js";
   fs.copyFileSync(path.join(root, CONFIG_MODULE_NAME), path.join(copy, own));
   const settings = [
-    ...plan.configChange.remove.map((name) => `  ${name}: undefined,`),
-    ...plan.configChange.add.map(([name, value]) => writeSetting(name, value)),
+    ...plan.config.remove.map((name) => `  ${name}: undefined,`),
+    ...plan.config.add.map(([name, value]) => writeSetting(name, value)),
   ];
   fs.writeFileSync(
     path.join(copy, CONFIG_MODULE_NAME),
@@ -282,11 +282,13 @@ export async function checkPlan(
         // a file convert's edits leave in the old shape is one for the user to edit, as is one
         // convert could not edit at all
         if (edited !== undefined && !hasShape(settingsOf(copy, edited), plan)) {
-          plan.configByHand = "its settings still give the old shape after convert's edits";
-          plan.configEdits = plan.configChange.edits;
+          leaveConfigByHand(
+            plan.config,
+            "its settings still give the old shape after convert's edits",
+          );
           plan.writes.delete(path.join(root, CONFIG_MODULE_NAME));
         }
-        if (plan.configByHand) writeConfigByHand(root, copy, plan);
+        if (plan.config.byHand) writeConfigByHand(root, copy, plan);
         converted = getProjectConfig(copy);
       } catch (error) {
         result.problems.push(

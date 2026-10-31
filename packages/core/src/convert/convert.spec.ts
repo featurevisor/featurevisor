@@ -619,7 +619,7 @@ describe("convert", () => {
     );
     const plan = planConversion(readProject(root, config()), { to: "sets" });
 
-    expect(plan.configEdits).toEqual([
+    expect(plan.config.edits).toEqual([
       "adds sets: true",
       "adds promotionFlows staging to production",
     ]);
@@ -636,10 +636,10 @@ describe("convert", () => {
     const plan = planConversion(readProject(root, config()), { to: "flat", keep: "production" });
 
     expect(plan.conflicts).toEqual([]);
-    expect(plan.configByHand).toBe(
+    expect(plan.config.byHand).toBe(
       "it sets environments where convert cannot edit it, such as in an object spread into its settings",
     );
-    expect(plan.configEdits).toEqual(["removes environments"]);
+    expect(plan.config.edits).toEqual(["removes environments"]);
     expect(plan.writes.has(path.join(root, "featurevisor.config.js"))).toBe(false);
 
     expect(await run({ to: "flat", keep: "production", apply: true })).toBe(0);
