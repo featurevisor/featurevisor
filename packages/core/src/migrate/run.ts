@@ -5,7 +5,8 @@ import type { ParsedOptions } from "../cli";
 import { getProjectConfig } from "../config/projectConfig";
 import { describeParseError } from "../datasource/parseError";
 import { formatFeaturevisorCLIError } from "../error";
-import { unifiedDiff } from "../formatter/unifiedDiff";
+import { unifiedDiff } from "../rewrite/diff";
+import { same } from "../rewrite/lines";
 import {
   CLI_FORMAT_DIM,
   CLI_FORMAT_GREEN,
@@ -20,7 +21,6 @@ import {
   migrateTest,
   migrateVariable,
   Migration,
-  same,
   type Attributes,
 } from "./definitions";
 import { readProject, type DefinitionFile } from "./project";

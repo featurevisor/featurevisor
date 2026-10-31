@@ -4,6 +4,7 @@ import * as path from "node:path";
 
 import { parsers } from "@featurevisor/parsers";
 import { isMap, YAMLMap } from "yaml";
+import type { Document } from "yaml";
 
 import { getProjectConfig, getProjectConfigForSet } from "../config";
 import { Datasource } from "../datasource";
@@ -18,11 +19,14 @@ import { mergeSpecs, specForLane, specForLanes } from "./tests";
 
 const yml = parsers.yml;
 
+/** A document as its file's new text */
+const text = (source: string, doc: Document) => render(source, doc, yml)!.text;
+
 /** A YAML file after `edit`, written back over its own lines */
 function edited(source: string, edit: (map: YAMLMap) => void) {
   const { doc } = load(source, yml);
   edit(rootMap(doc)!);
-  return render(source, doc, yml);
+  return text(source, doc);
 }
 
 describe("lanes in definitions", () => {
@@ -105,7 +109,7 @@ describe("lanes in definitions", () => {
     const { doc, expanded } = load(source, yml);
     expect(expanded).toBe(true);
     takeLane(rootMap(doc)!, "rules", "production");
-    expect(render(source, doc, yml)).toBe("rules:\r\n  - key: all\r\n    percentage: 100\r\n");
+    expect(text(source, doc)).toBe("rules:\r\n  - key: all\r\n    percentage: 100\r\n");
   });
 });
 
@@ -138,7 +142,7 @@ describe("specs across lanes", () => {
 
   const narrowed = (lane: string) => {
     const result = specForLane(load(spec, yml).doc, lane);
-    return result && render(spec, result, yml);
+    return result && text(spec, result);
   };
 
   it("keeps the assertions of one lane, without their environment", () => {
@@ -172,13 +176,13 @@ describe("specs across lanes", () => {
       doc: load(narrowed(lane)!, yml).doc,
     }));
     const merged = mergeSpecs(specs, ["staging", "production"], true);
-    expect(render(narrowed("staging")!, merged.doc!, yml)).toBe(spec);
+    expect(text(narrowed("staging")!, merged.doc!)).toBe(spec);
   });
 
   it("gives a spec from a project without environments every lane", () => {
     const source = "feature: checkout\n\nassertions:\n  - at: 10\n    expectedToBeEnabled: true\n";
     const lanes = (names: string[]) =>
-      render(source, specForLanes(load(source, yml).doc, names, true), yml);
+      text(source, specForLanes(load(source, yml).doc, names, true));
     expect(lanes(["production"])).toBe(
       "feature: checkout\n\nassertions:\n  - environment: production\n    at: 10\n    expectedToBeEnabled: true\n",
     );
@@ -546,6 +550,16 @@ describe("convert", () => {
 
     expect(await run({ to: "flat", keep: "live", apply: true })).toBe(0);
     expect(snapshot()).toEqual(before);
+  });
+
+  it("keeps the configuration's line endings", async () => {
+    flatProject();
+    write("featurevisor.config.js", "module.exports = {\r\n  tags: ['all'],\r\n};\r\n");
+
+    expect(await run({ to: "environments", apply: true })).toBe(0);
+    expect(read("featurevisor.config.js")).toBe(
+      "module.exports = {\r\n  environments: ['staging', 'production'],\r\n  tags: ['all'],\r\n};\r\n",
+    );
   });
 
   it("refuses what it cannot convert, and writes nothing", async () => {

@@ -1,10 +1,10 @@
 import { isDeepStrictEqual } from "node:util";
 
-import { formatJson, listYmlComments, parsers, type CustomParser } from "@featurevisor/parsers";
+import { parsers, type CustomParser } from "@featurevisor/parsers";
 import { isAlias, isMap, isScalar, isSeq, parseDocument, visit } from "yaml";
 import type { Document, Node, Pair, Scalar } from "yaml";
 
-import { lineEndings, mergeLines, yamlOptions } from "../rewrite/lines";
+import { renderValues, rewriteFile, yamlOptions, type Rendering } from "../rewrite/lines";
 import { isPlain, type Path, type Rename } from "./definitions";
 
 /**
@@ -136,7 +136,7 @@ function sync(
   return replace(doc, node, value);
 }
 
-function renderYaml(source: string, value: unknown, renames: Rename[]) {
+function renderYaml(source: string, value: unknown, renames: Rename[]): Rendering {
   const options = yamlOptions(source);
   const doc = parseDocument(source);
   const base = doc.toString(options);
@@ -147,12 +147,6 @@ function renderYaml(source: string, value: unknown, renames: Rename[]) {
 // Any parser
 
 export class WriteError extends Error {}
-
-function sameComments(parser: CustomParser, before: string, after: string): boolean {
-  const list = parser === parsers.yml ? listYmlComments : parser.listComments;
-  if (!list) return true;
-  return isDeepStrictEqual([...list(before)].sort(), [...list(after)].sort());
-}
 
 /**
  * The file's new text, with the file's own line endings and byte order mark. Throws a
@@ -166,36 +160,20 @@ export function writeDefinition(
   renames: Rename[],
   parser: CustomParser,
 ): string {
-  // the merge works on lines ending in \n, as the renderers write them
-  const { text: source, restore } = lineEndings(file);
-
-  let rendered: { base: string; changed: string };
-  if (parser === parsers.yml) {
-    rendered = renderYaml(source, after, renames);
-  } else if (parser === parsers.json) {
-    rendered = { base: `${formatJson(before)}\n`, changed: `${formatJson(after)}\n` };
-  } else {
-    rendered = { base: parser.stringify(before), changed: parser.stringify(after) };
-  }
-
-  const candidates = [mergeLines(source, rendered.base, rendered.changed), rendered.changed];
-  for (const candidate of candidates) {
-    if (candidate === undefined) continue;
-    let parsed: unknown;
-    try {
-      parsed = parser.parse(candidate);
-    } catch {
-      continue;
-    }
-    // key order matters to mutation maps, so compare as JSON
-    if (
-      JSON.stringify(parsed) === JSON.stringify(after) &&
-      sameComments(parser, source, candidate)
-    ) {
-      return restore(candidate);
-    }
-  }
-  throw new WriteError(
-    "The migrated file would not keep every comment, or would not read back as migrated.",
+  const result = rewriteFile(
+    file,
+    parser,
+    after,
+    (text) =>
+      parser === parsers.yml
+        ? renderYaml(text, after, renames)
+        : renderValues(parser, before, after),
+    { keepComments: true },
   );
+  if (!result) {
+    throw new WriteError(
+      "The migrated file would not keep every comment, or would not read back as migrated.",
+    );
+  }
+  return result.text;
 }

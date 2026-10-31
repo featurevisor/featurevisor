@@ -168,6 +168,10 @@ describe("formatYml", () => {
 
   it("adds quotes to strings YAML 1.1 tools would read as another type", () => {
     expect(formatYml("country: no\nanswer: yes\n", top)).toBe('country: "no"\n\nanswer: "yes"\n');
+    // YAML 1.1 reads an exponent without digits before it as a number, words never
+    expect(formatYml('a: "e10"\nb: "E-5"\nc: "e10 apart"\nd: "user-1"\n')).toBe(
+      'a: "e10"\nb: "E-5"\nc: e10 apart\nd: user-1\n',
+    );
   });
 
   it("never folds long strings", () => {

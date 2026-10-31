@@ -1,7 +1,8 @@
 import { Document, isMap, isScalar, isSeq, Pair, Scalar, YAMLMap, YAMLSeq } from "yaml";
 import type { Node } from "yaml";
 
-import { isSpaced, nodeAt, pairOf, rootMap, same, seqOf, setKey, spaceItems } from "./documents";
+import { same } from "../rewrite/lines";
+import { isSpaced, nodeAt, pairOf, rootMap, seqOf, setKey, spaceItems } from "./documents";
 
 /**
  * Test specs in each shape. Feature, variable and scenario assertions name an environment

@@ -4,21 +4,10 @@ import * as path from "node:path";
 import type { CustomParser } from "@featurevisor/parsers";
 
 import { getProjectConfigForSet, type ProjectConfig } from "../config";
+import { filesIn, KINDS, type Kind } from "../rewrite/files";
 
 /** A project's shape: no environments and no sets, environments, or sets */
 export type Shape = "flat" | "environments" | "sets";
-
-export type Kind = "attribute" | "schema" | "segment" | "feature" | "variable" | "target" | "test";
-
-export const KINDS: [Kind, keyof ProjectConfig][] = [
-  ["attribute", "attributesDirectoryPath"],
-  ["schema", "schemasDirectoryPath"],
-  ["segment", "segmentsDirectoryPath"],
-  ["feature", "featuresDirectoryPath"],
-  ["variable", "variablesDirectoryPath"],
-  ["target", "targetsDirectoryPath"],
-  ["test", "testsDirectoryPath"],
-];
 
 export interface DefinitionFile {
   kind: Kind;
@@ -39,19 +28,6 @@ export interface Project {
   /** The environments, or the sets in promotion order */
   lanes: string[];
   files: DefinitionFile[];
-}
-
-function filesIn(directory: string, extension: string, base = directory): string[] {
-  if (!fs.existsSync(directory)) return [];
-  return fs
-    .readdirSync(directory, { withFileTypes: true })
-    .filter((entry) => !entry.name.startsWith("."))
-    .flatMap((entry) => {
-      const fullPath = path.join(directory, entry.name);
-      if (entry.isDirectory()) return filesIn(fullPath, extension, base);
-      return entry.name.endsWith(`.${extension}`) ? [fullPath] : [];
-    })
-    .sort();
 }
 
 /** The sets, in the order promotions move through them when they form one chain */
@@ -76,10 +52,8 @@ export function orderSets(sets: string[], config: ProjectConfig): string[] {
 
 /** The directories a project's definitions are in, by kind, for a set or the whole project */
 export function directoriesOf(config: ProjectConfig): Record<Kind, string> {
-  return Object.fromEntries(KINDS.map(([kind, key]) => [kind, config[key] as string])) as Record<
-    Kind,
-    string
-  >;
+  const directories = KINDS.map(([kind, key]) => [kind, config[key as keyof ProjectConfig]]);
+  return Object.fromEntries(directories) as Record<Kind, string>;
 }
 
 export function readProject(rootDirectoryPath: string, config: ProjectConfig): Project {

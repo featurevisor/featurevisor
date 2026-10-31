@@ -187,13 +187,13 @@ describe("formatProject", () => {
       fmtPlugin.handler({ ...deps(), parsed } as never);
 
     // --diff alone shows the changes, and --check fails on them, with or without --diff
-    expect(await run({ diff: true })).toBeUndefined();
+    expect(await run({ diff: true })).toBe(0);
     expect(await run({ check: true })).toBe(1);
     expect(await run({ check: true, diff: true })).toBe(1);
     expect(fs.readFileSync(feature("admin"), "utf8")).toBe(UNFORMATTED);
 
-    expect(await run({})).toBeUndefined();
-    expect(await run({ check: true })).toBeUndefined();
+    expect(await run({})).toBe(0);
+    expect(await run({ check: true })).toBe(0);
 
     fs.writeFileSync(feature("admin"), "description: [unclosed\n");
     expect(await run({ check: true })).toBe(2);

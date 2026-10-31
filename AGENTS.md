@@ -60,8 +60,11 @@ archive path, not only by inspecting example files.
   byte order mark, the final newline, the `# featurevisor-ignore` comment that
   leaves a whole file alone, and the checks that values and comments (through
   the parser's optional `listComments`) survive and that a second pass changes
-  nothing. formatProject.ts runs it over every Set in one pass, or over the
-  files changed since a Git reference (since.ts), or over source from stdin.
+  nothing. Those checks run only on a file that changes, and an unchanged file
+  is parsed once, by the built-in `format`, which reads it as `parse` does. An
+  error `format` throws is the author's only when `parse` fails too.
+  formatProject.ts runs it over every Set in one pass, or over the files
+  changed since a Git reference (since.ts), or over source from stdin.
 - The parser's optional `format` applies the layout and its own section of
   the style: packages/parsers/src/ymlFormat.ts all of it, including the
   `# featurevisor-ignore-line` comment, jsonFormat.ts the key order, indent
@@ -80,28 +83,33 @@ exits with 1 when `--check` finds work and 2 on errors, as Prettier does, so
 plugin handlers may return an exit code. Every example ships an .editorconfig
 that a test keeps in step with style.ts.
 
+fmt, migrate and convert each keep a small plugin object in their folder's
+index.ts, whose handler requires run.ts, so the CLI loads a command's code only
+when it runs, and Core's index exports none of them. What they share lives in
+packages/core/src/rewrite, loaded the same way: lines.ts aligns lines, merges
+a rendered change into a file's own lines, keeps line endings and checks that
+a rewrite reads back (`rewriteFile`), diff.ts prints unified diffs, and
+files.ts lists definition files by kind.
+
 `featurevisor migrate` rewrites a v3 project for v4 in packages/core/src/migrate,
-and only there. A project runs it once, so the CLI loads that folder only when
-the command runs: plugins.ts registers a small plugin object whose handler
-requires the rest, the CLI entry skips loading the configuration for it, since
-v4 rejects v3 settings, and Core exports nothing from it. Selectors convert as
+and only there. The CLI entry skips loading the configuration for it, since v4
+rejects v3 settings. Selectors convert as
 the SDK's normalize.ts reads v3 datafiles, which migrate.spec.ts checks against
 the SDK directly. Changes are merged into each file's own lines, so a review
 sees only what migration changed. It was verified on every example of v3.11.0.
 
 `featurevisor convert` changes a project between environments, sets and
 neither, in packages/core/src/convert, contained and lazily loaded as migrate
-is. Both merge their edits into each file's own lines through
-packages/core/src/rewrite/lines.ts. Convert edits YAML documents whatever the
+is. Both write through `rewriteFile`. Convert edits YAML documents whatever the
 parser, so one set of edits serves JSON and custom parsers too. It formats a
 converted file only when its source was already as fmt writes it, which is
 the one exception to fmt staying out of other writes: without it, JSON would
 lose fmt's blank lines. Before writing, check.ts converts a temporary copy,
 lints and tests both and builds both, and every feature and variable must
-build byte identical per lane. An entry only one side's datafile has passes
-only when another lane's datafile references it, since an environment's
-datafiles carry what any environment's rules use and a set's only what it
-uses. Test matrices narrow to one lane on the way to sets and come back on the
+build byte identical per lane. An environment's datafiles carry what any
+environment's rules use and a set's only what it uses, so a segment may come
+or go, as only the entries naming it read it, while a feature or variable may
+only when another lane's datafile names it. Test matrices narrow to one lane on the way to sets and come back on the
 way to environments. example-1 round trips with only aliases written out,
 assertion order and comment placement changed, and the smaller examples come
 back byte identical apart from how the configuration lists environments.

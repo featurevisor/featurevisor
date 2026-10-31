@@ -134,6 +134,35 @@ describe("formatDefinition", () => {
     });
   });
 
+  it("reports a JSON file that does not parse as the author's error", () => {
+    expect(() => formatDefinition("feature", '{"description": ', parsers.json)).toThrow(
+      FormatParseError,
+    );
+  });
+
+  it("blames a format that fails on a file its parser reads, whatever the error says", () => {
+    const failing = jsonWith(() => {
+      throw Object.assign(new Error("Broke at line 1."), { line: 1, column: 1 });
+    });
+
+    expect(() => formatDefinition("segment", '{"description":"x"}', failing)).toThrow(
+      new FormatGuardError("Broke at line 1."),
+    );
+  });
+
+  it("reports a file a custom format leaves as it is when its parser cannot read it", () => {
+    const unchanged = jsonWith((source) => source);
+
+    expect(() => formatDefinition("segment", "{not json}\n", unchanged)).toThrow(FormatParseError);
+    expect(() =>
+      formatDefinition(
+        "segment",
+        "{not json}\n",
+        jsonWith(() => undefined),
+      ),
+    ).toThrow(FormatParseError);
+  });
+
   it("reports a parser's format that fails, without writing", () => {
     const failing = jsonWith(() => {
       throw new Error("Something broke.");

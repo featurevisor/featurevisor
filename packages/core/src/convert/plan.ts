@@ -1,27 +1,28 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { parsers } from "@featurevisor/parsers";
 import { isMap, isSeq, Scalar, YAMLMap } from "yaml";
 import type { Document, Node } from "yaml";
 import type { EntityType } from "@featurevisor/types";
 
-import { getProjectConfigForSet, type ProjectConfig } from "../config";
+import { getProjectConfigForSet } from "../config";
+import { CONFIG_MODULE_NAME } from "../config/projectConfig";
 import { getExistingStateFilePath } from "../datasource/filesystemAdapter";
+import type { Kind } from "../rewrite/files";
+import { BUILT_IN_PARSERS, lineEndings, same } from "../rewrite/lines";
 import { editConfig, quote, type ConfigEdit } from "./config";
 import {
   isSpaced,
   laneMap,
   load,
   nodeAt,
-  renderFile,
+  render,
   rootMap,
-  same,
   setKey,
   spreadLanes,
   takeLane,
 } from "./documents";
-import { directoriesOf, type DefinitionFile, type Kind, type Project, type Shape } from "./project";
+import { directoriesOf, type DefinitionFile, type Project, type Shape } from "./project";
 import { mergeSpecs, specForLane, specForLanes, specKind } from "./tests";
 
 export interface Plan {
@@ -63,8 +64,19 @@ const LANE_KEYS: Partial<Record<Kind, string[]>> = {
 
 const SHARED: Kind[] = ["attribute", "schema", "segment", "target"];
 
+/** The lanes a project without either gets, as init's example with environments has */
+const DEFAULT_LANES = ["staging", "production"];
+
+const files = (count: number) => `${count} ${count === 1 ? "file" : "files"}`;
+
 class Builder {
   plan: Plan;
+  /** Files whose aliases were written out in full */
+  expanded = new Set<string>();
+  /** Files of a custom format written as its parser writes them, which may lose comments */
+  rewritten = new Set<string>();
+  private configPath: string;
+  private configText?: string;
 
   constructor(
     private project: Project,
@@ -83,10 +95,16 @@ class Builder {
       differences: [],
       next: [],
     };
+    this.configPath = path.join(project.rootDirectoryPath, CONFIG_MODULE_NAME);
   }
 
   get parser() {
     return this.project.parser;
+  }
+
+  /** featurevisor.config.js as it is written */
+  get configSource(): string {
+    return (this.configText ??= fs.readFileSync(this.configPath, "utf8"));
   }
 
   relative(filePath: string) {
@@ -125,61 +143,74 @@ class Builder {
     for (const target of to) this.write(target, content);
   }
 
-  /** Files whose aliases were written out in full */
-  expanded = new Set<string>();
-
   load(file: DefinitionFile): Document {
     const { doc, expanded } = load(file.source, this.parser);
-    if (expanded) {
-      this.expanded.add(this.relative(file.filePath));
-    }
+    if (expanded) this.expanded.add(this.relative(file.filePath));
     return doc;
   }
 
-  /** Files of a custom format written as its parser writes them, which may lose comments */
-  rewritten = new Set<string>();
-
-  rendered(file: DefinitionFile, doc: Document) {
+  /** The file's new text, or a conflict when it would not read back as converted */
+  rendered(file: DefinitionFile, doc: Document): string {
     const entityType: EntityType =
       file.kind === "test" && specKind(doc.toJS()) === "scenario" ? "scenario" : file.kind;
-    const { text, rewritten } = renderFile(file.source, doc, this.parser, entityType);
-    if (rewritten && this.parser !== parsers.yml && this.parser !== parsers.json) {
+    const result = render(file.source, doc, this.parser, entityType);
+    if (!result) {
+      this.plan.conflicts.push(
+        `The ${file.kind} ${this.relative(file.filePath)} would not read back as converted.`,
+      );
+      return file.source;
+    }
+    if (!result.merged && !BUILT_IN_PARSERS.has(this.parser)) {
       this.rewritten.add(this.relative(file.filePath));
     }
-    return text;
+    return result.text;
   }
 
   config(edit: ConfigEdit, describe: string[]) {
-    const filePath = path.join(this.project.rootDirectoryPath, "featurevisor.config.js");
-    const source = fs.readFileSync(filePath, "utf8");
-    const next = editConfig(source, edit);
+    const { text, restore } = lineEndings(this.configSource);
+    const next = editConfig(text, edit);
     if (next === undefined) {
       this.plan.conflicts.push(
-        `featurevisor.config.js does not set module.exports to an object, so make these edits by hand first: ${describe.join(", ")}.`,
+        `${CONFIG_MODULE_NAME} does not set module.exports to an object, so make these edits by hand first: ${describe.join(", ")}.`,
       );
       return;
     }
-    this.write(filePath, next);
+    this.write(this.configPath, restore(next));
     this.plan.configEdits.push(...describe);
   }
 
-  lanesValue(source: string) {
-    return `[${this.plan.lanes.map((lane) => quote(source, lane)).join(", ")}]`;
+  lanesValue() {
+    return `[${this.plan.lanes.map((lane) => quote(this.configSource, lane)).join(", ")}]`;
   }
 
   /** One flow from each set to the next, on one line, or one per line when there are several */
-  flowsValue(source: string): string | string[] {
+  flowsValue(): string | string[] {
     const { lanes } = this.plan;
+    const value = (lane: string) => quote(this.configSource, lane);
     const flows = lanes
       .slice(1)
-      .map((to, index) => `{ from: ${quote(source, lanes[index])}, to: ${quote(source, to)} }`);
+      .map((to, index) => `{ from: ${value(lanes[index])}, to: ${value(to)} }`);
     return flows.length > 1 ? flows : `[${flows.join(", ")}]`;
   }
 
-  configSource() {
-    return fs.readFileSync(
-      path.join(this.project.rootDirectoryPath, "featurevisor.config.js"),
-      "utf8",
+  /** Turns sets on, with promotions from each to the next, without settings sets ignore */
+  configureSets(removed: string[]) {
+    const { lanes } = this.plan;
+    const add: ConfigEdit["add"] = [["sets", "true"]];
+    if (lanes.length > 1) add.push(["promotionFlows", this.flowsValue()]);
+    const directories = DIRECTORY_OPTIONS.filter((name) => this.configSource.includes(name));
+    this.config({ remove: [...removed, ...directories], add }, [
+      ...removed.map((name) => `removes ${name}`),
+      "adds sets: true",
+      ...(lanes.length > 1 ? [`adds promotionFlows ${lanes.join(" to ")}`] : []),
+      ...directories.map((name) => `removes ${name}, which does not apply inside sets`),
+    ]);
+  }
+
+  /** Says where datafiles go now, which applications must follow */
+  moveDatafiles(where: string) {
+    this.plan.next.push(
+      `Datafiles move ${where}. Point applications at them, and clear datafiles/ before the next build.`,
     );
   }
 }
@@ -252,16 +283,7 @@ function environmentsToSets(builder: Builder, files: DefinitionFile[]) {
   for (const lane of lanes) {
     builder.moveState(builder.state(lane, "environments"), [builder.state(lane, "sets")]);
   }
-  const source = builder.configSource();
-  const add: ConfigEdit["add"] = [["sets", "true"]];
-  if (lanes.length > 1) add.push(["promotionFlows", builder.flowsValue(source)]);
-  const remove = ["environments", ...DIRECTORY_OPTIONS.filter((name) => source.includes(name))];
-  builder.config({ remove, add }, [
-    "removes environments",
-    "adds sets: true",
-    ...(lanes.length > 1 ? [`adds promotionFlows ${lanes.join(" to ")}`] : []),
-    ...remove.slice(1).map((name) => `removes ${name}, which does not apply inside sets`),
-  ]);
+  builder.configureSets(["environments"]);
   builder.plan.next.push(
     "Pass --set=<name> where CI and scripts passed --environment=<name>. Applications load the same datafile paths.",
   );
@@ -293,6 +315,17 @@ function setsToEnvironments(builder: Builder, project: Project) {
       .map((lane) => entries.find((file) => file.set === lane))
       .filter(Boolean) as DefinitionFile[];
   const name = (file: DefinitionFile) => `${file.kind} ${file.relative}`;
+  const segments = new Map<string, Map<string, unknown>>();
+  const segmentsIn = (set: string) => {
+    if (!segments.has(set)) {
+      const inSet = project.files.filter((file) => file.set === set);
+      segments.set(
+        set,
+        segmentsOf(inSet, project.parser.extension, project.config.namespaceCharacter),
+      );
+    }
+    return segments.get(set)!;
+  };
 
   for (const [, unordered] of groups) {
     const entries = byLane(unordered);
@@ -318,15 +351,10 @@ function setsToEnvironments(builder: Builder, project: Project) {
     }
 
     if (first.kind === "test") {
-      const segments = segmentsOf(
-        project.files.filter((file) => file.set === first.set),
-        project.parser.extension,
-        project.config.namespaceCharacter,
-      );
       const merged = mergeSpecs(
         entries.map((file) => ({ lane: file.set!, doc: builder.load(file) })),
         lanes,
-        needsEnvironment(first.value, segments),
+        needsEnvironment(first.value, segmentsIn(first.set!)),
       );
       if (merged.conflict) {
         builder.plan.conflicts.push(`The ${name(first)}: ${merged.conflict}.`);
@@ -387,9 +415,8 @@ function setsToEnvironments(builder: Builder, project: Project) {
   for (const lane of lanes) {
     builder.moveState(builder.state(lane, "sets"), [builder.state(lane, "environments")]);
   }
-  const source = builder.configSource();
   builder.config(
-    { remove: ["sets", "promotionFlows"], add: [["environments", builder.lanesValue(source)]] },
+    { remove: ["sets", "promotionFlows"], add: [["environments", builder.lanesValue()]] },
     ["removes sets and promotionFlows", `adds environments ${lanes.join(", ")}`],
   );
   builder.plan.next.push(
@@ -425,12 +452,11 @@ function flatToEnvironments(builder: Builder, project: Project) {
     builder.state(undefined, "flat"),
     lanes.map((lane) => builder.state(lane, "environments")),
   );
-  const source = builder.configSource();
-  builder.config({ remove: [], add: [["environments", builder.lanesValue(source)]] }, [
+  builder.config({ remove: [], add: [["environments", builder.lanesValue()]] }, [
     `adds environments ${lanes.join(", ")}`,
   ]);
-  builder.plan.next.push(
-    `Datafiles move to datafiles/<environment>/, such as datafiles/${lanes[lanes.length - 1]}/. Point applications at them, and clear datafiles/ before the next build.`,
+  builder.moveDatafiles(
+    `to datafiles/<environment>/, such as datafiles/${lanes[lanes.length - 1]}/`,
   );
 }
 
@@ -446,18 +472,8 @@ function flatToSets(builder: Builder, project: Project) {
     builder.state(undefined, "flat"),
     lanes.map((lane) => builder.state(lane, "sets")),
   );
-  const source = builder.configSource();
-  const add: ConfigEdit["add"] = [["sets", "true"]];
-  if (lanes.length > 1) add.push(["promotionFlows", builder.flowsValue(source)]);
-  const remove = DIRECTORY_OPTIONS.filter((name) => source.includes(name));
-  builder.config({ remove, add }, [
-    "adds sets: true",
-    ...(lanes.length > 1 ? [`adds promotionFlows ${lanes.join(" to ")}`] : []),
-    ...remove.map((name) => `removes ${name}, which does not apply inside sets`),
-  ]);
-  builder.plan.next.push(
-    `Datafiles move to datafiles/<set>/, such as datafiles/${lanes[lanes.length - 1]}/. Point applications at them, and clear datafiles/ before the next build.`,
-  );
+  builder.configureSets([]);
+  builder.moveDatafiles(`to datafiles/<set>/, such as datafiles/${lanes[lanes.length - 1]}/`);
 }
 
 // Back to flat
@@ -499,13 +515,11 @@ function environmentsToFlat(builder: Builder, project: Project, keep: string) {
   builder.moveState(builder.state(keep, "environments"), [builder.state(undefined, "flat")]);
   for (const [what, count] of dropped) {
     builder.plan.differences.push(
-      `Drops ${others.join(", ")} from ${what} in ${count} ${count === 1 ? "file" : "files"}, keeping ${keep}.`,
+      `Drops ${others.join(", ")} from ${what} in ${files(count)}, keeping ${keep}.`,
     );
   }
   builder.config({ remove: ["environments"], add: [] }, ["removes environments"]);
-  builder.plan.next.push(
-    `Datafiles move from datafiles/${keep}/ to datafiles/. Point applications at them, and clear datafiles/ before the next build.`,
-  );
+  builder.moveDatafiles(`from datafiles/${keep}/ to datafiles/`);
 }
 
 function setsToFlat(builder: Builder, project: Project, keep: string) {
@@ -522,16 +536,12 @@ function setsToFlat(builder: Builder, project: Project, keep: string) {
   for (const lane of others) builder.remove(builder.state(lane, "sets"));
   builder.moveState(builder.state(keep, "sets"), [builder.state(undefined, "flat")]);
   for (const [set, count] of counts) {
-    builder.plan.differences.push(
-      `Drops the set ${set}, ${count} ${count === 1 ? "file" : "files"}, keeping ${keep}.`,
-    );
+    builder.plan.differences.push(`Drops the set ${set}, ${files(count)}, keeping ${keep}.`);
   }
   builder.config({ remove: ["sets", "promotionFlows"], add: [] }, [
     "removes sets and promotionFlows",
   ]);
-  builder.plan.next.push(
-    `Datafiles move from datafiles/${keep}/ to datafiles/. Point applications at them, and clear datafiles/ before the next build.`,
-  );
+  builder.moveDatafiles(`from datafiles/${keep}/ to datafiles/`);
 }
 
 export interface ConvertOptions {
@@ -551,7 +561,7 @@ export function planConversion(project: Project, options: ConvertOptions): Plan 
     return plan;
   }
 
-  let lanes = from === "flat" ? options.lanes || ["staging", "production"] : project.lanes;
+  let lanes = from === "flat" ? options.lanes || DEFAULT_LANES : project.lanes;
   const builder = new Builder(project, from, options.to, lanes);
   const { plan } = builder;
 
@@ -612,5 +622,3 @@ export function planConversion(project: Project, options: ConvertOptions): Plan 
   }
   return plan;
 }
-
-export type { ProjectConfig };

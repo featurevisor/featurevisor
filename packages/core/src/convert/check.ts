@@ -6,6 +6,7 @@ import { buildProjectSets } from "../builder/buildProject";
 import { getProjectConfig, type ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 import { lintProject, type LintErrorItem } from "../linter/lintProject";
+import { filesIn } from "../rewrite/files";
 import { getProjectSetExecutions } from "../sets";
 import { createTestReport } from "../tester/report";
 import { testProject } from "../tester/testProject";
@@ -129,13 +130,9 @@ async function runTests(root: string, config: ProjectConfig) {
   return { failed, cases: report.summary.assertions.passed + report.summary.assertions.failed };
 }
 
-function datafilesIn(directory: string, base = directory): string[] {
-  if (!fs.existsSync(directory)) return [];
-  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const fullPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) return datafilesIn(fullPath, base);
-    return entry.name.endsWith(".json") ? [path.relative(base, fullPath)] : [];
-  });
+/** The datafiles built under a directory, by their paths in it */
+function datafilesIn(directory: string): string[] {
+  return filesIn(directory, "json").map((filePath) => path.relative(directory, filePath));
 }
 
 const ENTRIES = ["features", "segments", "variables"];

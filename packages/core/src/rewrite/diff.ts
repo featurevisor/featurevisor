@@ -1,35 +1,25 @@
+import { align } from "./lines";
+
 type Edit = { kind: " " | "-" | "+"; line: string };
 
-/** Line edits from a longest common subsequence. Definition files are small, so this is enough. */
+/**
+ * Line edits along the longest common subsequence. Between two kept lines, the removed lines
+ * come before the added ones, as `diff -u` prints them.
+ */
 function lineEdits(before: string[], after: string[]): Edit[] {
-  const n = before.length;
-  const m = after.length;
-  const lcs: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
-
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      lcs[i][j] =
-        before[i] === after[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
-    }
-  }
-
+  const matched = align(before, after);
   const edits: Edit[] = [];
-  let i = 0;
   let j = 0;
-  while (i < n && j < m) {
-    if (before[i] === after[j]) {
-      edits.push({ kind: " ", line: before[i] });
-      i++;
-      j++;
-    } else if (lcs[i + 1][j] >= lcs[i][j + 1]) {
-      edits.push({ kind: "-", line: before[i++] });
-    } else {
-      edits.push({ kind: "+", line: after[j++] });
+  before.forEach((line, i) => {
+    if (matched[i] === -1) {
+      edits.push({ kind: "-", line });
+      return;
     }
-  }
-  while (i < n) edits.push({ kind: "-", line: before[i++] });
-  while (j < m) edits.push({ kind: "+", line: after[j++] });
-
+    while (j < matched[i]) edits.push({ kind: "+", line: after[j++] });
+    edits.push({ kind: " ", line });
+    j++;
+  });
+  while (j < after.length) edits.push({ kind: "+", line: after[j++] });
   return edits;
 }
 

@@ -1,4 +1,5 @@
 import { getMutationOrderChanges } from "../linter/mutationOrder";
+import { same } from "../rewrite/lines";
 
 /**
  * The v3 to v4 rewrites of parsed definitions. Each keeps what the definition means: selectors
@@ -44,11 +45,6 @@ export function isPlain(value: unknown): value is Plain {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
-}
-
-/** Equal as JSON, with keys in the same order, whatever objects a parser makes */
-export function same(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 const has = (value: Plain, key: string) => Object.prototype.hasOwnProperty.call(value, key);

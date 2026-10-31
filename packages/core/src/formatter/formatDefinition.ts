@@ -2,6 +2,7 @@ import { IGNORE_FILE_COMMENT, type CustomParser } from "@featurevisor/parsers";
 import type { EntityType } from "@featurevisor/types";
 
 import { describeParseError } from "../datasource/parseError";
+import { BUILT_IN_PARSERS, lineEndings, sameComments } from "../rewrite/lines";
 import { getFormatLayout } from "./layout";
 import { HOUSE_STYLE } from "./style";
 
@@ -90,25 +91,12 @@ function sameValue(a: unknown, b: unknown): boolean {
   return keys.every((key) => key in right && sameValue(left[key], right[key]));
 }
 
-function sameComments(parser: CustomParser, source: string, output: string): boolean {
-  if (typeof parser.listComments !== "function") return true;
-  const before = [...parser.listComments(source)].sort();
-  const after = [...parser.listComments(output)].sort();
-  return before.length === after.length && before.every((line, index) => line === after[index]);
-}
-
 function parseSource(parser: CustomParser, source: string, filePath?: string): unknown {
   try {
     return parser.parse(source, filePath);
   } catch (error) {
     throw new FormatParseError(error);
   }
-}
-
-/** Whether output gets `\r\n` line endings, as the house style says */
-function writesCrlf(text: string): boolean {
-  if (HOUSE_STYLE.endOfLine === "auto") return text.match(/\r?\n/)?.[0] === "\r\n";
-  return HOUSE_STYLE.endOfLine === "crlf";
 }
 
 /**
@@ -122,27 +110,20 @@ function formatOnce(
   parser: CustomParser,
   filePath?: string,
 ): string | undefined {
-  const bom = source.startsWith("﻿") ? "﻿" : "";
-  const text = source.slice(bom.length);
-  const crlf = writesCrlf(text);
+  const { text, restore } = lineEndings(source, HOUSE_STYLE.endOfLine);
 
   let output: string | undefined;
   try {
-    output = parser.format!(
-      text.replace(/\r\n/g, "\n"),
-      getFormatLayout(entityType, parser.extension),
-      filePath,
-    );
+    output = parser.format!(text, getFormatLayout(entityType, parser.extension), filePath);
   } catch (error) {
-    // a parser that could not read the file says where, and anything else is a fault in it
-    const { line } = describeParseError(error);
-    if (line) throw new FormatParseError(error);
+    // the author's when the parser cannot read the file either, and a fault in the format if not
+    parseSource(parser, source, filePath);
     throw new FormatGuardError((error as Error).message);
   }
 
   if (output === undefined || output === null) return undefined;
   if (output.length > 0 && !output.endsWith("\n")) output += "\n";
-  return bom + (crlf ? output.replace(/\n/g, "\r\n") : output);
+  return restore(output);
 }
 
 /**
@@ -161,12 +142,17 @@ export function formatDefinition(
   if (!canFormat(parser)) return { output: source, changed: false };
   if (isIgnoredFile(source)) return { output: source, changed: false, ignored: true };
 
-  const before = parseSource(parser, source, filePath);
   const output = formatOnce(entityType, source, parser, filePath);
-  if (output === undefined) return { output: source, changed: false, declined: true };
-  if (output === source) return { output, changed: false };
+  if (output === undefined || output === source) {
+    // a built-in format reads the source as its parse does, and a custom one may not read it
+    if (!BUILT_IN_PARSERS.has(parser)) parseSource(parser, source, filePath);
+    return output === undefined
+      ? { output: source, changed: false, declined: true }
+      : { output, changed: false };
+  }
 
   // the source parsed, so output that does not is the format's fault, not the author's
+  const before = parseSource(parser, source, filePath);
   let readable = true;
   let after: unknown;
   try {

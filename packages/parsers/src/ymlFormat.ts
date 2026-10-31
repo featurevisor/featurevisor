@@ -36,15 +36,33 @@ function splitHeader(comment: string): { header?: string; own?: string } {
 }
 
 /**
+ * Text YAML 1.1 can only read as text: a word, or words joined by single spaces, of letters,
+ * digits, `_`, `.`, `/` and `-`, starting with a letter or `_`. Of these, YAML 1.1 reads only
+ * its booleans, null, and an exponent without digits before it, such as `e10`, as another type.
+ */
+const PLAIN_TEXT = /^[A-Za-z_][\w./-]*(?: [\w./-]+)*$/;
+const YAML_11_WORDS = /^(?:y|yes|n|no|true|false|on|off|null|e[-+]?\d+)$/i;
+
+/** Answers for text already checked, which repeats across a project's files */
+const readsAsAnotherTypeCache = new Map<string, boolean>();
+
+/**
  * A string YAML 1.2 reads back as itself can still be read as something else by YAML 1.1
  * tools: `no` as false, `2026-10-28` as a date.
  */
 function readsAsAnotherType(value: string): boolean {
-  try {
-    return parse(value, { version: "1.1" }) !== value;
-  } catch {
-    return true;
+  if (PLAIN_TEXT.test(value) && !YAML_11_WORDS.test(value)) return false;
+  let answer = readsAsAnotherTypeCache.get(value);
+  if (answer === undefined) {
+    try {
+      answer = parse(value, { version: "1.1" }) !== value;
+    } catch {
+      answer = true;
+    }
+    if (readsAsAnotherTypeCache.size >= 10000) readsAsAnotherTypeCache.clear();
+    readsAsAnotherTypeCache.set(value, answer);
   }
+  return answer;
 }
 
 function formatScalar(node: Scalar, options: Required<YmlFormatOptions>) {

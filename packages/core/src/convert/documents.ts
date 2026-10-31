@@ -1,4 +1,4 @@
-import { formatJson, parsers, type CustomParser } from "@featurevisor/parsers";
+import { parsers, type CustomParser } from "@featurevisor/parsers";
 import {
   Document,
   isMap,
@@ -14,7 +14,7 @@ import type { Node, Pair } from "yaml";
 import type { EntityType } from "@featurevisor/types";
 
 import { formatDefinition } from "../formatter/formatDefinition";
-import { lineEndings, mergeLines, yamlOptions } from "../rewrite/lines";
+import { lineEndings, renderValues, rewriteFile, yamlOptions } from "../rewrite/lines";
 
 /**
  * Definitions are edited as YAML documents whatever their parser, so one set of edits serves
@@ -47,11 +47,6 @@ export function load(source: string, parser: CustomParser): { doc: Document; exp
   return { doc, expanded };
 }
 
-function write(value: unknown, parser: CustomParser): string {
-  if (parser === parsers.json) return `${formatJson(value)}\n`;
-  return parser.stringify(value);
-}
-
 /** Whether fmt leaves a file as it is, so a converted file should be formatted too */
 function isFormatted(entityType: EntityType, text: string, parser: CustomParser): boolean {
   try {
@@ -63,55 +58,32 @@ function isFormatted(entityType: EntityType, text: string, parser: CustomParser)
 }
 
 /**
- * The document as the file's new text, with the file's own lines where nothing changed. A file
- * that was formatted comes out formatted, so a project fmt keeps clean stays clean.
+ * The document as the file's new text, with the file's own lines where nothing changed, or
+ * the whole file as its parser writes it, which `merged` says. YAML keeps its comments either
+ * way and JSON has none, but a custom format may lose them. A file that was formatted comes
+ * out formatted, so a project fmt keeps clean stays clean. Undefined when the text would not
+ * read back as the document.
  */
 export function render(
   source: string,
   doc: Document,
   parser: CustomParser,
   entityType?: EntityType,
-): string {
-  return renderFile(source, doc, parser, entityType).text;
-}
-
-/**
- * `render`, saying too whether the file came out as its parser writes it rather than in its own
- * lines. YAML keeps its comments either way and JSON has none, but a custom format may lose them.
- */
-export function renderFile(
-  source: string,
-  doc: Document,
-  parser: CustomParser,
-  entityType?: EntityType,
-): { text: string; rewritten: boolean } {
-  const { text, restore } = lineEndings(source);
-  let base: string;
-  let changed: string;
-  if (parser === parsers.yml) {
+): { text: string; merged: boolean } | undefined {
+  const value = doc.toJS();
+  const result = rewriteFile(source, parser, value, (text) => {
+    if (parser !== parsers.yml) return renderValues(parser, parser.parse(text), value);
     const options = yamlOptions(text);
-    base = parseDocument(text).toString(options);
-    changed = doc.toString(options);
-  } else {
-    base = write(parser.parse(source), parser);
-    changed = write(doc.toJS(), parser);
-  }
-  const merged = mergeLines(text, base, changed);
-  // the merge must read back as the document, or the rendered text is written instead
-  const kept = merged !== undefined && same(parser.parse(merged), doc.toJS());
-  let candidate = kept ? merged : changed;
-  if (entityType && candidate !== text && isFormatted(entityType, text, parser)) {
+    return { base: parseDocument(text).toString(options), changed: doc.toString(options) };
+  });
+  if (result && entityType && result.text !== source && isFormatted(entityType, source, parser)) {
     try {
-      candidate = formatDefinition(entityType, candidate, parser).output;
+      result.text = formatDefinition(entityType, result.text, parser).output;
     } catch {
-      // the merged text stands when fmt cannot format it
+      // the rewritten text stands when fmt cannot format it
     }
   }
-  return { text: restore(candidate), rewritten: !kept };
-}
-
-export function same(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return result;
 }
 
 export function rootMap(doc: Document): YAMLMap | undefined {
@@ -120,11 +92,6 @@ export function rootMap(doc: Document): YAMLMap | undefined {
 
 export function pairOf(map: YAMLMap, key: string): Pair | undefined {
   return (map.items as Pair[]).find((pair) => isScalar(pair.key) && String(pair.key.value) === key);
-}
-
-/** Whether the value at `key` is a map, such as rules grouped by environment */
-export function isLaneMap(map: YAMLMap, key: string): boolean {
-  return isMap(pairOf(map, key)?.value);
 }
 
 /**

@@ -1,11 +1,13 @@
+import { formatJson, parsers, type CustomParser } from "@featurevisor/parsers";
+
 /**
- * Merges a rendered change into a file's own lines, so every line the change does not touch
- * stays exactly as written. Shared by the commands that rewrite definitions, migrate and
- * convert, which load it only when they run.
+ * Text tools for the commands that rewrite definition files, fmt, migrate and convert, which
+ * load them only when they run. A rewrite merges its change into a file's own lines, so every
+ * line the change does not touch stays exactly as written.
  */
 
 /** For each line of `a`, its line in `b` when both are on the longest common subsequence */
-function align(a: string[], b: string[]): number[] {
+export function align(a: string[], b: string[]): number[] {
   const width = b.length + 1;
   const lengths = new Uint32Array((a.length + 1) * width);
   for (let i = a.length - 1; i >= 0; i--) {
@@ -100,12 +102,81 @@ export function yamlOptions(source: string) {
   return { indent, indentSeq, lineWidth: 0, minContentWidth: 0, flowCollectionPadding: false };
 }
 
-/** The text with \n line endings and no byte order mark, and how to give a text the file's own */
-export function lineEndings(file: string): { text: string; restore: (text: string) => string } {
-  const bom = file.startsWith("\uFEFF") ? "\uFEFF" : "";
-  const crlf = file.match(/\r?\n/)?.[0] === "\r\n";
+/** Which line endings a rewritten text gets: the file's own, judged by its first line break, or one */
+export type EndOfLine = "auto" | "lf" | "crlf";
+
+/**
+ * The text with \n line endings and no byte order mark, and how to give a text the file's byte
+ * order mark and the line endings `endOfLine` asks for
+ */
+export function lineEndings(
+  file: string,
+  endOfLine: EndOfLine = "auto",
+): { text: string; restore: (text: string) => string } {
+  const bom = file.startsWith("﻿") ? "﻿" : "";
+  const text = file.slice(bom.length);
+  const crlf = endOfLine === "auto" ? text.match(/\r?\n/)?.[0] === "\r\n" : endOfLine === "crlf";
   return {
-    text: file.slice(bom.length).replace(/\r\n/g, "\n"),
-    restore: (text) => bom + (crlf ? text.replace(/\n/g, "\r\n") : text),
+    text: text.replace(/\r\n/g, "\n"),
+    restore: (output) => bom + (crlf ? output.replace(/\n/g, "\r\n") : output),
   };
+}
+
+/** The parsers @featurevisor/parsers ships, which read and lay out YAML and JSON */
+export const BUILT_IN_PARSERS: ReadonlySet<CustomParser> = new Set(Object.values(parsers));
+
+/** Equal as JSON, with keys in the same order, whatever objects a parser makes */
+export function same(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** Whether two texts have the same comments, when the parser can list them */
+export function sameComments(parser: CustomParser, before: string, after: string): boolean {
+  if (typeof parser.listComments !== "function") return true;
+  const a = [...parser.listComments(before)].sort();
+  const b = [...parser.listComments(after)].sort();
+  return a.length === b.length && a.every((line, index) => line === b[index]);
+}
+
+/** A file rendered twice by its writer: as it is, and with a change */
+export interface Rendering {
+  base: string;
+  changed: string;
+}
+
+/** Two values as the parser writes them: JSON as fmt lays it out, and others through stringify */
+export function renderValues(parser: CustomParser, before: unknown, after: unknown): Rendering {
+  const write = (value: unknown) =>
+    parser === parsers.json ? `${formatJson(value)}\n` : parser.stringify(value);
+  return { base: write(before), changed: write(after) };
+}
+
+/**
+ * A file's new text, with its own line endings and byte order mark: the change merged into its
+ * own lines, or the whole rendering when the merge cannot place it. Either must parse back to
+ * `value`, as JSON since key order matters, and with `keepComments`, keep the file's comments.
+ * `merged` says which one it is. Undefined when neither passes.
+ */
+export function rewriteFile(
+  file: string,
+  parser: CustomParser,
+  value: unknown,
+  render: (text: string) => Rendering,
+  { keepComments = false } = {},
+): { text: string; merged: boolean } | undefined {
+  const { text, restore } = lineEndings(file);
+  const { base, changed } = render(text);
+  const accepts = (candidate: string) => {
+    try {
+      if (!same(parser.parse(candidate), value)) return false;
+    } catch {
+      return false;
+    }
+    return !keepComments || sameComments(parser, text, candidate);
+  };
+
+  const merged = mergeLines(text, base, changed);
+  if (merged !== undefined && accepts(merged)) return { text: restore(merged), merged: true };
+  if (accepts(changed)) return { text: restore(changed), merged: false };
+  return undefined;
 }

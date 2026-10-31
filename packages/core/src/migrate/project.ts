@@ -4,24 +4,16 @@ import * as path from "node:path";
 import { parsers, type CustomParser } from "@featurevisor/parsers";
 
 import {
-  ATTRIBUTES_DIRECTORY_NAME,
   CONFIG_MODULE_NAME,
-  FEATURES_DIRECTORY_NAME,
   ROOT_DIR_PLACEHOLDER,
-  SCHEMAS_DIRECTORY_NAME,
-  SEGMENTS_DIRECTORY_NAME,
   SETS_DIRECTORY_NAME,
-  TARGETS_DIRECTORY_NAME,
-  TESTS_DIRECTORY_NAME,
-  VARIABLES_DIRECTORY_NAME,
 } from "../config/projectConfig";
+import { filesIn, KINDS, type Kind } from "../rewrite/files";
 
 /**
  * A v3 project as migration reads it. The v4 configuration loader rejects v3 settings, so this
  * reads featurevisor.config.js directly and finds the definition files by their directories.
  */
-
-export type Kind = "attribute" | "schema" | "segment" | "feature" | "variable" | "target" | "test";
 
 export interface DefinitionFile {
   kind: Kind;
@@ -39,29 +31,6 @@ export interface Project {
   blockers: { message: string; section: string }[];
   /** Attribute files v4 rejects for where they are */
   nestedAttributes: string[];
-}
-
-const DIRECTORIES: [Kind, string, string][] = [
-  ["attribute", "attributesDirectoryPath", ATTRIBUTES_DIRECTORY_NAME],
-  ["schema", "schemasDirectoryPath", SCHEMAS_DIRECTORY_NAME],
-  ["segment", "segmentsDirectoryPath", SEGMENTS_DIRECTORY_NAME],
-  ["feature", "featuresDirectoryPath", FEATURES_DIRECTORY_NAME],
-  ["variable", "variablesDirectoryPath", VARIABLES_DIRECTORY_NAME],
-  ["target", "targetsDirectoryPath", TARGETS_DIRECTORY_NAME],
-  ["test", "testsDirectoryPath", TESTS_DIRECTORY_NAME],
-];
-
-function filesIn(directory: string, extension: string): string[] {
-  if (!fs.existsSync(directory)) return [];
-  return fs
-    .readdirSync(directory, { withFileTypes: true })
-    .filter((entry) => !entry.name.startsWith("."))
-    .flatMap((entry) => {
-      const fullPath = path.join(directory, entry.name);
-      if (entry.isDirectory()) return filesIn(fullPath, extension);
-      return entry.name.endsWith(`.${extension}`) ? [fullPath] : [];
-    })
-    .sort();
 }
 
 function requireFresh(filePath: string): Record<string, unknown> {
@@ -165,7 +134,7 @@ export function readProject(rootDirectoryPath: string): Project {
   const files: DefinitionFile[] = [];
   const nestedAttributes: string[] = [];
   for (const root of roots) {
-    for (const [kind, key, name] of DIRECTORIES) {
+    for (const [kind, key, name] of KINDS) {
       const base = root.directory(key, name);
       for (const filePath of filesIn(base, parser.extension)) {
         files.push({ kind, ...(root.set ? { set: root.set } : {}), filePath });

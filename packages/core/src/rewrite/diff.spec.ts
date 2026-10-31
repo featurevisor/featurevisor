@@ -1,4 +1,4 @@
-import { unifiedDiff } from "./unifiedDiff";
+import { unifiedDiff } from "./diff";
 
 describe("unifiedDiff", () => {
   it("prints changed lines with context", () => {

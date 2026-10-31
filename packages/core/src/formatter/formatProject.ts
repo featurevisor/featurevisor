@@ -16,7 +16,7 @@ import {
 } from "./formatDefinition";
 import { FORMAT_ENTITY_TYPES } from "./layout";
 import { getChangedFiles } from "./since";
-import { unifiedDiff } from "./unifiedDiff";
+import { unifiedDiff } from "../rewrite/diff";
 
 export interface FormatProjectOptions {
   /** Report files that need formatting without writing them */
