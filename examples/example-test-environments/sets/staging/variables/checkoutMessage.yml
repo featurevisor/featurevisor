@@ -1,12 +1,17 @@
 description: Checkout message in staging
+
 tags:
   - all
+
 type: string
+
 defaultValue: Staging checkout
+
 overrides:
   - key: internal
     conditions: internal
     value: Staging checkout for engineers
+
   - key: default
     conditions: "*"
     value: Staging checkout

@@ -1,7 +1,8 @@
 description: for testing force API in features
+
 conditions:
   - attribute: userId
     operator: in
     value:
-      - "user-1"
-      - "user-2"
+      - user-1
+      - user-2

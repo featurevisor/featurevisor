@@ -1,20 +1,38 @@
 description: Demonstrates empty and notEmpty conditions with feature variables
-tags: [all]
+
+tags:
+  - all
+
 bucketBy: userId
+
 variablesSchema:
   status:
     type: string
     defaultValue: No emptiness rule matched
+
 rules:
-  staging: &rules
+  staging:
     - key: empty-context
       conditions: emptyProfile
       percentage: 100
       variables:
         status: All values are empty
+
     - key: populated-context
       conditions: nonEmptyProfile
       percentage: 100
       variables:
         status: All values are populated
-  production: *rules
+
+  production:
+    - key: empty-context
+      conditions: emptyProfile
+      percentage: 100
+      variables:
+        status: All values are empty
+
+    - key: populated-context
+      conditions: nonEmptyProfile
+      percentage: 100
+      variables:
+        status: All values are populated

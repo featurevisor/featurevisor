@@ -1,17 +1,18 @@
 feature: promoBanner
+
 assertions:
   - description: Enabled for Dutch visitors in production
-    at: 10
     environment: production
+    at: 10
     context:
       country: nl
-      userId: "user-1"
+      userId: user-1
     expectedToBeEnabled: true
 
   - description: Disabled outside the Netherlands in production
-    at: 10
     environment: production
+    at: 10
     context:
       country: de
-      userId: "user-2"
+      userId: user-2
     expectedToBeEnabled: false

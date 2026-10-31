@@ -1,7 +1,10 @@
 {
   "description": "Show cookie banner to users from the Netherlands",
+
   "tags": ["all"],
+
   "bucketBy": "userId",
+
   "rules": {
     "staging": [
       {
@@ -10,12 +13,14 @@
         "percentage": 100
       }
     ],
+
     "production": [
       {
         "key": "nl",
         "conditions": ["netherlands"],
         "percentage": 100
       },
+
       {
         "key": "everyone",
         "conditions": "*",

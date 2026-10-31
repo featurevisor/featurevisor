@@ -1,4 +1,5 @@
 segment: netherlands
+
 assertions:
   - description: Matches users in the Netherlands
     context:

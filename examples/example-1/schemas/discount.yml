@@ -1,4 +1,5 @@
 description: Discount or promotion (code, type, value)
+
 type: object
 
 properties:

@@ -1,4 +1,5 @@
 description: Complex feature with variations and variable overrides
+
 tags:
   - all
   - web
@@ -22,13 +23,13 @@ variations:
       fontSize: 14
     variableOverrides:
       theme:
-        - value: dark
-          conditions: premiumUsers
-        - value: auto
-          conditions: chromeUsers
+        - conditions: premiumUsers
+          value: dark
+        - conditions: chromeUsers
+          value: auto
       fontSize:
-        - value: 16
-          conditions: premiumUsers
+        - conditions: premiumUsers
+          value: 16
 
   - value: treatment
     weight: 50
@@ -37,11 +38,20 @@ variations:
       fontSize: 16
     variableOverrides:
       theme:
-        - value: light
-          conditions: premiumUsers
+        - conditions: premiumUsers
+          value: light
       fontSize:
-        - value: 18
-          conditions: premiumChromeUsers
+        - conditions: premiumChromeUsers
+          value: 18
+
+force:
+  production:
+    - conditions: adminUsers
+      enabled: true
+      variation: treatment
+      variables:
+        theme: dark
+        fontSize: 18
 
 rules:
   staging:
@@ -65,12 +75,3 @@ rules:
     - key: everyone-else
       conditions: "*"
       percentage: 30
-
-force:
-  production:
-    - conditions: adminUsers
-      enabled: true
-      variation: treatment
-      variables:
-        theme: dark
-        fontSize: 18

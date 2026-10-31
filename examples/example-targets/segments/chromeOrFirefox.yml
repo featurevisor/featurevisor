@@ -1,4 +1,5 @@
 description: Chrome OR Firefox browsers
+
 conditions:
   or:
     - attribute: browser

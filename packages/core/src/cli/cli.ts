@@ -28,7 +28,8 @@ export interface Plugin {
   command: string;
   description?: string;
   options?: CLIOptionDefinitions;
-  handler: (options: PluginHandlerOptions) => Promise<void | boolean>;
+  /** false fails the command with exit code 1, and a number exits with that code */
+  handler: (options: PluginHandlerOptions) => Promise<void | boolean | number>;
   examples: {
     command: string;
     description: string;
@@ -78,7 +79,7 @@ export async function runCLI(runnerOptions: RunnerOptions) {
   const args = process.argv.slice(2);
   const json = getBooleanArgument(args, "json") || getBooleanArgument(args, "executionProtocol");
   const pretty = getBooleanArgument(args, "pretty");
-  let commandFailed = false;
+  let exitCode = 0;
   const globalOptions: CLIOptionDefinitions = {
     rootDirectoryPath: { type: "string", description: "Featurevisor project directory" },
     help: { type: "boolean" },
@@ -168,7 +169,9 @@ export async function runCLI(runnerOptions: RunnerOptions) {
         } as PluginHandlerOptions);
 
         if (result === false) {
-          commandFailed = true;
+          exitCode = 1;
+        } else if (typeof result === "number") {
+          exitCode = result;
         }
       },
     });
@@ -232,12 +235,12 @@ export async function runCLI(runnerOptions: RunnerOptions) {
         verbose: getBooleanArgument(args, "verbose"),
       }),
     );
-    commandFailed = true;
+    exitCode = 1;
   }
 
-  if (commandFailed) {
-    process.exitCode = 1;
+  if (exitCode !== 0) {
+    process.exitCode = exitCode;
   }
 
-  return !commandFailed;
+  return exitCode === 0;
 }

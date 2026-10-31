@@ -1,4 +1,5 @@
 segment: proAccounts
+
 assertions:
   - context:
       account:

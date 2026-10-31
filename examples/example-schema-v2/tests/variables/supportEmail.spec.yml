@@ -2,15 +2,15 @@ variable: supportEmail
 
 assertions:
   - description: Dutch users get the Dutch address for v3 releases
-    target: ios
     environment: production
+    target: ios
     context:
       country: nl
     expectedValue: support-nl@example.com
 
   - description: Everyone else gets the default
-    target: android
     environment: production
+    target: android
     context:
       country: de
     expectedValue: support@example.com

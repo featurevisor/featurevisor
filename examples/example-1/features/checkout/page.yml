@@ -1,4 +1,5 @@
 description: Testing variables without having any variations
+
 tags:
   - all
 
@@ -8,11 +9,9 @@ variablesSchema:
   showPayments:
     type: boolean
     defaultValue: false
-
   showShipping:
     type: boolean
     defaultValue: false
-
   paymentMethods:
     type: array
     defaultValue:
@@ -42,7 +41,7 @@ rules:
           - sofort
           - paypal
 
-    - key: "ch"
+    - key: ch
       conditions: countries.switzerland
       percentage: 0
 

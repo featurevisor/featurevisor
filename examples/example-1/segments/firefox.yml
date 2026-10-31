@@ -1,4 +1,5 @@
 description: Firefox browser
+
 conditions:
   - attribute: browser.name
     operator: equals

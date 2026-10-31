@@ -1,21 +1,22 @@
 feature: premiumFeatures
+
 assertions:
   ##
   # Staging - everyone enabled
   #
-  - at: 50
-    environment: staging
+  - environment: staging
+    at: 50
     context: {}
     expectedToBeEnabled: true
 
-  - at: 50
-    environment: staging
+  - environment: staging
+    at: 50
     context:
       subscription: premium
     expectedToBeEnabled: true
 
-  - at: 50
-    environment: staging
+  - environment: staging
+    at: 50
     context:
       subscription: free
     expectedToBeEnabled: true
@@ -23,20 +24,26 @@ assertions:
   ##
   # Production - premium users only
   #
-  - matrix:
-      at: [10, 50, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, premium user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
     environment: production
-    description: "At ${{ at }}% in production, premium user should be enabled"
+    at: ${{ at }}
     context:
       subscription: premium
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [10, 50, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, free user should be disabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
     environment: production
-    description: "At ${{ at }}% in production, free user should be disabled"
+    at: ${{ at }}
     context:
       subscription: free
     expectedToBeEnabled: false
@@ -44,33 +51,42 @@ assertions:
   ##
   # Testing with premium target
   #
-  - matrix:
-      at: [10, 50, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production with premium target, should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
     environment: production
     target: premium
-    description: "At ${{ at }}% in production with premium target, should be enabled"
+    at: ${{ at }}
     context: {}
     expectedToBeEnabled: true
 
   ##
   # Testing against browsers target
   #
-  - matrix:
-      at: [10, 50, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production with browsers target, should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
     environment: production
     target: browsers
-    description: "At ${{ at }}% in production with browsers target, should be enabled"
+    at: ${{ at }}
     context:
       subscription: premium
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [10, 50, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, should be disabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
     environment: production
     target: browsers
-    description: "At ${{ at }}% in production, should be disabled"
+    at: ${{ at }}
     context: {}
     expectedToBeEnabled: false

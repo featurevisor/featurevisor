@@ -1,22 +1,23 @@
 feature: redesign
+
 assertions:
-  - at: 40
-    environment: production
+  - environment: production
+    at: 40
     context:
       country: nl
     expectedToBeEnabled: true
 
-  - at: 40
-    environment: production
+  - environment: production
+    at: 40
     context:
       country: de
     expectedToBeEnabled: false
 
-  - at: 40
-    environment: production
+  - environment: production
+    at: 40
+    context:
+      country: de
     stickyFeatures:
       redesign:
         enabled: true
-    context:
-      country: de
     expectedToBeEnabled: true

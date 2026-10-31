@@ -64,6 +64,8 @@ npx featurevisor test
 npx featurevisor build
 ```
 
+On pull requests, also run `npx featurevisor fmt --check`, which fails when a file is not formatted, so review sees only what changed ([cli.md](cli.md#fmt)). The publishing run can leave it out, since formatting never changes a datafile.
+
 ## Deployment
 
 The usual pipeline on merge to the main branch:

@@ -1,4 +1,5 @@
 {
   "description": "User ID",
+
   "type": "string"
 }

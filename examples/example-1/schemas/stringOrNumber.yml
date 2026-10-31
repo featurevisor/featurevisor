@@ -1,4 +1,5 @@
 description: Value is either a string or an integer (e.g. id or count)
+
 oneOf:
   - type: string
   - type: integer

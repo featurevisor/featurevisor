@@ -1,8 +1,9 @@
 feature: requiredFeaturesExample
+
 assertions:
   - description: continues evaluation when every requirement matches
-    at: 90
     environment: production
+    at: 90
     context:
       country: nl
     expectedToBeEnabled: true
@@ -11,8 +12,8 @@ assertions:
         reason: rule
 
   - description: fails when the required variation does not match
-    at: 5
     environment: production
+    at: 5
     context:
       country: nl
     expectedToBeEnabled: false
@@ -29,8 +30,8 @@ assertions:
             variation: control
 
   - description: fails when a required enabled feature is disabled
-    at: 90
     environment: production
+    at: 90
     context:
       country: de
     expectedToBeEnabled: false
@@ -39,8 +40,8 @@ assertions:
         reason: conditions_unmet
 
   - description: fails when a feature required to be disabled is enabled
-    at: 90
     environment: staging
+    at: 90
     context:
       country: nl
     expectedToBeEnabled: false

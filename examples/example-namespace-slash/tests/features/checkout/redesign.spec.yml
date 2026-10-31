@@ -1,8 +1,9 @@
 feature: checkout/redesign
+
 assertions:
   - description: Users in the Netherlands receive the redesigned checkout
-    at: 50
     environment: production
+    at: 50
     context:
       user:
         id: user-123

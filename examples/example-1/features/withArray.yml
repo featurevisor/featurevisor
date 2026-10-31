@@ -1,4 +1,5 @@
 description: Testing feature with object variable type
+
 tags:
   - all
 
@@ -11,7 +12,6 @@ variablesSchema:
       - red
       - blue
       - green
-
   simpleStringArray:
     # same as above, but with explicit items type
     type: array
@@ -21,7 +21,6 @@ variablesSchema:
       - red
       - blue
       - green
-
   objectArray:
     # with typed objects as array items
     type: array
@@ -45,6 +44,7 @@ rules:
     - key: everyone
       conditions: "*"
       percentage: 50
+
   production:
     - key: everyone
       conditions: "*"

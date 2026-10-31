@@ -1,8 +1,9 @@
 feature: checkout/promotion
+
 assertions:
   - description: Dutch users receive the localized promotion
-    at: 50
     environment: production
+    at: 50
     context:
       user:
         id: user-123

@@ -1,4 +1,5 @@
 description: Segment combining all condition leaf kinds
+
 conditions:
   - countries.netherlands
   - attribute: device
@@ -12,6 +13,7 @@ conditions:
     value: true
   - feature: conditionSource
     variable: policy
-    path: [enabled]
+    path:
+      - enabled
     operator: equals
     value: true

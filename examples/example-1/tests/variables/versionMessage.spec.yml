@@ -1,23 +1,28 @@
 variable: versionMessage
+
 assertions:
   - description: Numeric leading prerelease identifiers remain distinct
     environment: staging
     expectedValue: Preview release
+
   - description: A release sorts after its prereleases
     environment: production
     stickyVariables:
       clientVersion: 1.0.0
     expectedValue: Stable release
+
   - description: A short version normalizes missing components to zero
     environment: production
     stickyVariables:
       clientVersion: "1"
     expectedValue: Stable release
+
   - description: Numeric prerelease zero sorts before the preview identifier
     environment: staging
     stickyVariables:
       clientVersion: 1.0.0-0
     expectedValue: Upgrade available
+
   - description: Equal preview identifiers do not satisfy greater than
     environment: staging
     stickyVariables:

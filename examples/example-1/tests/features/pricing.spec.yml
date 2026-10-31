@@ -1,29 +1,30 @@
 feature: pricing
+
 assertions:
-  - at: 5
-    environment: staging
+  - environment: staging
+    at: 5
     context:
       country: nl
     expectedToBeEnabled: true
     expectedVariation: treatment
 
-  - at: 10
-    environment: production
+  - environment: production
+    at: 10
     context:
       country: nl
     expectedToBeEnabled: false
     expectedVariation: control
 
-  - at: 20
-    environment: production
+  - environment: production
+    at: 20
     context:
       country: de
     expectedToBeEnabled: true
     expectedVariation: treatment
 
-  - at: 20
+  - environment: production
     target: checkout
-    environment: production
+    at: 20
     context:
       country: de
     expectedToBeEnabled: true

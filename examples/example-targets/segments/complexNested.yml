@@ -1,4 +1,5 @@
 description: Complex nested conditions - (premium AND chrome) OR (admin AND not firefox)
+
 conditions:
   or:
     - and:

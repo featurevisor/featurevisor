@@ -1,6 +1,7 @@
 description: An unmet composition gate returns null without disabledValue
 
-tags: [web]
+tags:
+  - web
 
 compose: policy
 

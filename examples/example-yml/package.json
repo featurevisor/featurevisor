@@ -5,6 +5,7 @@
   "description": "Featurevisor project with YAML definitions",
   "scripts": {
     "lint": "featurevisor lint",
+    "fmt": "featurevisor fmt",
     "build": "featurevisor build",
     "test": "featurevisor test",
     "export": "featurevisor catalog export",

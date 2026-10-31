@@ -64,6 +64,52 @@ Warnings do not fail lint. The common ones: `context_value_mismatch` (a test con
 
 `--v3-mutation-order` shows values that change because v4 applies mutations in authored order. It is for upgrades from v3.
 
+## fmt
+
+```bash
+npx featurevisor fmt
+npx featurevisor fmt --check
+npx featurevisor fmt --diff
+npx featurevisor fmt features/checkout.yml segments
+npx featurevisor fmt --check --since=origin/main
+```
+
+Docs: <https://featurevisor.com/docs/fmt/>
+
+Formats every definition and spec in one house style, with no options: a blank line between top level keys, rules, force entries, variations, global variable overrides, the environments that group them, and assertions, Featurevisor's own keys in a fixed order, block lists, quotes only where needed, YAML aliases written out in full without anchors, and comments kept with the key below them. So do not write anchors or aliases such as `&rules` and `*rules`. It never changes what a definition means, and the datafiles a build writes stay byte identical. After editing definitions, run it on the files you edited, so a project that is not formatted yet gets no changes beyond yours.
+
+`--check` writes nothing and exits with 1 when a file needs formatting, for CI. Errors, such as a file that does not parse, exit with 2. `--diff` prints the changes as a unified diff and writes nothing. Add `--check` to it to fail as well. File and directory paths, `--entity-type` and `--key-pattern` narrow the files, as in `lint`, and `--since=<git ref>` keeps the files changed since HEAD left that reference, uncommitted and untracked ones too. `--stdin-filepath=<path>` formats text from stdin as that file and prints it, for editors. A file whose top comments include `# featurevisor-ignore` is left as written, and so is a line ending in `# featurevisor-ignore-line`. Blank lines the author wrote between entries stay, one at most. In a project with Sets, run it without `--set` so every set is formatted together. A file that does not parse is reported and left as it is. Each parser lays out its own files: JSON gets the key order and blank lines, and a custom parser takes part through an optional `format` function ([custom-parsers.md](custom-parsers.md)). Without one, `fmt` leaves its files as they are. `promote` does not format the files it writes, so run `fmt` after a promotion when `--check` reports files.
+
+## migrate
+
+```bash
+npx featurevisor migrate --diff
+npx featurevisor migrate
+npx featurevisor migrate --check
+```
+
+Rewrites a v3 project's definitions and specs for v4, run once after installing the v4 CLI. It converts what has one right answer, as [upgrading-to-v4.md](upgrading-to-v4.md) lists, keeps comments, line endings and every line it does not change, and lists what needs a person under "Needs you". It writes files, so show `--diff` first and run it on the user's go ahead. `--check` writes nothing and exits with 1 while anything is left. It exits with 2, writing nothing, while Groups remain or a custom parser has no `stringify`. It needs no project configuration v4 can load, so it runs before anything else works.
+
+## convert
+
+```bash
+npx featurevisor convert --to=environments
+npx featurevisor convert --to=environments --environments=dev,production --apply
+npx featurevisor convert --to=sets --apply
+npx featurevisor convert --to=flat --keep=production --apply
+```
+
+Docs: <https://featurevisor.com/docs/convert/>
+
+Changes a project's shape between `flat` (no environments and no sets), `environments` and `sets`, rewriting definitions, specs, state files and `featurevisor.config.js`, and keeping comments and every line it does not change. When it cannot edit `featurevisor.config.js`, such as one that spreads its settings in from another file, it converts the rest and prints the settings for the user to change there by hand, after converting. Without `--apply` it previews and writes nothing. Before writing, it converts a temporary copy, lints and tests both, and builds both: every feature and global variable must build byte identical in each environment or set, or nothing is written.
+
+- From environments to sets, each environment becomes a set with a copy of the attributes, segments, schemas and targets, each feature keeps only that environment's rules (`rules: []` where it had none), and `promotionFlows` follows the order of `environments`. Datafile paths stay the same, so only `--environment=` in CI becomes `--set=`.
+- From sets to environments, shared definitions must be equal in every set, and a global variable must be in every set. Otherwise it lists the conflicts and exits with 2. `--environments` reorders the lanes.
+- From flat, `--environments` or `--sets` name the lanes, staging and production by default. Assertions that need an environment run in each through a `matrix`.
+- To flat, `--keep` names the lane to keep, and the preview lists what the others lose.
+
+A project with sets and environments together is refused. Exits with 0 after a preview or a conversion and 2 when it cannot convert. `--json` prints the plan and checks. Do not propose a conversion unprompted ([sets-promotions.md](sets-promotions.md#when-to-use-sets-and-when-not-to)).
+
 ## test
 
 ```bash

@@ -1,12 +1,17 @@
 description: Checkout message in development
+
 tags:
   - all
+
 type: string
+
 defaultValue: Development checkout
+
 overrides:
   - key: internal
     conditions: internal
     value: Development checkout for engineers
+
   - key: default
     conditions: "*"
     value: Development checkout

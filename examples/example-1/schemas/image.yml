@@ -1,4 +1,5 @@
 description: Image asset with optional alt text
+
 type: object
 
 properties:

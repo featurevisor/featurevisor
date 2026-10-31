@@ -1,4 +1,5 @@
 description: Product summary for listings and recommendations (references money and image)
+
 type: object
 
 properties:

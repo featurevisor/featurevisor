@@ -1,5 +1,7 @@
 description: Theme name enum
+
 type: string
+
 enum:
   - light
   - dark

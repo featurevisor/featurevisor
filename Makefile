@@ -1,4 +1,4 @@
-.PHONY: install build test test-extended test-cli-integration test-catalog-browser test-runner-conformance test-mutation-conformance check-conformance-fixtures test-global-variables-performance test-datafile-build-performance benchmark-sdk-dependencies benchmark-catalog audit-production typecheck bundle-sizes lint format check
+.PHONY: install build test test-extended test-cli-integration test-catalog-browser test-runner-conformance test-mutation-conformance check-conformance-fixtures test-global-variables-performance test-datafile-build-performance benchmark-sdk-dependencies benchmark-catalog audit-production typecheck bundle-sizes lint format fmt-examples check
 
 ##
 # Packages
@@ -96,6 +96,15 @@ lint:
 
 format:
 	npx prettier examples/ packages/ --write
+
+# Restyles every example with the built CLI, after a change to the house style in
+# packages/core/src/formatter/style.ts. Run make build first.
+fmt-examples:
+	@for example in examples/*/; do \
+		if [ -f "$$example/featurevisor.config.js" ]; then \
+			printf "%s " "$$example"; (cd "$$example" && node ../../packages/cli/bin.js fmt | tail -1); \
+		fi; \
+	done
 
 # CI runs install, build, lint, typecheck and test. Run this locally before publishing.
 check:

@@ -1,4 +1,5 @@
 description: Hero schema
+
 type: object
 
 properties:

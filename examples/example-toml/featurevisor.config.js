@@ -15,6 +15,17 @@ module.exports = {
       require("smol-toml").stringify(
         content,
       ),
+    // smol-toml writes values, not comments, so a file with a # is left as it is
+    format: (source, layout) =>
+      source.includes("#")
+        ? undefined
+        : require("smol-toml").stringify(
+            layout.orderValue(
+              require("smol-toml").parse(
+                source,
+              ),
+            ),
+          ),
   },
   prettyState: true,
 };

@@ -1,4 +1,5 @@
 segment: countries.germany
+
 assertions:
   - context:
       country: de
@@ -13,10 +14,13 @@ assertions:
       country: notDe
     expectedToMatch: false
 
-  - matrix:
-      country: [nl]
-      city: [amsterdam, utrecht]
-    description: Testing in country ${{ country }} in city ${{ city }}
+  - description: Testing in country ${{ country }} in city ${{ city }}
+    matrix:
+      country:
+        - nl
+      city:
+        - amsterdam
+        - utrecht
     context:
       country: ${{ country }}
       city: ${{ city }}

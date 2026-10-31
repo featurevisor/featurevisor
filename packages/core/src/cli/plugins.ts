@@ -16,6 +16,9 @@ import { infoPlugin } from "../info";
 import { listPlugin } from "../list";
 import { promotePlugin } from "../promoter";
 import { diffPlugin } from "../diff";
+import { fmtPlugin } from "../formatter";
+import { migratePlugin } from "../migrate";
+import { convertPlugin } from "../convert";
 import { getProjectSetExecutions } from "../sets";
 import { getTestInputFingerprint, getTestInputStatePaths } from "../tester/provenance";
 import {
@@ -39,6 +42,7 @@ const catalogRuntime = {
 // that require an existing Featurevisor project
 export const projectBasedPlugins: Plugin[] = [
   lintPlugin,
+  fmtPlugin,
   buildPlugin,
   testPlugin,
   generateCodePlugin,
@@ -52,7 +56,9 @@ export const projectBasedPlugins: Plugin[] = [
   listPlugin,
   promotePlugin,
   diffPlugin,
+  convertPlugin,
   createCatalogPlugin(catalogRuntime),
 ];
 
-export const commonPlugins: Plugin[] = [];
+// that load the project themselves, since its configuration may not load yet
+export const commonPlugins: Plugin[] = [migratePlugin];

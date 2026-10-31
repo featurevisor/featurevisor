@@ -1,4 +1,5 @@
 segment: chromeOrFirefox
+
 assertions:
   - description: Chrome user should match
     context:
@@ -20,16 +21,21 @@ assertions:
       browser: edge
     expectedToMatch: false
 
-  - matrix:
-      browser: [chrome, firefox]
-    description: ${{ browser }} user should match
+  - description: ${{ browser }} user should match
+    matrix:
+      browser:
+        - chrome
+        - firefox
     context:
       browser: ${{ browser }}
     expectedToMatch: true
 
-  - matrix:
-      browser: [safari, edge, opera]
-    description: ${{ browser }} user should NOT match
+  - description: ${{ browser }} user should NOT match
+    matrix:
+      browser:
+        - safari
+        - edge
+        - opera
     context:
       browser: ${{ browser }}
     expectedToMatch: false

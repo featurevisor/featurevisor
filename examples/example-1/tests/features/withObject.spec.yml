@@ -1,7 +1,8 @@
 feature: withObject
+
 assertions:
-  - at: 25
-    environment: staging
+  - environment: staging
+    at: 25
     expectedToBeEnabled: true
     expectedVariables:
       themeConfig:
@@ -40,8 +41,8 @@ assertions:
             - a
             - b
 
-  - at: 40
-    environment: production
+  - environment: production
+    at: 40
     expectedToBeEnabled: true
     expectedVariables:
       themeConfig:

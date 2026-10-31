@@ -1,4 +1,5 @@
 segment: premiumWebOrMobile
+
 assertions:
   - description: Premium web user should match
     context:
@@ -30,19 +31,28 @@ assertions:
       platform: desktop
     expectedToMatch: false
 
-  - matrix:
-      subscription: [premium]
-      platform: [web, ios, android]
-    description: Premium ${{ platform }} user should match
+  - description: Premium ${{ platform }} user should match
+    matrix:
+      subscription:
+        - premium
+      platform:
+        - web
+        - ios
+        - android
     context:
       subscription: ${{ subscription }}
       platform: ${{ platform }}
     expectedToMatch: true
 
-  - matrix:
-      subscription: [free, basic]
-      platform: [web, ios, android]
-    description: ${{ subscription }} ${{ platform }} user should NOT match
+  - description: ${{ subscription }} ${{ platform }} user should NOT match
+    matrix:
+      subscription:
+        - free
+        - basic
+      platform:
+        - web
+        - ios
+        - android
     context:
       subscription: ${{ subscription }}
       platform: ${{ platform }}

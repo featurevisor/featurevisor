@@ -85,7 +85,16 @@ module.exports = {
 }
 ```
 
-`parse(content, filePath?)` receives source text and returns the parsed value. `stringify(content, filePath?)` receives a value and returns source text when definitions are written, including `promote --apply`. The optional file path can inform either operation. Keep the same data shape as YAML or JSON.
+`parse(content, filePath?)` receives source text and returns the parsed value. `stringify(content, filePath?)` receives a value and returns source text when definitions are written, including `promote --apply`, `migrate` and `convert --apply`. The optional file path can inform either operation. Keep the same data shape as YAML or JSON.
+
+An optional `format(source, layout)` lets `npx featurevisor fmt` lay out the parser's files, and lets `convert` keep a file it rewrites formatted when it was before. `layout` has `indent`, `orderKeys(path, keys)`, `spaceEntries(path)`, `spaceItems(path)`, `keepBlankLines`, whether blank lines the author wrote stay, `orderValue(value)`, which returns a parsed definition with its keys in Featurevisor's order, and `options`, Featurevisor's choices for the parser's own format when it has some, such as YAML's quotes. Apply what the format can express and ignore the rest. Keep what a value cannot hold, such as comments, or return `undefined` to leave the file as it is. smol-toml drops comments, so a TOML `format` leaves any file with a `#` alone:
+
+```js
+format: (source, layout) =>
+  source.includes("#") ? undefined : toml.stringify(layout.orderValue(toml.parse(source))),
+```
+
+An optional `listComments(source)` returns every comment, and `fmt` then refuses output that loses one. In a format with comments, `format` keeps a line ending in the `IGNORE_LINE_COMMENT` that `@featurevisor/parsers` exports as written. Featurevisor itself leaves a file with `# featurevisor-ignore` at its top alone, handles line endings and ends each file with one newline, so `format` does not need to. Without `format`, `fmt` leaves the parser's files as they are. The built-in YAML parser applies the whole house style, and JSON its key order, indentation and blank lines.
 
 Configuration loading requires a nonempty `extension` and both functions. A parser with only `parse` prevents project CLI commands from loading, even commands that do not write. The `toml` package is parse only. It cannot supply `stringify`. See [upgrading to v4](upgrading-to-v4.md#project).
 

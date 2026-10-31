@@ -2,8 +2,8 @@ feature: buyButton
 
 assertions:
   - description: Dutch users in the treatment see Dutch copy for v3 releases
-    target: ios
     environment: production
+    target: ios
     at: 80
     context:
       userId: user-4
@@ -14,8 +14,8 @@ assertions:
       colour: "#2563eb"
 
   - description: Paid accounts can buy up to ten for v3 releases
-    target: ios
     environment: production
+    target: ios
     at: 20
     context:
       userId: user-5

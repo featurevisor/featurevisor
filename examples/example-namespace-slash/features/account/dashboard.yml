@@ -1,9 +1,11 @@
 description: Account dashboard combining variations and variables
+
 tags:
   - all
   - account
 
 bucketBy: user.id
+
 disabledVariationValue: classic
 
 variablesSchema:
@@ -17,6 +19,7 @@ variablesSchema:
 variations:
   - value: classic
     weight: 50
+
   - value: modern
     weight: 50
     variables:
@@ -28,6 +31,7 @@ rules:
     - key: everyone
       conditions: "*"
       percentage: 100
+
   production:
     - key: everyone
       conditions: "*"

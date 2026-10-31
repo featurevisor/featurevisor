@@ -1,10 +1,12 @@
 segment: nonEmptyProfile
+
 assertions:
   - description: matches whitespace and shallow entries
     context:
       userId: populated-user
       phone: " "
-      interests: [sports]
+      interests:
+        - sports
       preferences:
         theme: null
     expectedToMatch: true

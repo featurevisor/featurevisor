@@ -1,5 +1,6 @@
 description: Read decoded JSON through the same variable API
 
-tags: [web]
+tags:
+  - web
 
 compose: raw

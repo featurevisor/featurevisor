@@ -1,4 +1,5 @@
 description: The supplied version is a stable release or newer
+
 conditions:
   - attribute: version
     operator: semverGreaterThanOrEquals

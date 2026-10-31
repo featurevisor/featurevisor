@@ -1,4 +1,5 @@
 segment: unknownDevice
+
 assertions:
   - context:
       device: iphone

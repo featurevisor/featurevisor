@@ -140,32 +140,38 @@ Details and lint messages: [operators.md](references/operators.md).
 
 ### 6. Match the project's shape
 
-Environments, Sets, parser and namespace separator change how the same request is written. Templates use the default shape without environments. In a project with environments, put each `rules`, `force` or global `overrides` list under its environment key, and add `environment` to tests.
+Environments, Sets, parser and namespace separator change how the same request is written. Templates use the default shape without environments. In a project with environments, put each `rules`, `force` or global `overrides` list under its environment key, and add `environment` to tests. To change the shape itself, such as adding environments or turning them into Sets, use `convert` rather than editing files by hand ([cli.md](references/cli.md#convert)).
 
 ## Definition of done
 
 Run this loop after every change. It is how you prove a change does what the user asked, and it gives you the evidence to report back.
 
-1. **Lint.** `npx featurevisor lint` must pass. With `--json`, each error has `filePath`, `path`, `message` and `code`, so you can fix the exact field. Rerun after fixing: some errors only appear once earlier ones in the same file are gone.
-2. **Specs.** Add or update the matching spec in the same change, then run `npx featurevisor test --key-pattern=<key>`. A failure prints a rerun command with an exact `--case`. `--json` gives each case's `errors` with `path`, `expected` and `actual`.
-3. **Explain representative contexts.** `npx featurevisor evaluate --feature=<key> --context='{…}' --explain` shows the matched rule, the bucket, and pass or fail for each condition. Use one context inside the audience and one outside it.
-4. **Coverage gaps.** `npx featurevisor test --uncovered` lists features and global variables without specs.
-5. **Summarize the change.** `npx featurevisor diff` reports semantic changes against `HEAD`, such as `Rule "everyone" updated, Rollout percentage: 10 → 25`. Use it for your summary to the user.
+1. **Format.** `npx featurevisor fmt <files you edited>` puts them in the house layout and key order, the way the user's teammates will expect to read them. It never changes what a definition means or what builds, so format without asking. Prefer passing the files you edited, so a project that is not formatted yet gets no changes beyond yours. Skip this step if the installed CLI has no `fmt` command.
+2. **Lint.** `npx featurevisor lint` must pass. With `--json`, each error has `filePath`, `path`, `message` and `code`, so you can fix the exact field. Rerun after fixing: some errors only appear once earlier ones in the same file are gone.
+3. **Specs.** Add or update the matching spec in the same change, then run `npx featurevisor test --key-pattern=<key>`. A failure prints a rerun command with an exact `--case`. `--json` gives each case's `errors` with `path`, `expected` and `actual`.
+4. **Explain representative contexts.** `npx featurevisor evaluate --feature=<key> --context='{…}' --explain` shows the matched rule, the bucket, and pass or fail for each condition. Use one context inside the audience and one outside it.
+5. **Coverage gaps.** `npx featurevisor test --uncovered` lists features and global variables without specs.
+6. **Summarize the change.** `npx featurevisor diff` reports semantic changes against `HEAD`, such as `Rule "everyone" updated, Rollout percentage: 10 → 25`. Use it for your summary to the user.
 
 `npx featurevisor build --no-state-files` confirms the datafiles build, and a running `npx featurevisor catalog` shows every change as it is saved.
 
-## CLI: run freely, with two exceptions
+## CLI: run freely, with a few exceptions
 
-Every CLI command is local and safe to run without asking, except:
+Every CLI command is local and safe to run without asking, `fmt` included, except these:
 
 - Bare `build` is a **CI command**. It increments `.featurevisor/REVISION` and rewrites state files, which only the deploying pipeline should commit. Locally, yours and the user's, always use `npx featurevisor build --no-state-files`. It writes the same datafiles.
 - `promote --apply` (Sets only) **writes definition files**. Preview first, show the summary, then apply on the user's go ahead ([sets-promotions.md](references/sets-promotions.md)).
+- `migrate` **rewrites a v3 project's definitions for v4**. Show `migrate --diff` first, then run it on the user's go ahead ([upgrading-to-v4.md](references/upgrading-to-v4.md)).
+- `convert --apply` **restructures the whole project** between environments, sets and neither. Run `convert --to=<shape>` without `--apply` first, show the preview, then apply on the user's go ahead ([cli.md](references/cli.md#convert)).
 
 | Command                                                                                   | Purpose                                                              |
 | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `npx featurevisor config --json --pretty`                                                 | Project configuration                                                |
 | `npx featurevisor info`                                                                   | Counts of every definition kind                                      |
 | `npx featurevisor lint [--json]`                                                          | Validate definitions and specs                                       |
+| `npx featurevisor fmt [--check]`                                                          | Format definitions in the house layout and key order                 |
+| `npx featurevisor migrate [--diff]`                                                       | Rewrite a v3 project's definitions for v4, once                      |
+| `npx featurevisor convert --to=<flat\|environments\|sets> [--apply]`                      | Change a project between environments, sets and neither              |
 | `npx featurevisor test [--key-pattern=…] [--json]`                                        | Run specs, with exact reruns through `--case`                        |
 | `npx featurevisor test --uncovered` / `--coverage`                                        | Definitions without specs, and rules or overrides the specs selected |
 | `npx featurevisor evaluate --feature=<k> --context='{…}' --explain`                       | Why a feature has its flag, variation and variables                  |
@@ -200,6 +206,7 @@ Read the matching file in full **before** authoring or debugging in that area. D
 | Tags, targets and namespaces                                                                                | [tags.md](references/tags.md), [targets.md](references/targets.md), [namespaces.md](references/namespaces.md) |
 | `featurevisor.config.js`, environments, project options                                                     | [configuration.md](references/configuration.md)                                                               |
 | Sets and promotions                                                                                         | [sets-promotions.md](references/sets-promotions.md)                                                           |
+| Change a project between environments, sets and neither                                                     | [cli.md](references/cli.md#convert)                                                                           |
 | JSON, TOML or another file format                                                                           | [custom-parsers.md](references/custom-parsers.md)                                                             |
 | Build and deploy datafiles, CI                                                                              | [building-datafiles.md](references/building-datafiles.md)                                                     |
 | Write specs, checks and scenarios, read reports                                                             | [testing.md](references/testing.md)                                                                           |

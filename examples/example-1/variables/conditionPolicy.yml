@@ -1,6 +1,13 @@
 description: Global policy read by mixed segment conditions
-tags: [all]
+
+tags:
+  - all
+
 type: object
+
 properties:
-  enabled: { type: boolean }
-defaultValue: { enabled: true }
+  enabled:
+    type: boolean
+
+defaultValue:
+  enabled: true

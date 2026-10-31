@@ -1,9 +1,22 @@
 variable: mutationConformance
+
 assertions:
   - description: uses the complete country fallback after the first parent misses
     environment: staging
     target: mutation-conformance
-    context: { country: de }
+    context:
+      country: de
+    expectedValue:
+      label: Country fallback
+      clearedText: ""
+      emptyString: ""
+      emptyArray: []
+      emptyObject: {}
+      tags: []
+      flags: []
+      rows: []
+      scratch: []
+      sequence: []
     checks:
       - path: emptyString
         operator: notNull
@@ -19,32 +32,30 @@ assertions:
       - not:
           - path: obsolete
             operator: isNull
-    expectedValue:
-      label: Country fallback
-      clearedText: ""
-      emptyString: ""
-      emptyArray: []
-      emptyObject: {}
-      tags: []
-      flags: []
-      rows: []
-      scratch: []
-      sequence: []
 
   - description: keeps the mutated parent value when no nested child matches
     environment: staging
     target: mutation-conformance
-    context: { country: nl, city: rotterdam }
+    context:
+      country: nl
+      city: rotterdam
     expectedValue:
       label: Parent
       clearedText: ""
       emptyString: ""
       emptyArray: []
       emptyObject: {}
-      tags: [first, keep, new, last]
-      flags: [true, false]
+      tags:
+        - first
+        - keep
+        - new
+        - last
+      flags:
+        - true
+        - false
       rows:
-        - { id: before, label: Before }
+        - id: before
+          label: Before
         - id: first
           rank: 1
           active: true
@@ -64,20 +75,29 @@ assertions:
           marker: empty
           label: Empty identifier
           emptySelector: true
-      scratch: [One, two]
+      scratch:
+        - One
+        - two
       sequence: []
 
   - description: combines conditions and prerequisites in the nested treatment child
     environment: staging
     target: mutation-conformance
     at: 25
-    context: { country: nl, city: amsterdam }
+    context:
+      country: nl
+      city: amsterdam
     stickyFeatures:
-      allowSignup: { enabled: true, variation: treatment }
+      allowSignup:
+        enabled: true
+        variation: treatment
     stickyVariables:
       runtimePolicy:
-        routing: { enabled: true, priority: false }
-        regions: [eu]
+        routing:
+          enabled: true
+          priority: false
+        regions:
+          - eu
         support.label: Help
     expectedValue:
       label: Treatment child
@@ -85,10 +105,17 @@ assertions:
       emptyString: ""
       emptyArray: []
       emptyObject: {}
-      tags: [first, keep, new, last]
-      flags: [true, false]
+      tags:
+        - first
+        - keep
+        - new
+        - last
+      flags:
+        - true
+        - false
       rows:
-        - { id: before, label: Before }
+        - id: before
+          label: Before
         - id: first
           rank: 1
           active: true
@@ -108,7 +135,9 @@ assertions:
           marker: empty
           label: Empty identifier
           emptySelector: true
-      scratch: [One, two]
+      scratch:
+        - One
+        - two
       sequence: []
     children:
       - expectedValue:
@@ -117,17 +146,24 @@ assertions:
           emptyString: ""
           emptyArray: []
           emptyObject: {}
-          tags: [control]
+          tags:
+            - control
           flags: []
           rows: []
           scratch: []
           sequence: []
+
       - stickyFeatures:
-          allowSignup: { enabled: true, variation: treatment }
+          allowSignup:
+            enabled: true
+            variation: treatment
         stickyVariables:
           runtimePolicy:
-            routing: { enabled: false, priority: false }
-            regions: [eu]
+            routing:
+              enabled: false
+              priority: false
+            regions:
+              - eu
             support.label: Help
         expectedValue:
           label: Parent
@@ -135,10 +171,17 @@ assertions:
           emptyString: ""
           emptyArray: []
           emptyObject: {}
-          tags: [first, keep, new, last]
-          flags: [true, false]
+          tags:
+            - first
+            - keep
+            - new
+            - last
+          flags:
+            - true
+            - false
           rows:
-            - { id: before, label: Before }
+            - id: before
+              label: Before
             - id: first
               rank: 1
               active: true
@@ -158,19 +201,29 @@ assertions:
               marker: empty
               label: Empty identifier
               emptySelector: true
-          scratch: [One, two]
+          scratch:
+            - One
+            - two
           sequence: []
 
   - description: the first nested reset wins over later matching children
     environment: staging
     target: mutation-conformance
-    context: { country: nl, city: amsterdam, loggedIn: true }
+    context:
+      country: nl
+      city: amsterdam
+      loggedIn: true
     stickyFeatures:
-      allowSignup: { enabled: true, variation: treatment }
+      allowSignup:
+        enabled: true
+        variation: treatment
     stickyVariables:
       runtimePolicy:
-        routing: { enabled: true, priority: false }
-        regions: [eu]
+        routing:
+          enabled: true
+          priority: false
+        regions:
+          - eu
         support.label: Help
     expectedValue:
       label: Reset
@@ -188,7 +241,8 @@ assertions:
     environment: production
     target: mutation-conformance
     at: 25
-    context: { country: de }
+    context:
+      country: de
     expectedValue:
       label: Production
       clearedText: ""
@@ -199,18 +253,25 @@ assertions:
       flags: []
       rows: []
       scratch: []
-      sequence: [base]
+      sequence:
+        - base
 
   - description: continuation applies every matching feature variable and context selector
     environment: production
     target: mutation-conformance
-    context: { country: nl }
+    context:
+      country: nl
     stickyFeatures:
-      allowSignup: { enabled: true, variation: treatment }
+      allowSignup:
+        enabled: true
+        variation: treatment
     stickyVariables:
       runtimePolicy:
-        routing: { enabled: true, priority: true }
-        regions: [eu]
+        routing:
+          enabled: true
+          priority: true
+        regions:
+          - eu
         support.label: Help
     expectedValue:
       label: Production
@@ -222,4 +283,8 @@ assertions:
       flags: []
       rows: []
       scratch: []
-      sequence: [base, treatment, priority, netherlands]
+      sequence:
+        - base
+        - treatment
+        - priority
+        - netherlands

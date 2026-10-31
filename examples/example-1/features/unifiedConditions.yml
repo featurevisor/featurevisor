@@ -1,17 +1,29 @@
 description: Root gate, force bypass and mixed rule conditions
-tags: [all]
+
+tags:
+  - all
+
 bucketBy: userId
+
 conditions: conditionAudience
+
 force:
-  staging: &force
+  staging:
     - conditions:
         attribute: userId
         operator: equals
         value: conditions-qa
       enabled: true
-  production: *force
+
+  production:
+    - conditions:
+        attribute: userId
+        operator: equals
+        value: conditions-qa
+      enabled: true
+
 rules:
-  staging: &rules
+  staging:
     - key: member
       conditions:
         - countries.netherlands
@@ -21,11 +33,32 @@ rules:
         - feature: conditionSource
           variation: treatment
         - variable: conditionPolicy
-          path: [enabled]
+          path:
+            - enabled
           operator: equals
           value: true
       percentage: 100
+
     - key: visitor
       conditions: "*"
       percentage: 100
-  production: *rules
+
+  production:
+    - key: member
+      conditions:
+        - countries.netherlands
+        - attribute: loggedIn
+          operator: equals
+          value: true
+        - feature: conditionSource
+          variation: treatment
+        - variable: conditionPolicy
+          path:
+            - enabled
+          operator: equals
+          value: true
+      percentage: 100
+
+    - key: visitor
+      conditions: "*"
+      percentage: 100

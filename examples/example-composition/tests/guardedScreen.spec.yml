@@ -6,15 +6,17 @@ assertions:
     expectedValue:
       policy:
         limit: 90
-    checks:
-      - variable: nullablePolicy
-        path: [limit]
-        operator: equals
-        value: 10
     expectedEvaluation:
       reason: variable_override_rule
       variableOverridePaths:
-        - [available]
+        - - available
+    checks:
+      - variable: nullablePolicy
+        path:
+          - limit
+        operator: equals
+        value: 10
+
   - description: An unmet source prerequisite skips the guarded override
     target: guarded
     stickyFeatures:
@@ -24,6 +26,7 @@ assertions:
       policy: null
     expectedEvaluation:
       reason: variable_composed
+
   - description: A nonnull sticky source still follows the normal getter pipeline
     target: guarded
     stickyFeatures:
@@ -35,10 +38,11 @@ assertions:
     expectedValue:
       policy:
         limit: 90
-    checks:
-      - variable: nullablePolicy
-        path: [limit]
-        operator: equals
-        value: 7
     expectedEvaluation:
       reason: variable_override_rule
+    checks:
+      - variable: nullablePolicy
+        path:
+          - limit
+        operator: equals
+        value: 7

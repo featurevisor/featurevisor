@@ -1,6 +1,7 @@
 description: Selected layouts
 
-tags: [web]
+tags:
+  - web
 
 compose:
   checkout:

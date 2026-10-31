@@ -1,4 +1,5 @@
 segment: premiumChromeUsers
+
 assertions:
   - description: Premium Chrome user should match
     context:

@@ -1,4 +1,5 @@
 description: User permissions
+
 type: array
 
 items:

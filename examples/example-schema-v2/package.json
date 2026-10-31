@@ -5,6 +5,7 @@
   "description": "Featurevisor project serving schema 2 datafiles to applications on @featurevisor/sdk 3",
   "scripts": {
     "lint": "featurevisor lint",
+    "fmt": "featurevisor fmt",
     "build": "featurevisor build",
     "test": "featurevisor test --only-failures"
   },

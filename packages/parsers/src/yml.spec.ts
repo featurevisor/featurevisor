@@ -142,6 +142,85 @@ arr:
       );
     });
 
+    it("should keep the comments of a list item that changed, by its key", () => {
+      fs.writeFileSync(
+        tempFile,
+        [
+          "rules:",
+          "  # internal first",
+          "  - key: internal",
+          "    percentage: 100",
+          "",
+          "  # then everyone",
+          "  - key: everyone",
+          "    percentage: 0 # rolling out",
+          "",
+        ].join("\n"),
+      );
+
+      const result = ymlParser.stringify(
+        {
+          rules: [
+            { key: "internal", percentage: 100 },
+            { key: "everyone", percentage: 50 },
+          ],
+        },
+        tempFile,
+      );
+
+      expect(result).toBe(
+        [
+          "rules:",
+          "  # internal first",
+          "  - key: internal",
+          "    percentage: 100",
+          "",
+          "  # then everyone",
+          "  - key: everyone",
+          "    percentage: 50 # rolling out",
+          "",
+        ].join("\n"),
+      );
+    });
+
+    it("should not give a changed list item without a key another item's comments", () => {
+      fs.writeFileSync(
+        tempFile,
+        [
+          "assertions:",
+          "  - at: 10",
+          "    expectedToBeEnabled: true",
+          "",
+          "  # until launch day",
+          "  - at: 20",
+          "    expectedToBeEnabled: false",
+          "",
+        ].join("\n"),
+      );
+
+      const result = ymlParser.stringify(
+        {
+          assertions: [
+            { at: 10, expectedToBeEnabled: true },
+            { at: 20, expectedToBeEnabled: true },
+          ],
+        },
+        tempFile,
+      );
+
+      expect(result).toBe(
+        [
+          "assertions:",
+          "  - at: 10",
+          "    expectedToBeEnabled: true",
+          "",
+          "  - at: 20",
+          "    expectedToBeEnabled: true",
+          "",
+        ].join("\n"),
+      );
+    });
+
     it("should not put a blank line above the first entry", () => {
       fs.writeFileSync(tempFile, "description: Checkout\n\nbucketBy: userId\n");
 

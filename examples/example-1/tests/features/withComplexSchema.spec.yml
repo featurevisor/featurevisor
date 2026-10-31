@@ -1,13 +1,14 @@
 # Feature-management focused: config vars (money, discount, productSummary, image, promoBanner) + inline toggles/rollout.
 feature: withComplexSchema
+
 assertions:
   # --- Staging: control – thresholds, promos, spotlight product, banner, toggles, rollout ---
-  - at: 25
-    environment: staging
+  - environment: staging
+    at: 25
     expectedToBeEnabled: true
     expectedVariation: control
     expectedVariables:
-      storeName: "Control Store"
+      storeName: Control Store
       freeShippingThreshold:
         amount: 50.0
         currency: USD
@@ -15,27 +16,27 @@ assertions:
         amount: 0
         currency: USD
       appliedDiscount:
-        code: "SAVE5"
-        type: "fixed"
+        code: SAVE5
+        type: fixed
         value: 5.0
       featuredProduct:
-        id: "prod-1"
-        name: "Control Featured"
-        sku: "CF-001"
+        id: prod-1
+        name: Control Featured
+        sku: CF-001
         price:
           amount: 24.99
           currency: USD
       heroImage:
-        url: "https://example.com/hero.jpg"
-        alt: "Hero"
+        url: https://example.com/hero.jpg
+        alt: Hero
       promoBanner:
-        message: "Save $5 on your first order"
+        message: Save $5 on your first order
         cta:
-          title: "Claim offer"
+          title: Claim offer
           url: /promo/save5
       enableReviews: true
       maxCartSize: 10
-      defaultCurrency: "USD"
+      defaultCurrency: USD
       checkoutConfig:
         allowGuestCheckout: true
         requirePhone: false
@@ -43,15 +44,15 @@ assertions:
         - US
         - CA
         - GB
-      bannerMessage: "Free shipping on orders over $50"
+      bannerMessage: Free shipping on orders over $50
 
   # --- Staging: treatment – different thresholds, trial credit, promo, banner ---
-  - at: 75
-    environment: staging
+  - environment: staging
+    at: 75
     expectedToBeEnabled: true
     expectedVariation: treatment
     expectedVariables:
-      storeName: "Treatment Store"
+      storeName: Treatment Store
       freeShippingThreshold:
         amount: 75.0
         currency: USD
@@ -59,43 +60,43 @@ assertions:
         amount: 10.0
         currency: USD
       featuredProduct:
-        id: "prod-1"
-        name: "Treatment Featured"
-        sku: "TF-001"
+        id: prod-1
+        name: Treatment Featured
+        sku: TF-001
         price:
           amount: 22.99
           currency: USD
       appliedDiscount:
-        code: "SAVE10"
-        type: "percentage"
+        code: SAVE10
+        type: percentage
         value: 10.0
       promoBanner:
-        message: "10% off – limited time"
+        message: 10% off – limited time
         cta:
-          title: "Get 10% off"
+          title: Get 10% off
           url: /promo/save10
       enableReviews: true
       checkoutConfig:
         allowGuestCheckout: false
         requirePhone: true
       heroImage:
-        url: "https://example.com/hero.jpg"
-        alt: "Hero"
+        url: https://example.com/hero.jpg
+        alt: Hero
       maxCartSize: 10
-      defaultCurrency: "USD"
+      defaultCurrency: USD
       allowedCountries:
         - US
         - CA
         - GB
-      bannerMessage: "Free shipping on orders over $50"
+      bannerMessage: Free shipping on orders over $50
 
   # --- Production: control ---
-  - at: 25
-    environment: production
+  - environment: production
+    at: 25
     expectedToBeEnabled: true
     expectedVariation: control
     expectedVariables:
-      storeName: "Control Store"
+      storeName: Control Store
       freeShippingThreshold:
         amount: 50.0
         currency: USD
@@ -103,24 +104,24 @@ assertions:
         amount: 0
         currency: USD
       appliedDiscount:
-        code: "SAVE5"
-        type: "fixed"
+        code: SAVE5
+        type: fixed
         value: 5.0
       featuredProduct:
-        id: "prod-1"
-        name: "Control Featured"
-        sku: "CF-001"
+        id: prod-1
+        name: Control Featured
+        sku: CF-001
         price:
           amount: 24.99
           currency: USD
 
   # --- Production: treatment ---
-  - at: 75
-    environment: production
+  - environment: production
+    at: 75
     expectedToBeEnabled: true
     expectedVariation: treatment
     expectedVariables:
-      storeName: "Treatment Store"
+      storeName: Treatment Store
       freeShippingThreshold:
         amount: 75.0
         currency: USD
@@ -128,23 +129,23 @@ assertions:
         amount: 10.0
         currency: USD
       appliedDiscount:
-        code: "SAVE10"
-        type: "percentage"
+        code: SAVE10
+        type: percentage
         value: 10.0
       checkoutConfig:
         allowGuestCheckout: false
         requirePhone: true
 
   # --- Nested refs: productSummary.price (money), promoBanner.cta (link) ---
-  - at: 15
-    environment: staging
+  - environment: staging
+    at: 15
     expectedToBeEnabled: true
     expectedVariation: control
     expectedVariables:
       featuredProduct:
-        id: "prod-1"
-        name: "Control Featured"
-        sku: "CF-001"
+        id: prod-1
+        name: Control Featured
+        sku: CF-001
         price:
           amount: 24.99
           currency: USD
@@ -152,7 +153,7 @@ assertions:
         amount: 50.0
         currency: USD
       promoBanner:
-        message: "Save $5 on your first order"
+        message: Save $5 on your first order
         cta:
-          title: "Claim offer"
+          title: Claim offer
           url: /promo/save5

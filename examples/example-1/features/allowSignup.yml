@@ -1,4 +1,5 @@
 description: Allow signup
+
 tags:
   - all
 
@@ -18,6 +19,7 @@ variablesSchema:
 variations:
   - value: control
     weight: 50
+
   - value: treatment
     weight: 50
     variables:
@@ -29,12 +31,14 @@ rules:
     - key: "1"
       conditions: "*"
       percentage: 100
+
   production:
     - key: nl
       conditions:
         - countries.netherlands
       percentage: 100
       variation: treatment
+
     - key: ch
       conditions:
         - countries.switzerland
@@ -42,6 +46,7 @@ rules:
       variationWeights:
         control: 10
         treatment: 90
+
     - key: everyone
       conditions: everyone
       percentage: 100

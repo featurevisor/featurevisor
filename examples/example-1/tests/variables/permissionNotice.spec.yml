@@ -6,7 +6,8 @@ assertions:
     at: 50
     context:
       userId: writer
-      permissions: [write]
+      permissions:
+        - write
     expectedValue: Write access
 
   - description: both evaluated arrays contain no write permissions
@@ -29,9 +30,13 @@ assertions:
     at: 50
     context:
       userId: writer
-      permissions: [admin]
+      permissions:
+        - admin
     stickyVariables:
       permissionPolicy:
-        actions: [read]
-        candidates: [write, admin]
+        actions:
+          - read
+        candidates:
+          - write
+          - admin
     expectedValue: No evaluated policy

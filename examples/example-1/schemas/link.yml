@@ -1,4 +1,5 @@
 description: Individual link schema
+
 type: object
 
 properties:

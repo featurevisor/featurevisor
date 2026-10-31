@@ -1,9 +1,16 @@
 description: Nested overrides combine ancestor conditions with dependency leaves
-tags: [all]
+
+tags:
+  - all
+
 type: string
+
 defaultValue: Standard
-disabledValue: Unavailable
+
 conditions: conditionAudience
+
+disabledValue: Unavailable
+
 overrides:
   production:
     - key: member
@@ -18,10 +25,12 @@ overrides:
             - feature: conditionSource
               variation: treatment
             - variable: conditionPolicy
-              path: [enabled]
+              path:
+                - enabled
               operator: equals
               value: true
           value: Treatment member
+
     - key: visitor
       conditions: "*"
       value: Visitor

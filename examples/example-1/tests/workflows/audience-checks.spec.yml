@@ -1,11 +1,18 @@
 description: Audience membership and configuration remain consistent for ${{ country }}
-environment: staging
-target: connection-tests
+
 matrix:
-  country: [nl, de]
+  country:
+    - nl
+    - de
+
+environment: staging
+
+target: connection-tests
+
 context:
   userId: customer-1
   country: ${{ country }}
+
 checks:
   - key: supported-country
     or:
@@ -28,6 +35,7 @@ checks:
     variable: paymentMethods
     operator: includes
     value: visa
+
 children:
   - context:
       country: ch

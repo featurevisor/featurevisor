@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import { parse, parseDocument, stringify, Scalar as ScalarCtor } from "yaml";
 import type { Pair, YAMLMap, YAMLSeq } from "yaml";
 
+import { formatYml, listYmlComments, type YmlFormatOptions } from "./ymlFormat";
 import type { CustomParser } from "./index";
 
 function getKeyString(keyNode: unknown): string | undefined {
@@ -64,6 +65,16 @@ function primitiveValueKey(v: unknown): string {
   return JSON.stringify(v);
 }
 
+/** The `key` a list item has, as every rule does, and overrides and assertions may */
+function itemKey(item: unknown): string | undefined {
+  const key = isYamlMap(item)
+    ? (item as YAMLMap).get("key")
+    : item !== null && typeof item === "object" && !Array.isArray(item)
+      ? (item as { key?: unknown }).key
+      : undefined;
+  return typeof key === "string" ? key : undefined;
+}
+
 interface NodeCreator {
   createNode: (value: unknown) => unknown;
   createPair: (key: unknown, value: unknown) => Pair;
@@ -86,14 +97,21 @@ function createValueWithComments(
   if (Array.isArray(newValue)) {
     const oldSeq = isYamlSeq(oldNode) ? (oldNode as YAMLSeq) : null;
     const oldItemsByValue = new Map<string, unknown>();
+    const oldItemsByKey = new Map<string, unknown>();
     if (oldSeq && oldSeq.items) {
       for (const item of oldSeq.items) {
         oldItemsByValue.set(seqItemValueKey(item), item);
+        const key = itemKey(item);
+        if (key !== undefined) oldItemsByKey.set(key, item);
       }
     }
     const newSeq = creator.createNode([]) as YAMLSeq;
     newValue.forEach((el, index) => {
-      const oldItem = oldItemsByValue.get(primitiveValueKey(el));
+      // an item that changed keeps the comments of the item with its key
+      const key = itemKey(el);
+      const oldItem =
+        oldItemsByValue.get(primitiveValueKey(el)) ??
+        (key === undefined ? undefined : oldItemsByKey.get(key));
       const itemNode = createValueWithComments(creator, oldItem, el);
       // Blank lines between items follow their position, so an updated item
       // keeps the layout of the one it replaces
@@ -216,4 +234,9 @@ export const ymlParser: CustomParser = {
     replaceContentsPreservingComments(doc, content);
     return doc.toString();
   },
+  // YAML applies the whole layout: key order, blank lines, block style, quotes and comments
+  format: function (source, layout) {
+    return formatYml(source, { ...layout, options: layout.options as YmlFormatOptions });
+  },
+  listComments: listYmlComments,
 };

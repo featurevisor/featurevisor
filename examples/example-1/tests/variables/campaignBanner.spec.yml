@@ -1,4 +1,5 @@
 variable: campaignBanner
+
 assertions:
   - description: resolves a reusable schema and applies a mutation
     environment: staging

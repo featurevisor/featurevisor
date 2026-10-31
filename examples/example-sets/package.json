@@ -5,6 +5,7 @@
   "description": "Featurevisor project using independent sets",
   "scripts": {
     "lint": "featurevisor lint",
+    "fmt": "featurevisor fmt",
     "build": "featurevisor build --no-state-files",
     "test": "featurevisor test"
   },

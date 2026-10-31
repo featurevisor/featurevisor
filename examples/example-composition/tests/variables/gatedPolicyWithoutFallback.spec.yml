@@ -1,10 +1,15 @@
 variable: gatedPolicyWithoutFallback
+
 assertions:
   - description: an unmet composition gate has no fabricated default
-    context: { country: us }
+    context:
+      country: us
     expectedValue: null
     expectedEvaluation:
       reason: conditions_unmet
+
   - description: a matching composition gate preserves source evaluation
-    context: { country: nl }
-    expectedValue: { limit: 75 }
+    context:
+      country: nl
+    expectedValue:
+      limit: 75

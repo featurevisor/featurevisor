@@ -1,4 +1,5 @@
 segment: highScorers
+
 assertions:
   - context:
       scores:

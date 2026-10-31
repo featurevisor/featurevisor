@@ -1,39 +1,47 @@
 feature: browserOptimization
+
 assertions:
   ##
   # Staging - everyone enabled
   #
-  - at: 50
-    environment: staging
+  - environment: staging
+    at: 50
     context: {}
     expectedToBeEnabled: true
 
   ##
   # Production - Chrome users
   #
-  - matrix:
-      at: [10, 50, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, Chrome user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
     environment: production
-    description: "At ${{ at }}% in production, Chrome user should be enabled"
+    at: ${{ at }}
     context:
       browser: chrome
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [10, 50]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, Firefox user should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
     environment: production
-    description: "At ${{ at }}% in production, Firefox user should be enabled"
+    at: ${{ at }}
     context:
       browser: firefox
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [60, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production, Firefox user should be disabled
+    matrix:
+      at:
+        - 60
+        - 90
     environment: production
-    description: "At ${{ at }}% in production, Firefox user should be disabled"
+    at: ${{ at }}
     context:
       browser: firefox
     expectedToBeEnabled: false
@@ -41,18 +49,21 @@ assertions:
   ##
   # Testing with chrome target
   #
-  - matrix:
-      at: [10, 50, 90]
-    at: ${{ at }}
+  - description: At ${{ at }}% in production with chrome target, should be enabled
+    matrix:
+      at:
+        - 10
+        - 50
+        - 90
     environment: production
     target: chrome
-    description: "At ${{ at }}% in production with chrome target, should be enabled"
+    at: ${{ at }}
     context: {}
     expectedToBeEnabled: true
 
-  - at: 50
+  - description: Included browser feature should exist in selected web target
     environment: production
     target: selected-web
-    description: Included browser feature should exist in selected web target
+    at: 50
     context: {}
     expectedToBeEnabled: true

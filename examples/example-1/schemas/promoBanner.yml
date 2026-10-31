@@ -1,4 +1,5 @@
 description: Promo banner config for campaigns (message + CTA link) – feature management use case
+
 type: object
 
 properties:

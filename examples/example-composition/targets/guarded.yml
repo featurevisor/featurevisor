@@ -1,7 +1,9 @@
 description: Guarded composition and its required sources
 
-includeVariables: [guardedScreen]
-
 excludeFeatures: "*"
 
-excludeVariables: [nullablePolicy]
+includeVariables:
+  - guardedScreen
+
+excludeVariables:
+  - nullablePolicy

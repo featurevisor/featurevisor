@@ -1,10 +1,16 @@
 description: Checkout copy is present for ${{ team }}
+
 matrix:
-  team: [engineering, marketing]
+  team:
+    - engineering
+    - marketing
+
 target: all
+
 context:
   team: ${{ team }}
   userId: customer-1
+
 checks:
   - feature: checkoutFlow
     variation: null
@@ -13,12 +19,13 @@ checks:
   - variable: checkoutMessage
     operator: contains
     value: checkout
+
 children:
-  - stickyVariables:
-      checkoutMessage: Contact support
-    stickyFeatures:
+  - stickyFeatures:
       checkoutFlow:
         enabled: true
+    stickyVariables:
+      checkoutMessage: Contact support
     checks:
       - feature: checkoutFlow
         enabled: true

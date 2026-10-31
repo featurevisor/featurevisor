@@ -1,15 +1,20 @@
 description: Disabled variations use the configured disabled value
+
 environment: production
+
 at: 10
+
 context:
   country: nl
   userId: customer-1
+
 checks:
   - feature: pricing
     enabled: false
     variation: control
   - feature: pricing
     variation: control
+
 children:
   - stickyFeatures:
       pricing:
