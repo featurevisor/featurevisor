@@ -1817,6 +1817,52 @@ describe("promoteProjectSets", function () {
     expect(feature.description).toEqual("Checkout flow in dev");
   });
 
+  it("ends a written file with a newline when the file it replaces, or comes from, does", async () => {
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "featurevisor-promote-"));
+    await writeFile(
+      root,
+      "featurevisor.config.js",
+      "module.exports = {\n  sets: true,\n  parser: 'json',\n  tags: ['all'],\n};\n",
+    );
+    const feature = (description: string, percentage: number) =>
+      JSON.stringify(
+        {
+          description,
+          tags: ["all"],
+          bucketBy: "userId",
+          rules: [{ key: "everyone", conditions: "*", percentage }],
+        },
+        null,
+        2,
+      );
+    for (const set of ["dev", "staging"]) {
+      await writeFile(
+        root,
+        `sets/${set}/attributes/userId.json`,
+        `${JSON.stringify({ description: "User ID", type: "string" }, null, 2)}\n`,
+      );
+    }
+    // the destination's file ends with a newline, the source's does not
+    await writeFile(root, "sets/dev/features/checkout.json", feature("Checkout in dev", 100));
+    await writeFile(root, "sets/staging/features/checkout.json", `${feature("Checkout", 0)}\n`);
+    // new in the destination, so each follows its source
+    await writeFile(root, "sets/dev/features/pricing.json", `${feature("Pricing", 50)}\n`);
+    await writeFile(root, "sets/dev/features/banner.json", feature("Banner", 50));
+
+    const projectConfig = getProjectConfig(root);
+    await promoteProjectSets(projectConfig, new Datasource(projectConfig, root), {
+      from: "dev",
+      to: "staging",
+      apply: true,
+    });
+    const read = (name: string) =>
+      fs.readFileSync(path.join(root, "sets/staging/features", name), "utf8");
+
+    expect(read("checkout.json")).toBe(`${feature("Checkout in dev", 100)}\n`);
+    expect(read("pricing.json")).toBe(`${feature("Pricing", 50)}\n`);
+    expect(read("banner.json")).toBe(feature("Banner", 50));
+  });
+
   it("uses all features as the starting set when only excludeFeatures is provided", async function () {
     const root = await createProject();
     await writeFile(

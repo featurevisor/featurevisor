@@ -1654,11 +1654,28 @@ async function getPromotionPlan(
   return plans;
 }
 
-async function writePlan(destinationDatasource: Datasource, plans: EntityPlan[]) {
+/** Whether a file ends with a newline, or undefined when there is no file to read */
+function endsWithNewline(filePath: string | undefined): boolean | undefined {
+  if (!filePath || !fs.existsSync(filePath)) return undefined;
+  return fs.readFileSync(filePath, "utf8").endsWith("\n");
+}
+
+async function writePlan(
+  sourceDatasource: Datasource,
+  destinationDatasource: Datasource,
+  plans: EntityPlan[],
+) {
   for (const plan of plans) {
     if (deepEqual(plan.destination, plan.merged)) {
       continue;
     }
+
+    // a written file ends with a newline when the file it replaces did, or for a new file, the
+    // file it came from, since a parser such as JSON's writes none
+    const destinationPath = destinationDatasource.getEntitySourcePath(plan.type, plan.key);
+    const newline =
+      endsWithNewline(destinationPath) ??
+      endsWithNewline(sourceDatasource.getEntitySourcePath(plan.type, plan.key));
 
     if (plan.type === "attribute")
       await destinationDatasource.writeAttribute(plan.key, plan.merged as Attribute);
@@ -1675,6 +1692,10 @@ async function writePlan(destinationDatasource: Datasource, plans: EntityPlan[])
     if (plan.type === "test") await destinationDatasource.writeTest(plan.key, plan.merged as Test);
     if (plan.type === "scenario")
       await destinationDatasource.writeScenario(plan.key, plan.merged as Scenario);
+
+    if (newline && endsWithNewline(destinationPath) === false) {
+      fs.appendFileSync(destinationPath!, "\n");
+    }
   }
 }
 
@@ -1930,7 +1951,7 @@ export async function promoteProjectSets(
 
   await assertPromotionLintsClean(options.to, destinationDatasource, plans);
   if (options.apply === true) {
-    await writePlan(destinationDatasource, plans);
+    await writePlan(sourceDatasource, destinationDatasource, plans);
   }
 
   const created = plans

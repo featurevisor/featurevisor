@@ -71,7 +71,10 @@ archive path, not only by inspecting example files.
 Only style.spec.ts pins the style's output. The other formatter tests hold
 whatever style.ts says, so a change to the style fails nothing else. fmt is
 separate from promote and every other write: those write files as the parser
-does and never format them, except convert as described below. Prettier leaves example-json's definitions to fmt
+does and never format them, except convert as described below. Promote only
+keeps a final newline: a written file ends with one when the file it replaces
+did, or for a new file, the file it came from, since JSON's `stringify` writes
+none. Prettier leaves example-json's definitions to fmt
 (see .prettierignore), since that example sets a Prettier width of 40. fmt
 exits with 1 when `--check` finds work and 2 on errors, as Prettier does, so
 plugin handlers may return an exit code. Every example ships an .editorconfig
