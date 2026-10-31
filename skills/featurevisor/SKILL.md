@@ -140,7 +140,7 @@ Details and lint messages: [operators.md](references/operators.md).
 
 ### 6. Match the project's shape
 
-Environments, Sets, parser and namespace separator change how the same request is written. Templates use the default shape without environments. In a project with environments, put each `rules`, `force` or global `overrides` list under its environment key, and add `environment` to tests.
+Environments, Sets, parser and namespace separator change how the same request is written. Templates use the default shape without environments. In a project with environments, put each `rules`, `force` or global `overrides` list under its environment key, and add `environment` to tests. To change the shape itself, such as adding environments or turning them into Sets, use `convert` rather than editing files by hand ([cli.md](references/cli.md#convert)).
 
 ## Definition of done
 
@@ -155,14 +155,15 @@ Run this loop after every change. It is how you prove a change does what the use
 
 `npx featurevisor build --no-state-files` confirms the datafiles build, and a running `npx featurevisor catalog` shows every change as it is saved.
 
-## CLI: run freely, with two exceptions
+## CLI: run freely, with a few exceptions
 
-Every CLI command is local and safe to run without asking, except:
+Every CLI command is local and safe to run without asking, except these, which write files:
 
 - Bare `build` is a **CI command**. It increments `.featurevisor/REVISION` and rewrites state files, which only the deploying pipeline should commit. Locally, yours and the user's, always use `npx featurevisor build --no-state-files`. It writes the same datafiles.
 - `promote --apply` (Sets only) **writes definition files**. Preview first, show the summary, then apply on the user's go ahead ([sets-promotions.md](references/sets-promotions.md)).
 - `migrate` **rewrites a v3 project's definitions for v4**. Show `migrate --diff` first, then run it on the user's go ahead ([upgrading-to-v4.md](references/upgrading-to-v4.md)).
 - `convert --apply` **restructures the whole project** between environments, sets and neither. Run `convert --to=<shape>` without `--apply` first, show the preview, then apply on the user's go ahead ([cli.md](references/cli.md#convert)).
+- `fmt` without paths **formats every file**, including ones you did not change. Run it on the files you edited. In a project that is not formatted yet, check with `fmt --check` and ask before formatting the rest.
 
 | Command                                                                                   | Purpose                                                              |
 | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -206,6 +207,7 @@ Read the matching file in full **before** authoring or debugging in that area. D
 | Tags, targets and namespaces                                                                                | [tags.md](references/tags.md), [targets.md](references/targets.md), [namespaces.md](references/namespaces.md) |
 | `featurevisor.config.js`, environments, project options                                                     | [configuration.md](references/configuration.md)                                                               |
 | Sets and promotions                                                                                         | [sets-promotions.md](references/sets-promotions.md)                                                           |
+| Change a project between environments, sets and neither                                                     | [cli.md](references/cli.md#convert)                                                                           |
 | JSON, TOML or another file format                                                                           | [custom-parsers.md](references/custom-parsers.md)                                                             |
 | Build and deploy datafiles, CI                                                                              | [building-datafiles.md](references/building-datafiles.md)                                                     |
 | Write specs, checks and scenarios, read reports                                                             | [testing.md](references/testing.md)                                                                           |

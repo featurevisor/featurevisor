@@ -74,6 +74,8 @@ npx featurevisor fmt features/checkout.yml segments
 npx featurevisor fmt --check --since=origin/main
 ```
 
+Docs: <https://featurevisor.com/docs/fmt/>
+
 Formats every definition and spec in one house style, with no options: a blank line between top level keys, rules, force entries, global variable overrides, the environments that group them, and assertions, Featurevisor's own keys in a fixed order, block lists, quotes only where needed, and comments kept with the key below them. It never changes what a definition means, and the datafiles a build writes stay byte identical. After editing definitions, run it on the files you edited, so a project that is not formatted yet gets no changes beyond yours.
 
 `--check` writes nothing and exits with 1 when a file needs formatting, for CI. Errors, such as a file that does not parse, exit with 2. `--diff` prints the changes as a unified diff and writes nothing. Add `--check` to it to fail as well. File and directory paths, `--entity-type` and `--key-pattern` narrow the files, as in `lint`, and `--since=<git ref>` keeps the files changed since HEAD left that reference, uncommitted and untracked ones too. `--stdin-filepath=<path>` formats text from stdin as that file and prints it, for editors. A file whose top comments include `# featurevisor-ignore` is left as written, and so is a line ending in `# featurevisor-ignore-line`. Blank lines the author wrote between entries stay, one at most. In a project with Sets, run it without `--set` so every set is formatted together. A file that does not parse is reported and left as it is. Each parser lays out its own files: JSON gets the key order and blank lines, and a custom parser takes part through an optional `format` function ([custom-parsers.md](custom-parsers.md)). Without one, `fmt` leaves its files as they are. `promote` does not format the files it writes, so run `fmt` after a promotion when `--check` reports files.
@@ -96,6 +98,8 @@ npx featurevisor convert --to=environments --environments=dev,production --apply
 npx featurevisor convert --to=sets --apply
 npx featurevisor convert --to=flat --keep=production --apply
 ```
+
+Docs: <https://featurevisor.com/docs/convert/>
 
 Changes a project's shape between `flat` (no environments and no sets), `environments` and `sets`, rewriting definitions, specs, state files and `featurevisor.config.js`, and keeping comments and every line it does not change. When it cannot edit `featurevisor.config.js`, such as one that spreads its settings in from another file, it converts the rest and prints the settings for the user to change there by hand, after converting. Without `--apply` it previews and writes nothing. Before writing, it converts a temporary copy, lints and tests both, and builds both: every feature and global variable must build byte identical in each environment or set, or nothing is written.
 

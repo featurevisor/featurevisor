@@ -25,6 +25,7 @@ Then ask your agent (Claude Code, Codex, Cursor, OpenCode and others), for examp
 - "Write tests for pricing covering both variations, and a scenario for maintenance mode"
 - "Summarize what this branch changes in our flags"
 - "Set up a new Featurevisor project with staging and production environments"
+- "Turn our staging and production environments into Sets, promoted from staging to production"
 - "Wire the checkout feature into my React app, refreshing the datafile every 5 minutes"
 - "Upgrade this project from Featurevisor v3 to v4"
 
@@ -32,14 +33,14 @@ Then ask your agent (Claude Code, Codex, Cursor, OpenCode and others), for examp
 
 One skill, `featurevisor`, for Featurevisor v4:
 
-- **Authoring**: features, variations, feature variables, force, attributes and their formats, segments, schemas and mutations, with unified `conditions` (attribute, segment, feature and variable leaves) for every selector and gate. Global variables with nested and accumulating overrides, and compositions with `compose`. Mutually exclusive experiments, environments, Sets and promotions.
+- **Authoring**: features, variations, feature variables, force, attributes and their formats, segments, schemas and mutations, with unified `conditions` (attribute, segment, feature and variable leaves) for every selector and gate. Global variables with nested and accumulating overrides, and compositions with `compose`. Mutually exclusive experiments, environments, Sets and promotions, and `convert` to move a project between them.
 - **Verification**: a definition of done the agent follows after every change: `fmt`, `lint`, specs, `evaluate --explain` on representative contexts, `test --uncovered`, and `diff` to summarize the change.
 - **Testing**: feature, segment and global variable specs, checks, standalone scenarios, matrices, targets, JSON reports and exact case reruns.
 - **Querying**: `list`, `find-usage`, `find-duplicate-segments`, `evaluate --explain`, `assess-distribution` and `diff` for answering questions without reading YAML by hand.
 - **Visual review**: the Catalog in watch mode, so changes made by prompt appear in the browser as they are saved.
 - **Applications**: the JavaScript SDK in Node.js, browsers, edge runtimes and React Native, React and Vue, typed code generation, SDKs in other languages and their spec runners, and OpenFeature providers.
 - **Recipes**: gradual rollouts, A/B and multivariate tests, kill switches, scheduled launches, early access programmes, entitlements, version gates and flag cleanup.
-- **Upgrades**: v3 to v4 and v2 to v3, for projects and applications, in an order that keeps them deployable.
+- **Upgrades**: v3 to v4 and v2 to v3, for projects and applications, in an order that keeps them deployable. `migrate` rewrites a v3 project's definitions for v4.
 - **Extending**: CLI plugins, the datasource API and custom adapters.
 - **Templates**: a starting file for every common shape, and a complete example project that passes lint and test.
 

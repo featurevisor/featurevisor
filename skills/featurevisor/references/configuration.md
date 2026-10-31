@@ -4,6 +4,7 @@ Full docs:
 
 - Configuration: <https://featurevisor.com/docs/configuration/>
 - Environments: <https://featurevisor.com/docs/environments/>
+- Converting: <https://featurevisor.com/docs/convert/>
 - Projects: <https://featurevisor.com/docs/projects/>
 
 `featurevisor.config.js` at the project root is the single source of truth. Read the resolved values before authoring:
@@ -82,4 +83,4 @@ rules:
       percentage: 10
 ```
 
-Adding environments to an existing project changes every feature's `rules`, `force` and `expose`, every global variable's `overrides`, and every test assertion. It is a migration, so propose it explicitly rather than as a side effect. When lanes need separate review and promotion rather than per environment rules, Sets fit better ([sets-promotions.md](sets-promotions.md)).
+Adding environments to an existing project changes every feature's `rules`, `force` and `expose`, every global variable's `overrides`, and every test assertion. It is a migration, so propose it explicitly rather than as a side effect. When the user asks, `npx featurevisor convert --to=environments` previews it and `--apply` writes it, configuration included ([cli.md](cli.md#convert)). Removing environments is `convert --to=flat --keep=<environment>`. When lanes need separate review and promotion rather than per environment rules, Sets fit better ([sets-promotions.md](sets-promotions.md)).
