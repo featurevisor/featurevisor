@@ -187,6 +187,67 @@ describe("the house style", () => {
     );
   });
 
+  it("spaces variations, and packs what each one holds", () => {
+    const feature = [
+      "bucketBy: userId",
+      "variations:",
+      "  - value: control",
+      "    weight: 50",
+      "  - weight: 50",
+      "    value: treatment",
+      "    variables:",
+      "      label: Buy now",
+      "",
+    ].join("\n");
+
+    expect(formatDefinition("feature", feature, parsers.yml).output).toBe(
+      [
+        "bucketBy: userId",
+        "",
+        "variations:",
+        "  - value: control",
+        "    weight: 50",
+        "",
+        "  - value: treatment",
+        "    weight: 50",
+        "    variables:",
+        "      label: Buy now",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("writes YAML aliases out in full, without anchors", () => {
+    const feature = [
+      "bucketBy: userId",
+      "rules:",
+      "  staging: &rules",
+      "    - key: everyone",
+      "      conditions: '*'",
+      "      percentage: 100",
+      "  production: *rules",
+      "",
+    ].join("\n");
+
+    expect(formatDefinition("feature", feature, parsers.yml).output).toBe(
+      [
+        "bucketBy: userId",
+        "",
+        "rules:",
+        "  staging:",
+        "    - key: everyone",
+        '      conditions: "*"',
+        "      percentage: 100",
+        "",
+        "  production:",
+        "    - key: everyone",
+        '      conditions: "*"',
+        "      percentage: 100",
+        "",
+      ].join("\n"),
+    );
+  });
+
   it("keeps each file's line endings", () => {
     expect(formatDefinition("segment", "conditions: '*'\r\n", parsers.yml).output).toBe(
       'conditions: "*"\r\n',

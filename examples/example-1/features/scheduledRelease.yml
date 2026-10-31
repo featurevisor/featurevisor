@@ -6,9 +6,12 @@ tags:
 bucketBy: userId
 
 rules:
-  staging: &rules
+  staging:
     - key: release-window
       conditions: scheduledReleaseWindow
       percentage: 100
 
-  production: *rules
+  production:
+    - key: release-window
+      conditions: scheduledReleaseWindow
+      percentage: 100

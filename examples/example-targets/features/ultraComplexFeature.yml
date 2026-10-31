@@ -60,6 +60,7 @@ variations:
               - premiumUsers
               - chromeUsers
           value: fade
+
   - value: treatment
     weight: 40
     variables:
@@ -92,6 +93,7 @@ variations:
               - premiumUsers
               - adminUsers
           value: full
+
   - value: experimental
     weight: 20
     variables:

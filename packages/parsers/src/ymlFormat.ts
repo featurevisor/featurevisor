@@ -13,6 +13,8 @@ export interface YmlFormatOptions {
   lineWidth?: number;
   /** Indent list items under their key */
   indentSequences?: boolean;
+  /** Write each alias out in full and drop the anchors, so a value reads where it is used */
+  expandAliases?: boolean;
 }
 
 const DEFAULT_OPTIONS: Required<YmlFormatOptions> = {
@@ -20,6 +22,7 @@ const DEFAULT_OPTIONS: Required<YmlFormatOptions> = {
   quoteYaml11Types: true,
   lineWidth: 0,
   indentSequences: true,
+  expandAliases: true,
 };
 
 /** The parts of a layout YAML applies. All are optional: without them, YAML keeps the
@@ -136,11 +139,59 @@ function isIgnoredPair(pair: Pair): boolean {
   return isInline(pair.value) && isIgnoreComment(pair.value.comment);
 }
 
-function hasAnchor(node: Node): boolean {
+/**
+ * Writes every alias out in full and drops every anchor, so a file reads without indirection.
+ * A copy leaves the comments of the node it copies where they were, and takes the alias's own.
+ * Returns the nodes that held an anchor and the copies, which a line kept as written must not
+ * keep, since its text would bring the anchor or alias back.
+ */
+function expandAliases(doc: Document.Parsed): Set<Node> {
+  const changed = new Set<Node>();
+  visit(doc, {
+    Alias(_, alias, path) {
+      const target = alias.resolve(doc);
+      if (!target) {
+        throw new ReferenceError(
+          `Unresolved alias (the anchor must be set before the alias): ${alias.source}`,
+        );
+      }
+      const copy = target.clone() as Node;
+      visit(copy, {
+        Node(_, node) {
+          node.commentBefore = undefined;
+          node.comment = undefined;
+        },
+      });
+      copy.spaceBefore = alias.spaceBefore;
+      copy.commentBefore = alias.commentBefore;
+      const parent = path[path.length - 1];
+      if (alias.comment && (isMap(copy) || isSeq(copy)) && isPair(parent) && isScalar(parent.key)) {
+        // written as a block, the copy leaves the key's line, and the comment stays with the key
+        parent.key.comment = alias.comment;
+      } else {
+        copy.comment = alias.comment;
+      }
+      changed.add(copy);
+      return copy;
+    },
+  });
+  visit(doc, {
+    Node(_, node) {
+      if (node.anchor) {
+        changed.add(node);
+        node.anchor = undefined;
+      }
+    },
+  });
+  return changed;
+}
+
+/** Whether `node` or anything in it is one of `changed`, or holds an anchor */
+function touches(node: Node, changed: Set<Node>): boolean {
   let found = false;
   visit(node, {
     Node(_, child) {
-      if ((child as { anchor?: string }).anchor) found = true;
+      if (changed.has(child) || child.anchor) found = true;
     },
   });
   return found;
@@ -171,16 +222,19 @@ interface Context {
   prefix: string;
   /** Text kept as written, which YAML writes as a placeholder until it is replaced */
   kept: { placeholder: string; text: string }[];
+  /** Nodes that held an anchor, and the copies that replaced aliases */
+  changed: Set<Node>;
 }
 
 /**
  * The source of a line marked with the ignore comment, from `start` to the end of `node`, or
- * undefined when it cannot be kept: text over several lines, or holding an anchor, which is
- * laid out as usual.
+ * undefined when it cannot be kept: text over several lines, or with an anchor or an alias,
+ * which is laid out as usual.
  */
 function writtenText(context: Context, start: number, node: Node): string | undefined {
+  if (touches(node, context.changed)) return undefined;
   const text = context.source.slice(start, node.range![1]).trimEnd();
-  return text.includes("\n") || hasAnchor(node) ? undefined : text;
+  return text.includes("\n") ? undefined : text;
 }
 
 /** Keeps an entry marked with the ignore comment in its place, and as written where it can */
@@ -320,6 +374,7 @@ function layOut(source: string, layout: YmlLayout, options: Required<YmlFormatOp
 
   const root = doc.contents;
   if (root === null || root === undefined) return source;
+  const changed = options.expandAliases ? expandAliases(doc) : new Set<Node>();
 
   if (isMap(root)) {
     const first = root.items[0] as Pair | undefined;
@@ -334,8 +389,8 @@ function layOut(source: string, layout: YmlLayout, options: Required<YmlFormatOp
 
   let prefix = "verbatim";
   while (source.includes(prefix)) prefix += "x";
-  const context: Context = { layout, options, source, prefix, kept: [] };
-  walk(root, [], false, context);
+  const context: Context = { layout, options, source, prefix, kept: [], changed };
+  walk(doc.contents as Node, [], false, context);
 
   // one document a file, so neither --- nor ... marks where it starts or ends
   if (doc.directives) {
@@ -361,7 +416,8 @@ function layOut(source: string, layout: YmlLayout, options: Required<YmlFormatOp
  * Formats a YAML document with a layout: its indentation, key order, and blank lines between
  * the entries of the maps and the items of the lists it names, and the YAML options in it.
  * Lists and maps are always written in block style, quotes only where a value needs them, and
- * comments stay with the key or item below them. A line ending in the comment
+ * comments stay with the key or item below them. Aliases are written out in full, and anchors
+ * dropped, unless `expandAliases` is false. A line ending in the comment
  * `# featurevisor-ignore-line` keeps its key and value as written, and its place.
  *
  * Throws the YAML parse error, with its linePos, when the source is not a single valid YAML
@@ -372,9 +428,9 @@ export function formatYml(source: string, layout: YmlLayout = {}): string {
   try {
     return layOut(source, layout, options);
   } catch (error) {
-    // Key order can move an alias above its anchor, which YAML cannot write. Such a file
-    // keeps the order it was written in, and the rest of the layout still applies.
-    if (layout.orderKeys && /Unresolved alias/.test((error as Error).message)) {
+    // Aliases kept as written can end up above their anchor in key order, which YAML cannot
+    // write. Such a file keeps the order it was written in, and the rest of the layout applies.
+    if (!options.expandAliases && layout.orderKeys && /Unresolved alias/.test(String(error))) {
       return layOut(source, { ...layout, orderKeys: undefined }, options);
     }
     throw error;

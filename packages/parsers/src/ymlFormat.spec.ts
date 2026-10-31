@@ -221,13 +221,75 @@ describe("formatYml", () => {
     });
   });
 
-  it("keeps the authored key order when the house order would put an alias above its anchor", () => {
-    // the house order is description, bucketBy, rules, which would put *all before &all
+  it("writes aliases out in full and drops their anchors, wherever key order puts them", () => {
+    // the house order is description, bucketBy, rules, which puts *all before &all
     const source = "rules: &all [everyone]\ndescription: 'x'\nbucketBy: *all\n";
     const output = formatYml(source, layout);
 
-    expect(output).toBe("rules: &all\n  - everyone\n\ndescription: x\n\nbucketBy: *all\n");
+    expect(output).toBe("description: x\n\nbucketBy:\n  - everyone\n\nrules:\n  - everyone\n");
+    expect(parse(output)).toEqual(parse(source));
     expect(formatYml(output, layout)).toBe(output);
+  });
+
+  it("writes out aliases inside an anchored value, and anchored scalars", () => {
+    const source = [
+      "description: &text Checkout",
+      "rules:",
+      "  staging: &rules",
+      "    - key: everyone",
+      "      conditions: &all '*'",
+      "  production: *rules",
+      "  dev:",
+      "    - key: everyone",
+      "      conditions: *all",
+      "      description: *text",
+      "",
+    ].join("\n");
+    const output = formatYml(source, layout);
+
+    expect(output).not.toMatch(/[&*](text|rules|all)\b/);
+    expect(parse(output)).toEqual(parse(source));
+    expect(formatYml(output, layout)).toBe(output);
+  });
+
+  it("leaves an anchored value's comments where they were, and keeps the alias's own", () => {
+    const source = [
+      "rules:",
+      "  staging: &rules",
+      "    # most specific first",
+      "    - key: everyone # the catch all",
+      "  production: *rules # same as staging",
+      "",
+    ].join("\n");
+    const output = formatYml(source, layout);
+
+    expect(output).toBe(
+      [
+        "rules:",
+        "  staging:",
+        "    # most specific first",
+        "    - key: everyone # the catch all",
+        "  production: # same as staging",
+        "    - key: everyone",
+        "",
+      ].join("\n"),
+    );
+    expect(listYmlComments(output)).toEqual(listYmlComments(source));
+    expect(formatYml(output, layout)).toBe(output);
+  });
+
+  it("keeps aliases with expandAliases false, in the authored key order when the house order would put one above its anchor", () => {
+    const keep: YmlLayout = { ...layout, options: { expandAliases: false } };
+    const source = "rules: &all [everyone]\ndescription: 'x'\nbucketBy: *all\n";
+    const output = formatYml(source, keep);
+
+    expect(output).toBe("rules: &all\n  - everyone\n\ndescription: x\n\nbucketBy: *all\n");
+    expect(formatYml(output, keep)).toBe(output);
+  });
+
+  it("throws YAML's error for an alias without an anchor", () => {
+    expect(() => formatYml("rules: *missing\n", layout)).toThrow(ReferenceError);
+    expect(() => formatYml("rules: *missing\n", layout)).toThrow(/Unresolved alias/);
   });
 
   it("returns an empty document as it is", () => {
@@ -301,6 +363,19 @@ describe("blank lines the author wrote", () => {
 
 describe("the ignore line comment", () => {
   const ignore = "# featurevisor-ignore-line";
+
+  it("lays out a marked line with an anchor or an alias, so neither stays", () => {
+    const source = [
+      `description: &text 'Checkout' ${ignore}`,
+      `bucketBy: *text ${ignore}`,
+      "",
+    ].join("\n");
+    const output = formatYml(source, layout);
+
+    expect(output).not.toMatch(/[&*]text/);
+    expect(parse(output)).toEqual(parse(source));
+    expect(formatYml(output, layout)).toBe(output);
+  });
 
   it("keeps the key and value on the line as written, and their place", () => {
     const source = [

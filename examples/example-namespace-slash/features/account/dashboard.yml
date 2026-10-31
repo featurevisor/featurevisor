@@ -19,6 +19,7 @@ variablesSchema:
 variations:
   - value: classic
     weight: 50
+
   - value: modern
     weight: 50
     variables:

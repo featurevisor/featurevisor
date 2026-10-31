@@ -8,7 +8,7 @@ type: string
 defaultValue: No emptiness requirement matched
 
 overrides:
-  staging: &overrides
+  staging:
     - key: empty-source
       conditions:
         and:
@@ -37,4 +37,31 @@ overrides:
             operator: notEmpty
       value: Source values are populated
 
-  production: *overrides
+  production:
+    - key: empty-source
+      conditions:
+        and:
+          - variable: emptinessSource
+            path: label
+            operator: empty
+          - variable: emptinessSource
+            path: items
+            operator: empty
+          - variable: emptinessSource
+            path: metadata
+            operator: empty
+      value: Source values are empty
+
+    - key: populated-source
+      conditions:
+        and:
+          - variable: emptinessSource
+            path: label
+            operator: notEmpty
+          - variable: emptinessSource
+            path: items
+            operator: notEmpty
+          - variable: emptinessSource
+            path: metadata
+            operator: notEmpty
+      value: Source values are populated

@@ -10,7 +10,7 @@ format: date-time
 defaultValue: "2026-11-27T00:00:00Z"
 
 overrides:
-  staging: &overrides
+  staging:
     - key: dutch-release
       conditions:
         attribute: country
@@ -18,4 +18,10 @@ overrides:
         value: nl
       value: "2026-11-27T01:00:00+01:00"
 
-  production: *overrides
+  production:
+    - key: dutch-release
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
+      value: "2026-11-27T01:00:00+01:00"

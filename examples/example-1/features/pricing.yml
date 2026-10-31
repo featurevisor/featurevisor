@@ -10,6 +10,7 @@ disabledVariationValue: control
 variations:
   - value: control
     weight: 0
+
   - value: treatment
     weight: 100
 

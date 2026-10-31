@@ -11,6 +11,7 @@ disabledVariationValue: control
 variations:
   - value: control
     weight: 50
+
   - value: redesigned
     weight: 50
 

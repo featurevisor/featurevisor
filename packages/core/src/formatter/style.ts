@@ -203,7 +203,8 @@ export const HOUSE_STYLE = {
     forceEnvironments: true,
     /** Between the environments under a feature's expose */
     exposeEnvironments: true,
-    variations: false,
+    /** Between a feature's variations */
+    variations: true,
     /** Between the variables of a feature's variablesSchema */
     variablesSchema: false,
     /** Between the overrides in a variation's or a rule's variableOverrides */
@@ -231,6 +232,8 @@ export const HOUSE_STYLE = {
       lineWidth: 0,
       /** false fights Prettier, which always indents list items under their key */
       indentSequences: true,
+      /** Each alias written out in full, without anchors, so a value reads where it is used */
+      expandAliases: true,
     } satisfies YmlFormatOptions,
     json: {
       /** Prettier's printWidth must match */

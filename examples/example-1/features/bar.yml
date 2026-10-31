@@ -23,6 +23,7 @@ variablesSchema:
 variations:
   - value: control
     weight: 33
+
   - value: b
     weight: 33
     variables:
@@ -40,6 +41,7 @@ variations:
             title: Hero Title for B in DE or CH
             subtitle: Hero Subtitle for B in DE of CH
             alignment: center for B in DE or CH
+
   - value: c
     weight: 34
 

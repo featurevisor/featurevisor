@@ -15,11 +15,12 @@ variablesSchema:
 variations:
   - value: writer
     weight: 50
+
   - value: reader
     weight: 50
 
 rules:
-  staging: &rules
+  staging:
     - key: write-access
       conditions: writePermissions
       percentage: 100
@@ -37,4 +38,20 @@ rules:
         actions:
           - read
 
-  production: *rules
+  production:
+    - key: write-access
+      conditions: writePermissions
+      percentage: 100
+      variation: writer
+      variables:
+        actions:
+          - read
+          - write
+
+    - key: read-only-access
+      conditions: readOnlyPermissions
+      percentage: 100
+      variation: reader
+      variables:
+        actions:
+          - read

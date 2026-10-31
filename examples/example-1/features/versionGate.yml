@@ -16,9 +16,12 @@ variablesSchema:
     defaultValue: 1.0.0-1a
 
 rules:
-  staging: &rules
+  staging:
     - key: available
       conditions: "*"
       percentage: 100
 
-  production: *rules
+  production:
+    - key: available
+      conditions: "*"
+      percentage: 100

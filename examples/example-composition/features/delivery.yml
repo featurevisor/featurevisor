@@ -16,6 +16,7 @@ variablesSchema:
 variations:
   - value: express
     weight: 100
+
   - value: unavailable
     weight: 0
 

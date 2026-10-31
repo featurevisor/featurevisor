@@ -119,6 +119,7 @@ variations:
       checkoutConfig:
         allowGuestCheckout: true
         requirePhone: false
+
   - value: treatment
     weight: 50
     variables:

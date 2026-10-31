@@ -22,7 +22,7 @@ defaultValue:
     - admin
 
 overrides:
-  staging: &overrides
+  staging:
     - key: writer-policy
       conditions: writePermissions
       value:
@@ -42,4 +42,22 @@ overrides:
           - write
           - admin
 
-  production: *overrides
+  production:
+    - key: writer-policy
+      conditions: writePermissions
+      value:
+        actions:
+          - read
+          - write
+        candidates:
+          - write
+          - admin
+
+    - key: reader-policy
+      conditions: readOnlyPermissions
+      value:
+        actions:
+          - read
+        candidates:
+          - write
+          - admin

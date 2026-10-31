@@ -17,10 +17,12 @@ variablesSchema:
 variations:
   - value: control
     weight: 33.34
+
   - value: b
     weight: 33.33
     variables:
       fooConfig: '{"foo": "bar b"}'
+
   - value: c
     weight: 33.33
 

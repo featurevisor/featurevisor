@@ -44,7 +44,8 @@ archive path, not only by inspecting example files.
 - packages/core/src/formatter/style.ts is the house style: the indent, line
   endings, every key order, every blank line by name, whether the author's own
   blank lines stay, and the choices only one file format can express, such as
-  YAML's quotes and JSON's line width. Every opinion lives there, and nothing
+  YAML's quotes, its aliases written out in full without anchors, and JSON's
+  line width. Every opinion lives there, and nothing
   in it can change a datafile. Its notes say which values keep Prettier leaving
   fmt's output alone, which examples.spec.ts checks on every example. To change
   the style, edit it, run `make build` and `make fmt-examples`, update
@@ -129,8 +130,8 @@ lane. An environment's datafiles carry what any environment's rules use and a
 set's only what it uses, so a segment may come or go, as only the entries
 naming it read it, while a feature or variable may only when another lane's
 datafile names it. Test matrices narrow to one lane on the way to sets and come
-back on the way to environments. example-1 round trips with only aliases
-written out, assertion order and comment placement changed, and the smaller
+back on the way to environments. example-1 round trips with only assertion
+order and comment placement changed, and the smaller
 examples come back byte identical apart from how the configuration lists
 environments.
 

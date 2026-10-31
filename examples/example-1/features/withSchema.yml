@@ -299,6 +299,7 @@ variations:
         - control
         - a
         - b
+
   - value: treatment
     weight: 50
     variables:

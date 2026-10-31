@@ -30,6 +30,7 @@ variations:
       fontSize:
         - conditions: premiumUsers
           value: 16
+
   - value: treatment
     weight: 50
     variables:

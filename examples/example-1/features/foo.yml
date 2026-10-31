@@ -24,6 +24,7 @@ variablesSchema:
 variations:
   - value: control
     weight: 50
+
   - value: treatment
     weight: 50
     variables:
