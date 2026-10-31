@@ -77,8 +77,10 @@ separate from promote and every other write: those write files as the parser
 does and never format them, except convert as described below. Promote merges
 what `stringify` writes into the lines of the file it replaces, or for a new
 file the file it came from, so comments, layout, line endings and the final
-newline stay wherever a promotion changes nothing. The YAML writer stays as in
-v4.3.0, so a list item whose values change still loses its comments.
+newline stay wherever a promotion changes nothing. The YAML writer matches a
+changed list item to the old one with its `key`, so a rule or keyed override
+keeps its comments when its values change. A list item without a key, such as
+most test assertions, still loses them.
 Prettier leaves example-json's definitions to fmt
 (see .prettierignore), since that example sets a Prettier width of 40. fmt
 exits with 1 when `--check` finds work and 2 on errors, as Prettier does, so

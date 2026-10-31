@@ -1902,9 +1902,10 @@ describe("promoteProjectSets", function () {
         "        value: 'user-1' # QA account",
         "    percentage: 100",
         "",
+        "  # then everyone",
         "  - key: everyone",
         '    conditions: "*"',
-        `    percentage: ${percentage}`,
+        `    percentage: ${percentage} # raise weekly`,
         "",
       ].join("\r\n");
     const pricing = [
