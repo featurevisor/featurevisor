@@ -28,6 +28,14 @@ npm install
 npm run lint
 ```
 
+### Format definitions
+
+Lays out definitions and test specs in one house style, without changing what they mean:
+
+```sh
+npm run fmt
+```
+
 ### Build datafiles
 
 ```sh
