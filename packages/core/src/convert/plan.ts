@@ -12,6 +12,8 @@ import type { Kind } from "../rewrite/files";
 import { BUILT_IN_PARSERS, lineEndings, same } from "../rewrite/lines";
 import { editConfig, quote, type ConfigEdit } from "./config";
 import {
+  formatted,
+  isFormatted,
   isSpaced,
   laneMap,
   load,
@@ -75,6 +77,8 @@ class Builder {
   expanded = new Set<string>();
   /** Files of a custom format written as its parser writes them, which may lose comments */
   rewritten = new Set<string>();
+  /** Whether fmt leaves each file as it is, asked once however many lanes it is written to */
+  private wasFormatted = new Map<DefinitionFile, boolean>();
   private configPath: string;
   private configText?: string;
 
@@ -149,11 +153,12 @@ class Builder {
     return doc;
   }
 
-  /** The file's new text, or a conflict when it would not read back as converted */
+  /**
+   * The file's new text, or a conflict when it would not read back as converted. A file that
+   * was formatted comes out formatted, so a project fmt keeps clean stays clean.
+   */
   rendered(file: DefinitionFile, doc: Document): string {
-    const entityType: EntityType =
-      file.kind === "test" && specKind(doc.toJS()) === "scenario" ? "scenario" : file.kind;
-    const result = render(file.source, doc, this.parser, entityType);
+    const result = render(file.source, doc, this.parser);
     if (!result) {
       this.plan.conflicts.push(
         `The ${file.kind} ${this.relative(file.filePath)} would not read back as converted.`,
@@ -163,7 +168,17 @@ class Builder {
     if (!result.merged && !BUILT_IN_PARSERS.has(this.parser)) {
       this.rewritten.add(this.relative(file.filePath));
     }
-    return result.text;
+    if (result.text === file.source) return result.text;
+
+    // conversion moves assertions and lanes, never what kind of spec a file holds
+    const entityType: EntityType =
+      file.kind === "test" && specKind(file.value) === "scenario" ? "scenario" : file.kind;
+    if (!this.wasFormatted.has(file)) {
+      this.wasFormatted.set(file, isFormatted(entityType, file.source, this.parser));
+    }
+    return this.wasFormatted.get(file)
+      ? formatted(entityType, result.text, this.parser)
+      : result.text;
   }
 
   config(edit: ConfigEdit, describe: string[]) {
@@ -254,9 +269,9 @@ function needsEnvironment(value: unknown, segments: Map<string, unknown>): boole
 
 // Environments to sets
 
-function environmentsToSets(builder: Builder, files: DefinitionFile[]) {
+function environmentsToSets(builder: Builder, project: Project) {
   const { lanes } = builder.plan;
-  for (const file of files) {
+  for (const file of project.files) {
     for (const lane of lanes) {
       const target = path.join(builder.directory(file.kind, lane), file.relative);
       if (SHARED.includes(file.kind)) {
@@ -308,7 +323,8 @@ function setsToEnvironments(builder: Builder, project: Project) {
   const groups = new Map<string, DefinitionFile[]>();
   for (const file of project.files) {
     const id = `${file.kind}:${file.relative}`;
-    groups.set(id, [...(groups.get(id) || []), file]);
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id)!.push(file);
   }
   const byLane = (entries: DefinitionFile[]) =>
     lanes
@@ -602,7 +618,7 @@ export function planConversion(project: Project, options: ConvertOptions): Plan 
   }
 
   const conversions: Record<string, () => void> = {
-    "environments:sets": () => environmentsToSets(builder, project.files),
+    "environments:sets": () => environmentsToSets(builder, project),
     "sets:environments": () => setsToEnvironments(builder, project),
     "flat:environments": () => flatToEnvironments(builder, project),
     "flat:sets": () => flatToSets(builder, project),

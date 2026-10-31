@@ -229,17 +229,20 @@ export function mergeSpecs(
     return { conflict: "the spec differs between sets outside its assertions", renamed };
   }
 
-  const entries: { node: YAMLMap; lanes: string[] }[] = [];
+  // each assertion once, with the lanes that have it, by its value
+  const byValue = new Map<string, { node: YAMLMap; lanes: string[] }>();
   for (const { lane, doc } of specs) {
     const list = seqOf(nodeAt(rootMap(doc)!, "assertions"));
     if (list) liftListComment(list);
     for (const item of list?.items || []) {
       if (!isMap(item)) continue;
-      const entry = entries.find(({ node }) => same(node.toJSON(), item.toJSON()));
+      const value = JSON.stringify(item.toJSON());
+      const entry = byValue.get(value);
       if (entry) entry.lanes.push(lane);
-      else entries.push({ node: item.clone() as YAMLMap, lanes: [lane] });
+      else byValue.set(value, { node: item.clone() as YAMLMap, lanes: [lane] });
     }
   }
+  const entries = [...byValue.values()];
 
   // assertions that differ between sets but share a key get the set's name after it
   const keys = new Map<string, number>();

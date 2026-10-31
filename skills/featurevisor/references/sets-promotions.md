@@ -216,7 +216,7 @@ Now `promote --from=dev --to=production` fails, so no lane is skipped. Check thi
 
 ## Agent guidance
 
-- **`promote --apply` writes files**: the one CLI command in this skill that modifies definitions. Treat it like an edit: preview first, show the user the created, updated and conflicting files, apply only when they agree, then run `npx featurevisor lint` and `npx featurevisor test --set=<to>`.
+- **`promote --apply` writes files**. Treat it like an edit: preview first, show the user the created, updated and conflicting files, apply only when they agree, then run `npx featurevisor lint` and `npx featurevisor test --set=<to>`. It changes only the lines a promotion needs, so comments and layout elsewhere in each file stay.
 - The promoted files are ordinary changes in the working tree. They still go through the project's normal pull request flow ([Changes ship through Git](../SKILL.md#changes-ship-through-git)).
 - When the user says "promote X to staging" for a single feature, use `--include-features="X"` and let dependency closure handle the rest.
 - When a promotion keeps overwriting something lane specific, the fix is usually `promotable: false` on the destination rule or definition, not `--conflicts=destination`, which blocks _all_ updates to existing definitions, not only the protected one.

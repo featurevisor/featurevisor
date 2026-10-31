@@ -1,7 +1,8 @@
 import * as path from "node:path";
 
 import type { PluginHandlerOptions } from "../cli";
-import { formatFeaturevisorCLIError } from "../error";
+import { CONFIG_MODULE_NAME } from "../config/projectConfig";
+import { FeaturevisorCLIError, formatFeaturevisorCLIError } from "../error";
 import {
   CLI_FORMAT_BOLD,
   CLI_FORMAT_DIM,
@@ -30,7 +31,7 @@ function lanesOption(value: unknown): string[] | undefined {
 function summary(plan: Plan, root: string) {
   const relative = (filePath: string) => path.relative(root, filePath);
   const isState = (filePath: string) => /(^|[\\/])existing-state(-[^\\/]+)?\.json$/.test(filePath);
-  const isConfig = (filePath: string) => relative(filePath) === "featurevisor.config.js";
+  const isConfig = (filePath: string) => relative(filePath) === CONFIG_MODULE_NAME;
   const count = (paths: string[]) => ({
     definitions: paths.filter((filePath) => !isState(filePath) && !isConfig(filePath)).length,
     state: paths.filter(isState).length,
@@ -74,7 +75,7 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
     );
   }
   if (plan.configEdits.length > 0)
-    console.log(`  featurevisor.config.js: ${plan.configEdits.join(", ")}`);
+    console.log(`  ${CONFIG_MODULE_NAME}: ${plan.configEdits.join(", ")}`);
 
   if (plan.differences.length > 0) {
     console.log("");
@@ -128,7 +129,9 @@ export async function runConversion(options: PluginHandlerOptions): Promise<numb
   try {
     const to = parsed.to as Shape;
     if (!SHAPES.includes(to)) {
-      throw new Error(`Pass --to=flat, --to=environments or --to=sets.`);
+      throw new FeaturevisorCLIError("Pass --to=flat, --to=environments or --to=sets.", {
+        code: "invalid_cli_arguments",
+      });
     }
     const apply = parsed.apply === true;
     const project = readProject(rootDirectoryPath, projectConfig);

@@ -276,14 +276,7 @@ export async function runMigration(
   try {
     const result = migrateProject(rootDirectoryPath, options);
     if (json) {
-      const payload = {
-        files: result.files.map(({ diff, ...file }) => (options.diff ? { ...file, diff } : file)),
-        blockers: result.blockers,
-        total: result.total,
-        migrated: result.migrated,
-        errors: result.errors,
-      };
-      console.log(parsed.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload));
+      console.log(parsed.pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result));
     } else {
       printResult(result, options);
     }

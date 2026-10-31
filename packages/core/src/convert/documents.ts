@@ -48,7 +48,7 @@ export function load(source: string, parser: CustomParser): { doc: Document; exp
 }
 
 /** Whether fmt leaves a file as it is, so a converted file should be formatted too */
-function isFormatted(entityType: EntityType, text: string, parser: CustomParser): boolean {
+export function isFormatted(entityType: EntityType, text: string, parser: CustomParser): boolean {
   try {
     const result = formatDefinition(entityType, text, parser);
     return !result.changed && !result.declined && !result.ignored;
@@ -57,33 +57,32 @@ function isFormatted(entityType: EntityType, text: string, parser: CustomParser)
   }
 }
 
+/** The text as fmt writes it, or as it is when fmt cannot format it */
+export function formatted(entityType: EntityType, text: string, parser: CustomParser): string {
+  try {
+    return formatDefinition(entityType, text, parser).output;
+  } catch {
+    return text;
+  }
+}
+
 /**
  * The document as the file's new text, with the file's own lines where nothing changed, or
  * the whole file as its parser writes it, which `merged` says. YAML keeps its comments either
- * way and JSON has none, but a custom format may lose them. A file that was formatted comes
- * out formatted, so a project fmt keeps clean stays clean. Undefined when the text would not
+ * way and JSON has none, but a custom format may lose them. Undefined when the text would not
  * read back as the document.
  */
 export function render(
   source: string,
   doc: Document,
   parser: CustomParser,
-  entityType?: EntityType,
 ): { text: string; merged: boolean } | undefined {
   const value = doc.toJS();
-  const result = rewriteFile(source, parser, value, (text) => {
+  return rewriteFile(source, parser, value, (text) => {
     if (parser !== parsers.yml) return renderValues(parser, parser.parse(text), value);
     const options = yamlOptions(text);
     return { base: parseDocument(text).toString(options), changed: doc.toString(options) };
   });
-  if (result && entityType && result.text !== source && isFormatted(entityType, source, parser)) {
-    try {
-      result.text = formatDefinition(entityType, result.text, parser).output;
-    } catch {
-      // the rewritten text stands when fmt cannot format it
-    }
-  }
-  return result;
 }
 
 export function rootMap(doc: Document): YAMLMap | undefined {

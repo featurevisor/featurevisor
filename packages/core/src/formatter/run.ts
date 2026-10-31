@@ -49,16 +49,7 @@ export async function runFormat({
     const result = await formatProject({ rootDirectoryPath, projectConfig, datasource }, options);
 
     if (json) {
-      const payload = {
-        files: result.files.map(({ diff, ...file }) => (options.diff ? { ...file, diff } : file)),
-        skipped: result.skipped,
-        changed: result.changed,
-        declined: result.declined,
-        ignored: result.ignored,
-        errors: result.errors,
-        ...(result.unsupported ? { unsupported: true } : {}),
-      };
-      console.log(parsed.pretty ? JSON.stringify(payload, null, 2) : JSON.stringify(payload));
+      console.log(parsed.pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result));
     } else if (options.stdin) {
       printStdinResult(result, options);
     } else {

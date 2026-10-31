@@ -1,9 +1,9 @@
 import { formatJson, parsers, type CustomParser } from "@featurevisor/parsers";
 
 /**
- * Text tools for the commands that rewrite definition files, fmt, migrate and convert, which
- * load them only when they run. A rewrite merges its change into a file's own lines, so every
- * line the change does not touch stays exactly as written.
+ * Text tools for the commands that rewrite definition files, fmt, migrate, convert and promote,
+ * which load them only when they write. A rewrite merges its change into a file's own lines, so
+ * every line the change does not touch stays exactly as written.
  */
 
 /** For each line of `a`, its line in `b` when both are on the longest common subsequence */
@@ -140,7 +140,7 @@ export function lineEndings(
   file: string,
   endOfLine: EndOfLine = "auto",
 ): { text: string; restore: (text: string) => string } {
-  const bom = file.startsWith("﻿") ? "﻿" : "";
+  const bom = file.startsWith("\uFEFF") ? "\uFEFF" : "";
   const text = file.slice(bom.length);
   const crlf = endOfLine === "auto" ? text.match(/\r?\n/)?.[0] === "\r\n" : endOfLine === "crlf";
   return {
