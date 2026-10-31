@@ -88,6 +88,24 @@ npx featurevisor migrate --check
 
 Rewrites a v3 project's definitions and specs for v4, run once after installing the v4 CLI. It converts what has one right answer, as [upgrading-to-v4.md](upgrading-to-v4.md) lists, keeps comments, line endings and every line it does not change, and lists what needs a person under "Needs you". It writes files, so show `--diff` first and run it on the user's go ahead. `--check` writes nothing and exits with 1 while anything is left. It exits with 2, writing nothing, while Groups remain or a custom parser has no `stringify`. It needs no project configuration v4 can load, so it runs before anything else works.
 
+## convert
+
+```bash
+npx featurevisor convert --to=environments
+npx featurevisor convert --to=environments --environments=dev,production --apply
+npx featurevisor convert --to=sets --apply
+npx featurevisor convert --to=flat --keep=production --apply
+```
+
+Changes a project's shape between `flat` (no environments and no sets), `environments` and `sets`, rewriting definitions, specs, state files and `featurevisor.config.js`, and keeping comments and every line it does not change. Without `--apply` it previews and writes nothing. Before writing, it converts a temporary copy, lints and tests both, and builds both: every feature and global variable must build byte identical in each environment or set, or nothing is written.
+
+- From environments to sets, each environment becomes a set with a copy of the attributes, segments, schemas and targets, each feature keeps only that environment's rules (`rules: []` where it had none), and `promotionFlows` follows the order of `environments`. Datafile paths stay the same, so only `--environment=` in CI becomes `--set=`.
+- From sets to environments, shared definitions must be equal in every set, and a global variable must be in every set. Otherwise it lists the conflicts and exits with 2. `--environments` reorders the lanes.
+- From flat, `--environments` or `--sets` name the lanes, staging and production by default. Assertions that need an environment run in each through a `matrix`.
+- To flat, `--keep` names the lane to keep, and the preview lists what the others lose.
+
+A project with sets and environments together is refused. Exits with 0 after a preview or a conversion and 2 when it cannot convert. `--json` prints the plan and checks. Do not propose a conversion unprompted ([sets-promotions.md](sets-promotions.md#when-to-use-sets-and-when-not-to)).
+
 ## test
 
 ```bash

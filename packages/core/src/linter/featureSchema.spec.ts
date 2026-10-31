@@ -179,6 +179,24 @@ describe("variation weights and rule fields", () => {
     return result.success ? [] : result.error.issues;
   }
 
+  it("allows no rules without environments, and asks to leave out an environment instead", () => {
+    const flat = getFeatureSchema({ environments: undefined }).safeParse(
+      baseFeature({ rules: [] }),
+    );
+    expect(flat.success).toBe(true);
+
+    expect(
+      issues({
+        rules: { staging: [], production: [{ key: "r1", conditions: "*", percentage: 0 }] },
+      }),
+    ).toContainEqual(
+      expect.objectContaining({
+        path: ["rules", "staging"],
+        message: "Must have at least one rule. Leave the environment out instead.",
+      }),
+    );
+  });
+
   it("requires feature variation weights to sum to 100", () => {
     expect(
       issues({

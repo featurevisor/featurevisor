@@ -162,6 +162,7 @@ Every CLI command is local and safe to run without asking, except:
 - Bare `build` is a **CI command**. It increments `.featurevisor/REVISION` and rewrites state files, which only the deploying pipeline should commit. Locally, yours and the user's, always use `npx featurevisor build --no-state-files`. It writes the same datafiles.
 - `promote --apply` (Sets only) **writes definition files**. Preview first, show the summary, then apply on the user's go ahead ([sets-promotions.md](references/sets-promotions.md)).
 - `migrate` **rewrites a v3 project's definitions for v4**. Show `migrate --diff` first, then run it on the user's go ahead ([upgrading-to-v4.md](references/upgrading-to-v4.md)).
+- `convert --apply` **restructures the whole project** between environments, sets and neither. Run `convert --to=<shape>` without `--apply` first, show the preview, then apply on the user's go ahead ([cli.md](references/cli.md#convert)).
 
 | Command                                                                                   | Purpose                                                              |
 | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -170,6 +171,7 @@ Every CLI command is local and safe to run without asking, except:
 | `npx featurevisor lint [--json]`                                                          | Validate definitions and specs                                       |
 | `npx featurevisor fmt [--check]`                                                          | Format definitions in the house layout and key order                 |
 | `npx featurevisor migrate [--diff]`                                                       | Rewrite a v3 project's definitions for v4, once                      |
+| `npx featurevisor convert --to=<flat\|environments\|sets> [--apply]`                      | Change a project between environments, sets and neither              |
 | `npx featurevisor test [--key-pattern=…] [--json]`                                        | Run specs, with exact reruns through `--case`                        |
 | `npx featurevisor test --uncovered` / `--coverage`                                        | Definitions without specs, and rules or overrides the specs selected |
 | `npx featurevisor evaluate --feature=<k> --context='{…}' --explain`                       | Why a feature has its flag, variation and variables                  |

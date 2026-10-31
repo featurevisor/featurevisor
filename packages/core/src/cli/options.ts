@@ -176,6 +176,28 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     ...setOption,
     ...targetOption,
   },
+  convert: {
+    ...outputOptions,
+    to: {
+      type: "string",
+      choices: ["flat", "environments", "sets"],
+      description: "the shape to convert to",
+    },
+    environments: {
+      type: "string",
+      description:
+        "comma separated environments to create, or the order of environments made from sets",
+    },
+    sets: {
+      type: "string",
+      description: "comma separated sets to create from a project without either",
+    },
+    keep: { type: "string", description: "the environment or set a conversion to flat keeps" },
+    apply: {
+      type: "boolean",
+      description: "write the conversion, which otherwise is only previewed",
+    },
+  },
   migrate: {
     ...outputOptions,
     check: {

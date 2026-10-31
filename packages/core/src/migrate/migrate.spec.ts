@@ -18,7 +18,8 @@ import {
   Migration,
 } from "./definitions";
 import { migrateProject, runMigration } from "./run";
-import { mergeLines, writeDefinition } from "./write";
+import { mergeLines } from "../rewrite/lines";
+import { writeDefinition } from "./write";
 
 // The SDK's reader of v3 datafiles, which migration must agree with. Required rather than
 // imported, as it sits outside this package.

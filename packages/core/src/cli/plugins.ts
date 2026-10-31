@@ -18,6 +18,7 @@ import { promotePlugin } from "../promoter";
 import { diffPlugin } from "../diff";
 import { fmtPlugin } from "../formatter";
 import { migratePlugin } from "../migrate";
+import { convertPlugin } from "../convert";
 import { getProjectSetExecutions } from "../sets";
 import { getTestInputFingerprint, getTestInputStatePaths } from "../tester/provenance";
 import {
@@ -55,6 +56,7 @@ export const projectBasedPlugins: Plugin[] = [
   listPlugin,
   promotePlugin,
   diffPlugin,
+  convertPlugin,
   createCatalogPlugin(catalogRuntime),
 ];
 

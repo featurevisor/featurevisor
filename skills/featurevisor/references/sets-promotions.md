@@ -18,7 +18,7 @@ Sets split one Featurevisor project into **independent trees** that each own the
 
 The key property: the **same feature key can exist in several sets with entirely different definitions**, with different rules and even different variables. With plain environments, one file holds every environment, and any edit touches all of them. With sets as lanes, promoting to production is an explicit, reviewable file change in `sets/production/`, and `CODEOWNERS` can give each lane different approvers ([recipes.md](recipes.md#establishing-ownership)).
 
-Do not propose converting a working project with environments to sets unprompted. It is a restructuring with real migration cost.
+Do not propose converting a working project with environments to sets unprompted. It is a restructuring with real migration cost. When the user asks, `npx featurevisor convert --to=sets` previews it and `--apply` writes it, checked to build every lane the same ([cli.md](cli.md#convert)). `convert --to=environments` goes back when the sets agree on what environments share.
 
 ## Enabling and layout
 
