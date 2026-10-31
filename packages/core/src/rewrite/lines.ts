@@ -179,10 +179,10 @@ export function renderValues(parser: CustomParser, before: unknown, after: unkno
 }
 
 /**
- * A file's new text, with its own line endings and byte order mark: the change merged into its
- * own lines, or the whole rendering when the merge cannot place it. Either must parse back to
- * `value`, as JSON since key order matters, and with `keepComments`, keep the file's comments.
- * `merged` says which one it is. Undefined when neither passes.
+ * A file's new text, with its own line endings, byte order mark and final newline: the change
+ * merged into its own lines, or the whole rendering when the merge cannot place it. Either must
+ * parse back to `value`, as JSON since key order matters, and with `keepComments`, keep the
+ * file's comments. `merged` says which one it is. Undefined when neither passes.
  */
 export function rewriteFile(
   file: string,
@@ -202,8 +202,12 @@ export function rewriteFile(
     return !keepComments || sameComments(parser, text, candidate);
   };
 
+  // a rendering may end without the newline the file ends with, as JSON's stringify does
+  const finish = (candidate: string) =>
+    restore(text.endsWith("\n") && !candidate.endsWith("\n") ? `${candidate}\n` : candidate);
+
   const merged = mergeLines(text, base, changed);
-  if (merged !== undefined && accepts(merged)) return { text: restore(merged), merged: true };
-  if (accepts(changed)) return { text: restore(changed), merged: false };
+  if (merged !== undefined && accepts(merged)) return { text: finish(merged), merged: true };
+  if (accepts(changed)) return { text: finish(changed), merged: false };
   return undefined;
 }

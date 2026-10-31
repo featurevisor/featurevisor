@@ -74,10 +74,12 @@ archive path, not only by inspecting example files.
 Only style.spec.ts pins the style's output. The other formatter tests hold
 whatever style.ts says, so a change to the style fails nothing else. fmt is
 separate from promote and every other write: those write files as the parser
-does and never format them, except convert as described below. Promote only
-keeps a final newline: a written file ends with one when the file it replaces
-did, or for a new file, the file it came from, since JSON's `stringify` writes
-none. Prettier leaves example-json's definitions to fmt
+does and never format them, except convert as described below. Promote merges
+what `stringify` writes into the lines of the file it replaces, or for a new
+file the file it came from, so comments, layout, line endings and the final
+newline stay wherever a promotion changes nothing. The YAML writer stays as in
+v4.3.0, so a list item whose values change still loses its comments.
+Prettier leaves example-json's definitions to fmt
 (see .prettierignore), since that example sets a Prettier width of 40. fmt
 exits with 1 when `--check` finds work and 2 on errors, as Prettier does, so
 plugin handlers may return an exit code. Every example ships an .editorconfig
@@ -86,7 +88,8 @@ that a test keeps in step with style.ts.
 fmt, migrate and convert each keep a small plugin object in their folder's
 index.ts, whose handler requires run.ts, so the CLI loads a command's code only
 when it runs, and Core's index exports none of them. What they share lives in
-packages/core/src/rewrite, loaded the same way: lines.ts aligns lines, merges
+packages/core/src/rewrite, loaded the same way, and promote writes through it
+too: lines.ts aligns lines, merges
 a rendered change into a file's own lines, keeps line endings and checks that
 a rewrite reads back (`rewriteFile`), diff.ts prints unified diffs, and
 files.ts lists definition files by kind.
