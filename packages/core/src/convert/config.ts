@@ -90,6 +90,15 @@ function depthOf(text: string): number {
   return depth;
 }
 
+/** A setting as written in the exported object, a list of values one per line */
+export function writeSetting(name: string, value: string | string[], indent = "  "): string {
+  const written =
+    typeof value === "string"
+      ? value
+      : `[${value.map((item) => `\n${indent}${indent}${item},`).join("")}\n${indent}]`;
+  return `${indent}${name}: ${written},`;
+}
+
 /** The edited text, and the settings it removed. Undefined when it exports no object to edit. */
 export function editConfig(
   source: string,
@@ -120,12 +129,8 @@ export function editConfig(
   if (edit.add.length > 0) {
     const open = exportsStart(result);
     const indent = /\n([ \t]+)\S/.exec(result.slice(open))?.[1] || "  ";
-    const written = (value: string | string[]) =>
-      typeof value === "string"
-        ? value
-        : `[${value.map((item) => `\n${indent}${indent}${item},`).join("")}\n${indent}]`;
     const lines = edit.add
-      .map(([name, value]) => `\n${indent}${name}: ${written(value)},`)
+      .map(([name, value]) => `\n${writeSetting(name, value, indent)}`)
       .join("");
     result = result.slice(0, open + 1) + lines + result.slice(open + 1);
   }

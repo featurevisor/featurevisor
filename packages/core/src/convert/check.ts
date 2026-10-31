@@ -10,6 +10,7 @@ import { filesIn } from "../rewrite/files";
 import { getProjectSetExecutions } from "../sets";
 import { createTestReport } from "../tester/report";
 import { testProject } from "../tester/testProject";
+import { writeSetting } from "./config";
 import type { Plan } from "./plan";
 
 /**
@@ -78,6 +79,46 @@ function copyProject(root: string, config: ProjectConfig): string {
   const modules = nearestNodeModules(root);
   if (modules) fs.symlinkSync(modules, path.join(copy, "node_modules"), "dir");
   return copy;
+}
+
+/** Whether a configuration's settings have the shape a plan converts to */
+function hasShape(config: { sets?: unknown; environments?: unknown }, plan: Plan): boolean {
+  return (
+    (plan.to === "sets") === Boolean(config.sets) &&
+    (plan.to === "environments") === Array.isArray(config.environments)
+  );
+}
+
+/**
+ * The settings a configuration's text exports, read beside the copy's own under a name nothing
+ * has required yet, so the copy's configuration is required once, in its final form
+ */
+function settingsOf(copy: string, text: string): Record<string, unknown> {
+  const probe = path.join(copy, `featurevisor.config.probe-${Date.now()}.js`);
+  fs.writeFileSync(probe, text);
+  try {
+    return require(probe);
+  } finally {
+    fs.rmSync(probe);
+  }
+}
+
+/**
+ * Gives a copy the configuration the user is asked to write by hand: the project's own, with the
+ * new shape's settings over it, so the converted definitions can be checked before the user
+ * edits anything
+ */
+function writeConfigByHand(root: string, copy: string, plan: Plan) {
+  const own = "featurevisor.config.before-convert.js";
+  fs.copyFileSync(path.join(root, CONFIG_MODULE_NAME), path.join(copy, own));
+  const settings = [
+    ...plan.configChange.remove.map((name) => `  ${name}: undefined,`),
+    ...plan.configChange.add.map(([name, value]) => writeSetting(name, value)),
+  ];
+  fs.writeFileSync(
+    path.join(copy, CONFIG_MODULE_NAME),
+    `module.exports = {\n  ...require("./${own}"),\n${settings.join("\n")}\n};\n`,
+  );
 }
 
 /** Runs `work` without the output of the commands it calls */
@@ -190,6 +231,11 @@ function isCarried(entry: string, file: string, otherLanes: string[]): boolean {
   });
 }
 
+/**
+ * Checks a plan on a converted copy. When convert's edits to the configuration leave it in the
+ * old shape, the plan leaves the file for the user to edit, and the copy is checked as if they
+ * had.
+ */
 export async function checkPlan(
   plan: Plan,
   root: string,
@@ -230,8 +276,17 @@ export async function checkPlan(
       }
 
       applyPlan(plan, root, copy);
+      const edited = plan.writes.get(path.join(root, CONFIG_MODULE_NAME));
       let converted: ProjectConfig;
       try {
+        // a file convert's edits leave in the old shape is one for the user to edit, as is one
+        // convert could not edit at all
+        if (edited !== undefined && !hasShape(settingsOf(copy, edited), plan)) {
+          plan.configByHand = "its settings still give the old shape after convert's edits";
+          plan.configEdits = plan.configChange.edits;
+          plan.writes.delete(path.join(root, CONFIG_MODULE_NAME));
+        }
+        if (plan.configByHand) writeConfigByHand(root, copy, plan);
         converted = getProjectConfig(copy);
       } catch (error) {
         result.problems.push(
@@ -239,13 +294,9 @@ export async function checkPlan(
         );
         return result;
       }
-      const expected = plan.to === "flat" ? undefined : plan.to;
-      if (
-        (expected === "sets") !== Boolean(converted.sets) ||
-        (expected === "environments") !== Array.isArray(converted.environments)
-      ) {
+      if (!hasShape(converted, plan)) {
         result.problems.push(
-          `${CONFIG_MODULE_NAME} still configures the old shape, perhaps through a setting convert cannot edit. Make these edits by hand first: ${plan.configEdits.join(", ")}.`,
+          `${CONFIG_MODULE_NAME} keeps the old shape even with the new shape's settings over it, so convert cannot check the conversion.`,
         );
         return result;
       }

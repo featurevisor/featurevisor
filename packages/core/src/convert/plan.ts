@@ -9,7 +9,7 @@ import { CONFIG_MODULE_NAME, getProjectConfigForSet } from "../config";
 import { getExistingStateFilePath } from "../datasource/filesystemAdapter";
 import type { Kind } from "../rewrite/files";
 import { BUILT_IN_PARSERS, lineEndings, same } from "../rewrite/lines";
-import { editConfig, quote } from "./config";
+import { editConfig, quote, type ConfigEdit } from "./config";
 import {
   formatted,
   isFormatted,
@@ -39,6 +39,10 @@ export interface Plan {
   removes: Set<string>;
   /** What changed in featurevisor.config.js, or the edits to make by hand */
   configEdits: string[];
+  /** The settings the new shape removes and adds, which `configByHand` asks the user to change */
+  configChange: ConfigEdit & { edits: string[] };
+  /** Why featurevisor.config.js is left for the user to edit after converting, when it is */
+  configByHand?: string;
   /** What stops the conversion */
   conflicts: string[];
   /** What changes that is not a definition's meaning, or what a conversion to flat drops */
@@ -104,6 +108,7 @@ class Builder {
       writes: new Map(),
       removes: new Set(),
       configEdits: [],
+      configChange: { remove: [], add: [], edits: [] },
       conflicts: [],
       differences: [],
       next: [],
@@ -191,22 +196,24 @@ class Builder {
   }
 
   /**
-   * Edits the configuration, and says what changed. A setting the new shape cannot have, which
-   * the file sets where convert cannot edit it, stops the conversion with the edits to make by
-   * hand, and a setting it only ignores is left where it is.
+   * Edits the configuration, and says what changed. When the file sets a setting the new shape
+   * cannot have where convert cannot edit it, the file is left for the user to edit after
+   * converting, and a setting the new shape only ignores is left where it is.
    */
   config({ remove = [], tidy = [], add = [] }: ConfigChange) {
+    const edits = [...remove.map((name) => `removes ${name}`), ...add.map(([, , says]) => says)];
+    this.plan.configChange = { remove, add: add.map(([name, value]) => [name, value]), edits };
     const { text, restore } = lineEndings(this.configSource);
     const result = editConfig(text, {
       remove: [...remove, ...tidy.map(([name]) => name)],
-      add: add.map(([name, value]) => [name, value]),
+      add: this.plan.configChange.add,
     });
     const missing = remove.filter((name) => !result?.removed.includes(name));
     if (!result || missing.length > 0) {
-      const byHand = [...remove.map((name) => `removes ${name}`), ...add.map(([, , says]) => says)];
-      this.plan.conflicts.push(
-        `${CONFIG_MODULE_NAME} ${result ? `sets ${missing.join(" and ")} where convert cannot edit it, such as in an object spread into its settings` : "does not export an object convert can edit"}, so make these edits by hand first: ${byHand.join(", ")}.`,
-      );
+      this.plan.configByHand = result
+        ? `it sets ${missing.join(" and ")} where convert cannot edit it, such as in an object spread into its settings`
+        : "it does not set module.exports to an object convert can edit";
+      this.plan.configEdits.push(...edits);
       return;
     }
     this.write(this.configPath, restore(result.text));

@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { format } from "node:util";
 
 import { parsers } from "@featurevisor/parsers";
 import { isMap, YAMLMap } from "yaml";
@@ -328,9 +329,15 @@ describe("convert", () => {
     return getProjectConfig(root);
   };
 
+  /** What the last run printed, without colours */
+  let printed = "";
+
   const run = async (parsed: Record<string, unknown>) => {
     const projectConfig = config();
-    const log = jest.spyOn(console, "log").mockImplementation(() => undefined);
+    const lines: string[] = [];
+    const log = jest
+      .spyOn(console, "log")
+      .mockImplementation((...args: unknown[]) => void lines.push(format(...args)));
     try {
       return await runConversion({
         rootDirectoryPath: root,
@@ -340,6 +347,7 @@ describe("convert", () => {
       });
     } finally {
       log.mockRestore();
+      printed = lines.join("\n").replace(/\x1b\[[0-9;]*m/g, "");
     }
   };
 
@@ -620,27 +628,67 @@ describe("convert", () => {
     );
   });
 
-  it("stops with the edits to make by hand when it cannot edit the configuration", async () => {
+  it("converts the rest, and says how to edit a configuration it cannot edit", async () => {
     environmentsProject();
     write("base.config.js", 'module.exports = { environments: ["staging", "production"] };\n');
-    write(
-      "featurevisor.config.js",
-      'module.exports = {\n  ...require("./base.config.js"),\n  tags: ["all"],\n};\n',
-    );
-    expect(
-      planConversion(readProject(root, config()), { to: "flat", keep: "production" }).conflicts,
-    ).toEqual([
-      "featurevisor.config.js sets environments where convert cannot edit it, such as in an object spread into its settings, so make these edits by hand first: removes environments.",
-    ]);
+    const spread = 'module.exports = {\n  ...require("./base.config.js"),\n  tags: ["all"],\n};\n';
+    write("featurevisor.config.js", spread);
+    const plan = planConversion(readProject(root, config()), { to: "flat", keep: "production" });
 
-    flatProject();
-    write(
-      "featurevisor.config.js",
-      "const config = { tags: ['all'] };\n\nmodule.exports = config;\n",
+    expect(plan.conflicts).toEqual([]);
+    expect(plan.configByHand).toBe(
+      "it sets environments where convert cannot edit it, such as in an object spread into its settings",
     );
-    expect(planConversion(readProject(root, config()), { to: "sets" }).conflicts).toEqual([
-      "featurevisor.config.js does not export an object convert can edit, so make these edits by hand first: adds sets: true, adds promotionFlows staging to production.",
-    ]);
+    expect(plan.configEdits).toEqual(["removes environments"]);
+    expect(plan.writes.has(path.join(root, "featurevisor.config.js"))).toBe(false);
+
+    expect(await run({ to: "flat", keep: "production", apply: true })).toBe(0);
+    expect(read("featurevisor.config.js")).toBe(spread);
+    expect(read("features/checkout.yml")).toContain("rules:\n  - key: nl\n");
+    expect(printed).toContain(
+      [
+        "Edit featurevisor.config.js by hand, since it sets environments where convert cannot edit it, such as in an object spread into its settings:",
+        "  - Remove environments",
+        "  Until then, Featurevisor reads the project in its old shape. Run lint once it is edited.",
+      ].join("\n"),
+    );
+    expect(printed).toContain("✔ Converted, except featurevisor.config.js");
+
+    // the edit it asks for completes the conversion
+    write("base.config.js", "module.exports = {};\n");
+    expect(readProject(root, config()).shape).toBe("flat");
+  });
+
+  it("gives the settings to add when the configuration is not an object it can edit", async () => {
+    flatProject();
+    const own = "const config = { tags: ['all'] };\n\nmodule.exports = config;\n";
+    write("featurevisor.config.js", own);
+
+    expect(await run({ to: "sets", apply: true })).toBe(0);
+    expect(read("featurevisor.config.js")).toBe(own);
+    expect(exists("sets/production/features/checkout.yml")).toBe(true);
+    expect(printed).toContain(
+      [
+        "Edit featurevisor.config.js by hand, since it does not set module.exports to an object convert can edit:",
+        "  - Add these settings to the object it exports:",
+        "",
+        "      sets: true,",
+        "      promotionFlows: [{ from: 'staging', to: 'production' }],",
+      ].join("\n"),
+    );
+  });
+
+  it("leaves a configuration its edits do not convert to the user", async () => {
+    environmentsProject();
+    const twice =
+      'module.exports = {\n  environments: ["staging", "production"],\n  tags: ["all"],\n};\n\nmodule.exports.environments = ["staging", "production"];\n';
+    write("featurevisor.config.js", twice);
+
+    expect(await run({ to: "flat", keep: "production", apply: true })).toBe(0);
+    expect(read("featurevisor.config.js")).toBe(twice);
+    expect(printed).toContain(
+      "Edit featurevisor.config.js by hand, since its settings still give the old shape after convert's edits:\n  - Remove environments",
+    );
   });
 
   it("refuses a project with sets and environments together", async () => {

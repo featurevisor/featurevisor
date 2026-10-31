@@ -11,6 +11,7 @@ import {
   CLI_FORMAT_YELLOW,
 } from "../tester/cliFormat";
 import { applyPlan, checkPlan, type CheckResult } from "./check";
+import { writeSetting } from "./config";
 import { planConversion, type Plan } from "./plan";
 import { readProject, type Shape } from "./project";
 
@@ -74,8 +75,11 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
       `  State files: ${written.state} ${apply ? "written" : "to write"}, ${removed.state} ${apply ? "removed" : "to remove"}`,
     );
   }
-  if (plan.configEdits.length > 0)
+  if (plan.configByHand) {
+    console.log(`  ${CONFIG_MODULE_NAME}: for you to edit after converting, as below`);
+  } else if (plan.configEdits.length > 0) {
     console.log(`  ${CONFIG_MODULE_NAME}: ${plan.configEdits.join(", ")}`);
+  }
 
   if (plan.differences.length > 0) {
     console.log("");
@@ -106,6 +110,8 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
     }
   }
 
+  if (plan.configByHand && (!check || check.passed)) printConfigByHand(plan, apply);
+
   if (plan.next.length > 0 && (!check || check.passed)) {
     console.log("");
     console.log(CLI_FORMAT_BOLD, apply ? "Next:" : "After converting:");
@@ -116,10 +122,42 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
   if (check && !check.passed) {
     console.log(CLI_FORMAT_RED, "Nothing was converted");
   } else if (apply) {
-    console.log(CLI_FORMAT_GREEN, "✔ Converted");
+    console.log(
+      CLI_FORMAT_GREEN,
+      plan.configByHand ? `✔ Converted, except ${CONFIG_MODULE_NAME}` : "✔ Converted",
+    );
   } else {
-    console.log(`Nothing was written. Run with --apply to convert.`);
+    console.log(
+      `Nothing was written. Run with --apply to convert${plan.configByHand ? `, then edit ${CONFIG_MODULE_NAME}` : ""}.`,
+    );
   }
+}
+
+/** The edits to featurevisor.config.js convert leaves to the user, as text to copy */
+function printConfigByHand(plan: Plan, apply: boolean) {
+  const { remove, add } = plan.configChange;
+  console.log("");
+  console.log(
+    CLI_FORMAT_YELLOW,
+    `Edit ${CONFIG_MODULE_NAME} by hand${apply ? "" : " after converting"}, since ${plan.configByHand}:`,
+  );
+  for (const name of remove) console.log(`  - Remove ${name}`);
+  if (add.length > 0) {
+    console.log(`  - Add these settings to the object it exports:`);
+    console.log("");
+    for (const [name, value] of add) {
+      console.log(
+        writeSetting(name, value)
+          .split("\n")
+          .map((line) => `    ${line}`)
+          .join("\n"),
+      );
+    }
+    console.log("");
+  }
+  console.log(
+    `  Until then, Featurevisor reads the project in its old shape. Run lint once it is edited.`,
+  );
 }
 
 /** The command: 0 when previewed or converted, 2 when it cannot convert */
@@ -157,6 +195,18 @@ export async function runConversion(options: PluginHandlerOptions): Promise<numb
         writes: paths.writes,
         removes: paths.removes,
         config: plan.configEdits,
+        ...(plan.configByHand
+          ? {
+              configByHand: {
+                reason: plan.configByHand,
+                remove: plan.configChange.remove,
+                add: plan.configChange.add.map(
+                  ([name, value]) =>
+                    `${name}: ${Array.isArray(value) ? `[${value.join(", ")}]` : value}`,
+                ),
+              },
+            }
+          : {}),
         conflicts: plan.conflicts,
         differences: plan.differences,
         next: plan.next,
