@@ -35,8 +35,9 @@ rules:
         style: literal-block
 
     - key: folded-block
-      conditions: >-
-        country == 'ch' and device == 'mobile'
+      conditions: >- # featurevisor-ignore-line
+        country == 'ch'
+        and device == 'mobile'
       percentage: 100
       variables:
         style: folded-block
@@ -95,8 +96,9 @@ rules:
         style: literal-block
 
     - key: folded-block
-      conditions: >-
-        country == 'ch' and device == 'mobile'
+      conditions: >- # featurevisor-ignore-line
+        country == 'ch'
+        and device == 'mobile'
       percentage: 100
       variables:
         style: folded-block

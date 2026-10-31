@@ -426,6 +426,50 @@ describe("the ignore line comment", () => {
     expect(formatYml(output)).toBe(output);
   });
 
+  it("keeps a folded block marked on its first line, its lines moving with its key", () => {
+    const source = [
+      "rules:",
+      "    - key: a",
+      `      conditions: >- ${ignore}`,
+      "          country == 'ch'",
+      "          and device == 'mobile'",
+      "      percentage: 5",
+      "",
+    ].join("\n");
+    const output = formatYml(source);
+
+    expect(output).toBe(
+      [
+        "rules:",
+        "  - key: a",
+        `    conditions: >- ${ignore}`,
+        "        country == 'ch'",
+        "        and device == 'mobile'",
+        "    percentage: 5",
+        "",
+      ].join("\n"),
+    );
+    expect(parse(output)).toEqual(parse(source));
+    expect(formatYml(output)).toBe(output);
+  });
+
+  it("keeps a literal block in a list as written, blank lines included", () => {
+    const source = `notes:\n  - | ${ignore}\n    one\n\n      two\n  - 'x'\n`;
+    const output = formatYml(source);
+
+    expect(output).toBe(`notes:\n  - | ${ignore}\n    one\n\n      two\n  - x\n`);
+    expect(parse(output)).toEqual(parse(source));
+  });
+
+  it("lays out a block that keeps its trailing blank lines, since trimming would lose them", () => {
+    const source = `a: |+ ${ignore}\n    x\n\nb: 1\n`;
+    const output = formatYml(source);
+
+    expect(parse(output)).toEqual(parse(source));
+    expect(output).toContain(`a: |+ ${ignore}\n  x\n`);
+    expect(formatYml(output)).toBe(output);
+  });
+
   it("leaves the comment as text inside a quoted value", () => {
     expect(formatYml(`a: '${ignore}'\n`)).toBe(`a: "${ignore}"\n`);
   });

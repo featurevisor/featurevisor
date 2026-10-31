@@ -220,21 +220,58 @@ interface Context {
   source: string;
   /** A prefix the source never holds, for the placeholders of text kept as written */
   prefix: string;
-  /** Text kept as written, which YAML writes as a placeholder until it is replaced */
-  kept: { placeholder: string; text: string }[];
+  /**
+   * Text kept as written, which YAML writes as a placeholder until it is replaced, and the
+   * column it started at in the source, so its later lines move with it
+   */
+  kept: { placeholder: string; text: string; column: number }[];
   /** Nodes that held an anchor, and the copies that replaced aliases */
   changed: Set<Node>;
 }
 
+function isBlockScalar(node: Node): boolean {
+  return (
+    isScalar(node) && (node.type === Scalar.BLOCK_LITERAL || node.type === Scalar.BLOCK_FOLDED)
+  );
+}
+
+/** The column of `offset` in `text` */
+function columnOf(text: string, offset: number): number {
+  return offset - (text.lastIndexOf("\n", offset - 1) + 1);
+}
+
 /**
  * The source of a line marked with the ignore comment, from `start` to the end of `node`, or
- * undefined when it cannot be kept: text over several lines, or with an anchor or an alias,
- * which is laid out as usual.
+ * undefined when it cannot be kept: text with an anchor or an alias, or over several lines,
+ * which is laid out as usual. A literal or folded block marked on its first line keeps its
+ * lines, unless it keeps its trailing blank lines with `+`, which trimming would lose.
  */
 function writtenText(context: Context, start: number, node: Node): string | undefined {
   if (touches(node, context.changed)) return undefined;
   const text = context.source.slice(start, node.range![1]).trimEnd();
-  return text.includes("\n") ? undefined : text;
+  if (!text.includes("\n")) return text;
+  if (!isBlockScalar(node)) return undefined;
+  const header = text.slice(0, text.indexOf("\n")).replace(/#.*$/, "");
+  return /[|>](?:\d?\+|\+\d)/.test(header) ? undefined : text;
+}
+
+/** Moves every line after the first by `shift` columns, so kept lines follow their first */
+function shiftLines(text: string, shift: number): string {
+  if (shift === 0) return text;
+  const [first, ...rest] = text.split("\n");
+  const moved = rest.map((line) => {
+    if (line === "") return line;
+    if (shift > 0) return " ".repeat(shift) + line;
+    return line.slice(Math.min(-shift, line.length - line.trimStart().length));
+  });
+  return [first, ...moved].join("\n");
+}
+
+/** A stand-in for a kept value. A block's comment is on its first line, inside the kept text. */
+function keptStandIn(node: Node, text: string, placeholder: string): Scalar {
+  const scalar = standIn(node, placeholder);
+  if (text.includes("\n")) scalar.comment = undefined;
+  return scalar;
 }
 
 /** Keeps an entry marked with the ignore comment in its place, and as written where it can */
@@ -255,8 +292,12 @@ function keepPair(pair: Pair, path: FormatPath, context: Context) {
 
   const id = `${context.prefix}${context.kept.length}`;
   pair.key = standIn(key, `${id}k`);
-  pair.value = standIn(value as Node, `${id}v`);
-  context.kept.push({ placeholder: `${id}k: ${id}v`, text });
+  pair.value = keptStandIn(value as Node, text, `${id}v`);
+  context.kept.push({
+    placeholder: `${id}k: ${id}v`,
+    text,
+    column: columnOf(context.source, key.range![0]),
+  });
 }
 
 function walk(node: unknown, path: FormatPath, inSequence: boolean, context: Context) {
@@ -337,8 +378,8 @@ function walk(node: unknown, path: FormatPath, inSequence: boolean, context: Con
       item.spaceBefore = index > 0 && (spaced || (keep && blank.has(item)));
       if (text !== undefined) {
         const placeholder = `${context.prefix}${context.kept.length}z`;
-        seq.items[index] = standIn(item, placeholder);
-        context.kept.push({ placeholder, text });
+        seq.items[index] = keptStandIn(item, text, placeholder);
+        context.kept.push({ placeholder, text, column: columnOf(context.source, item.range![0]) });
       }
     });
   }
@@ -406,10 +447,12 @@ function layOut(source: string, layout: YmlLayout, options: Required<YmlFormatOp
     // null prefers double quotes and true single, each falling back to the other to save escapes
     singleQuote: options.quote === "single" ? true : null,
   });
-  return context.kept.reduce(
-    (text, { placeholder, text: written }) => text.split(placeholder).join(written),
-    output,
-  );
+  return context.kept.reduce((text, { placeholder, text: written, column }) => {
+    const at = text.indexOf(placeholder);
+    if (at === -1) return text;
+    const kept = shiftLines(written, columnOf(text, at) - column);
+    return text.slice(0, at) + kept + text.slice(at + placeholder.length);
+  }, output);
 }
 
 /**
@@ -418,7 +461,8 @@ function layOut(source: string, layout: YmlLayout, options: Required<YmlFormatOp
  * Lists and maps are always written in block style, quotes only where a value needs them, and
  * comments stay with the key or item below them. Aliases are written out in full, and anchors
  * dropped, unless `expandAliases` is false. A line ending in the comment
- * `# featurevisor-ignore-line` keeps its key and value as written, and its place.
+ * `# featurevisor-ignore-line` keeps its key and value as written, and its place, and so does
+ * a literal or folded block with the comment on its first line, lines and all.
  *
  * Throws the YAML parse error, with its linePos, when the source is not a single valid YAML
  * document.
