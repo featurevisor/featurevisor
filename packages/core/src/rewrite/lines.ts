@@ -8,21 +8,48 @@ import { formatJson, parsers, type CustomParser } from "@featurevisor/parsers";
 
 /** For each line of `a`, its line in `b` when both are on the longest common subsequence */
 export function align(a: string[], b: string[]): number[] {
-  const width = b.length + 1;
-  const lengths = new Uint32Array((a.length + 1) * width);
-  for (let i = a.length - 1; i >= 0; i--) {
-    for (let j = b.length - 1; j >= 0; j--) {
+  const matched = new Array<number>(a.length).fill(-1);
+
+  // the lines both texts start and end with are on it, so only the lines between need the table
+  let start = 0;
+  while (start < a.length && start < b.length && a[start] === b[start]) {
+    matched[start] = start;
+    start++;
+  }
+  let endA = a.length;
+  let endB = b.length;
+  while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) {
+    endA--;
+    endB--;
+  }
+
+  const rows = endA - start;
+  const columns = endB - start;
+  const width = columns + 1;
+  const lengths = new Uint32Array((rows + 1) * width);
+  for (let i = rows - 1; i >= 0; i--) {
+    for (let j = columns - 1; j >= 0; j--) {
       lengths[i * width + j] =
-        a[i] === b[j]
+        a[start + i] === b[start + j]
           ? lengths[(i + 1) * width + j + 1] + 1
           : Math.max(lengths[(i + 1) * width + j], lengths[i * width + j + 1]);
     }
   }
-  const matched = new Array<number>(a.length).fill(-1);
-  for (let i = 0, j = 0; i < a.length && j < b.length; ) {
-    if (a[i] === b[j]) matched[i++] = j++;
+  let i = 0;
+  let j = 0;
+  while (i < rows && j < columns) {
+    if (a[start + i] === b[start + j]) matched[start + i++] = start + j++;
     else if (lengths[(i + 1) * width + j] >= lengths[i * width + j + 1]) i++;
     else j++;
+  }
+
+  // the side with lines left matches each line it can as early as it can, as a table of every
+  // line would, which still matches all the lines both end with
+  const skipA = i < rows;
+  for (let x = start + i, y = start + j; x < a.length && y < b.length; ) {
+    if (a[x] === b[y]) matched[x++] = y++;
+    else if (skipA) x++;
+    else y++;
   }
   return matched;
 }
