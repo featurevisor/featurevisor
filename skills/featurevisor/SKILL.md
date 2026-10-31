@@ -146,7 +146,7 @@ Environments, Sets, parser and namespace separator change how the same request i
 
 Run this loop after every change. It is how you prove a change does what the user asked, and it gives you the evidence to report back.
 
-1. **Format.** `npx featurevisor fmt <files you edited>` puts them in the house layout and key order, the way the user's teammates will expect to read them. It never changes what a definition means or what builds. Pass the files, so a project that is not formatted yet gets no changes beyond yours. Skip this step if the installed CLI has no `fmt` command.
+1. **Format.** `npx featurevisor fmt <files you edited>` puts them in the house layout and key order, the way the user's teammates will expect to read them. It never changes what a definition means or what builds, so format without asking. Prefer passing the files you edited, so a project that is not formatted yet gets no changes beyond yours. Skip this step if the installed CLI has no `fmt` command.
 2. **Lint.** `npx featurevisor lint` must pass. With `--json`, each error has `filePath`, `path`, `message` and `code`, so you can fix the exact field. Rerun after fixing: some errors only appear once earlier ones in the same file are gone.
 3. **Specs.** Add or update the matching spec in the same change, then run `npx featurevisor test --key-pattern=<key>`. A failure prints a rerun command with an exact `--case`. `--json` gives each case's `errors` with `path`, `expected` and `actual`.
 4. **Explain representative contexts.** `npx featurevisor evaluate --feature=<key> --context='{…}' --explain` shows the matched rule, the bucket, and pass or fail for each condition. Use one context inside the audience and one outside it.
@@ -157,13 +157,12 @@ Run this loop after every change. It is how you prove a change does what the use
 
 ## CLI: run freely, with a few exceptions
 
-Every CLI command is local and safe to run without asking, except these, which write files:
+Every CLI command is local and safe to run without asking, `fmt` included, except these:
 
 - Bare `build` is a **CI command**. It increments `.featurevisor/REVISION` and rewrites state files, which only the deploying pipeline should commit. Locally, yours and the user's, always use `npx featurevisor build --no-state-files`. It writes the same datafiles.
 - `promote --apply` (Sets only) **writes definition files**. Preview first, show the summary, then apply on the user's go ahead ([sets-promotions.md](references/sets-promotions.md)).
 - `migrate` **rewrites a v3 project's definitions for v4**. Show `migrate --diff` first, then run it on the user's go ahead ([upgrading-to-v4.md](references/upgrading-to-v4.md)).
 - `convert --apply` **restructures the whole project** between environments, sets and neither. Run `convert --to=<shape>` without `--apply` first, show the preview, then apply on the user's go ahead ([cli.md](references/cli.md#convert)).
-- `fmt` without paths **formats every file**, including ones you did not change. Run it on the files you edited. In a project that is not formatted yet, check with `fmt --check` and ask before formatting the rest.
 
 | Command                                                                                   | Purpose                                                              |
 | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
