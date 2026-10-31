@@ -251,7 +251,7 @@ describe("editConfig", () => {
           ["sets", "true"],
           ["promotionFlows", ["{ from: 'a', to: 'b' }", "{ from: 'b', to: 'c' }"]],
         ],
-      }),
+      })?.text,
     ).toBe(
       [
         "/** @type {import('@featurevisor/core').ProjectConfig} */",
@@ -276,11 +276,28 @@ describe("editConfig", () => {
         'module.exports = {\n  namespaceCharacter: "/",\n  environments: ["a"],\n  tags: ["all"],\n};\n',
         { remove: ["environments", "tags"], add: [] },
       ),
-    ).toBe('module.exports = {\n  namespaceCharacter: "/",\n};\n');
+    ).toEqual({
+      text: 'module.exports = {\n  namespaceCharacter: "/",\n};\n',
+      removed: ["environments", "tags"],
+    });
   });
 
-  it("cannot add to a configuration that does not export an object", () => {
+  it("says which settings it removed, leaving one in a comment or spread in", () => {
+    const spread =
+      "module.exports = {\n  ...base,\n  // featuresDirectoryPath: 'src',\n  tags: ['all'],\n};\n";
+    expect(
+      editConfig(spread, { remove: ["environments", "featuresDirectoryPath", "tags"], add: [] }),
+    ).toEqual({
+      text: "module.exports = {\n  ...base,\n  // featuresDirectoryPath: 'src',\n};\n",
+      removed: ["tags"],
+    });
+  });
+
+  it("cannot edit a configuration that does not export an object", () => {
     expect(editConfig("module.exports = base;\n", { remove: [], add: [["sets", "true"]] })).toBe(
+      undefined,
+    );
+    expect(editConfig("module.exports = base;\n", { remove: ["environments"], add: [] })).toBe(
       undefined,
     );
   });
@@ -584,6 +601,46 @@ describe("convert", () => {
     ]);
     expect(await run({ to: "environments", apply: true })).toBe(2);
     expect(snapshot()).toEqual(before);
+  });
+
+  it("says only what it changed in the configuration", async () => {
+    flatProject();
+    write(
+      "featurevisor.config.js",
+      "module.exports = {\n  tags: ['all'],\n  // featuresDirectoryPath: 'src/features',\n};\n",
+    );
+    const plan = planConversion(readProject(root, config()), { to: "sets" });
+
+    expect(plan.configEdits).toEqual([
+      "adds sets: true",
+      "adds promotionFlows staging to production",
+    ]);
+    expect(plan.writes.get(path.join(root, "featurevisor.config.js"))).toContain(
+      "// featuresDirectoryPath: 'src/features',",
+    );
+  });
+
+  it("stops with the edits to make by hand when it cannot edit the configuration", async () => {
+    environmentsProject();
+    write("base.config.js", 'module.exports = { environments: ["staging", "production"] };\n');
+    write(
+      "featurevisor.config.js",
+      'module.exports = {\n  ...require("./base.config.js"),\n  tags: ["all"],\n};\n',
+    );
+    expect(
+      planConversion(readProject(root, config()), { to: "flat", keep: "production" }).conflicts,
+    ).toEqual([
+      "featurevisor.config.js sets environments where convert cannot edit it, such as in an object spread into its settings, so make these edits by hand first: removes environments.",
+    ]);
+
+    flatProject();
+    write(
+      "featurevisor.config.js",
+      "const config = { tags: ['all'] };\n\nmodule.exports = config;\n",
+    );
+    expect(planConversion(readProject(root, config()), { to: "sets" }).conflicts).toEqual([
+      "featurevisor.config.js does not export an object convert can edit, so make these edits by hand first: adds sets: true, adds promotionFlows staging to production.",
+    ]);
   });
 
   it("refuses a project with sets and environments together", async () => {

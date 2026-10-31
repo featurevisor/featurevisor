@@ -1,7 +1,8 @@
 /**
  * Edits featurevisor.config.js as text: removes top level settings of `module.exports` and adds
- * new ones after its opening brace. A setting it cannot find, such as one spread in from
- * another object, is left for the conversion's check to catch.
+ * new ones after its opening brace. Everything else in the file stays as written. A setting
+ * it cannot find, such as one spread in from another object, stays, and the result says which
+ * ones it removed.
  */
 
 export interface ConfigEdit {
@@ -89,11 +90,18 @@ function depthOf(text: string): number {
   return depth;
 }
 
-export function editConfig(source: string, edit: ConfigEdit): string | undefined {
+/** The edited text, and the settings it removed. Undefined when it exports no object to edit. */
+export function editConfig(
+  source: string,
+  edit: ConfigEdit,
+): { text: string; removed: string[] } | undefined {
+  if (exportsStart(source) === -1) return undefined;
   let result = source;
+  const removed: string[] = [];
   for (const name of edit.remove) {
     const found = findProperty(result, name);
     if (!found) continue;
+    removed.push(name);
     let [start, end] = found;
     // the comma after the value, and the whole line when the setting has it to itself
     if (result[end] === ",") end++;
@@ -111,7 +119,6 @@ export function editConfig(source: string, edit: ConfigEdit): string | undefined
 
   if (edit.add.length > 0) {
     const open = exportsStart(result);
-    if (open === -1) return undefined;
     const indent = /\n([ \t]+)\S/.exec(result.slice(open))?.[1] || "  ";
     const written = (value: string | string[]) =>
       typeof value === "string"
@@ -122,7 +129,7 @@ export function editConfig(source: string, edit: ConfigEdit): string | undefined
       .join("");
     result = result.slice(0, open + 1) + lines + result.slice(open + 1);
   }
-  return result;
+  return { text: result, removed };
 }
 
 /** A JavaScript string literal in the quotes the configuration already uses */

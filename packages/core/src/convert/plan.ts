@@ -5,12 +5,11 @@ import { isMap, isSeq, Scalar, YAMLMap } from "yaml";
 import type { Document, Node } from "yaml";
 import type { EntityType } from "@featurevisor/types";
 
-import { getProjectConfigForSet } from "../config";
-import { CONFIG_MODULE_NAME } from "../config/projectConfig";
+import { CONFIG_MODULE_NAME, getProjectConfigForSet } from "../config";
 import { getExistingStateFilePath } from "../datasource/filesystemAdapter";
 import type { Kind } from "../rewrite/files";
 import { BUILT_IN_PARSERS, lineEndings, same } from "../rewrite/lines";
-import { editConfig, quote, type ConfigEdit } from "./config";
+import { editConfig, quote } from "./config";
 import {
   formatted,
   isFormatted,
@@ -65,6 +64,16 @@ const LANE_KEYS: Partial<Record<Kind, string[]>> = {
 };
 
 const SHARED: Kind[] = ["attribute", "schema", "segment", "target"];
+
+/** A change to featurevisor.config.js */
+interface ConfigChange {
+  /** Settings the new shape cannot have, which the file must set where convert can edit them */
+  remove?: string[];
+  /** Settings the new shape ignores, removed when the file sets them, with why when it helps */
+  tidy?: [name: string, why?: string][];
+  /** Settings to add, with how the summary says it */
+  add?: [name: string, value: string | string[], says: string][];
+}
 
 /** The lanes a project without either gets, as init's example with environments has */
 const DEFAULT_LANES = ["staging", "production"];
@@ -181,17 +190,36 @@ class Builder {
       : result.text;
   }
 
-  config(edit: ConfigEdit, describe: string[]) {
+  /**
+   * Edits the configuration, and says what changed. A setting the new shape cannot have, which
+   * the file sets where convert cannot edit it, stops the conversion with the edits to make by
+   * hand, and a setting it only ignores is left where it is.
+   */
+  config({ remove = [], tidy = [], add = [] }: ConfigChange) {
     const { text, restore } = lineEndings(this.configSource);
-    const next = editConfig(text, edit);
-    if (next === undefined) {
+    const result = editConfig(text, {
+      remove: [...remove, ...tidy.map(([name]) => name)],
+      add: add.map(([name, value]) => [name, value]),
+    });
+    const missing = remove.filter((name) => !result?.removed.includes(name));
+    if (!result || missing.length > 0) {
+      const byHand = [...remove.map((name) => `removes ${name}`), ...add.map(([, , says]) => says)];
       this.plan.conflicts.push(
-        `${CONFIG_MODULE_NAME} does not set module.exports to an object, so make these edits by hand first: ${describe.join(", ")}.`,
+        `${CONFIG_MODULE_NAME} ${result ? `sets ${missing.join(" and ")} where convert cannot edit it, such as in an object spread into its settings` : "does not export an object convert can edit"}, so make these edits by hand first: ${byHand.join(", ")}.`,
       );
       return;
     }
-    this.write(this.configPath, restore(next));
-    this.plan.configEdits.push(...describe);
+    this.write(this.configPath, restore(result.text));
+    const removed = [...remove, ...tidy.filter(([, why]) => !why).map(([name]) => name)].filter(
+      (name) => result.removed.includes(name),
+    );
+    this.plan.configEdits.push(
+      ...(removed.length > 0 ? [`removes ${removed.join(" and ")}`] : []),
+      ...add.map(([, , says]) => says),
+      ...tidy
+        .filter(([name, why]) => why && result.removed.includes(name))
+        .map(([name, why]) => `removes ${name}, ${why}`),
+    );
   }
 
   lanesValue() {
@@ -209,17 +237,17 @@ class Builder {
   }
 
   /** Turns sets on, with promotions from each to the next, without settings sets ignore */
-  configureSets(removed: string[]) {
+  configureSets(remove: string[]) {
     const { lanes } = this.plan;
-    const add: ConfigEdit["add"] = [["sets", "true"]];
-    if (lanes.length > 1) add.push(["promotionFlows", this.flowsValue()]);
-    const directories = DIRECTORY_OPTIONS.filter((name) => this.configSource.includes(name));
-    this.config({ remove: [...removed, ...directories], add }, [
-      ...removed.map((name) => `removes ${name}`),
-      "adds sets: true",
-      ...(lanes.length > 1 ? [`adds promotionFlows ${lanes.join(" to ")}`] : []),
-      ...directories.map((name) => `removes ${name}, which does not apply inside sets`),
-    ]);
+    const add: ConfigChange["add"] = [["sets", "true", "adds sets: true"]];
+    if (lanes.length > 1) {
+      add.push(["promotionFlows", this.flowsValue(), `adds promotionFlows ${lanes.join(" to ")}`]);
+    }
+    this.config({
+      remove,
+      tidy: DIRECTORY_OPTIONS.map((name) => [name, "which does not apply inside sets"]),
+      add,
+    });
   }
 
   /** Says where datafiles go now, which applications must follow */
@@ -431,10 +459,11 @@ function setsToEnvironments(builder: Builder, project: Project) {
   for (const lane of lanes) {
     builder.moveState(builder.state(lane, "sets"), [builder.state(lane, "environments")]);
   }
-  builder.config(
-    { remove: ["sets", "promotionFlows"], add: [["environments", builder.lanesValue()]] },
-    ["removes sets and promotionFlows", `adds environments ${lanes.join(", ")}`],
-  );
+  builder.config({
+    remove: ["sets"],
+    tidy: [["promotionFlows"]],
+    add: [["environments", builder.lanesValue(), `adds environments ${lanes.join(", ")}`]],
+  });
   builder.plan.next.push(
     "Pass --environment=<name> where CI and scripts passed --set=<name>. Applications load the same datafile paths. Promotions need sets, so they end.",
   );
@@ -468,9 +497,9 @@ function flatToEnvironments(builder: Builder, project: Project) {
     builder.state(undefined, "flat"),
     lanes.map((lane) => builder.state(lane, "environments")),
   );
-  builder.config({ remove: [], add: [["environments", builder.lanesValue()]] }, [
-    `adds environments ${lanes.join(", ")}`,
-  ]);
+  builder.config({
+    add: [["environments", builder.lanesValue(), `adds environments ${lanes.join(", ")}`]],
+  });
   builder.moveDatafiles(
     `to datafiles/<environment>/, such as datafiles/${lanes[lanes.length - 1]}/`,
   );
@@ -534,7 +563,7 @@ function environmentsToFlat(builder: Builder, project: Project, keep: string) {
       `Drops ${others.join(", ")} from ${what} in ${files(count)}, keeping ${keep}.`,
     );
   }
-  builder.config({ remove: ["environments"], add: [] }, ["removes environments"]);
+  builder.config({ remove: ["environments"] });
   builder.moveDatafiles(`from datafiles/${keep}/ to datafiles/`);
 }
 
@@ -554,9 +583,7 @@ function setsToFlat(builder: Builder, project: Project, keep: string) {
   for (const [set, count] of counts) {
     builder.plan.differences.push(`Drops the set ${set}, ${files(count)}, keeping ${keep}.`);
   }
-  builder.config({ remove: ["sets", "promotionFlows"], add: [] }, [
-    "removes sets and promotionFlows",
-  ]);
+  builder.config({ remove: ["sets"], tidy: [["promotionFlows"]] });
   builder.moveDatafiles(`from datafiles/${keep}/ to datafiles/`);
 }
 

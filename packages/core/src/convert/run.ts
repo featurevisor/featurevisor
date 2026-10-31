@@ -1,7 +1,7 @@
 import * as path from "node:path";
 
 import type { PluginHandlerOptions } from "../cli";
-import { CONFIG_MODULE_NAME } from "../config/projectConfig";
+import { CONFIG_MODULE_NAME } from "../config";
 import { FeaturevisorCLIError, formatFeaturevisorCLIError } from "../error";
 import {
   CLI_FORMAT_BOLD,

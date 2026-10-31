@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { buildProjectSets } from "../builder/buildProject";
-import { getProjectConfig, type ProjectConfig } from "../config";
+import { CONFIG_MODULE_NAME, getProjectConfig, type ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
 import { lintProject, type LintErrorItem } from "../linter/lintProject";
 import { filesIn } from "../rewrite/files";
@@ -245,7 +245,7 @@ export async function checkPlan(
         (expected === "environments") !== Array.isArray(converted.environments)
       ) {
         result.problems.push(
-          `featurevisor.config.js still configures the old shape, perhaps through a setting convert cannot edit. Make these edits by hand first: ${plan.configEdits.join(", ")}.`,
+          `${CONFIG_MODULE_NAME} still configures the old shape, perhaps through a setting convert cannot edit. Make these edits by hand first: ${plan.configEdits.join(", ")}.`,
         );
         return result;
       }
