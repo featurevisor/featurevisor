@@ -39,101 +39,13 @@ uses staging and production. The existing environments scaffold models
 release lanes as Sets instead. Verify scaffold content through the init
 archive path, not only by inspecting example files.
 
-`featurevisor fmt` lays out definitions in one house style, in four layers:
-
-- packages/core/src/formatter/style.ts is the house style: the indent, line
-  endings, every key order, every blank line by name, whether the author's own
-  blank lines stay, and the choices only one file format can express, such as
-  YAML's quotes, its aliases written out in full without anchors, and JSON's
-  line width. Every opinion lives there, and nothing
-  in it can change a datafile. Its notes say which values keep Prettier leaving
-  fmt's output alone, which examples.spec.ts checks on every example. To change
-  the style, edit it, run `make build` and `make fmt-examples`, update
-  style.spec.ts and the docs Formatting page, and note it in the release notes,
-  since it fails users' `fmt --check` once they upgrade.
-- layout.ts places each kind of object in a definition, so the style reaches
-  the right maps and lists. It keeps the promise that formatting never changes
-  a datafile: only objects the builder rebuilds key by key get a key order.
-  examples.spec.ts proves it on every example, by building a copy in reverse
-  house key order beside a formatted one and requiring the same bytes. It also
-  requires every example to be formatted already.
-- formatDefinition.ts does what is the same in every format: line endings, a
-  byte order mark, the final newline, the `# featurevisor-ignore` comment that
-  leaves a whole file alone, and the checks that values and comments (through
-  the parser's optional `listComments`) survive and that a second pass changes
-  nothing. Those checks run only on a file that changes, and an unchanged file
-  is parsed once, by the built-in `format`, which reads it as `parse` does. An
-  error `format` throws is the author's only when `parse` fails too.
-  formatProject.ts runs it over every Set in one pass, or over the files
-  changed since a Git reference (since.ts), or over source from stdin.
-- The parser's optional `format` applies the layout and its own section of the
-  style: packages/parsers/src/ymlFormat.ts all of it, including the
-  `# featurevisor-ignore-line` comment, jsonFormat.ts the key order, indent and
-  blank lines, laying out lists as Prettier does. A `format` may return
-  undefined to leave a file as it is.
-
-Only style.spec.ts pins the style's output. The other formatter tests hold
-whatever style.ts says, so a change to the style fails nothing else. Prettier
-leaves example-json's definitions to fmt (see .prettierignore), since that
-example sets a Prettier width of 40. fmt exits with 1 when `--check` finds work
-and 2 on errors, as Prettier does, so plugin handlers may return an exit code.
-Every example ships an .editorconfig that a test keeps in step with style.ts.
-
-fmt is separate from promote and every other write: those write files as the
-parser does and never format them, except convert as described below. Promote
-merges what `stringify` writes into the lines of the file it replaces, or for a
-new file the file it came from, so comments, layout, line endings and the final
-newline stay wherever a promotion changes nothing. The YAML writer matches a
-changed list item to the old one with its `key`, so a rule or keyed override
-keeps its comments when its values change. A list item without a key, such as
-most test assertions, still loses them.
-
-fmt, migrate and convert each keep a small plugin object in their folder's
-index.ts, whose handler requires run.ts, so the CLI loads a command's code only
-when it runs, and Core's index exports none of them. What they share lives in
-packages/core/src/rewrite, loaded the same way, and promote writes through it
-too: lines.ts aligns lines, merges a rendered change into a file's own lines,
-keeps line endings and checks that a rewrite reads back (`rewriteFile`),
-diff.ts prints unified diffs, and files.ts lists definition files by kind.
-
-run.ts reads the command's options, prints, and returns the exit code. The work
-is in functions that print nothing and return what they did, and those are what
-to export if the commands are ever used programmatically: `formatDefinition`
-and `formatProject`, `migrateProject`, and `readProject`, `planConversion`,
-`checkPlan` and `applyPlan`. Export them from index.ts as type exports and
-functions that require their module when called, so the CLI still starts
-without them. `checkPlan` silences the console while it lints, tests and builds
-a copy, since Core's build always prints, so give build a quiet option before
-running it beside other work in one process.
-
-`featurevisor migrate` rewrites a v3 project for v4 in
-packages/core/src/migrate, and only there. The CLI entry skips loading the
-configuration for it, since v4 rejects v3 settings. Selectors convert as the
-SDK's normalize.ts reads v3 datafiles, which migrate.spec.ts checks against the
-SDK directly. Changes are merged into each file's own lines, so a review sees
-only what migration changed. It was verified on every example of v3.11.0.
-
-`featurevisor convert` changes a project between environments, sets and
-neither, in packages/core/src/convert, contained and lazily loaded as migrate
-is. Both write through `rewriteFile`. Convert edits YAML documents whatever the
-parser, so one set of edits serves JSON and custom parsers too. It formats a
-converted file only when its source was already as fmt writes it, which is the
-one exception to fmt staying out of other writes: without it, JSON would lose
-fmt's blank lines. config.ts edits featurevisor.config.js as text, inside
-`module.exports = { … }` only. When it cannot remove `environments` or `sets`
-there, such as one spread in from another file, convert writes everything else
-and prints the settings for the user to change by hand afterwards, since a
-configuration changed first would make convert read the project in its new
-shape. Before writing, check.ts converts a temporary copy, lints and tests both
-and builds both, and every feature and variable must build byte identical per
-lane. An environment's datafiles carry what any environment's rules use and a
-set's only what it uses, so a segment may come or go, as only the entries
-naming it read it, while a feature or variable may only when another lane's
-datafile names it. Test matrices narrow to one lane on the way to sets and come
-back on the way to environments. example-1 round trips with only assertion
-order and comment placement changed, and the smaller
-examples come back byte identical apart from how the configuration lists
-environments.
+`fmt`, `migrate` and `convert` live in packages/core/src/formatter, migrate and
+convert, and share packages/core/src/rewrite with promote. Each loads only when
+its command runs. The house style is formatter/style.ts: after changing it, run
+`make build` and `make fmt-examples` and update style.spec.ts, which alone pins
+the output. examples.spec.ts requires every example to be formatted and to
+build byte identical datafiles. No other write formats files, except convert
+for a file that was formatted already.
 
 Attribute files belong directly in the configured attributes directory,
 including within each Set. Nested files and dots in attribute names are
