@@ -11,7 +11,9 @@ assertions:
     expectedValue:
       enabled: true
       variation: control
-      paymentMethods: [paypal, ideal]
+      paymentMethods:
+        - paypal
+        - ideal
       supportEmail: support-nl@example.com
 
   - key: outside-rollout
