@@ -1,3 +1,5 @@
 description: Shoppers with a SAVE or DEAL code, except the SAVE00 test code
 
-conditions: couponCode matches /^(save|deal)[0-9]{2}$/i and couponCode notMatches /^save00$/i
+conditions: |
+  couponCode matches /^(save|deal)[0-9]{2}$/i
+  and couponCode notMatches /^save00$/i

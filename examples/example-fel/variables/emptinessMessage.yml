@@ -10,14 +10,14 @@ defaultValue: No emptiness requirement matched
 overrides:
   staging:
     - key: empty-source
-      conditions: |-
+      conditions: |
         variable('emptinessSource').label empty
         and variable('emptinessSource').items empty
         and variable('emptinessSource').metadata empty
       value: Source values are empty
 
     - key: populated-source
-      conditions: |-
+      conditions: |
         variable('emptinessSource').label notEmpty
         and variable('emptinessSource').items notEmpty
         and variable('emptinessSource').metadata notEmpty
@@ -25,14 +25,14 @@ overrides:
 
   production:
     - key: empty-source
-      conditions: |-
+      conditions: |
         variable('emptinessSource').label empty
         and variable('emptinessSource').items empty
         and variable('emptinessSource').metadata empty
       value: Source values are empty
 
     - key: populated-source
-      conditions: |-
+      conditions: |
         variable('emptinessSource').label notEmpty
         and variable('emptinessSource').items notEmpty
         and variable('emptinessSource').metadata notEmpty

@@ -42,7 +42,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 | Whether a feature is enabled, or disabled with `== false` | `features/smartCheckout.yml`, `features/upsellBanner.yml`                                 |
 | A feature's variation                                     | `features/upsellBanner.yml`, `variables/checkoutCopy.yml`                                 |
 | Feature variables, nested paths and an array's `length`   | `features/upsellBanner.yml`                                                               |
-| Global variables with paths, indexes and bracketed keys   | `features/statusPage.yml`, `features/storefrontPromo.yml`, `variables/supportChannel.yml` |
+| Global variables with paths and indexes                   | `features/statusPage.yml`, `features/storefrontPromo.yml`, `variables/supportChannel.yml` |
 
 ### Every place conditions go
 
@@ -61,7 +61,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
 `features/yamlStyles.yml` writes one kind of expression in each YAML style: a plain scalar, a double quoted scalar, a literal block with a comment line, a folded block, a list of expressions, expressions inside a tree `or` group, and a segment name beside a tree leaf.
 
-The project is formatted with `npx featurevisor fmt`, which never changes an expression's value. It writes an expression as a plain scalar wherever YAML allows, so the double quoted rule keeps its quotes with a `# featurevisor-ignore-line` comment. It keeps a literal block as written, comment lines included, and joins a folded block's lines, so write a long expression as a literal block. `"*"` stays quoted, since a bare `*` starts a YAML alias.
+The project is formatted with `npx featurevisor fmt`, which writes FEL expressions in one house style too, without changing what they mean. An expression of up to 80 characters goes on one line. A longer one, or one with comment lines, takes one top level `and` or `or` operand a line, as a literal block, with each comment above the operand below it. `# featurevisor-ignore-line` keeps an expression as written: the double quoted and folded rules here, and the escapes in `segments/markets/italianCities.yml`. `"*"` stays quoted, since a bare `*` starts a YAML alias.
 
 Some leaves stay as YAML objects beside FEL strings. A disabled feature's variation has no FEL form, as in `features/requiredFeaturesExample.yml`. `features/fraudScreening.yml` puts a tree leaf in the same group as expressions on purpose.
 

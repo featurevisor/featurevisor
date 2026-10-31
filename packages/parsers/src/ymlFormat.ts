@@ -28,7 +28,10 @@ const DEFAULT_OPTIONS: Required<YmlFormatOptions> = {
 /** The parts of a layout YAML applies. All are optional: without them, YAML keeps the
  * authored key order, writes no blank lines, indents by two and uses its default options. */
 export type YmlLayout = Partial<
-  Pick<FormatLayout, "indent" | "orderKeys" | "spaceEntries" | "spaceItems" | "keepBlankLines">
+  Pick<
+    FormatLayout,
+    "indent" | "orderKeys" | "spaceEntries" | "spaceItems" | "keepBlankLines" | "formatText"
+  >
 > & { options?: YmlFormatOptions };
 
 /** A comment above a key belongs to it. Text above a blank line is the file's own header. */
@@ -305,6 +308,13 @@ function walk(node: unknown, path: FormatPath, inSequence: boolean, context: Con
   if (node && typeof node === "object") trimTrailingComment(node as { comment?: string | null });
 
   if (isScalar(node)) {
+    const text = typeof node.value === "string" ? layout.formatText?.(path, node.value) : undefined;
+    if (text !== undefined && text !== node.value) {
+      node.value = text;
+      // text over several lines reads best as a literal block, and one line as any other
+      if (text.includes("\n")) node.type = Scalar.BLOCK_LITERAL;
+      else delete node.type;
+    }
     formatScalar(node, options);
     node.spaceBefore = false;
     return;

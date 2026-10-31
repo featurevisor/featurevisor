@@ -10,26 +10,26 @@ defaultValue: No evaluated policy
 overrides:
   staging:
     - key: writer-notice
-      conditions: |-
+      conditions: |
         variable('permissionPolicy').actions includesAny ['write', 'admin']
         and feature('permissionMembership').actions includesAny ['write', 'admin']
       value: Write access
 
     - key: reader-notice
-      conditions: |-
+      conditions: |
         variable('permissionPolicy').actions notIncludesAny ['write', 'admin']
         and feature('permissionMembership').actions notIncludesAny ['write', 'admin']
       value: Read only access
 
   production:
     - key: writer-notice
-      conditions: |-
+      conditions: |
         variable('permissionPolicy').actions includesAny ['write', 'admin']
         and feature('permissionMembership').actions includesAny ['write', 'admin']
       value: Write access
 
     - key: reader-notice
-      conditions: |-
+      conditions: |
         variable('permissionPolicy').actions notIncludesAny ['write', 'admin']
         and feature('permissionMembership').actions notIncludesAny ['write', 'admin']
       value: Read only access

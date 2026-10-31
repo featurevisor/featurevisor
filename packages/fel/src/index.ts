@@ -1,6 +1,8 @@
 export { compile } from "./compile.js";
 export type { CompileOptions } from "./compile.js";
 export { containsExpression, expandConditions } from "./expand.js";
+export { formatExpression } from "./format.js";
+export type { FelFormatOptions } from "./format.js";
 export {
   DEFAULT_NAMESPACE_CHARACTER,
   getAmbiguousNamespaceCharacters,

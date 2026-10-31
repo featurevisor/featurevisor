@@ -25,6 +25,7 @@ import {
 } from "./documents";
 import { directoriesOf, type DefinitionFile, type Project, type Shape } from "./project";
 import { mergeSpecs, specForLane, specForLanes, specKind } from "./tests";
+import { getFormatFelOptions } from "../formatter/fel";
 
 export interface Plan {
   from: Project["shape"];
@@ -136,6 +137,11 @@ class Builder {
     return this.project.parser;
   }
 
+  /** How fmt formats this project's files, its FEL expressions included */
+  get format() {
+    return { fel: getFormatFelOptions(this.project.config) };
+  }
+
   /** featurevisor.config.js as it is written */
   get configSource(): string {
     return (this.configText ??= fs.readFileSync(this.configPath, "utf8"));
@@ -204,10 +210,10 @@ class Builder {
     const entityType: EntityType =
       file.kind === "test" && specKind(file.value) === "scenario" ? "scenario" : file.kind;
     if (!this.wasFormatted.has(file)) {
-      this.wasFormatted.set(file, isFormatted(entityType, file.source, this.parser));
+      this.wasFormatted.set(file, isFormatted(entityType, file.source, this.parser, this.format));
     }
     return this.wasFormatted.get(file)
-      ? formatted(entityType, result.text, this.parser)
+      ? formatted(entityType, result.text, this.parser, this.format)
       : result.text;
   }
 

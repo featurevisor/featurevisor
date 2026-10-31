@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import type { EntityType } from "@featurevisor/types";
+import type { FelOptions } from "@featurevisor/fel";
 import type { CustomParser } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
@@ -14,6 +15,7 @@ import {
   FormatParseError,
   formatDefinition,
 } from "./formatDefinition";
+import { getFormatFelOptions } from "./fel";
 import { FORMAT_ENTITY_TYPES } from "./layout";
 import { getChangedFiles } from "./since";
 import { unifiedDiff } from "../rewrite/diff";
@@ -128,6 +130,7 @@ function formatFile(
   file: FormatFileResult,
   parser: CustomParser,
   options: FormatProjectOptions,
+  fel: FelOptions | undefined,
 ): FormatFileResult["status"] {
   const filePath = path.resolve(file.filePath);
   if (!options.stdin && !fs.existsSync(filePath)) {
@@ -142,6 +145,7 @@ function formatFile(
       source,
       parser,
       filePath,
+      { fel },
     );
     if (options.stdin) file.output = output;
     if (ignored) return "ignored";
@@ -219,6 +223,7 @@ export async function formatProject(
 
   const parser = deps.projectConfig.parser as CustomParser;
   if (!canFormat(parser)) return { ...result, unsupported: true };
+  const fel = getFormatFelOptions(deps.projectConfig);
 
   const paths = options.stdin ? [options.stdin.filePath] : options.paths || [];
   const wanted = paths.map(toWantedPath);
@@ -237,7 +242,7 @@ export async function formatProject(
     // short name such as RUNNER~1, differs from
     if (changedFiles && !changedFiles.has(fs.realpathSync.native(absolute))) continue;
 
-    file.status = formatFile(file, parser, options);
+    file.status = formatFile(file, parser, options, fel);
     result.files.push(file);
   }
 

@@ -1,6 +1,6 @@
 description: Segment combining all condition leaf kinds
 
-conditions: |-
+conditions: |
   countries.netherlands
   and device == 'mobile'
   and feature('conditionSource').variation == 'treatment'

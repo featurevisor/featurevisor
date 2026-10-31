@@ -101,9 +101,7 @@ rules:
             value: true
 
     - key: europe
-      conditions: |
-        markets.europe
-        and not audiences.anonymous
+      conditions: markets.europe and not audiences.anonymous
       percentage: 50
 
     - key: everyone
@@ -133,9 +131,7 @@ rules:
             value: true
 
     - key: europe
-      conditions: |
-        markets.europe
-        and not audiences.anonymous
+      conditions: markets.europe and not audiences.anonymous
       percentage: 50
 
     - key: everyone

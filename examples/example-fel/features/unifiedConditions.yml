@@ -19,7 +19,7 @@ force:
 rules:
   staging:
     - key: member
-      conditions: |-
+      conditions: |
         countries.netherlands
         and loggedIn == true
         and feature('conditionSource').variation == 'treatment'
@@ -32,7 +32,7 @@ rules:
 
   production:
     - key: member
-      conditions: |-
+      conditions: |
         countries.netherlands
         and loggedIn == true
         and feature('conditionSource').variation == 'treatment'

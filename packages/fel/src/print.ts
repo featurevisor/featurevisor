@@ -297,7 +297,8 @@ function asBuilt(value: unknown): unknown {
   return result;
 }
 
-function sameJson(left: unknown, right: unknown): boolean {
+/** Whether two `conditions` values are the same in a built datafile, key order included. */
+export function sameBuilt(left: unknown, right: unknown): boolean {
   return JSON.stringify(asBuilt(left)) === JSON.stringify(asBuilt(right));
 }
 
@@ -344,7 +345,7 @@ function printExactly(value: unknown, root: boolean, options: FelPrintOptions): 
       ? text
       : undefined;
   }
-  return sameJson(read, value) ? text : undefined;
+  return sameBuilt(read, value) ? text : undefined;
 }
 
 /**

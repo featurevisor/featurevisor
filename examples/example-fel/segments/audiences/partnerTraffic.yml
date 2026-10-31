@@ -1,3 +1,5 @@
 description: Shoppers sent by a partner site or a partner campaign link
 
-conditions: referrer startsWith 'https://partners.' or referrer contains 'utm_source=partner'
+conditions: |
+  referrer startsWith 'https://partners.'
+  or referrer contains 'utm_source=partner'

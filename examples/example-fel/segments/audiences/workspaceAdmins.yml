@@ -1,3 +1,5 @@
 description: Owners, and billing or editing users who are not also viewers
 
-conditions: roles includes 'owner' or (roles includesAny ['billing', 'editor'] and roles notIncludes 'viewer')
+conditions: |
+  roles includes 'owner'
+  or (roles includesAny ['billing', 'editor'] and roles notIncludes 'viewer')

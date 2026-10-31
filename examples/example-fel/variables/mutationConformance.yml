@@ -153,7 +153,7 @@ overrides:
             sequence: []
 
         - key: amsterdam-treatment
-          conditions: |-
+          conditions: |
             city == 'amsterdam'
             and feature('allowSignup').variation == 'treatment'
             and variable('runtimePolicy').routing.enabled == true

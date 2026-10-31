@@ -59,6 +59,21 @@ export const HOUSE_STYLE = {
   keepBlankLines: true,
 
   /**
+   * How FEL expressions in `conditions` are written, in projects with `allowFEL: true`. fmt
+   * rewrites an expression only when it reads back to exactly the same tree, so nothing here
+   * can change a datafile either. Comment lines stay above the operand below them.
+   */
+  fel: {
+    /**
+     * An expression this long or shorter goes on one line. A longer one, or one with comments,
+     * takes one top level `and` or `or` operand a line, written as a YAML block.
+     */
+    width: 80,
+    /** End an expression over several lines with a line break, which YAML writes as `|` */
+    finalNewline: true,
+  },
+
+  /**
    * The order of Featurevisor's own keys in each kind of object. Keys an object has that its
    * list leaves out keep their written order, after the listed ones.
    */

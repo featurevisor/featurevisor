@@ -6,8 +6,9 @@ import type { CustomParser, FormatPath } from "@featurevisor/parsers";
 import type { EntityType } from "@featurevisor/types";
 
 import { buildProjectSets } from "../builder/buildProject";
-import { getProjectConfig } from "../config";
+import { getProjectConfig, type ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
+import { expandDefinitionFel, FelExpressionError, getFelExpressions } from "../datasource/fel";
 import { formatProject } from "./formatProject";
 import { getKeyOrder } from "./layout";
 import { HOUSE_STYLE } from "./style";
@@ -62,8 +63,34 @@ describe("formatProject on the examples", () => {
     );
   }
 
+  // Undoes the house style of FEL expressions without changing their trees: each gets leading
+  // spaces and a final line break, which formatting takes away again.
+  function unformatFel(entityType: EntityType, value: unknown, config: ProjectConfig): unknown {
+    if (!config.allowFEL) return value;
+    if (entityType !== "feature" && entityType !== "segment" && entityType !== "variable") {
+      return value;
+    }
+    const options = { namespaceCharacter: config.namespaceCharacter };
+    let records: { path: (string | number)[]; source: string }[];
+    try {
+      records = getFelExpressions(expandDefinitionFel(entityType, "", value, options));
+    } catch (error) {
+      if (!(error instanceof FelExpressionError)) throw error;
+      records = error.expressions;
+    }
+    for (const record of records) {
+      const parent = record.path
+        .slice(0, -1)
+        .reduce((at: unknown, part) => (at as Record<string, unknown>)[part], value);
+      (parent as Record<string, unknown>)[record.path[record.path.length - 1]] =
+        `  ${record.source}\n`;
+    }
+    return value;
+  }
+
   // Undoes the house layout without changing a value: every map fmt orders gets its keys in
-  // reverse house order, and the file is written by the parser's stringify, without blank lines.
+  // reverse house order, every FEL expression loses its house style, and the file is written
+  // by the parser's stringify, without blank lines.
   async function unformat(root: string) {
     const projectConfig = getProjectConfig(root);
     const parser = projectConfig.parser as CustomParser;
@@ -75,8 +102,31 @@ describe("formatProject on the examples", () => {
     for (const file of files) {
       const filePath = path.resolve(file.filePath);
       const value = parser.parse(fs.readFileSync(filePath, "utf8"), filePath);
-      fs.writeFileSync(filePath, parser.stringify(reverseOrdered(file.entityType, value)));
+      const unstyled = unformatFel(file.entityType, value, projectConfig);
+      fs.writeFileSync(filePath, parser.stringify(reverseOrdered(file.entityType, unstyled)));
     }
+  }
+
+  // How many FEL expressions still carry unformatFel's leading spaces
+  async function unstyledExpressions(root: string) {
+    const projectConfig = getProjectConfig(root);
+    if (!projectConfig.allowFEL) return 0;
+    const parser = projectConfig.parser as CustomParser;
+    const datasource = new Datasource(projectConfig, root);
+    const { files } = await formatProject(
+      { rootDirectoryPath: root, projectConfig, datasource },
+      { check: true },
+    );
+    let count = 0;
+    for (const file of files) {
+      if (!["feature", "segment", "variable"].includes(file.entityType)) continue;
+      const filePath = path.resolve(file.filePath);
+      const value = parser.parse(fs.readFileSync(filePath, "utf8"), filePath);
+      const options = { namespaceCharacter: projectConfig.namespaceCharacter };
+      const expanded = expandDefinitionFel(file.entityType as "feature", "", value, options);
+      count += getFelExpressions(expanded).filter((record) => record.source.startsWith(" ")).length;
+    }
+    return count;
   }
 
   async function build(root: string) {
@@ -131,8 +181,12 @@ describe("formatProject on the examples", () => {
       await unformat(unformatted);
       await unformat(formatted);
       expect((await formatAll(formatted, true)).changed).toBeGreaterThan(0);
+      const unstyled = await unstyledExpressions(formatted);
+      if (getProjectConfig(formatted).allowFEL) expect(unstyled).toBeGreaterThan(0);
       expect((await formatAll(formatted)).errors).toBe(0);
       expect(await formatAll(formatted, true)).toEqual({ changed: 0, errors: 0 });
+      // every expression is back in the house style
+      expect(await unstyledExpressions(formatted)).toBe(0);
 
       await build(unformatted);
       await build(formatted);

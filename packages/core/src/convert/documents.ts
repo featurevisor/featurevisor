@@ -13,7 +13,7 @@ import {
 import type { Node, Pair } from "yaml";
 import type { EntityType } from "@featurevisor/types";
 
-import { formatDefinition } from "../formatter/formatDefinition";
+import { formatDefinition, type FormatDefinitionOptions } from "../formatter/formatDefinition";
 import { lineEndings, renderValues, rewriteFile, yamlOptions } from "../rewrite/lines";
 
 /**
@@ -48,9 +48,14 @@ export function load(source: string, parser: CustomParser): { doc: Document; exp
 }
 
 /** Whether fmt leaves a file as it is, so a converted file should be formatted too */
-export function isFormatted(entityType: EntityType, text: string, parser: CustomParser): boolean {
+export function isFormatted(
+  entityType: EntityType,
+  text: string,
+  parser: CustomParser,
+  options?: FormatDefinitionOptions,
+): boolean {
   try {
-    const result = formatDefinition(entityType, text, parser);
+    const result = formatDefinition(entityType, text, parser, undefined, options);
     return !result.changed && !result.declined && !result.ignored;
   } catch {
     return false;
@@ -58,9 +63,14 @@ export function isFormatted(entityType: EntityType, text: string, parser: Custom
 }
 
 /** The text as fmt writes it, or as it is when fmt cannot format it */
-export function formatted(entityType: EntityType, text: string, parser: CustomParser): string {
+export function formatted(
+  entityType: EntityType,
+  text: string,
+  parser: CustomParser,
+  options?: FormatDefinitionOptions,
+): string {
   try {
-    return formatDefinition(entityType, text, parser).output;
+    return formatDefinition(entityType, text, parser, undefined, options).output;
   } catch {
     return text;
   }

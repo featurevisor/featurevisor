@@ -40,8 +40,35 @@ export interface FormatLayout {
   /** The parsed value with every map's keys in order, for parsers that write from values */
   orderValue: <T>(value: T) => T;
   /**
+   * The text of the string at `path` in house style, such as a FEL expression's in
+   * `conditions`, or undefined to keep it as written. Text over several lines is written as a
+   * block in formats that have one. Parsers that write from values can use `applyFormatText`.
+   */
+  formatText?: (path: FormatPath, text: string) => string | undefined;
+  /**
    * Choices only this file format can express, such as YAML's quotes, from the house style's
    * section for the parser's extension. Empty when the house style has none for it.
    */
   options: Record<string, unknown>;
+}
+
+/** A copy of `value` with each string's text as `formatText` gives it, where it gives one */
+export function applyFormatText<T>(
+  value: T,
+  formatText: FormatLayout["formatText"],
+  path: FormatPath = [],
+): T {
+  if (!formatText) return value;
+  if (typeof value === "string") return (formatText(path, value) ?? value) as T;
+  if (Array.isArray(value)) {
+    return value.map((item, index) => applyFormatText(item, formatText, [...path, index])) as T;
+  }
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    const result: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      result[key] = applyFormatText(item, formatText, [...path, key]);
+    }
+    return result as T;
+  }
+  return value;
 }
