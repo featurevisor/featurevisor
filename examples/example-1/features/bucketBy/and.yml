@@ -1,4 +1,5 @@
 description: Buckets users by combining userId and deviceId together
+
 tags:
   - all
 
@@ -11,6 +12,7 @@ rules:
     - key: "1"
       conditions: "*"
       percentage: 100
+
   production:
     - key: "1"
       conditions: "*"

@@ -1,4 +1,5 @@
 description: Professional accounts
+
 conditions:
   and:
     - attribute: account.plan

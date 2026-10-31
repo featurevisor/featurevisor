@@ -3,6 +3,13 @@ packages/*/lib
 
 examples/*/src
 
+# fmt lays out definitions, and writes JSON at Prettier's default width, not this example's 40
+examples/example-json/attributes
+examples/example-json/features
+examples/example-json/segments
+examples/example-json/targets
+examples/example-json/tests
+
 **/.catalog-dev*/**
 **/.catalog-dev*.json
 examples/*/catalog/**

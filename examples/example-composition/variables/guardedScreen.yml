@@ -1,6 +1,7 @@
 description: Guard a nullable source before mutating its fields
 
-tags: [web]
+tags:
+  - web
 
 compose:
   policy:

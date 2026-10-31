@@ -1,10 +1,14 @@
 description: Array comparisons share their semantics across segments and variables
+
 environment: staging
+
 at: 50
 
 context:
   userId: writer
-  permissions: [read, admin]
+  permissions:
+    - read
+    - admin
 
 checks:
   - segment: writePermissions
@@ -16,7 +20,9 @@ checks:
   - feature: permissionMembership
     variable: actions
     operator: includesAny
-    value: [write, admin]
+    value:
+      - write
+      - admin
   - variable: permissionPolicy
     path: actions
     operator: includesAny

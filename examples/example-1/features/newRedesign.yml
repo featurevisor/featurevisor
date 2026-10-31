@@ -1,4 +1,5 @@
 description: Test forced with a variation, and variable overrides in it, without any active rolled out rule
+
 tags:
   - all
 
@@ -7,11 +8,11 @@ bucketBy: userId
 variablesSchema:
   foo:
     type: string
-    defaultValue: "default foo"
+    defaultValue: default foo
   bar:
-    type: string
-    defaultValue: "default bar"
     deprecated: true
+    type: string
+    defaultValue: default bar
 
 variations:
   - value: control
@@ -38,7 +39,7 @@ force:
     - conditions:
         - attribute: userId
           operator: equals
-          value: "test-force-id"
+          value: test-force-id
       enabled: true
       variation: treatment
 

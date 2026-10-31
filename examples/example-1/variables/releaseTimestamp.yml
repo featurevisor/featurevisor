@@ -1,19 +1,27 @@
 description: A timestamp validated at authoring time while remaining a runtime string
 
-tags: [all]
+tags:
+  - all
 
 type: string
 
 format: date-time
 
-defaultValue: 2026-11-27T00:00:00Z
+defaultValue: "2026-11-27T00:00:00Z"
 
 overrides:
-  staging: &overrides
+  staging:
     - key: dutch-release
       conditions:
         attribute: country
         operator: equals
         value: nl
-      value: 2026-11-27T01:00:00+01:00
-  production: *overrides
+      value: "2026-11-27T01:00:00+01:00"
+
+  production:
+    - key: dutch-release
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
+      value: "2026-11-27T01:00:00+01:00"

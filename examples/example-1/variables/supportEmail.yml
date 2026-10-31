@@ -1,13 +1,18 @@
 description: Support email address shown to users
+
 tags:
   - all
+
 type: string
+
 defaultValue: support@example.com
+
 overrides:
   staging:
     - key: staging
       conditions: "*"
       value: support-staging@example.com
+
   production:
     - key: netherlands
       conditions:
@@ -15,6 +20,7 @@ overrides:
         operator: equals
         value: nl
       value: support-nl@example.com
+
     - key: default
       conditions: "*"
       value: support@example.com

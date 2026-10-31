@@ -33,9 +33,13 @@ variablesSchema:
   hero:
     type: object
     properties:
-      title: { type: string }
-      subtitle: { type: string }
-    required: [title, subtitle]
+      title:
+        type: string
+      subtitle:
+        type: string
+    required:
+      - title
+      - subtitle
     defaultValue:
       title: Checkout
       subtitle: Pay securely
@@ -50,7 +54,7 @@ variations:
     weight: 50
     variables:
       # Mutation key: changes one property and keeps the rest of the object.
-      "hero.subtitle": Faster, simpler checkout
+      hero.subtitle: Faster, simpler checkout
 
 # QA always sees the treatment, whatever the rollout percentage.
 # With environments configured, nest each force and rules list under its environment key.
@@ -65,7 +69,9 @@ rules:
     conditions: countries.netherlands
     percentage: 100
     variables:
-      paymentMethods: [paypal, ideal]
+      paymentMethods:
+        - paypal
+        - ideal
       allowDiscountCode: true
     # Narrow a value within the rule. The first matching override wins.
     variableOverrides:

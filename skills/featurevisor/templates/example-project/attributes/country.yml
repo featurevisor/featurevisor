@@ -2,4 +2,4 @@ description: ISO 3166-1 alpha-2 country code, lowercased
 
 type: string
 
-pattern: "^[a-z]{2}$"
+pattern: ^[a-z]{2}$

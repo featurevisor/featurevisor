@@ -1,6 +1,7 @@
 description: Root conditions run before reading the composition source
 
-tags: [web]
+tags:
+  - web
 
 compose: policy
 

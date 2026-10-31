@@ -139,9 +139,73 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     importSdkPath: { type: "string", hidden: true },
     importReactPath: { type: "string", hidden: true },
   },
+  fmt: {
+    ...outputOptions,
+    ...setOption,
+    check: {
+      type: "boolean",
+      description: "list files that need formatting and exit with 1 if any do, without writing",
+    },
+    diff: { type: "boolean", description: "print what formatting would change, without writing" },
+    since: {
+      type: "string",
+      description:
+        "only files changed since HEAD left this Git reference, with uncommitted and untracked ones",
+    },
+    stdinFilepath: {
+      type: "string",
+      description: "format text from stdin as the definition at this path, and print it",
+    },
+    // the formatter's FORMAT_ENTITY_TYPES, which a test keeps in step
+    entityType: {
+      type: "string",
+      choices: [
+        "attribute",
+        "schema",
+        "segment",
+        "feature",
+        "variable",
+        "target",
+        "test",
+        "scenario",
+      ],
+    },
+    keyPattern: { type: "string", description: "filter entity keys by regular expression" },
+  },
   info: {
     ...setOption,
     ...targetOption,
+  },
+  convert: {
+    ...outputOptions,
+    to: {
+      type: "string",
+      choices: ["flat", "environments", "sets"],
+      description: "the shape to convert to",
+    },
+    environments: {
+      type: "string",
+      description:
+        "comma separated environments to create, or the order of environments made from sets",
+    },
+    sets: {
+      type: "string",
+      description: "comma separated sets to create from a project without either",
+    },
+    keep: { type: "string", description: "the environment or set a conversion to flat keeps" },
+    apply: {
+      type: "boolean",
+      description: "write the conversion, which otherwise is only previewed",
+    },
+  },
+  migrate: {
+    ...outputOptions,
+    check: {
+      type: "boolean",
+      description:
+        "list what migration would change and exit with 1 if anything would, without writing",
+    },
+    diff: { type: "boolean", description: "print what migration would change, without writing" },
   },
   init: {
     example: { type: "string", description: "initialize from an example project" },

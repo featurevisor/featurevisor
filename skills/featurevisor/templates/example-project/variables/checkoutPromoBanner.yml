@@ -2,11 +2,11 @@ description: Promo copy shown in the new checkout
 
 type: string
 
+defaultValue: Free returns on every order
+
 # Root gate: a feature leaf. While checkout is disabled for this context,
 # the SDK returns disabledValue with reason conditions_unmet.
 conditions:
   - feature: checkout
-
-defaultValue: Free returns on every order
 
 disabledValue: ""

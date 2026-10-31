@@ -242,7 +242,8 @@ describe("unified condition authoring", () => {
         }),
       ]),
     );
-    expect(schema.safeParse({ ...baseFeature, rules: [] }).success).toBe(false);
+    // no rules leaves the feature disabled, as leaving out an environment does
+    expect(schema.safeParse({ ...baseFeature, rules: [] }).success).toBe(true);
   });
   it("provides a structural editor grammar containing every leaf kind", () => {
     const output = JSON.stringify(

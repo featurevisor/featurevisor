@@ -1,4 +1,5 @@
 description: Color schema
+
 type: object
 
 properties:

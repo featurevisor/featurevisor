@@ -1,33 +1,37 @@
 feature = "showCookieBanner"
 
 [[assertions]]
-at = 10
 description = "At 10%, the feature should be enabled for NL"
 environment = "production"
+at = 10
 expectedToBeEnabled = true
+
 [assertions.context]
 country = "nl"
 
 [[assertions]]
-at = 70
 description = "At 70%, the feature should be enabled for NL"
 environment = "production"
+at = 70
 expectedToBeEnabled = true
+
 [assertions.context]
 country = "nl"
 
 [[assertions]]
-at = 90
 description = "At 90%, the feature should be disabled for US"
 environment = "production"
+at = 90
 expectedToBeEnabled = false
+
 [assertions.context]
 country = "us"
 
 [[assertions]]
-at = 90
 description = "At 90%, the feature should be disabled for Canada"
 environment = "production"
+at = 90
 expectedToBeEnabled = false
+
 [assertions.context]
 country = "ca"

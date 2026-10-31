@@ -1,36 +1,60 @@
 feature: orderedMutationFeature
+
 assertions:
   - description: rule and variation lists both retain repeated root appends
     environment: staging
     at: 50
-    context: { country: nl }
+    context:
+      country: nl
     expectedToBeEnabled: true
     expectedVariation: control
     expectedVariables:
-      ruleMethods: [card, ideal, paypal]
-      variationMethods: [card, ideal, paypal]
+      ruleMethods:
+        - card
+        - ideal
+        - paypal
+      variationMethods:
+        - card
+        - ideal
+        - paypal
+
   - description: empty maps and lists preserve feature defaults
     environment: staging
     at: 50
-    context: { country: de }
+    context:
+      country: de
     expectedToBeEnabled: true
     expectedVariables:
-      ruleMethods: [card]
-      variationMethods: [card]
+      ruleMethods:
+        - card
+      variationMethods:
+        - card
+
   - description: production rules apply replacement removal and repeated appends in order
     environment: production
     at: 50
-    context: { country: nl }
+    context:
+      country: nl
     expectedToBeEnabled: true
     expectedVariation: control
     expectedVariables:
-      ruleMethods: [payment, ideal, paypal]
-      variationMethods: [card, ideal, paypal]
+      ruleMethods:
+        - payment
+        - ideal
+        - paypal
+      variationMethods:
+        - card
+        - ideal
+        - paypal
+
   - description: production empty lists preserve feature defaults
     environment: production
     at: 50
-    context: { country: de }
+    context:
+      country: de
     expectedToBeEnabled: true
     expectedVariables:
-      ruleMethods: [card]
-      variationMethods: [card]
+      ruleMethods:
+        - card
+      variationMethods:
+        - card

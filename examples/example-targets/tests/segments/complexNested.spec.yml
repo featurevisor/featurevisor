@@ -1,4 +1,5 @@
 segment: complexNested
+
 assertions:
   - description: Premium Chrome user should match (first OR branch)
     context:
@@ -42,28 +43,36 @@ assertions:
       browser: chrome
     expectedToMatch: false
 
-  - matrix:
-      subscription: [premium]
-      browser: [chrome]
-    description: Premium Chrome should match
+  - description: Premium Chrome should match
+    matrix:
+      subscription:
+        - premium
+      browser:
+        - chrome
     context:
       subscription: ${{ subscription }}
       browser: ${{ browser }}
     expectedToMatch: true
 
-  - matrix:
-      userRole: [admin]
-      browser: [chrome, safari, edge]
-    description: Admin ${{ browser }} should match
+  - description: Admin ${{ browser }} should match
+    matrix:
+      userRole:
+        - admin
+      browser:
+        - chrome
+        - safari
+        - edge
     context:
       userRole: ${{ userRole }}
       browser: ${{ browser }}
     expectedToMatch: true
 
-  - matrix:
-      userRole: [admin]
-      browser: [firefox]
-    description: Admin Firefox should NOT match
+  - description: Admin Firefox should NOT match
+    matrix:
+      userRole:
+        - admin
+      browser:
+        - firefox
     context:
       userRole: ${{ userRole }}
       browser: ${{ browser }}

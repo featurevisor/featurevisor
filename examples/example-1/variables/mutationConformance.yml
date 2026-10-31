@@ -1,52 +1,118 @@
 description: Portable global mutation coverage for precomputed and runtime programs
-tags: [all]
+
+tags:
+  - all
+
 type: object
+
 properties:
-  label: { type: string }
-  clearedText: { type: string }
-  emptyString: { type: string }
-  emptyArray: { type: array, items: { type: string } }
-  emptyObject: { type: object, additionalProperties: { type: boolean } }
-  obsolete: { type: string }
-  tags: { type: array, items: { type: string } }
-  flags: { type: array, items: { type: boolean } }
+  label:
+    type: string
+  clearedText:
+    type: string
+  emptyString:
+    type: string
+  emptyArray:
+    type: array
+    items:
+      type: string
+  emptyObject:
+    type: object
+    additionalProperties:
+      type: boolean
+  obsolete:
+    type: string
+  tags:
+    type: array
+    items:
+      type: string
+  flags:
+    type: array
+    items:
+      type: boolean
   rows:
     type: array
     items:
       type: object
       properties:
-        id: { type: string }
-        rank: { type: integer }
-        active: { type: boolean }
-        marker: { type: string }
-        label: { type: string }
-        numericSelector: { type: boolean }
-        booleanSelector: { type: boolean }
-        textNullSelector: { type: boolean }
-        emptySelector: { type: boolean }
-      required: [id, label]
-  scratch: { type: array, items: { type: string } }
-  sequence: { type: array, items: { type: string } }
-required: [label]
+        id:
+          type: string
+        rank:
+          type: integer
+        active:
+          type: boolean
+        marker:
+          type: string
+        label:
+          type: string
+        numericSelector:
+          type: boolean
+        booleanSelector:
+          type: boolean
+        textNullSelector:
+          type: boolean
+        emptySelector:
+          type: boolean
+      required:
+        - id
+        - label
+  scratch:
+    type: array
+    items:
+      type: string
+  sequence:
+    type: array
+    items:
+      type: string
+
+required:
+  - label
+
 defaultValue:
   label: default
   clearedText: occupied
   emptyString: occupied
-  emptyArray: [occupied]
-  emptyObject: { occupied: true }
+  emptyArray:
+    - occupied
+  emptyObject:
+    occupied: true
   obsolete: remove me
-  tags: [duplicate, duplicate, keep]
-  flags: [true, false]
+  tags:
+    - duplicate
+    - duplicate
+    - keep
+  flags:
+    - true
+    - false
   rows:
-    - { id: first, rank: 1, active: true, marker: "null", label: First }
-    - { id: second, rank: 2, active: false, marker: present, label: Second }
-    - { id: "", rank: 3, active: false, marker: empty, label: Empty identifier }
-  scratch: [zero, one, two]
+    - id: first
+      rank: 1
+      active: true
+      marker: "null"
+      label: First
+    - id: second
+      rank: 2
+      active: false
+      marker: present
+      label: Second
+    - id: ""
+      rank: 3
+      active: false
+      marker: empty
+      label: Empty identifier
+  scratch:
+    - zero
+    - one
+    - two
   sequence: []
+
 overrides:
   staging:
     - key: netherlands
-      conditions: { attribute: country, operator: equals, value: nl }
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
       mutate:
         label: Parent
         clearedText: ""
@@ -59,8 +125,12 @@ overrides:
         tags:prepend: first
         tags:append: last
         flags:appendUnique: true
-        rows[0]:before: { id: before, label: Before }
-        rows[id=first]:after: { id: after, label: After }
+        rows[0]:before:
+          id: before
+          label: Before
+        rows[id=first]:after:
+          id: after
+          label: After
         rows[id=first].label: Selected by string
         rows[rank=2].numericSelector: true
         rows[active=true].booleanSelector: true
@@ -72,7 +142,10 @@ overrides:
         rows[id=after]:remove: null
       overrides:
         - key: reset
-          conditions: { attribute: loggedIn, operator: equals, value: true }
+          conditions:
+            attribute: loggedIn
+            operator: equals
+            value: true
           value:
             label: Reset
             clearedText: ""
@@ -84,9 +157,12 @@ overrides:
             rows: []
             scratch: []
             sequence: []
+
         - key: amsterdam-treatment
           conditions:
-            - { attribute: city, operator: equals, value: amsterdam }
+            - attribute: city
+              operator: equals
+              value: amsterdam
             - feature: allowSignup
               variation: treatment
             - variable: runtimePolicy
@@ -96,9 +172,12 @@ overrides:
           mutate:
             label: Treatment child
             rows[id=first].label: Treatment row
+
         - key: amsterdam-control
           conditions:
-            - { attribute: city, operator: equals, value: amsterdam }
+            - attribute: city
+              operator: equals
+              value: amsterdam
             - feature: allowSignup
               variation: control
           value:
@@ -107,11 +186,13 @@ overrides:
             emptyString: ""
             emptyArray: []
             emptyObject: {}
-            tags: [control]
+            tags:
+              - control
             flags: []
             rows: []
             scratch: []
             sequence: []
+
     - key: country-fallback
       conditions: "*"
       value:
@@ -125,6 +206,7 @@ overrides:
         rows: []
         scratch: []
         sequence: []
+
   production:
     - key: bootstrap
       conditions: "*"
@@ -139,7 +221,9 @@ overrides:
         flags: []
         rows: []
         scratch: []
-        sequence: [base]
+        sequence:
+          - base
+
     - key: treatment
       conditions:
         feature: allowSignup
@@ -147,6 +231,7 @@ overrides:
       continue: true
       mutate:
         sequence:append: treatment
+
     - key: priority
       conditions:
         variable: runtimePolicy
@@ -156,7 +241,11 @@ overrides:
       continue: true
       mutate:
         sequence:append: priority
+
     - key: netherlands
-      conditions: { attribute: country, operator: equals, value: nl }
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
       mutate:
         sequence:append: netherlands

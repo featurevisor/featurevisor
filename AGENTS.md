@@ -39,6 +39,14 @@ uses staging and production. The existing environments scaffold models
 release lanes as Sets instead. Verify scaffold content through the init
 archive path, not only by inspecting example files.
 
+`fmt`, `migrate` and `convert` live in packages/core/src/formatter, migrate and
+convert, and share packages/core/src/rewrite with promote. Each loads only when
+its command runs. The house style is formatter/style.ts: after changing it, run
+`make build` and `make fmt-examples` and update style.spec.ts, which alone pins
+the output. examples.spec.ts requires every example to be formatted and to
+build byte identical datafiles. No other write formats files, except convert
+for a file that was formatted already.
+
 Attribute files belong directly in the configured attributes directory,
 including within each Set. Nested files and dots in attribute names are
 rejected with invalid_attribute_namespace. Do not silently filter these files

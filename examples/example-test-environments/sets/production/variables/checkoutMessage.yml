@@ -1,12 +1,17 @@
 description: Checkout message in production
+
 tags:
   - all
+
 type: string
+
 defaultValue: Production checkout
+
 overrides:
   - key: internal
     conditions: internal
     value: Production checkout for engineers
+
   - key: default
     conditions: "*"
     value: Production checkout

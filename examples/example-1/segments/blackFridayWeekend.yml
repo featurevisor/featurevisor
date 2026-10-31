@@ -1,11 +1,12 @@
 archived: false
+
 description: black friday weekend
+
 conditions:
   and:
     - attribute: date
       operator: after
-      value: 2023-11-24T00:00:00Z
-
+      value: "2023-11-24T00:00:00Z"
     - attribute: date
       operator: before
-      value: 2023-11-27T00:00:00Z
+      value: "2023-11-27T00:00:00Z"

@@ -1,6 +1,7 @@
 description: Screen labels
 
-tags: [web]
+tags:
+  - web
 
 compose:
   checkout:

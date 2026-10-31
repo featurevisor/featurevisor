@@ -1,19 +1,39 @@
 description: A message selected by an evaluated client version
-tags: [all]
+
+tags:
+  - all
+
 type: string
+
 defaultValue: Upgrade available
+
 overrides:
-  staging: &overrides
+  staging:
     - key: stable
       conditions:
         - variable: clientVersion
           operator: semverGreaterThanOrEquals
           value: 1.0.0
       value: Stable release
+
     - key: preview
       conditions:
         - variable: clientVersion
           operator: semverGreaterThan
           value: 1.0.0-1a
       value: Preview release
-  production: *overrides
+
+  production:
+    - key: stable
+      conditions:
+        - variable: clientVersion
+          operator: semverGreaterThanOrEquals
+          value: 1.0.0
+      value: Stable release
+
+    - key: preview
+      conditions:
+        - variable: clientVersion
+          operator: semverGreaterThan
+          value: 1.0.0-1a
+      value: Preview release

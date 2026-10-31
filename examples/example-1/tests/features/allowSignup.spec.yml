@@ -1,13 +1,15 @@
 feature: allowSignup
+
 assertions:
   ##
   # DE
   #
-  - matrix:
-      at: [40]
-    description: "DE at ${{ at }}% should have control variation"
-    at: ${{ at }}
+  - description: DE at ${{ at }}% should have control variation
+    matrix:
+      at:
+        - 40
     environment: production
+    at: ${{ at }}
     context:
       country: de
     expectedToBeEnabled: true
@@ -16,7 +18,6 @@ assertions:
       allowRegularSignUp: true
       allowGoogleSignUp: false
       allowGitHubSignUp: false
-
     expectedEvaluations:
       flag:
         reason: rule
@@ -30,7 +31,6 @@ assertions:
           reason: variable_default
         allowGoogleSignUp:
           reason: variable_default
-
     children:
       - context:
           country: nl
@@ -51,11 +51,12 @@ assertions:
               reason: allocated
               ruleKey: nl
 
-  - matrix:
-      at: [60]
-    description: "DE at ${{ at }}% should have treatment variation"
-    at: ${{ at }}
+  - description: DE at ${{ at }}% should have treatment variation
+    matrix:
+      at:
+        - 60
     environment: production
+    at: ${{ at }}
     context:
       country: de
     expectedToBeEnabled: true
@@ -68,11 +69,13 @@ assertions:
   ##
   # NL
   #
-  - matrix:
-      at: [40, 60]
-    description: "NL at ${{ at }}% should have treatment variation"
-    at: ${{ at }}
+  - description: NL at ${{ at }}% should have treatment variation
+    matrix:
+      at:
+        - 40
+        - 60
     environment: production
+    at: ${{ at }}
     context:
       country: nl
     expectedToBeEnabled: true
@@ -85,11 +88,13 @@ assertions:
   ##
   # CH
   #
-  - matrix:
-      at: [5, 8]
-    description: "CH at ${{ at }}% should have control variation"
-    at: ${{ at }}
+  - description: CH at ${{ at }}% should have control variation
+    matrix:
+      at:
+        - 5
+        - 8
     environment: production
+    at: ${{ at }}
     context:
       country: ch
     expectedToBeEnabled: true
@@ -99,11 +104,18 @@ assertions:
       allowGoogleSignUp: false
       allowGitHubSignUp: false
 
-  - matrix:
-      at: [15, 20, 40, 50, 60, 80, 100]
-    description: "CH at ${{ at }}% should have treatment variation"
-    at: ${{ at }}
+  - description: CH at ${{ at }}% should have treatment variation
+    matrix:
+      at:
+        - 15
+        - 20
+        - 40
+        - 50
+        - 60
+        - 80
+        - 100
     environment: production
+    at: ${{ at }}
     context:
       country: ch
     expectedToBeEnabled: true

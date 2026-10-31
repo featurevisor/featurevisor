@@ -1,10 +1,15 @@
 variable: connectionSettings
+
 assertions:
   - key: bounds
     description: Bounds remain ordered in ${{ environment }} for ${{ country }}
     matrix:
-      environment: [staging, production]
-      country: [gb, nl]
+      environment:
+        - staging
+        - production
+      country:
+        - gb
+        - nl
     environment: ${{ environment }}
     context:
       country: ${{ country }}
@@ -18,7 +23,9 @@ assertions:
       - path: retryDelays.0
         operator: lessThan
         compareTo:
-          path: [retryDelays, 1]
+          path:
+            - retryDelays
+            - 1
       - variable: connectionLimit
         operator: lessThanOrEquals
         compareTo:
@@ -30,7 +37,9 @@ assertions:
     expectedValue:
       minimum: 2
       maximum: 20
-      retryDelays: [100, 500]
+      retryDelays:
+        - 100
+        - 500
     checks:
       - key: positive-minimum
         description: Minimum stays positive

@@ -6,8 +6,8 @@ assertions:
       target:
         - ios-v4
         - ios
-    target: ${{ target }}
     environment: production
+    target: ${{ target }}
     at: 90
     context:
       userId: user-4
@@ -21,8 +21,8 @@ assertions:
         - ios-v4
         - ios
         - android
-    target: ${{ target }}
     environment: production
+    target: ${{ target }}
     at: 20
     context:
       userId: user-5
@@ -36,8 +36,8 @@ assertions:
         - ios-v4
         - ios
         - android
-    target: ${{ target }}
     environment: production
+    target: ${{ target }}
     at: 30
     context:
       userId: user-5

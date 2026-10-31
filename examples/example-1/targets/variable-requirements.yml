@@ -1,3 +1,7 @@
 description: Includes the complete mixed feature and variable dependency chain
-includeFeatures: [variableRequirementsExample]
-includeVariables: [runtimeMessage]
+
+includeFeatures:
+  - variableRequirementsExample
+
+includeVariables:
+  - runtimeMessage

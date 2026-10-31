@@ -1,16 +1,24 @@
 description: Nested accumulating overrides read evaluated policy values
-tags: [all]
+
+tags:
+  - all
+
 type: string
+
 defaultValue: Standard service
-disabledValue: Unavailable
+
 conditions:
   feature: variableRequirementsExample
+
+disabledValue: Unavailable
+
 overrides:
   production:
     - key: europe
       conditions:
         variable: runtimePolicy
-        path: [regions]
+        path:
+          - regions
         operator: includes
         value: eu
       continue: true
@@ -24,9 +32,11 @@ overrides:
             operator: greaterThanOrEquals
             value: 5
           value: Priority European service
+
     - key: no-label
       conditions:
         variable: runtimePolicy
-        path: [support.label]
+        path:
+          - support.label
         operator: isNull
       value: Service without a support label

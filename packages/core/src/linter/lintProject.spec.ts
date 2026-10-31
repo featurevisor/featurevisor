@@ -26,6 +26,8 @@ function createTempProject(configBody = "module.exports = {};") {
 
 function replaceInFile(filePath: string, search: string, replacement: string) {
   const contents = fs.readFileSync(filePath, "utf8");
+  // a search that no longer matches would leave the test checking nothing
+  if (!contents.includes(search)) throw new Error(`"${search}" not found in ${filePath}`);
   fs.writeFileSync(filePath, contents.replace(search, replacement), "utf8");
 }
 
@@ -963,8 +965,8 @@ rules:
     const testPath = path.join(tempProjectPath, "tests", "features", "showHeader.spec.yml");
     replaceInFile(
       testPath,
-      '  - description: "should be disabled for desktop users below v5"',
-      '  - promotable: false\n    description: "should be disabled for desktop users below v5"',
+      "  - description: should be disabled for desktop users below v5",
+      "  - promotable: false\n    description: should be disabled for desktop users below v5",
     );
 
     const missingKeyResult = await lintProject(getDeps(tempProjectPath) as any, { json: true });
@@ -979,8 +981,8 @@ rules:
     replaceInFile(testPath, "  - promotable: false", "  - key: duplicate\n    promotable: false");
     replaceInFile(
       testPath,
-      '  - description: "should be enabled for desktop users above v5"',
-      '  - key: duplicate\n    description: "should be enabled for desktop users above v5"',
+      "  - description: should be enabled for desktop users above v5",
+      "  - key: duplicate\n    description: should be enabled for desktop users above v5",
     );
 
     const duplicateKeyResult = await lintProject(getDeps(tempProjectPath) as any, { json: true });
@@ -1116,8 +1118,8 @@ conditions:
 
     replaceInFile(
       path.join(tempProjectPath, "tests", "features", "withSchema.spec.yml"),
-      "    environment: staging",
-      "    environment: qa",
+      "  - environment: staging",
+      "  - environment: qa",
     );
 
     const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });

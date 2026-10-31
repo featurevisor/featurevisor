@@ -1,9 +1,10 @@
 feature: defaultAttributeShapes
+
 assertions:
-  - at: 50
-    environment: production
+  - environment: production
+    at: 50
     context:
-      userId: "user-1"
+      userId: user-1
       preferences:
         theme: dark
       interests:
@@ -11,20 +12,20 @@ assertions:
         - movies
     expectedToBeEnabled: true
 
-  - at: 50
-    environment: production
+  - environment: production
+    at: 50
     context:
-      userId: "user-2"
+      userId: user-2
       preferences:
         theme: light
       interests:
         - sports
     expectedToBeEnabled: false
 
-  - at: 50
-    environment: production
+  - environment: production
+    at: 50
     context:
-      userId: "user-3"
+      userId: user-3
       preferences:
         theme: dark
       interests:

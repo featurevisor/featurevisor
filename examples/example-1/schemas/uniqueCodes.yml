@@ -1,8 +1,13 @@
 # Array with uniqueItems (no duplicate strings)
 description: List of unique promo codes (no duplicates)
+
 type: array
-minItems: 0
-maxItems: 5
-uniqueItems: true
+
 items:
   type: string
+
+minItems: 0
+
+maxItems: 5
+
+uniqueItems: true

@@ -4,7 +4,7 @@ conditions:
   and:
     - attribute: date
       operator: after
-      value: 2026-11-26T23:59:59.999Z
+      value: "2026-11-26T23:59:59.999Z"
     - attribute: date
       operator: before
-      value: 2026-11-28T00:00:00Z
+      value: "2026-11-28T00:00:00Z"

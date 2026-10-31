@@ -1,5 +1,7 @@
 archived: false
+
 description: blah
+
 tags:
   - all
   - sign-in
@@ -15,13 +17,14 @@ variablesSchema:
     type: string
     defaultValue: ""
   qux:
+    description: This is a boolean variable
     type: boolean
     defaultValue: false
-    description: This is a boolean variable
 
 variations:
   - value: control
     weight: 50
+
   - value: treatment
     weight: 50
     variables:
@@ -43,8 +46,9 @@ force:
     - conditions:
         - attribute: userId
           operator: equals
-          value: "test-force-id"
+          value: test-force-id
       variation: treatment
+
   production:
     - conditions:
         and:
@@ -53,7 +57,7 @@ force:
             value: "123"
           - attribute: device
             operator: equals
-            value: "mobile"
+            value: mobile
       variation: treatment
       variables:
         bar: yoooooo
@@ -63,6 +67,7 @@ rules:
     - key: "1"
       conditions: "*"
       percentage: 100
+
   production:
     - key: "1"
       conditions:
@@ -74,6 +79,7 @@ rules:
       percentage: 80
       variables:
         qux: true
+
     - key: "2"
       conditions: "*"
       percentage: 50

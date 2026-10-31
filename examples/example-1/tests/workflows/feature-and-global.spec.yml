@@ -1,8 +1,12 @@
 description: Feature variables can be checked alongside global settings
+
 environment: staging
+
 target: connection-tests
+
 context:
   userId: customer-1
+
 checks:
   - feature: checkout.page
     variable: paymentMethods
@@ -13,6 +17,7 @@ checks:
     operator: greaterThan
     compareTo:
       variable: connectionLimit
+
 children:
   - stickyVariables:
       connectionLimit: 15

@@ -1,4 +1,5 @@
 variable: emptinessMessage
+
 assertions:
   - description: selects the empty required variable branch
     environment: staging
@@ -14,13 +15,15 @@ assertions:
     context:
       userId: populated-user
       phone: " "
-      interests: [sports]
+      interests:
+        - sports
       preferences:
         theme: null
     stickyVariables:
       emptinessSource:
         label: Ready
-        items: [one]
+        items:
+          - one
         metadata:
           present: null
         whitespace: " "

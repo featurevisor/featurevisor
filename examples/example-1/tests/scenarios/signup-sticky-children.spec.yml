@@ -1,9 +1,12 @@
 description: Parent and child use their own sticky feature assignments
+
 environment: production
+
 stickyFeatures:
   allowSignup:
     enabled: true
     variation: control
+
 checks:
   - feature: allowSignup
     enabled: true
@@ -11,6 +14,7 @@ checks:
   - variable: signupMessage
     operator: equals
     value: Create your account
+
 children:
   - stickyFeatures:
       allowSignup:

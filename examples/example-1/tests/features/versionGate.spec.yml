@@ -1,4 +1,5 @@
 feature: versionGate
+
 assertions:
   - description: Later preview identifiers enable the feature
     environment: staging
@@ -6,6 +7,7 @@ assertions:
     expectedToBeEnabled: true
     expectedVariables:
       minimumVersion: 1.0.0-1a
+
   - description: Requirements behave the same in production
     environment: production
     at: 50

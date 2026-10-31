@@ -17,31 +17,44 @@ assertions:
         raw:
           source: example
     checks:
-      - path: [flag]
+      - path:
+          - flag
         operator: equals
         value: false
-      - path: [variation]
+      - path:
+          - variation
         operator: equals
         value: unavailable
-      - path: [config, policy, limit]
+      - path:
+          - config
+          - policy
+          - limit
         operator: equals
         value: 50
     children:
       - context:
           country: nl
         checks:
-          - path: [config, policy, limit]
+          - path:
+              - config
+              - policy
+              - limit
             operator: equals
             value: 75
-          - path: [config, raw, source]
+          - path:
+              - config
+              - raw
+              - source
             operator: equals
             value: example
+
   - description: Whole variable sticky state
     stickyVariables:
       screen:
         stickyFeatures: true
     expectedValue:
       stickyFeatures: true
+
   - description: Source sticky state and target closure
     target: web
     stickyFeatures:
@@ -50,12 +63,17 @@ assertions:
     stickyVariables:
       policy:
         limit: 90
-    checks:
-      - path: [flags, checkout]
-        operator: equals
-        value: false
-      - path: [config, policy, limit]
-        operator: equals
-        value: 90
     expectedEvaluation:
       reason: variable_composed
+    checks:
+      - path:
+          - flags
+          - checkout
+        operator: equals
+        value: false
+      - path:
+          - config
+          - policy
+          - limit
+        operator: equals
+        value: 90

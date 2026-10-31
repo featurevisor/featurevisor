@@ -1,29 +1,47 @@
 description: Runtime policy used by other features and variables
+
 tags:
   - all
+
 type: object
+
 properties:
   routing:
     type: object
     properties:
-      enabled: { type: boolean }
-      priority: { type: boolean }
+      enabled:
+        type: boolean
+      priority:
+        type: boolean
   regions:
     type: array
-    items: { type: string }
+    items:
+      type: string
   support.label:
     type: string
+
 defaultValue:
-  routing: { enabled: true, priority: false }
-  regions: [eu]
+  routing:
+    enabled: true
+    priority: false
+  regions:
+    - eu
   support.label: Help
+
 overrides:
   production:
     - key: unavailable
-      conditions: { attribute: country, operator: equals, value: us }
+      conditions:
+        attribute: country
+        operator: equals
+        value: us
       mutate:
         routing.enabled: false
+
     - key: priority
-      conditions: { attribute: country, operator: equals, value: nl }
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
       mutate:
         routing.priority: true

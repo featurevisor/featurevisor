@@ -1,7 +1,10 @@
 description: Shared settings used by checkout clients
+
 tags:
   - checkout
+
 type: object
+
 properties:
   currency:
     type: string
@@ -9,14 +12,17 @@ properties:
     type: array
     items:
       type: string
+
 required:
   - currency
   - paymentMethods
+
 defaultValue:
   currency: EUR
   paymentMethods:
     - visa
     - mastercard
+
 overrides:
   staging:
     - key: staging-paypal
@@ -26,6 +32,7 @@ overrides:
           - visa
           - mastercard
           - paypal
+
   production:
     - key: netherlands
       conditions: countries.netherlands
@@ -33,6 +40,7 @@ overrides:
         paymentMethods:
           - ideal
           - paypal
+
     - key: default
       conditions: "*"
       value:

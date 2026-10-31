@@ -1,4 +1,5 @@
 variable: checkoutSettings
+
 assertions:
   - description: applies the staging mutation
     environment: staging

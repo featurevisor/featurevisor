@@ -1,13 +1,19 @@
 description: Nested and accumulating messages selected by feature groups
+
 tags:
   - all
+
 type: string
+
 defaultValue: Standard message
-disabledValue: Unavailable
+
 conditions:
   or:
     - feature: redesign
     - feature: sidebar
+
+disabledValue: Unavailable
+
 overrides:
   production:
     - key: redesign
@@ -24,6 +30,7 @@ overrides:
             feature: sidebar
             enabled: true
           value: Redesigned sidebar message
+
     - key: sidebar-only
       conditions:
         not:

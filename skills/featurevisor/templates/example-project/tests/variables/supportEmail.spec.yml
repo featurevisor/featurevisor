@@ -19,4 +19,4 @@ assertions:
       - key: trusted-domain
         description: Every support address stays on our domain
         operator: matches
-        value: '@example\.com$'
+        value: "@example\\.com$"

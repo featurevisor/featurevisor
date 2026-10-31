@@ -1,4 +1,5 @@
 segment: netherlands
+
 assertions:
   - context:
       country: nl

@@ -1670,7 +1670,9 @@ describe("promoteProjectSets", function () {
         await writeFile(
           root,
           `sets/${set}/features/checkout.toml`,
-          parser.stringify(set === "dev" ? feature : { ...feature, description: "Old checkout" }),
+          set === "dev"
+            ? parser.stringify(feature)
+            : `# Owned by payments\n${parser.stringify({ ...feature, description: "Old checkout" })}`,
         );
       }
       const destination = path.join(root, "sets/staging/features/checkout.toml");
@@ -1689,7 +1691,10 @@ describe("promoteProjectSets", function () {
         apply: true,
         conflicts: "source",
       });
-      expect(parser.parse(await fs.promises.readFile(destination, "utf8"))).toEqual(feature);
+      const written = await fs.promises.readFile(destination, "utf8");
+      expect(parser.parse(written)).toEqual(feature);
+      // a comment the parser cannot write stays where the promotion leaves it alone
+      expect(written).toMatch(/^# Owned by payments\n/);
       expect(
         await new Datasource(config, root).forSet("staging").readFeature("checkout"),
       ).toMatchObject(feature);
@@ -1873,6 +1878,169 @@ describe("promoteProjectSets", function () {
     expect(result.dependencies.schema).toEqual(1);
     expect(result.dependencies.test).toEqual(2);
     expect(feature.description).toEqual("Checkout flow in dev");
+  });
+
+  it("ends a written file with a newline when the file it replaces, or comes from, does", async () => {
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "featurevisor-promote-"));
+    await writeFile(
+      root,
+      "featurevisor.config.js",
+      "module.exports = {\n  sets: true,\n  parser: 'json',\n  tags: ['all'],\n};\n",
+    );
+    const feature = (description: string, percentage: number) =>
+      JSON.stringify(
+        {
+          description,
+          tags: ["all"],
+          bucketBy: "userId",
+          rules: [{ key: "everyone", conditions: "*", percentage }],
+        },
+        null,
+        2,
+      );
+    for (const set of ["dev", "staging"]) {
+      await writeFile(
+        root,
+        `sets/${set}/attributes/userId.json`,
+        `${JSON.stringify({ description: "User ID", type: "string" }, null, 2)}\n`,
+      );
+    }
+    // the destination's file ends with a newline, the source's does not
+    await writeFile(root, "sets/dev/features/checkout.json", feature("Checkout in dev", 100));
+    await writeFile(root, "sets/staging/features/checkout.json", `${feature("Checkout", 0)}\n`);
+    // new in the destination, so each follows its source
+    await writeFile(root, "sets/dev/features/pricing.json", `${feature("Pricing", 50)}\n`);
+    await writeFile(root, "sets/dev/features/banner.json", feature("Banner", 50));
+
+    const projectConfig = getProjectConfig(root);
+    await promoteProjectSets(projectConfig, new Datasource(projectConfig, root), {
+      from: "dev",
+      to: "staging",
+      apply: true,
+    });
+    const read = (name: string) =>
+      fs.readFileSync(path.join(root, "sets/staging/features", name), "utf8");
+
+    expect(read("checkout.json")).toBe(`${feature("Checkout in dev", 100)}\n`);
+    expect(read("pricing.json")).toBe(`${feature("Pricing", 50)}\n`);
+    expect(read("banner.json")).toBe(feature("Banner", 50));
+  });
+
+  it("keeps the lines a promotion leaves alone, of the file it replaces or comes from", async () => {
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "featurevisor-promote-"));
+    await writeFile(
+      root,
+      "featurevisor.config.js",
+      "module.exports = {\n  sets: true,\n  tags: ['all'],\n};\n",
+    );
+    for (const set of ["dev", "staging"]) {
+      await writeFile(
+        root,
+        `sets/${set}/attributes/userId.yml`,
+        "description: User ID\ntype: string\n",
+      );
+    }
+    // a layout and comments stringify would not write, with Windows line endings
+    const checkout = (percentage: number) =>
+      [
+        "# Checkout, owned by payments",
+        "description: Checkout",
+        "",
+        "tags: [all]",
+        "",
+        "bucketBy: userId # stable per user",
+        "",
+        "# the first match wins",
+        "rules:",
+        "  # internal first",
+        "  - key: internal",
+        "    conditions:",
+        "      - attribute: userId",
+        "        operator: equals",
+        "        value: 'user-1' # QA account",
+        "    percentage: 100",
+        "",
+        "  # then everyone",
+        "  - key: everyone",
+        '    conditions: "*"',
+        `    percentage: ${percentage} # raise weekly`,
+        "",
+      ].join("\r\n");
+    const pricing = [
+      "# new in dev",
+      "description: Pricing",
+      "tags: [all]",
+      "bucketBy: userId",
+      "rules:",
+      "  - key: everyone # all at once",
+      "    conditions: '*'",
+      "    percentage: 50",
+      "",
+    ].join("\n");
+    await writeFile(root, "sets/dev/features/checkout.yml", checkout(100));
+    await writeFile(root, "sets/staging/features/checkout.yml", checkout(0));
+    await writeFile(root, "sets/dev/features/pricing.yml", pricing);
+
+    const projectConfig = getProjectConfig(root);
+    await promoteProjectSets(projectConfig, new Datasource(projectConfig, root), {
+      from: "dev",
+      to: "staging",
+      apply: true,
+    });
+    const read = (name: string) =>
+      fs.readFileSync(path.join(root, "sets/staging/features", name), "utf8");
+
+    expect(read("checkout.yml")).toBe(checkout(100));
+    expect(read("pricing.yml")).toBe(pricing);
+  });
+
+  it("keeps a JSON file's own layout where a promotion leaves it alone", async () => {
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "featurevisor-promote-"));
+    await writeFile(
+      root,
+      "featurevisor.config.js",
+      "module.exports = {\n  sets: true,\n  parser: 'json',\n  tags: ['all'],\n};\n",
+    );
+    for (const set of ["dev", "staging"]) {
+      await writeFile(
+        root,
+        `sets/${set}/attributes/userId.json`,
+        `${JSON.stringify({ description: "User ID", type: "string" }, null, 2)}\n`,
+      );
+    }
+    // blank lines and a list on one line, as fmt writes them
+    const checkout = (percentage: number) =>
+      [
+        "{",
+        '  "description": "Checkout",',
+        "",
+        '  "tags": ["all"],',
+        "",
+        '  "bucketBy": "userId",',
+        "",
+        '  "rules": [',
+        "    {",
+        '      "key": "everyone",',
+        '      "conditions": "*",',
+        `      "percentage": ${percentage}`,
+        "    }",
+        "  ]",
+        "}",
+        "",
+      ].join("\n");
+    await writeFile(root, "sets/dev/features/checkout.json", checkout(100));
+    await writeFile(root, "sets/staging/features/checkout.json", checkout(0));
+
+    const projectConfig = getProjectConfig(root);
+    await promoteProjectSets(projectConfig, new Datasource(projectConfig, root), {
+      from: "dev",
+      to: "staging",
+      apply: true,
+    });
+
+    expect(fs.readFileSync(path.join(root, "sets/staging/features/checkout.json"), "utf8")).toBe(
+      checkout(100),
+    );
   });
 
   it("uses all features as the starting set when only excludeFeatures is provided", async function () {

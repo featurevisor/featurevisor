@@ -9,7 +9,9 @@ assertions:
       country: nl
     expectedToBeEnabled: true
     expectedVariables:
-      paymentMethods: [paypal, ideal]
+      paymentMethods:
+        - paypal
+        - ideal
       allowDiscountCode: true
 
   - key: nl-free-plan
@@ -64,24 +66,26 @@ assertions:
   - key: maintenance
     description: The maintenanceMode kill switch disables checkout
     at: 95
-    stickyVariables:
-      maintenanceMode: true
     context:
       userId: test-user-nl
       country: nl
+    stickyVariables:
+      maintenanceMode: true
     expectedToBeEnabled: false
     children:
       - description: QA keeps access, because force entries run before the root gate
-        stickyVariables:
-          maintenanceMode: true
         context:
           userId: u_qa_1
+        stickyVariables:
+          maintenanceMode: true
         expectedToBeEnabled: true
 
   - key: nl-matrix
-    matrix:
-      at: [10, 90]
     description: The Netherlands is in at bucket ${{ at }}
+    matrix:
+      at:
+        - 10
+        - 90
     at: ${{ at }}
     context:
       userId: matrix-user-${{ at }}

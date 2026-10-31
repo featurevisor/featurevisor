@@ -1,9 +1,15 @@
 description: Browser-specific optimizations
+
 tags:
   - all
   - web
 
 bucketBy: userId
+
+force:
+  production:
+    - conditions: chromeUsers
+      enabled: true
 
 rules:
   staging:
@@ -19,8 +25,3 @@ rules:
     - key: other-browsers
       conditions: "*"
       percentage: 50
-
-force:
-  production:
-    - conditions: chromeUsers
-      enabled: true

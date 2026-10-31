@@ -1,4 +1,5 @@
 segment: emptyProfile
+
 assertions:
   - description: matches empty string, array and object values
     context:
@@ -12,7 +13,8 @@ assertions:
     context:
       userId: populated-user
       phone: " "
-      interests: [sports]
+      interests:
+        - sports
       preferences:
         theme: null
     expectedToMatch: false

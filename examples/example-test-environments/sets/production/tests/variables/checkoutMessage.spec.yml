@@ -1,4 +1,5 @@
 variable: checkoutMessage
+
 assertions:
   - description: uses the internal production message
     context:

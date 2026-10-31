@@ -1,4 +1,5 @@
 description: Show sidebar or not
+
 tags:
   - all
 
@@ -6,8 +7,8 @@ bucketBy: userId
 
 variablesSchema:
   position:
-    type: string
     description: position of the sidebar
+    type: string
     defaultValue: left
   color:
     type: string
@@ -17,35 +18,39 @@ variablesSchema:
     defaultValue: []
   title:
     type: string
-    defaultValue: "Sidebar Title"
+    defaultValue: Sidebar Title
   title2:
     type: string
-    defaultValue: "Sidebar Title 2"
+    defaultValue: Sidebar Title 2
   title3:
     type: string
-    defaultValue: "Sidebar Title 3"
+    defaultValue: Sidebar Title 3
   title4:
     type: string
-    defaultValue: "Sidebar Title 4"
+    defaultValue: Sidebar Title 4
   title5:
     type: string
-    defaultValue: "Sidebar Title 5"
+    defaultValue: Sidebar Title 5
   title6:
     type: string
-    defaultValue: "Sidebar Title 6"
+    defaultValue: Sidebar Title 6
   title7:
     type: string
-    defaultValue: "Sidebar Title 7"
+    defaultValue: Sidebar Title 7
 
 variations:
   - value: control
     weight: 10
+
   - value: treatment
     weight: 90
     variables:
       position: right
       color: red
-      sections: ["home", "about", "contact"]
+      sections:
+        - home
+        - about
+        - contact
     variableOverrides:
       color:
         - conditions:
@@ -57,16 +62,25 @@ variations:
       sections:
         - conditions:
             - countries.germany
-          value: ["home", "about", "contact", "imprint"]
+          value:
+            - home
+            - about
+            - contact
+            - imprint
         - conditions:
             - countries.netherlands
-          value: ["home", "about", "contact", "bitterballen"]
+          value:
+            - home
+            - about
+            - contact
+            - bitterballen
 
 rules:
   staging:
     - key: "1"
       conditions: "*"
       percentage: 100
+
   production:
     - key: "1"
       conditions: "*"

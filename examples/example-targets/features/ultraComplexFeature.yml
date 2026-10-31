@@ -1,4 +1,5 @@
 description: Ultra complex feature with deeply nested segments, multiple rules, force entries, and variable overrides
+
 tags:
   - all
   - web
@@ -31,28 +32,34 @@ variations:
       animation: none
     variableOverrides:
       theme:
-        - value: dark
-          conditions: premiumUsers
-        - value: auto
-          conditions: chromeUsers
-        - value: dark
-          conditions:
-            and: [premiumUsers, chromeUsers]
+        - conditions: premiumUsers
+          value: dark
+        - conditions: chromeUsers
+          value: auto
+        - conditions:
+            and:
+              - premiumUsers
+              - chromeUsers
+          value: dark
       fontSize:
-        - value: 16
-          conditions: premiumUsers
-        - value: 18
-          conditions: premiumChromeUsers
+        - conditions: premiumUsers
+          value: 16
+        - conditions: premiumChromeUsers
+          value: 18
       layout:
-        - value: compact
-          conditions:
-            or: [premiumUsers, adminUsers]
-        - value: expanded
-          conditions: chromeUsers
+        - conditions:
+            or:
+              - premiumUsers
+              - adminUsers
+          value: compact
+        - conditions: chromeUsers
+          value: expanded
       animation:
-        - value: fade
-          conditions:
-            and: [premiumUsers, chromeUsers]
+        - conditions:
+            and:
+              - premiumUsers
+              - chromeUsers
+          value: fade
 
   - value: treatment
     weight: 40
@@ -63,23 +70,29 @@ variations:
       animation: slide
     variableOverrides:
       theme:
-        - value: light
-          conditions: premiumUsers
-        - value: dark
-          conditions:
-            or: [chromeUsers, firefoxUsers]
+        - conditions: premiumUsers
+          value: light
+        - conditions:
+            or:
+              - chromeUsers
+              - firefoxUsers
+          value: dark
       fontSize:
-        - value: 18
-          conditions: premiumChromeUsers
-        - value: 20
-          conditions:
-            and: [premiumUsers, adminUsers]
+        - conditions: premiumChromeUsers
+          value: 18
+        - conditions:
+            and:
+              - premiumUsers
+              - adminUsers
+          value: 20
       layout:
-        - value: minimal
-          conditions: chromeUsers
-        - value: full
-          conditions:
-            or: [premiumUsers, adminUsers]
+        - conditions: chromeUsers
+          value: minimal
+        - conditions:
+            or:
+              - premiumUsers
+              - adminUsers
+          value: full
 
   - value: experimental
     weight: 20
@@ -90,12 +103,51 @@ variations:
       animation: none
     variableOverrides:
       theme:
-        - value: dark
-          conditions: premiumChromeUsers
+        - conditions: premiumChromeUsers
+          value: dark
       fontSize:
-        - value: 16
-          conditions:
-            and: [premiumUsers, chromeUsers]
+        - conditions:
+            and:
+              - premiumUsers
+              - chromeUsers
+          value: 16
+
+force:
+  production:
+    # Premium Chrome users with admin role get experimental (most specific, must come first)
+    - conditions:
+        and:
+          - premiumChromeUsers
+          - adminUsers
+      enabled: true
+      variation: experimental
+      variables:
+        theme: dark
+        fontSize: 18
+        layout: full
+
+    # Premium OR Admin on Chrome (must come before general admin)
+    - conditions:
+        and:
+          - or:
+              - premiumUsers
+              - adminUsers
+          - chromeUsers
+      enabled: true
+      variation: treatment
+      variables:
+        theme: dark
+        fontSize: 18
+
+    # Admin users always get treatment (general case, comes last)
+    - conditions: adminUsers
+      enabled: true
+      variation: treatment
+      variables:
+        theme: dark
+        fontSize: 20
+        layout: full
+        animation: slide
 
 rules:
   staging:
@@ -107,13 +159,17 @@ rules:
     # Premium Chrome users - highest priority
     - key: premium-chrome-complex
       conditions:
-        and: [premiumUsers, chromeUsers]
+        and:
+          - premiumUsers
+          - chromeUsers
       percentage: 100
 
     # Premium OR Admin users
     - key: premium-or-admin
       conditions:
-        or: [premiumUsers, adminUsers]
+        or:
+          - premiumUsers
+          - adminUsers
       percentage: 90
 
     # Premium users on web or mobile
@@ -124,7 +180,9 @@ rules:
     # Chrome OR Firefox browsers
     - key: chrome-or-firefox
       conditions:
-        or: [chromeUsers, chromeOrFirefox]
+        or:
+          - chromeUsers
+          - chromeOrFirefox
       percentage: 75
 
     # Non-premium Chrome users
@@ -156,36 +214,3 @@ rules:
     - key: everyone-else
       conditions: "*"
       percentage: 15
-
-force:
-  production:
-    # Premium Chrome users with admin role get experimental (most specific, must come first)
-    - conditions:
-        and: [premiumChromeUsers, adminUsers]
-      enabled: true
-      variation: experimental
-      variables:
-        theme: dark
-        fontSize: 18
-        layout: full
-
-    # Premium OR Admin on Chrome (must come before general admin)
-    - conditions:
-        and:
-          - or: [premiumUsers, adminUsers]
-          - chromeUsers
-      enabled: true
-      variation: treatment
-      variables:
-        theme: dark
-        fontSize: 18
-
-    # Admin users always get treatment (general case, comes last)
-    - conditions: adminUsers
-      enabled: true
-      variation: treatment
-      variables:
-        theme: dark
-        fontSize: 20
-        layout: full
-        animation: slide

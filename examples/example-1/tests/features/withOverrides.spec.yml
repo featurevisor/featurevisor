@@ -1,8 +1,9 @@
 feature: withOverrides
+
 assertions:
   # No rule overrides, control variation.
-  - at: 25
-    environment: staging
+  - environment: staging
+    at: 25
     expectedToBeEnabled: true
     expectedVariation: control
     expectedVariables:
@@ -59,8 +60,8 @@ assertions:
             label: two
 
   # Variation variables only.
-  - at: 75
-    environment: staging
+  - environment: staging
+    at: 75
     expectedToBeEnabled: true
     expectedVariation: treatment
     expectedVariables:
@@ -99,8 +100,8 @@ assertions:
             label: two-v
 
   # Rule variables only + variation variableOverrides on a different variable.
-  - at: 75
-    environment: staging
+  - environment: staging
+    at: 75
     context:
       country: nl
     expectedToBeEnabled: true
@@ -148,8 +149,8 @@ assertions:
           variableOverrideKey: netherlands-treatment
 
   # Rule variables + rule variableOverrides (conditions branch), control variation.
-  - at: 25
-    environment: staging
+  - environment: staging
+    at: 25
     context:
       country: de
     expectedToBeEnabled: true
@@ -192,8 +193,8 @@ assertions:
             label: one-rule
 
   # Rule variables + rule variableOverrides (segments branch) + variation variableOverrides.
-  - at: 75
-    environment: staging
+  - environment: staging
+    at: 75
     context:
       country: de
       device: mobile
@@ -248,8 +249,8 @@ assertions:
           variableOverrideKey: mobile
 
   # A feature variable override can use a feature leaf as its only condition.
-  - at: 50
-    environment: production
+  - environment: production
+    at: 50
     context:
       country: nl
     expectedToBeEnabled: true
@@ -262,8 +263,8 @@ assertions:
           variableOverrideKey: pricing-disabled
 
   # Rule variableOverrides only.
-  - at: 75
-    environment: staging
+  - environment: staging
+    at: 75
     context:
       country: fr
       continent: europe
@@ -304,8 +305,8 @@ assertions:
             label: two
 
   # Rule variableOverrides only (mobile branch, no rule variables present).
-  - at: 75
-    environment: staging
+  - environment: staging
+    at: 75
     context:
       country: fr
       continent: europe

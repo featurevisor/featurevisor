@@ -1,6 +1,10 @@
 description: Feature gated by both global and feature variable values
-tags: [all]
+
+tags:
+  - all
+
 bucketBy: userId
+
 conditions:
   - variable: runtimePolicy
     path: routing.enabled
@@ -8,14 +12,17 @@ conditions:
     value: true
   - feature: variablePolicySource
     variable: config.policy
-    path: [retries]
+    path:
+      - retries
     operator: greaterThanOrEquals
     value: 3
+
 rules:
   staging:
     - key: everyone
       conditions: "*"
       percentage: 100
+
   production:
     - key: everyone
       conditions: "*"

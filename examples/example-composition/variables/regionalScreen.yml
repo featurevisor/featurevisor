@@ -1,6 +1,7 @@
 description: Regional overrides applied after the screen is composed
 
-tags: [web]
+tags:
+  - web
 
 compose:
   label:
@@ -26,6 +27,7 @@ overrides:
           value: Amsterdam
         mutate:
           label: Collect today
+
   - key: uk
     conditions:
       attribute: country
@@ -35,6 +37,7 @@ overrides:
       label: null
       policy:
         limit: 25
+
   - key: checkout
     conditions:
       feature: checkout

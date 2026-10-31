@@ -1,5 +1,12 @@
 description: Scheduling compares instants with millisecond precision
 
+matrix:
+  timestamp:
+    - "2026-11-27T00:00:00Z"
+    - "2026-11-27T01:00:00+01:00"
+    - "2026-11-27T00:00:00.000999999Z"
+    - "2026-11-27T23:59:59.999Z"
+
 environment: staging
 
 at: 50
@@ -9,13 +16,6 @@ context:
   country: de
   date: ${{ timestamp }}
 
-matrix:
-  timestamp:
-    - 2026-11-27T00:00:00Z
-    - 2026-11-27T01:00:00+01:00
-    - 2026-11-27T00:00:00.000999999Z
-    - 2026-11-27T23:59:59.999Z
-
 checks:
   - segment: scheduledReleaseWindow
     matches: true
@@ -23,10 +23,10 @@ checks:
     enabled: true
   - variable: releaseTimestamp
     operator: before
-    value: 2026-11-27T00:00:00.001Z
+    value: "2026-11-27T00:00:00.001Z"
   - variable: releaseTimestamp
     operator: after
-    value: 2026-11-26T23:59:59.999Z
+    value: "2026-11-26T23:59:59.999Z"
 
 children:
   - context:
@@ -34,19 +34,21 @@ children:
     checks:
       - variable: releaseTimestamp
         operator: before
-        value: 2026-11-27T00:00:00.001Z
+        value: "2026-11-27T00:00:00.001Z"
       - variable: releaseTimestamp
         operator: after
-        value: 2026-11-26T23:59:59.999Z
+        value: "2026-11-26T23:59:59.999Z"
+
   - context:
-      date: 2026-11-26T23:59:59.999Z
+      date: "2026-11-26T23:59:59.999Z"
     checks:
       - segment: scheduledReleaseWindow
         matches: false
       - feature: scheduledRelease
         enabled: false
+
   - context:
-      date: 2026-11-28T00:00:00Z
+      date: "2026-11-28T00:00:00Z"
     checks:
       - segment: scheduledReleaseWindow
         matches: false

@@ -2,9 +2,13 @@ feature: liveChat
 
 assertions:
   - key: modern-builds
-    matrix:
-      appVersion: ["5.5", 5.5.0, 5.10.1, v6.0.0]
     description: App ${{ appVersion }} has live chat
+    matrix:
+      appVersion:
+        - "5.5"
+        - 5.5.0
+        - 5.10.1
+        - v6.0.0
     at: 50
     context:
       userId: test-user-1

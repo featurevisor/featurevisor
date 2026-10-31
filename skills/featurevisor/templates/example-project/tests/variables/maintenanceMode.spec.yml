@@ -1,7 +1,7 @@
 variable: maintenanceMode
 
 assertions:
-  - key: off
+  - key: "off"
     description: Checkout runs normally until someone flips the switch
     context: {}
     expectedValue: false

@@ -1684,7 +1684,37 @@ async function withAuthoredFel(
   ) as EntityValue;
 }
 
+/**
+ * A promoted file's text: the value as the parser writes it, merged into the lines of the file it
+ * replaces, or for a new file the file it came from. Wherever the promotion leaves those lines
+ * alone, their comments, blank lines, quoting, line endings and final newline stay. Undefined when
+ * there is no file to start from.
+ */
+function promotedText(
+  parser: CustomParser,
+  value: EntityValue,
+  filePaths: (string | undefined)[],
+): string | undefined {
+  const filePath = filePaths.find((candidate) => candidate && fs.existsSync(candidate));
+  if (!filePath) return undefined;
+
+  const { rewriteFile } = require("../rewrite/lines") as typeof import("../rewrite/lines");
+  // rendered against the file, as writeEntity renders the file it replaces
+  const changed = parser.stringify(structuredClone(value), filePath);
+  let written: unknown;
+  try {
+    written = parser.parse(changed, filePath);
+  } catch {
+    return undefined;
+  }
+  return rewriteFile(fs.readFileSync(filePath, "utf8"), parser, written, (text) => ({
+    base: parser.stringify(parser.parse(text, filePath), filePath),
+    changed,
+  }))?.text;
+}
+
 async function writePlan(
+  parser: CustomParser,
   sourceDatasource: Datasource,
   destinationDatasource: Datasource,
   plans: EntityPlan[],
@@ -1697,6 +1727,15 @@ async function writePlan(
       ...original,
       merged: await withAuthoredFel(sourceDatasource, destinationDatasource, original),
     };
+
+    // read before writing, since the file it replaces is where its lines come from
+    const destinationPath = destinationDatasource.getEntitySourcePath(plan.type, plan.key);
+    const text = destinationPath
+      ? promotedText(parser, plan.merged, [
+          destinationPath,
+          sourceDatasource.getEntitySourcePath(plan.type, plan.key),
+        ])
+      : undefined;
 
     if (plan.type === "attribute")
       await destinationDatasource.writeAttribute(plan.key, plan.merged as Attribute);
@@ -1713,6 +1752,9 @@ async function writePlan(
     if (plan.type === "test") await destinationDatasource.writeTest(plan.key, plan.merged as Test);
     if (plan.type === "scenario")
       await destinationDatasource.writeScenario(plan.key, plan.merged as Scenario);
+
+    // the datasource places the file and keeps its caches right, then it gets its own lines back
+    if (destinationPath && text !== undefined) fs.writeFileSync(destinationPath, text);
   }
 }
 
@@ -1968,7 +2010,12 @@ export async function promoteProjectSets(
 
   await assertPromotionLintsClean(options.to, destinationDatasource, plans);
   if (options.apply === true) {
-    await writePlan(sourceDatasource, destinationDatasource, plans);
+    await writePlan(
+      projectConfig.parser as CustomParser,
+      sourceDatasource,
+      destinationDatasource,
+      plans,
+    );
   }
 
   const created = plans

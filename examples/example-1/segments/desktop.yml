@@ -1,4 +1,5 @@
 description: desktop users
+
 conditions:
   - attribute: device
     operator: equals

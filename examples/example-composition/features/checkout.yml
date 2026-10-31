@@ -1,6 +1,7 @@
 description: Checkout screen
 
-tags: [source]
+tags:
+  - source
 
 bucketBy: userId
 

@@ -1715,16 +1715,6 @@ export function getFeatureZodSchema(
         }),
     )
 
-    // must have at least one rule
-    .superRefine((value, ctx) => {
-      if (value.length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Must have at least one rule",
-        });
-      }
-    })
-
     // duplicate rules
     .superRefine((value, ctx) => {
       const seen = new Set<string>();
@@ -1742,9 +1732,9 @@ export function getFeatureZodSchema(
       });
     })
 
-    // enforce catch-all rule
+    // enforce catch-all rule, in a list that has rules
     .superRefine((value, ctx) => {
-      if (!projectConfig.enforceCatchAllRule) {
+      if (!projectConfig.enforceCatchAllRule || value.length === 0) {
         return;
       }
 
@@ -2000,8 +1990,20 @@ export function getFeatureZodSchema(
         : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), forceSchema).optional(),
 
       rules: !Array.isArray(projectConfig.environments)
-        ? rulesSchema
-        : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), rulesSchema),
+        ? // no rules leaves the feature disabled, as leaving out an environment does
+          rulesSchema
+        : z.partialRecord(
+            z.enum(environmentKeys as [string, ...string[]]),
+            // leaving the environment out says the same as an empty list
+            rulesSchema.superRefine((value, ctx) => {
+              if (value.length === 0) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: "Must have at least one rule. Leave the environment out instead.",
+                });
+              }
+            }),
+          ),
     })
     .strict()
     .superRefine((value, ctx) => {

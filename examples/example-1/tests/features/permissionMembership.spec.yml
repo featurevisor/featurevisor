@@ -6,22 +6,28 @@ assertions:
     at: 50
     context:
       userId: writer
-      permissions: [read, admin]
+      permissions:
+        - read
+        - admin
     expectedToBeEnabled: true
     expectedVariation: writer
     expectedVariables:
-      actions: [read, write]
+      actions:
+        - read
+        - write
 
   - description: no matching permissions select the reader variation
     environment: production
     at: 50
     context:
       userId: reader
-      permissions: [read]
+      permissions:
+        - read
     expectedToBeEnabled: true
     expectedVariation: reader
     expectedVariables:
-      actions: [read]
+      actions:
+        - read
 
   - description: an empty array also has none of the listed permissions
     environment: staging

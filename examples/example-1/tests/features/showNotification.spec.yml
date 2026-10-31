@@ -1,19 +1,26 @@
 feature: showNotification
+
 assertions:
-  - matrix:
-      at: [0, 50, 100]
-    at: ${{ at }}
-    description: "At ${{ at }}% in staging, the feature should be enabled"
+  - description: At ${{ at }}% in staging, the feature should be enabled
+    matrix:
+      at:
+        - 0
+        - 50
+        - 100
     environment: staging
+    at: ${{ at }}
     context:
       country: nl
     expectedToBeEnabled: true
 
-  - matrix:
-      at: [0, 50, 100]
-    at: ${{ at }}
-    description: "At ${{ at }}% in production, the feature should be disabled"
+  - description: At ${{ at }}% in production, the feature should be disabled
+    matrix:
+      at:
+        - 0
+        - 50
+        - 100
     environment: production
+    at: ${{ at }}
     context:
       country: nl
     expectedToBeEnabled: false
