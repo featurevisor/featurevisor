@@ -1,0 +1,9 @@
+description: The expressions showcase features and the global variables they read
+
+tag: expressions
+
+includeVariables:
+  - platformStatus
+  - storefront
+  - checkoutCopy
+  - supportChannel

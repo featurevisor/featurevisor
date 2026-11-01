@@ -33,7 +33,7 @@ import {
   variableNode,
 } from "./dependencies";
 import { assertFlatAttributeKeys } from "./attributeNamespaces";
-import { expandDefinitionFel } from "./fel";
+import { expandConditionExpressions } from "./expressions";
 
 export class Datasource {
   private adapter: Adapter;
@@ -69,12 +69,12 @@ export class Datasource {
     return this.adapter.listSets();
   }
 
-  getFelOptions() {
+  getExpressionOptions() {
     return { namespaceCharacter: this.config.namespaceCharacter };
   }
 
   /**
-   * A definition exactly as authored, FEL strings included. Use it only to write a definition
+   * A definition exactly as authored, expressions included. Use it only to write a definition
    * back, so authored expressions survive. Everything else reads the expanded form.
    */
   readAuthoredEntity<T>(entityType: EntityType, entityKey: string): Promise<T> {
@@ -169,13 +169,13 @@ export class Datasource {
       : undefined;
   }
 
-  /** The feature with FEL in its conditions expanded into trees, as everything downstream reads it. */
+  /** The feature with expressions in its conditions expanded into trees, as everything downstream reads it. */
   async readFeature(featureKey: FeatureKey) {
-    return expandDefinitionFel(
+    return expandConditionExpressions(
       "feature",
       featureKey,
       await this.adapter.readEntity<ParsedFeature>("feature", featureKey),
-      this.getFelOptions(),
+      this.getExpressionOptions(),
     );
   }
 
@@ -214,11 +214,11 @@ export class Datasource {
   }
 
   async readSegment(segmentKey: SegmentKey) {
-    return expandDefinitionFel(
+    return expandConditionExpressions(
       "segment",
       segmentKey,
       await this.adapter.readEntity<Segment>("segment", segmentKey),
-      this.getFelOptions(),
+      this.getExpressionOptions(),
     );
   }
 
@@ -318,11 +318,11 @@ export class Datasource {
   }
 
   async readVariable(variableKey: VariableKey) {
-    return expandDefinitionFel(
+    return expandConditionExpressions(
       "variable",
       variableKey,
       await this.adapter.readEntity<ParsedVariable>("variable", variableKey),
-      this.getFelOptions(),
+      this.getExpressionOptions(),
     );
   }
 

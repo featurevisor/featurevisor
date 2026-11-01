@@ -15,7 +15,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 /**
  * Visits every `conditions` value a segment, feature or global variable authors, with its
  * location as named in `allowedConditions` and its path in the definition. The one walker
- * for authored condition locations, so every check and FEL see the same places.
+ * for authored condition locations, so every check and expression expansion see the same places.
  */
 export function visitConditionLocations(
   entityType: "segment" | "feature" | "variable",

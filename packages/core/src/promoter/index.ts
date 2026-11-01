@@ -27,7 +27,7 @@ import type { CustomParser } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
-import { restoreAuthoredFel } from "../datasource/fel";
+import { restoreConditionExpressions } from "../datasource/expressions";
 import { lintProject, type LintErrorItem } from "../linter";
 import {
   CLI_COLOR_CYAN,
@@ -1656,11 +1656,11 @@ async function getPromotionPlan(
 }
 
 /**
- * Definitions are planned in their expanded form, so FEL strings read as trees. Before
- * writing, every `conditions` value that still equals an authored FEL value, in the source or
- * the destination, is written as that FEL again, so promotion never turns FEL into trees.
+ * Definitions are planned in their expanded form, so expressions read as trees. Before
+ * writing, every `conditions` value that still equals an authored expression, in the source or
+ * the destination, is written as that expression again, so promotion never turns expressions into trees.
  */
-async function withAuthoredFel(
+async function withAuthoredExpressions(
   sourceDatasource: Datasource,
   destinationDatasource: Datasource,
   plan: EntityPlan,
@@ -1676,11 +1676,11 @@ async function withAuthoredFel(
       // A definition that does not exist on one side has nothing to restore from.
     }
   }
-  return restoreAuthoredFel(
+  return restoreConditionExpressions(
     plan.type,
     plan.merged,
     authored,
-    destinationDatasource.getFelOptions(),
+    destinationDatasource.getExpressionOptions(),
   ) as EntityValue;
 }
 
@@ -1725,7 +1725,7 @@ async function writePlan(
     }
     const plan = {
       ...original,
-      merged: await withAuthoredFel(sourceDatasource, destinationDatasource, original),
+      merged: await withAuthoredExpressions(sourceDatasource, destinationDatasource, original),
     };
 
     // read before writing, since the file it replaces is where its lines come from

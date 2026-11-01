@@ -90,15 +90,16 @@ specs evaluate it, example-targets and example-1 with that SDK, installed as the
 root dev dependency featurevisor-sdk-3, against the v4 SDK. Keep that comparison
 when changing the converter in packages/core/src/builder/schemaV2.ts.
 
-## FEL
+## Condition expressions
 
-packages/fel parses, compiles and prints FEL, the expression strings in
-conditions, and depends only on @featurevisor/types. Datasource expands them
-when reading features, segments and global variables, so readers see condition
-trees. A command writing definitions back must keep authored FEL: read files
-with the parser, as fmt, migrate and convert do, or restore it with
-restoreAuthoredFel, as promote does. examples/example-fel shows FEL, with a
-spec for each expression.
+packages/expressions parses, compiles, prints and formats condition
+expressions, the strings in conditions that read as text rather than trees, and
+depends only on @featurevisor/types. Datasource expands them when reading
+features, segments and global variables, so readers see condition trees. A
+command writing definitions back must keep authored expressions: read files
+with the parser, as fmt, migrate and convert do, or restore them with
+restoreConditionExpressions, as promote does. examples/example-expressions
+shows them, with a spec for each expression.
 
 ## Catalog
 

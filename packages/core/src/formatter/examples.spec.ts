@@ -8,7 +8,11 @@ import type { EntityType } from "@featurevisor/types";
 import { buildProjectSets } from "../builder/buildProject";
 import { getProjectConfig, type ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
-import { expandDefinitionFel, FelExpressionError, getFelExpressions } from "../datasource/fel";
+import {
+  expandConditionExpressions,
+  ConditionExpressionError,
+  getConditionExpressions,
+} from "../datasource/expressions";
 import { formatProject } from "./formatProject";
 import { getKeyOrder } from "./layout";
 import { HOUSE_STYLE } from "./style";
@@ -63,19 +67,23 @@ describe("formatProject on the examples", () => {
     );
   }
 
-  // Undoes the house style of FEL expressions without changing their trees: each gets leading
+  // Undoes the house style of expressions without changing their trees: each gets leading
   // spaces and a final line break, which formatting takes away again.
-  function unformatFel(entityType: EntityType, value: unknown, config: ProjectConfig): unknown {
-    if (!config.allowFEL) return value;
+  function unformatExpressions(
+    entityType: EntityType,
+    value: unknown,
+    config: ProjectConfig,
+  ): unknown {
+    if (!config.allowConditionExpressions) return value;
     if (entityType !== "feature" && entityType !== "segment" && entityType !== "variable") {
       return value;
     }
     const options = { namespaceCharacter: config.namespaceCharacter };
     let records: { path: (string | number)[]; source: string }[];
     try {
-      records = getFelExpressions(expandDefinitionFel(entityType, "", value, options));
+      records = getConditionExpressions(expandConditionExpressions(entityType, "", value, options));
     } catch (error) {
-      if (!(error instanceof FelExpressionError)) throw error;
+      if (!(error instanceof ConditionExpressionError)) throw error;
       records = error.expressions;
     }
     for (const record of records) {
@@ -89,7 +97,7 @@ describe("formatProject on the examples", () => {
   }
 
   // Undoes the house layout without changing a value: every map fmt orders gets its keys in
-  // reverse house order, every FEL expression loses its house style, and the file is written
+  // reverse house order, every expression loses its house style, and the file is written
   // by the parser's stringify, without blank lines.
   async function unformat(root: string) {
     const projectConfig = getProjectConfig(root);
@@ -102,15 +110,15 @@ describe("formatProject on the examples", () => {
     for (const file of files) {
       const filePath = path.resolve(file.filePath);
       const value = parser.parse(fs.readFileSync(filePath, "utf8"), filePath);
-      const unstyled = unformatFel(file.entityType, value, projectConfig);
+      const unstyled = unformatExpressions(file.entityType, value, projectConfig);
       fs.writeFileSync(filePath, parser.stringify(reverseOrdered(file.entityType, unstyled)));
     }
   }
 
-  // How many FEL expressions still carry unformatFel's leading spaces
+  // How many expressions still carry the leading spaces unformatExpressions gives them
   async function unstyledExpressions(root: string) {
     const projectConfig = getProjectConfig(root);
-    if (!projectConfig.allowFEL) return 0;
+    if (!projectConfig.allowConditionExpressions) return 0;
     const parser = projectConfig.parser as CustomParser;
     const datasource = new Datasource(projectConfig, root);
     const { files } = await formatProject(
@@ -123,8 +131,10 @@ describe("formatProject on the examples", () => {
       const filePath = path.resolve(file.filePath);
       const value = parser.parse(fs.readFileSync(filePath, "utf8"), filePath);
       const options = { namespaceCharacter: projectConfig.namespaceCharacter };
-      const expanded = expandDefinitionFel(file.entityType as "feature", "", value, options);
-      count += getFelExpressions(expanded).filter((record) => record.source.startsWith(" ")).length;
+      const expanded = expandConditionExpressions(file.entityType as "feature", "", value, options);
+      count += getConditionExpressions(expanded).filter((record) =>
+        record.source.startsWith(" "),
+      ).length;
     }
     return count;
   }
@@ -182,7 +192,8 @@ describe("formatProject on the examples", () => {
       await unformat(formatted);
       expect((await formatAll(formatted, true)).changed).toBeGreaterThan(0);
       const unstyled = await unstyledExpressions(formatted);
-      if (getProjectConfig(formatted).allowFEL) expect(unstyled).toBeGreaterThan(0);
+      if (getProjectConfig(formatted).allowConditionExpressions)
+        expect(unstyled).toBeGreaterThan(0);
       expect((await formatAll(formatted)).errors).toBe(0);
       expect(await formatAll(formatted, true)).toEqual({ changed: 0, errors: 0 });
       // every expression is back in the house style

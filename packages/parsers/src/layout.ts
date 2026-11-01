@@ -40,7 +40,7 @@ export interface FormatLayout {
   /** The parsed value with every map's keys in order, for parsers that write from values */
   orderValue: <T>(value: T) => T;
   /**
-   * The text of the string at `path` in house style, such as a FEL expression's in
+   * The text of the string at `path` in house style, such as an expression's in
    * `conditions`, or undefined to keep it as written. Text over several lines is written as a
    * block in formats that have one. Parsers that write from values can use `applyFormatText`.
    */

@@ -51,11 +51,15 @@ import { getTestContextWarnings } from "./contextWarnings";
 import { createCompositionWarningInspector } from "./compositionWarnings";
 import { diagnosticParseOptions } from "./diagnostics";
 import { EntityParseError } from "../datasource/parseError";
-import { isEntityKey } from "@featurevisor/fel";
-import type { FelPosition } from "@featurevisor/fel";
-import { FelExpressionError, getFelExpressions } from "../datasource/fel";
-import type { FelExpressionRecord } from "../datasource/fel";
-import { createFelLocator, findFelRange, isInsideFailedExpression } from "./felDiagnostics";
+import { isEntityKey } from "@featurevisor/expressions";
+import type { ExpressionPosition } from "@featurevisor/expressions";
+import { ConditionExpressionError, getConditionExpressions } from "../datasource/expressions";
+import type { ConditionExpressionRecord } from "../datasource/expressions";
+import {
+  createExpressionLocator,
+  findExpressionRange,
+  isInsideFailedExpression,
+} from "./expressionDiagnostics";
 import {
   ATTRIBUTE_NAMESPACE_MESSAGE,
   AttributeNamespaceError,
@@ -89,7 +93,7 @@ export interface LintErrorItem {
   path: (string | number)[];
   code?: string;
   value?: unknown;
-  /** Where in the file, for problems inside FEL expressions. One based. */
+  /** Where in the file, for problems inside expressions. One based. */
   line?: number;
   column?: number;
   endLine?: number;
@@ -111,7 +115,7 @@ const ATTRIBUTE_NAME_REGEX = /^[a-zA-Z0-9_\-]+$/;
 const ATTRIBUTE_NAME_REGEX_ERROR =
   "Attribute names must be alphanumeric and can contain _ and -. Dots, directory separators and the configured namespace character are not allowed.";
 
-/** One rule for key shapes, shared with FEL, which reads a string of this shape as a segment. */
+/** One rule for key shapes, shared with expressions, which read a string of this shape as a segment. */
 function isValidEntityKey(key: string, namespaceCharacter: string): boolean {
   return isEntityKey(key, { namespaceCharacter });
 }
@@ -324,28 +328,28 @@ export async function lintProject(
     }
   }
 
-  // FEL: problems inside expressions point to the exact file, line and column.
-  const locateFel = createFelLocator(datasource.getExtension() === "yml");
+  // Expressions: problems inside them point to the exact file, line and column.
+  const locateExpression = createExpressionLocator(datasource.getExtension() === "yml");
   /** The expressions of the definition being linted, so its problems can be located. */
-  let felContext: { fullPath: string; records: FelExpressionRecord[] } | undefined;
+  let expressionContext: { fullPath: string; records: ConditionExpressionRecord[] } | undefined;
   /** Code frames to print, kept out of JSON output. */
-  const felFrames = new WeakMap<LintErrorItem, string[]>();
+  const expressionFrames = new WeakMap<LintErrorItem, string[]>();
   /** Aliased YAML repeats expressions, so one location is reported once. */
-  const reportedFelLocations = new Set<string>();
-  /** Definitions for FEL hints, filled once they are loaded. */
-  const felLookup: {
+  const reportedExpressionLocations = new Set<string>();
+  /** Definitions for hints inside expressions, filled once they are loaded. */
+  const expressionLookup: {
     attributes: Record<string, Attribute>;
     features: Record<string, ParsedFeature>;
     variables: Record<string, ParsedVariable>;
   } = { attributes: {}, features: {}, variables: {} };
 
-  function locateFelItem(
+  function locateExpressionItem(
     item: LintErrorItem,
     fullPath: string,
     stringPath: (string | number)[],
-    range: { start: FelPosition; end: FelPosition },
+    range: { start: ExpressionPosition; end: ExpressionPosition },
   ): LintErrorItem {
-    const location = locateFel(fullPath, stringPath, range.start, range.end);
+    const location = locateExpression(fullPath, stringPath, range.start, range.end);
     if (!location) {
       return {
         ...item,
@@ -359,34 +363,38 @@ export async function lintProject(
       endLine: location.endLine,
       endColumn: location.endColumn,
     };
-    felFrames.set(located, location.frame);
+    expressionFrames.set(located, location.frame);
     return located;
   }
 
-  /** Points a problem on a compiled FEL leaf at its place in the expression. */
-  function withFelLocation(item: LintErrorItem): LintErrorItem {
+  /** Points a problem on a leaf compiled from an expression at its place in the expression. */
+  function withExpressionLocation(item: LintErrorItem): LintErrorItem {
     if (item.line !== undefined) return item;
-    const range = felContext ? findFelRange(felContext.records, item.path) : undefined;
-    if (!felContext || !range) {
-      // In a project writing FEL, advise FEL for plain strings too.
-      return projectConfig.allowFEL ? { ...item, message: rewordForFel(item.message) } : item;
+    const range = expressionContext
+      ? findExpressionRange(expressionContext.records, item.path)
+      : undefined;
+    if (!expressionContext || !range) {
+      // In a project writing expressions, advise them for plain strings too.
+      return projectConfig.allowConditionExpressions
+        ? { ...item, message: rewordForExpressions(item.message) }
+        : item;
     }
-    return locateFelItem(
-      { ...item, message: rewordForFel(item.message) },
-      felContext.fullPath,
+    return locateExpressionItem(
+      { ...item, message: rewordForExpressions(item.message) },
+      expressionContext.fullPath,
       range.record.path,
       range,
     );
   }
 
   /** Tree advice in an expression's own terms. */
-  function rewordForFel(message: string): string {
+  function rewordForExpressions(message: string): string {
     const unknownSegment = /^Unknown segment "([^"]+)"\./.exec(message);
     if (!unknownSegment) return message;
     const name = unknownSegment[1];
     const prefix = `Unknown segment "${name}".`;
-    if (Object.prototype.hasOwnProperty.call(felLookup.attributes, name)) {
-      const type = (felLookup.attributes[name] as { type?: unknown }).type;
+    if (Object.prototype.hasOwnProperty.call(expressionLookup.attributes, name)) {
+      const type = (expressionLookup.attributes[name] as { type?: unknown }).type;
       const example =
         type === "boolean"
           ? `${name} == true`
@@ -397,17 +405,17 @@ export async function lintProject(
               : `${name} exists`;
       return `${prefix} "${name}" is an attribute: compare it, such as ${example}.`;
     }
-    if (Object.prototype.hasOwnProperty.call(felLookup.features, name)) {
+    if (Object.prototype.hasOwnProperty.call(expressionLookup.features, name)) {
       return `${prefix} "${name}" is a feature: write feature('${name}').`;
     }
-    if (Object.prototype.hasOwnProperty.call(felLookup.variables, name)) {
+    if (Object.prototype.hasOwnProperty.call(expressionLookup.variables, name)) {
       return `${prefix} "${name}" is a global variable: compare it, such as variable('${name}') == true.`;
     }
     return message;
   }
 
-  function isRepeatedFelLocation(item: LintErrorItem): boolean {
-    if (item.line === undefined && !String(item.code).startsWith("fel_")) return false;
+  function isRepeatedExpressionLocation(item: LintErrorItem): boolean {
+    if (item.line === undefined && !String(item.code).startsWith("expression_")) return false;
     const id = JSON.stringify([
       item.filePath,
       item.line ?? item.path.join("."),
@@ -415,13 +423,16 @@ export async function lintProject(
       item.code,
       item.message,
     ]);
-    if (reportedFelLocations.has(id)) return true;
-    reportedFelLocations.add(id);
+    if (reportedExpressionLocations.has(id)) return true;
+    reportedExpressionLocations.add(id);
     return false;
   }
 
-  function printFelDetails(item: LintErrorItem, print: (...args: unknown[]) => void = console.log) {
-    const frame = felFrames.get(item);
+  function printExpressionDetails(
+    item: LintErrorItem,
+    print: (...args: unknown[]) => void = console.log,
+  ) {
+    const frame = expressionFrames.get(item);
     if (item.line !== undefined && frame) {
       print(`     ${item.filePath}:${item.line}:${item.column}`);
       for (const line of frame) print(`       ${line}`);
@@ -429,51 +440,51 @@ export async function lintProject(
     if (item.hint) print(`     Hint: ${item.hint}`);
   }
 
-  /** Records an error, located inside FEL where it applies. Undefined when already reported. */
+  /** Records an error, located inside an expression where it applies. Undefined when already reported. */
   function recordError(error: LintErrorItem): LintErrorItem | undefined {
-    const item = withFelLocation(error);
-    if (isRepeatedFelLocation(item)) return undefined;
+    const item = withExpressionLocation(error);
+    if (isRepeatedExpressionLocation(item)) return undefined;
     errors.push(item);
     return item;
   }
 
   function reportWarning(warning: LintErrorItem) {
-    const item = withFelLocation(warning);
-    if (isRepeatedFelLocation(item)) return;
+    const item = withExpressionLocation(warning);
+    if (isRepeatedExpressionLocation(item)) return;
     warnings.push(item);
     if (!isJsonMode) {
       console.log(
         `  => Warning: ${item.message} (${item.entityType} ${item.key}: ${item.path.join(".")})`,
       );
-      printFelDetails(item);
+      printExpressionDetails(item);
     }
   }
 
   /**
-   * Reports what FEL found while reading a definition: expressions that do not compile, their
-   * warnings, expressions in a project that has not allowed FEL, and checks that need the
+   * Reports what expansion found while reading a definition: expressions that do not compile, their
+   * warnings, expressions in a project that has not allowed them, and checks that need the
    * project's attributes.
    */
-  async function reportFelExpressions(
+  async function reportConditionExpressions(
     entityType: LintEntityType,
     key: string,
     fullPath: string,
-    records: FelExpressionRecord[],
+    records: ConditionExpressionRecord[],
     definition?: unknown,
   ) {
     const filePath = path.relative(process.cwd(), fullPath);
     for (const record of records) {
-      if (!projectConfig.allowFEL) {
+      if (!projectConfig.allowConditionExpressions) {
         const lines = record.source.split("\n");
-        const item = locateFelItem(
+        const item = locateExpressionItem(
           {
             filePath,
             entityType,
             key,
             path: record.path,
-            code: "fel_not_allowed",
-            message: "FEL expressions are not allowed in this project.",
-            hint: "Set allowFEL: true in featurevisor.config.js to write conditions as expressions, or write this condition as a YAML tree.",
+            code: "expression_not_allowed",
+            message: "Condition expressions are not allowed in this project.",
+            hint: "Set allowConditionExpressions: true in featurevisor.config.js to write conditions as expressions, or write this condition as a YAML tree.",
           },
           fullPath,
           record.path,
@@ -486,10 +497,10 @@ export async function lintProject(
             },
           },
         );
-        await printFelError(item, fullPath);
+        await printExpressionError(item, fullPath);
       }
       for (const error of record.errors) {
-        const item = locateFelItem(
+        const item = locateExpressionItem(
           {
             filePath,
             entityType,
@@ -503,10 +514,10 @@ export async function lintProject(
           record.path,
           error,
         );
-        await printFelError(item, fullPath);
+        await printExpressionError(item, fullPath);
       }
       for (const warning of record.warnings) {
-        const item = locateFelItem(
+        const item = locateExpressionItem(
           {
             filePath,
             entityType,
@@ -523,15 +534,15 @@ export async function lintProject(
         reportWarning(item);
       }
     }
-    if (definition) reportFelSemverText(entityType, key, fullPath, records, definition);
+    if (definition) reportExpressionSemverText(entityType, key, fullPath, records, definition);
   }
 
   /** `appVersion == '5.5.0'` compares text, which is rarely meant for a version attribute. */
-  function reportFelSemverText(
+  function reportExpressionSemverText(
     entityType: LintEntityType,
     key: string,
     fullPath: string,
-    records: FelExpressionRecord[],
+    records: ConditionExpressionRecord[],
     definition: unknown,
   ) {
     for (const record of records) {
@@ -545,18 +556,18 @@ export async function lintProject(
         const condition = leaf as { attribute?: unknown; operator?: unknown; value?: unknown };
         if (typeof condition.attribute !== "string") continue;
         if (condition.operator !== "equals" && condition.operator !== "notEquals") continue;
-        const attribute = felLookup.attributes[condition.attribute];
+        const attribute = expressionLookup.attributes[condition.attribute];
         if (!attribute || (attribute as { format?: unknown }).format !== "semver") continue;
         if (typeof condition.value !== "string") continue;
         const symbol = condition.operator === "equals" ? "==" : "!=";
         reportWarning(
-          locateFelItem(
+          locateExpressionItem(
             {
               filePath: path.relative(process.cwd(), fullPath),
               entityType,
               key,
               path: span.path,
-              code: "fel_semver_text",
+              code: "expression_semver_text",
               message: `"${condition.attribute}" holds versions, so ${symbol} compares them as text.`,
               hint: `Write ${condition.attribute} ${symbol} semver('${condition.value}') to compare versions, so 5.5 matches 5.5.0.`,
             },
@@ -569,13 +580,13 @@ export async function lintProject(
     }
   }
 
-  async function printFelError(item: LintErrorItem, fullPath: string) {
-    if (isRepeatedFelLocation(item)) return;
+  async function printExpressionError(item: LintErrorItem, fullPath: string) {
+    if (isRepeatedExpressionLocation(item)) return;
     errors.push(item);
     if (!isJsonMode) {
       await printEntityHeader(item.entityType, item.key, fullPath);
       console.log(CLI_FORMAT_RED, `  => Error: ${item.message}`);
-      printFelDetails(item);
+      printExpressionDetails(item);
       console.log("     Path:", item.path.join(".") || "(root)");
       console.log("");
     }
@@ -616,7 +627,7 @@ export async function lintProject(
       if (detail) {
         console.log(CLI_FORMAT_RED, `     ${detail}`);
       }
-      printFelDetails(item);
+      printExpressionDetails(item);
       console.log("");
     }
   }
@@ -634,9 +645,9 @@ export async function lintProject(
       typeof error.featurevisorFilePath === "string"
         ? error.featurevisorFilePath
         : undefined;
-    if (error instanceof FelExpressionError) {
+    if (error instanceof ConditionExpressionError) {
       // Reported against the definition holding the expression, whoever read it.
-      await reportFelExpressions(
+      await reportConditionExpressions(
         error.entityType,
         error.entityKey,
         getFullPathFromKey(error.entityType, error.entityKey),
@@ -702,7 +713,7 @@ export async function lintProject(
       (issue) =>
         !(ignoreUnknownReferences && issue.unknownReference) &&
         // An expression that did not compile is reported once, as itself.
-        !(felContext && isInsideFailedExpression(felContext.records, issue.path)),
+        !(expressionContext && isInsideFailedExpression(expressionContext.records, issue.path)),
     );
     if (issues.length === 0) return;
 
@@ -726,9 +737,9 @@ export async function lintProject(
     const print = entityType === "feature" ? console.log : console.error;
     for (const item of items) {
       print(CLI_FORMAT_RED, `  => Error: ${item.message}`);
-      printFelDetails(item, print);
-      // Inside FEL the code frame shows the place. The tree path would name keys the file lacks.
-      if (item.line === undefined || !felFrames.has(item))
+      printExpressionDetails(item, print);
+      // Inside an expression the code frame shows the place. The tree path would name keys the file lacks.
+      if (item.line === undefined || !expressionFrames.has(item))
         print("     Path:", item.path.join(".") || "(root)");
       if (typeof item.value !== "undefined" && item.value !== "undefined") {
         print("     Value:", item.value);
@@ -862,8 +873,8 @@ export async function lintProject(
     try {
       variablesByKey[key] = await datasource.readVariable(key);
     } catch (error) {
-      // Invalid FEL is reported below. Its valid parts still serve as a reference.
-      if (error instanceof FelExpressionError) {
+      // An invalid expression is reported below. Its valid parts still serve as a reference.
+      if (error instanceof ConditionExpressionError) {
         variablesByKey[key] = error.definition as ParsedVariable;
       }
       // Variable read failures are reported during variable linting below.
@@ -877,7 +888,7 @@ export async function lintProject(
     try {
       featuresByKey[key] = await datasource.readFeature(key);
     } catch (error) {
-      if (error instanceof FelExpressionError) {
+      if (error instanceof ConditionExpressionError) {
         featuresByKey[key] = error.definition as ParsedFeature;
       }
       // Feature read failures are reported during feature linting below.
@@ -890,15 +901,15 @@ export async function lintProject(
     try {
       segmentsByKey[key] = await datasource.readSegment(key);
     } catch (error) {
-      if (error instanceof FelExpressionError) {
+      if (error instanceof ConditionExpressionError) {
         segmentsByKey[key] = error.definition as Segment;
       }
       // Read errors are reported alongside the segment's schema diagnostics.
     }
   }
-  felLookup.attributes = attributesByKey;
-  felLookup.features = featuresByKey;
-  felLookup.variables = variablesByKey;
+  expressionLookup.attributes = attributesByKey;
+  expressionLookup.features = featuresByKey;
+  expressionLookup.variables = variablesByKey;
   const referenceIndex: ReferenceIndex = {
     attributes: attributesByKey,
     segments: segmentsByKey,
@@ -1012,8 +1023,14 @@ export async function lintProject(
 
       try {
         const parsed = segmentsByKey[key] ?? (await datasource.readSegment(key));
-        felContext = { fullPath, records: getFelExpressions(parsed) };
-        await reportFelExpressions("segment", key, fullPath, felContext.records, parsed);
+        expressionContext = { fullPath, records: getConditionExpressions(parsed) };
+        await reportConditionExpressions(
+          "segment",
+          key,
+          fullPath,
+          expressionContext.records,
+          parsed,
+        );
         const archived = isArchived(parsed);
         const result = (archived ? isolatedSegmentZodSchema : segmentZodSchema).safeParse(
           parsed,
@@ -1031,7 +1048,7 @@ export async function lintProject(
       } catch (error) {
         await reportThrownError("segment", key, fullPath, error);
       } finally {
-        felContext = undefined;
+        expressionContext = undefined;
       }
     }
   }
@@ -1113,8 +1130,14 @@ export async function lintProject(
 
       try {
         parsed = featuresByKey[key] ?? (await datasource.readFeature(key));
-        felContext = { fullPath, records: getFelExpressions(parsed) };
-        await reportFelExpressions("feature", key, fullPath, felContext.records, parsed);
+        expressionContext = { fullPath, records: getConditionExpressions(parsed) };
+        await reportConditionExpressions(
+          "feature",
+          key,
+          fullPath,
+          expressionContext.records,
+          parsed,
+        );
         const archived = isArchived(parsed);
 
         const result = (archived ? isolatedFeatureZodSchema : featureZodSchema).safeParse(
@@ -1145,7 +1168,7 @@ export async function lintProject(
       } catch (error) {
         await reportThrownError("feature", key, fullPath, error);
       } finally {
-        felContext = undefined;
+        expressionContext = undefined;
       }
     }
   }
@@ -1223,8 +1246,14 @@ export async function lintProject(
 
       try {
         const parsed = variablesByKey[key] ?? (await datasource.readVariable(key));
-        felContext = { fullPath, records: getFelExpressions(parsed) };
-        await reportFelExpressions("variable", key, fullPath, felContext.records, parsed);
+        expressionContext = { fullPath, records: getConditionExpressions(parsed) };
+        await reportConditionExpressions(
+          "variable",
+          key,
+          fullPath,
+          expressionContext.records,
+          parsed,
+        );
         currentVariableKey = key;
         const archived = isArchived(parsed);
         const result = (archived ? isolatedVariableZodSchema : variableZodSchema).safeParse(
@@ -1252,7 +1281,7 @@ export async function lintProject(
       } catch (error) {
         await reportThrownError("variable", key, fullPath, error);
       } finally {
-        felContext = undefined;
+        expressionContext = undefined;
       }
     }
   }
@@ -1538,7 +1567,7 @@ export async function lintProject(
           ? variables[0] || ""
           : features[0] || "";
       const message = error instanceof Error ? error.message : String(error);
-      if (error instanceof EntityParseError || error instanceof FelExpressionError) {
+      if (error instanceof EntityParseError || error instanceof ConditionExpressionError) {
         await reportThrownError(entityType, key, getFullPathFromKey(entityType, key), error);
       } else if (
         !message.startsWith("Legacy feature `required` was removed") ||

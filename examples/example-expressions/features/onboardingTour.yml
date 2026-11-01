@@ -1,0 +1,66 @@
+description: Guided tour whose length depends on when the user signed up and last ordered
+
+tags:
+  - all
+  - sign-up
+  - expressions
+
+bucketBy: userId
+
+conditions: signupDate exists
+
+variablesSchema:
+  steps:
+    type: integer
+    defaultValue: 3
+
+rules:
+  staging:
+    - key: launch-week
+      conditions: |
+        signupDate after '2026-10-01T00:00:00Z'
+        and signupDate before '2026-10-08T00:00:00Z'
+      percentage: 100
+      variables:
+        steps: 5
+
+    - key: newcomers
+      conditions: lifecycle.newcomers
+      percentage: 100
+
+    - key: returning
+      conditions: |
+        audiences.dormant
+        and lastOrderAt exists
+      percentage: 100
+      variables:
+        steps: 2
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0
+
+  production:
+    - key: launch-week
+      conditions: |
+        signupDate after '2026-10-01T00:00:00Z'
+        and signupDate before '2026-10-08T00:00:00Z'
+      percentage: 100
+      variables:
+        steps: 5
+
+    - key: newcomers
+      conditions: lifecycle.newcomers
+      percentage: 100
+
+    - key: returning
+      conditions: |
+        audiences.dormant
+        and lastOrderAt exists
+      percentage: 100
+      variables:
+        steps: 2
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

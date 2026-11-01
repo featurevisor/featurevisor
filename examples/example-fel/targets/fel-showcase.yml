@@ -1,9 +1,0 @@
-description: The FEL showcase features and the global variables they read
-
-tag: fel
-
-includeVariables:
-  - platformStatus
-  - storefront
-  - checkoutCopy
-  - supportChannel

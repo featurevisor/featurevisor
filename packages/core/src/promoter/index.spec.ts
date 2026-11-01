@@ -101,9 +101,10 @@ async function createProject(options?: { configContent?: string; sets?: string[]
 }
 
 describe("promoteProjectSets", function () {
-  it("writes FEL conditions as FEL, never as trees", async () => {
+  it("writes condition expressions as expressions, never as trees", async () => {
     const root = await createProject({
-      configContent: "module.exports = { sets: true, tags: ['all', 'web'], allowFEL: true };",
+      configContent:
+        "module.exports = { sets: true, tags: ['all', 'web'], allowConditionExpressions: true };",
     });
     try {
       for (const set of ["dev", "staging"]) {

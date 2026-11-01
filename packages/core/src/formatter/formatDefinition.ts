@@ -1,19 +1,24 @@
-import type { FelOptions } from "@featurevisor/fel";
+import type { ExpressionOptions } from "@featurevisor/expressions";
 import { IGNORE_FILE_COMMENT, type CustomParser } from "@featurevisor/parsers";
 import type { EntityType } from "@featurevisor/types";
 
 import { describeParseError } from "../datasource/parseError";
 import { BUILT_IN_PARSERS, lineEndings, sameComments } from "../rewrite/lines";
-import { formatTextOf, getFelTexts, withFelTexts, type FelTexts } from "./fel";
+import {
+  formatTextOf,
+  getExpressionTexts,
+  withExpressionTexts,
+  type ExpressionTexts,
+} from "./expressions";
 import { getFormatLayout } from "./layout";
 import { HOUSE_STYLE } from "./style";
 
 export interface FormatDefinitionOptions {
   /**
-   * The project's FEL options when it allows FEL, so expressions in `conditions` are written in
+   * The project's expression options when it allows condition expressions, so they in `conditions` are written in
    * the house style too. Without them, expressions stay as written.
    */
-  fel?: FelOptions;
+  expressions?: ExpressionOptions;
 }
 
 export interface FormatResult {
@@ -109,15 +114,15 @@ function parseSource(parser: CustomParser, source: string, filePath?: string): u
   }
 }
 
-/** The house style texts of the expressions in a source, when FEL is formatted and it parses */
-function felTextsOf(
+/** The house style texts of the expressions in a source, when expressions are formatted and it parses */
+function expressionTextsOf(
   entityType: EntityType,
   source: string,
   parser: CustomParser,
   filePath: string | undefined,
   options: FormatDefinitionOptions,
-): FelTexts {
-  if (!options.fel) return new Map();
+): ExpressionTexts {
+  if (!options.expressions) return new Map();
   let value: unknown;
   try {
     value = parser.parse(source, filePath);
@@ -125,7 +130,7 @@ function felTextsOf(
     // the format reports the parse error itself
     return new Map();
   }
-  return getFelTexts(entityType, value, options.fel);
+  return getExpressionTexts(entityType, value, options.expressions);
 }
 
 /**
@@ -138,7 +143,7 @@ function formatOnce(
   source: string,
   parser: CustomParser,
   filePath: string | undefined,
-  texts: FelTexts,
+  texts: ExpressionTexts,
 ): string | undefined {
   const { text, restore } = lineEndings(source, HOUSE_STYLE.endOfLine);
   const layout = getFormatLayout(entityType, parser.extension);
@@ -161,7 +166,7 @@ function formatOnce(
 /**
  * Formats one definition file's source with its parser's `format`, which applies what its
  * format can express of Featurevisor's layout for this kind of definition. The result is
- * checked before it is returned: it must parse to the same value, apart from FEL expressions
+ * checked before it is returned: it must parse to the same value, apart from expressions
  * written in the house style, keep every comment when the parser can list them, and stay the
  * same when formatted again. A file with the ignore comment at its top is left as it is.
  */
@@ -175,7 +180,7 @@ export function formatDefinition(
   if (!canFormat(parser)) return { output: source, changed: false };
   if (isIgnoredFile(source)) return { output: source, changed: false, ignored: true };
 
-  const texts = felTextsOf(entityType, source, parser, filePath, options);
+  const texts = expressionTextsOf(entityType, source, parser, filePath, options);
   const output = formatOnce(entityType, source, parser, filePath, texts);
   if (output === undefined || output === source) {
     // a built-in format reads the source as its parse does, and a custom one may not read it
@@ -194,14 +199,14 @@ export function formatDefinition(
   } catch {
     readable = false;
   }
-  // each expression is as written or in the house style, which fel checks reads back the same
-  if (!readable || !sameValue(withFelTexts(before, texts, after), after)) {
+  // each expression is as written or in the house style, which reads back the same, as checked
+  if (!readable || !sameValue(withExpressionTexts(before, texts, after), after)) {
     throw new FormatGuardError("Formatting would change the parsed value.");
   }
   if (!sameComments(parser, source, output)) {
     throw new FormatGuardError("Formatting would lose or change a comment.");
   }
-  const again = felTextsOf(entityType, output, parser, filePath, options);
+  const again = expressionTextsOf(entityType, output, parser, filePath, options);
   if (formatOnce(entityType, output, parser, filePath, again) !== output) {
     throw new FormatGuardError("Formatting is not stable: a second pass changes the output.");
   }

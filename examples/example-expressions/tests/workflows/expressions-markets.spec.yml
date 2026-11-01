@@ -1,0 +1,59 @@
+description: Market segments and prices agree for ${{ country }} in the expressions showcase datafile
+
+matrix:
+  country:
+    - nl
+    - be
+    - lu
+    - de
+    - at
+
+environment: staging
+
+target: expressions-showcase
+
+context:
+  userId: user-3
+  country: ${{ country }}
+
+checks:
+  - segment: markets.europe
+    matches: true
+
+  - key: one-launch-market
+    or:
+      - segment: markets.benelux
+        matches: true
+
+      - segment: markets.dach
+        matches: true
+
+  - feature: regionalPricing
+    variable: currency
+    operator: equals
+    value: EUR
+
+children:
+  - description: Switzerland is in DACH but pays in francs
+    context:
+      country: ch
+    checks:
+      - segment: markets.dach
+        matches: true
+
+      - feature: regionalPricing
+        variable: currency
+        operator: equals
+        value: CHF
+
+  - description: Sweden is in the Nordics and pays in kronor
+    context:
+      country: se
+    checks:
+      - segment: markets.nordics
+        matches: true
+
+      - feature: regionalPricing
+        variable: currency
+        operator: equals
+        value: SEK
