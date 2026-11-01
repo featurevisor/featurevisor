@@ -1,3 +1,4 @@
+import { withBuiltConditions, type ConditionsView } from "./conditions";
 import { describeDefinitionChanges, formatDetails } from "./details";
 
 const rule = (key: string, percentage = 100) => ({ key, conditions: "*", percentage });
@@ -289,6 +290,41 @@ describe("core: Featurevisor diff details", () => {
   it("handles special keys without interpreting them as paths or object prototypes", () => {
     const output = report(feature([rule("__proto__/a~b")]), feature([rule("__proto__/a~b", 25)]));
     expect(output).toContain('Rule "__proto__/a~b" updated');
+  });
+
+  describe("conditions", () => {
+    const tree = [{ attribute: "plan", operator: "in", value: ["paid", "enterprise"] }];
+    const written = (view?: ConditionsView) => (before: unknown, after: unknown) =>
+      formatDetails(
+        describeDefinitionChanges("segment", { conditions: before }, { conditions: after }, view),
+      ).join("\n");
+    const expressions: ConditionsView = { options: {}, expressions: true };
+
+    it("are unchanged when written as an expression building the same tree", () => {
+      expect(written()(tree, ["plan in ['paid', 'enterprise']"])).toBe("");
+      expect(
+        written()(
+          { variable: "policy", path: "routing.enabled", operator: "equals", value: true },
+          "variable('policy').routing.enabled == true",
+        ),
+      ).toBe("");
+      expect(withBuiltConditions("segment", { conditions: "plan == 'paid'" }, expressions)).toEqual(
+        { conditions: { attribute: "plan", operator: "equals", value: "paid" } },
+      );
+    });
+
+    it("show on one line each, as expressions in a project that writes them", () => {
+      const changed = [{ attribute: "plan", operator: "in", value: ["paid"] }];
+      expect(written()(tree, changed)).toBe(
+        '  Conditions: [{"attribute":"plan","operator":"in","value":["paid","enterprise"]}] → [{"attribute":"plan","operator":"in","value":["paid"]}]',
+      );
+      expect(written(expressions)(tree, changed)).toBe(
+        "  Conditions: plan in ['paid', 'enterprise'] → plan in ['paid']",
+      );
+      expect(written()("# paying\nplan == 'paid'\nand seats >= 5\n", ["age >= 21"])).toBe(
+        "  Conditions: plan == 'paid' and seats >= 5 → age >= 21",
+      );
+    });
   });
 
   it("has no detail changes for mapping reordering and renders added definitions as blocks", () => {

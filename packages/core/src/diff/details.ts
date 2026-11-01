@@ -1,5 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 
+import { describeConditions, sameConditions, type ConditionsView } from "./conditions";
+
 /** Authored identities for readable reports, separate from positional JSON field changes. */
 export interface DiffDetail {
   label: string;
@@ -8,9 +10,11 @@ export interface DiffDetail {
   after?: unknown;
   position?: number;
   children?: DiffDetail[];
+  /** Conditions on one line each, as the report shows them */
+  text?: { before?: string; after?: string };
 }
 
-type Context = "feature" | "variable" | "rule" | "override" | "variation" | "plain";
+type Context = "feature" | "variable" | "segment" | "rule" | "override" | "variation" | "plain";
 type RecordValue = Record<string, unknown>;
 const record = (value: unknown): value is RecordValue =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -44,6 +48,7 @@ function collection(
   before: unknown,
   after: unknown,
   context: "rule" | "override" | "variation",
+  view: ConditionsView,
 ): DiffDetail[] {
   if (isDeepStrictEqual(before, after)) return [];
   if (
@@ -83,7 +88,9 @@ function collection(
           position: index + 1,
         });
       } else {
-        children.push(...group(itemLabel, fields(oldItems.get(key), newItems.get(key), context)));
+        children.push(
+          ...group(itemLabel, fields(oldItems.get(key), newItems.get(key), context, view)),
+        );
       }
     }
     // An insertion shifts positions, but only a change in relative order reorders existing items.
@@ -102,7 +109,7 @@ function collection(
       if (index >= previous.length || index >= next.length) {
         children.push(...changed(itemLabel, previous[index], next[index]));
       } else {
-        children.push(...group(itemLabel, fields(previous[index], next[index], context)));
+        children.push(...group(itemLabel, fields(previous[index], next[index], context, view)));
       }
     }
   }
@@ -115,9 +122,10 @@ function environments(
   before: unknown,
   after: unknown,
   context: "rule" | "override",
+  view: ConditionsView,
 ): DiffDetail[] {
   if (Array.isArray(before) || Array.isArray(after))
-    return collection(label, before, after, context);
+    return collection(label, before, after, context, view);
   if ((before !== undefined && !record(before)) || (after !== undefined && !record(after))) {
     return changed(label, before, after);
   }
@@ -129,6 +137,7 @@ function environments(
       own(oldMap, key) ? oldMap[key] : undefined,
       own(newMap, key) ? newMap[key] : undefined,
       context,
+      view,
     ),
   );
   return children.length ? children : changed(label, before, after);
@@ -137,7 +146,12 @@ function environments(
 const keys = (before: RecordValue, after: RecordValue) =>
   Array.from(new Set([...Object.keys(before), ...Object.keys(after)])).sort();
 
-function variables(before: unknown, after: unknown, overrides: boolean): DiffDetail[] {
+function variables(
+  before: unknown,
+  after: unknown,
+  overrides: boolean,
+  view: ConditionsView,
+): DiffDetail[] {
   if ((before !== undefined && !record(before)) || (after !== undefined && !record(after))) {
     return changed(overrides ? "Variable overrides" : "Variables", before, after);
   }
@@ -147,16 +161,17 @@ function variables(before: unknown, after: unknown, overrides: boolean): DiffDet
     const oldValue = own(oldMap, key) ? oldMap[key] : undefined;
     const newValue = own(newMap, key) ? newMap[key] : undefined;
     const label = `Variable ${quote(key)}`;
-    if (overrides) return group(label, collection("Overrides", oldValue, newValue, "override"));
+    if (overrides)
+      return group(label, collection("Overrides", oldValue, newValue, "override", view));
     if (oldValue === undefined || newValue === undefined) return changed(label, oldValue, newValue);
-    return group(label, fields(oldValue, newValue, "plain"));
+    return group(label, fields(oldValue, newValue, "plain", view));
   });
   return children.length
     ? children
     : changed(overrides ? "Variable overrides" : "Variables", before, after);
 }
 
-function mutations(before: unknown, after: unknown): DiffDetail[] {
+function mutations(before: unknown, after: unknown, view: ConditionsView): DiffDetail[] {
   if (
     before !== undefined &&
     after !== undefined &&
@@ -173,7 +188,7 @@ function mutations(before: unknown, after: unknown): DiffDetail[] {
   }
   if (!Array.isArray(before) || !Array.isArray(after)) {
     return record(before) && record(after)
-      ? group("Mutations", fields(before, after, "plain"))
+      ? group("Mutations", fields(before, after, "plain", view))
       : changed("Mutations", before, after);
   }
   // Match whole items, not paths, because a path can occur several times.
@@ -197,45 +212,71 @@ function mutations(before: unknown, after: unknown): DiffDetail[] {
   );
 }
 
-function fields(before: unknown, after: unknown, context: Context): DiffDetail[] {
+/**
+ * A change of conditions, on one line each side. Conditions that build the same tree are the
+ * same, whether written as a tree or as an expression.
+ */
+function conditions(before: unknown, after: unknown, view: ConditionsView): DiffDetail[] {
+  if (before !== undefined && after !== undefined && sameConditions(before, after, view)) return [];
+  return changed("Conditions", before, after).map((detail) => ({
+    ...detail,
+    text: {
+      ...(before !== undefined ? { before: describeConditions(before, view) } : {}),
+      ...(after !== undefined ? { after: describeConditions(after, view) } : {}),
+    },
+  }));
+}
+
+function fields(
+  before: unknown,
+  after: unknown,
+  context: Context,
+  view: ConditionsView,
+): DiffDetail[] {
   if (isDeepStrictEqual(before, after)) return [];
   if (!record(before) || !record(after)) return changed("Value", before, after);
+  // keys of arbitrary values, and of segments, read as written
+  const label = (key: string) =>
+    context === "plain" || context === "segment" ? quote(key) : title(key);
   return keys(before, after).flatMap((key) => {
     const oldValue = own(before, key) ? before[key] : undefined;
     const newValue = own(after, key) ? after[key] : undefined;
     if (isDeepStrictEqual(oldValue, newValue)) return [];
+    if (key === "conditions" && context !== "plain") return conditions(oldValue, newValue, view);
     if (context === "feature" && key === "rules")
-      return environments("Rules", oldValue, newValue, "rule");
+      return environments("Rules", oldValue, newValue, "rule", view);
     if (context === "variable" && key === "overrides")
-      return environments("Overrides", oldValue, newValue, "override");
+      return environments("Overrides", oldValue, newValue, "override", view);
     if (context === "override" && key === "overrides")
-      return collection("Overrides", oldValue, newValue, "override");
+      return collection("Overrides", oldValue, newValue, "override", view);
     if (context === "feature" && key === "variations")
-      return collection("Variations", oldValue, newValue, "variation");
+      return collection("Variations", oldValue, newValue, "variation", view);
     if (context === "feature" && key === "variablesSchema")
-      return variables(oldValue, newValue, false);
+      return variables(oldValue, newValue, false, view);
     if ((context === "rule" || context === "variation") && key === "variableOverrides")
-      return variables(oldValue, newValue, true);
-    if (context === "override" && key === "mutate") return mutations(oldValue, newValue);
+      return variables(oldValue, newValue, true, view);
+    if (context === "override" && key === "mutate") return mutations(oldValue, newValue, view);
     if (record(oldValue) && record(newValue)) {
       // Arbitrary variable values never acquire rule or override semantics just from their field names.
-      return group(
-        context === "plain" ? quote(key) : title(key),
-        fields(oldValue, newValue, "plain"),
-      );
+      return group(label(key), fields(oldValue, newValue, "plain", view));
     }
-    return changed(context === "plain" ? quote(key) : title(key), oldValue, newValue);
+    return changed(label(key), oldValue, newValue);
   });
 }
+
+/** Conditions read as every command reads them, shown as trees */
+const TREES: ConditionsView = { options: {}, expressions: false };
 
 export function describeDefinitionChanges(
   entity: string,
   before: unknown,
   after: unknown,
+  view: ConditionsView = TREES,
 ): DiffDetail[] {
   if (before === undefined || after === undefined) return changed("Definition", before, after);
-  const context = entity === "feature" || entity === "variable" ? entity : "plain";
-  return fields(before, after, context);
+  const context =
+    entity === "feature" || entity === "variable" || entity === "segment" ? entity : "plain";
+  return fields(before, after, context, view);
 }
 
 export function formatDetails(details: DiffDetail[], colour = false, indent = 2): string[] {
@@ -251,14 +292,21 @@ export function formatDetails(details: DiffDetail[], colour = false, indent = 2)
       continue;
     }
     if (detail.kind === "changed" || detail.kind === "reordered") {
+      const before = detail.text?.before ?? quote(detail.before);
+      const after = detail.text?.after ?? quote(detail.after);
       lines.push(
-        `${prefix}${detail.label}${detail.kind === "reordered" ? " (reordered)" : ""}: ${paint(quote(detail.before), 31)} → ${paint(quote(detail.after), 32)}`,
+        `${prefix}${detail.label}${detail.kind === "reordered" ? " (reordered)" : ""}: ${paint(before, 31)} → ${paint(after, 32)}`,
       );
     } else {
       const code = detail.kind === "added" ? 32 : 31;
       lines.push(
         `${prefix}${paint(detail.label + " " + detail.kind, code)}${detail.position ? ` (position ${detail.position})` : ""}`,
       );
+      const text = detail.kind === "added" ? detail.text?.after : detail.text?.before;
+      if (text !== undefined) {
+        lines.push(`${prefix}  ${paint(text, code)}`);
+        continue;
+      }
       const value = detail.kind === "added" ? detail.after : detail.before;
       // Definitions are printed as readable blocks, not long single line JSON objects.
       for (const line of JSON.stringify(value, null, 2).split("\n")) {
