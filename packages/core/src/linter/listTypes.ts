@@ -1,7 +1,8 @@
 /**
  * A list in a condition holds one type: strings, or numbers, with `null` allowed beside
- * either. A mix can never match one value consistently, so lint rejects it everywhere,
- * including variable paths whose type lint cannot otherwise see, such as open objects.
+ * either. A mix can never match one value consistently, so lint warns about it everywhere,
+ * including variable paths whose type lint cannot otherwise see, such as open objects. It is
+ * a warning until the next major version, since lists like this passed lint before.
  */
 export function getMixedListMessage(operator: string, value: unknown): string | undefined {
   if (!Array.isArray(value)) return undefined;

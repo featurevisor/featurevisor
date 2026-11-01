@@ -311,7 +311,7 @@ describe("lint with expressions", () => {
     expect(errors[0].hint).toContain("allowConditionExpressions: true");
   });
 
-  it("rejects json variables and reads inside open objects, and keeps one type per list", async () => {
+  it("warns about json variables, reads inside open objects and mixed lists", async () => {
     write(
       "variables/payload.yml",
       "description: Payload\ntype: json\ndefaultValue: '{\"ids\":[1]}'\n",
@@ -345,8 +345,11 @@ describe("lint with expressions", () => {
         "",
       ].join("\n"),
     );
-    const errors = pick((await lint()).errors);
-    expect(errors.map(({ message, line, column }) => ({ message, line, column }))).toEqual([
+    // stricter than earlier versions, so warnings until the next major version
+    const result = await lint();
+    expect(pick(result.errors)).toEqual([]);
+    const warnings = pick(result.warnings);
+    expect(warnings.map(({ message, line, column }) => ({ message, line, column }))).toEqual([
       {
         message:
           'Conditions cannot read json variables, since their contents have no declared types. Give global variable "payload" a declared shape, such as type object with properties, to use it here.',
@@ -399,6 +402,50 @@ describe("lint with expressions", () => {
     expect(output).toContain(path.join("segments", "text.yml") + ":2:13");
     expect(output).not.toContain("Path: conditions.attribute");
     expect(output).toContain("Path: conditions.0.attribute");
+  });
+
+  it("prints no tree path under an expression that does not parse", async () => {
+    write("segments/sql.yml", "description: SQL\nconditions: region in ('eu', 'us')\n");
+    const printed: string[] = [];
+    const capture = (...args: unknown[]) => {
+      printed.push(args.map(String).join(" "));
+    };
+    const log = jest.spyOn(console, "log").mockImplementation(capture);
+    const error = jest.spyOn(console, "error").mockImplementation(capture);
+    try {
+      const projectConfig = getProjectConfig(root);
+      await lintProject(
+        {
+          rootDirectoryPath: root,
+          projectConfig,
+          datasource: new Datasource(projectConfig, root),
+          options: {},
+        } as never,
+        {},
+      );
+    } finally {
+      log.mockRestore();
+      error.mockRestore();
+    }
+    const output = printed.join("\n");
+    expect(output).toContain("`in` takes a list in square brackets.");
+    expect(output).toContain("Hint: Write ['eu', 'us'].");
+    expect(output).not.toContain("Path:");
+  });
+
+  it("offers a feature's own state for a variable named enabled", async () => {
+    write(
+      "features/chat.yml",
+      "description: Chat\nbucketBy: userId\nrules:\n  - key: all\n    conditions: '*'\n    percentage: 100\n",
+    );
+    write(
+      "segments/chatting.yml",
+      "description: Chatting\nconditions: feature('chat').enabled == true\n",
+    );
+    const messages = pick((await lint()).errors).map(({ message }) => message);
+    expect(messages).toContain(
+      "Unknown feature variable \"enabled\". feature('chat') alone requires the feature to be enabled, and feature('chat') == false requires it to be off.",
+    );
   });
 
   it("rejects an allowConditionExpressions that is not a boolean", () => {

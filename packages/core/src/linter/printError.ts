@@ -9,6 +9,8 @@ export interface LintIssueFromZod {
   value?: unknown;
   /** The issue is about a key that names no definition. */
   unknownReference?: boolean;
+  /** Lint reports the issue as a warning, which does not fail it. */
+  warning?: boolean;
 }
 
 function normalizePath(path: PropertyKey[]): (string | number)[] {
@@ -58,7 +60,7 @@ function expandUnionIssue(issue: ZodIssue): ZodIssue[] {
     : [issue];
 }
 
-type CodedIssue = { params?: { code?: string; unknownReference?: boolean } };
+type CodedIssue = { params?: { code?: string; unknownReference?: boolean; warning?: boolean } };
 
 export function getLintIssuesFromZodError(e: ZodError): LintIssueFromZod[] {
   return e.issues
@@ -71,6 +73,7 @@ export function getLintIssuesFromZodError(e: ZodError): LintIssueFromZod[] {
         code: (issue as CodedIssue).params?.code ?? issue.code,
         value: (issue as any).received,
         ...((issue as CodedIssue).params?.unknownReference ? { unknownReference: true } : {}),
+        ...((issue as CodedIssue).params?.warning ? { warning: true } : {}),
       };
     })
     .filter(Boolean);

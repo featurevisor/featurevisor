@@ -368,13 +368,15 @@ class Parser {
           "Compare a version like this: appVersion >= semver('5.5.0').",
         );
       }
-      this.fail(
-        "expression_unknown_call",
-        `Unknown call \`${name}(\`.`,
-        start,
-        nameEnd + 1,
-        "The calls are feature('...'), variable('...') and semver('...').",
-      );
+      // a segment and an attribute are named without a call
+      const inside = /^\(\s*'([^'\n]*)'\s*\)/.exec(this.source.slice(nameEnd));
+      const hint =
+        name === "segment" && inside
+          ? `A segment is named on its own: ${inside[1]}.`
+          : name === "attribute" && inside
+            ? `An attribute is named on its own before its operator: ${inside[1]} == ...`
+            : "The calls are feature('...'), variable('...') and semver('...').";
+      this.fail("expression_unknown_call", `Unknown call \`${name}(\`.`, start, nameEnd + 1, hint);
     }
 
     if (name === "and" || name === "or") {
@@ -774,6 +776,15 @@ class Parser {
         `Use startsWith, endsWith, contains or matches, such as ${subject} startsWith 'admin'.`,
       );
     }
+    if (word.toLowerCase() === "between") {
+      this.fail(
+        "expression_unknown_operator",
+        "`between` is not an operator.",
+        start,
+        wordEnd,
+        `Compare both ends, such as ${subject} >= 1 and ${subject} <= 5.`,
+      );
+    }
     return undefined;
   }
 
@@ -787,6 +798,15 @@ class Parser {
         `\`${three}\` is written \`${three.slice(0, 2)}\` in an expression.`,
         start,
         start + 3,
+      );
+    }
+    if (two === "=~") {
+      this.fail(
+        "expression_unknown_operator",
+        "`=~` is written `matches` in an expression.",
+        start,
+        start + 2,
+        `Write ${subject} matches /.../.`,
       );
     }
     if (two === "<>") {
@@ -983,6 +1003,19 @@ class Parser {
         start,
         this.pos,
         `Write ${quote(name)}.`,
+      );
+    }
+    if (character === "(" && operator && LIST_OPERATORS.includes(operator)) {
+      // SQL writes a list in parentheses
+      const close = this.source.indexOf(")", start);
+      const end =
+        close === -1 || this.source.slice(start, close).includes("\n") ? start + 1 : close + 1;
+      this.fail(
+        "expression_list_required",
+        `\`${operator}\` takes a list in square brackets.`,
+        start,
+        end,
+        `Write [${this.source.slice(start + 1, end - 1).trim() || "..."}].`,
       );
     }
     this.fail("expression_missing_value", `Expected a value after \`${after}\`.`, start, start + 1);

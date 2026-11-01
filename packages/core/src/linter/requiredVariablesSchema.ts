@@ -345,6 +345,9 @@ function schemaSupportsEmptiness(schema: Schema): boolean {
 // A date-time value compares as a time, never as text, matching date-time attributes.
 const dateTimeOperators = [...dateOperators, ...presenceOperators];
 
+/** Params that make lint report an issue as a warning */
+const WARNING = { warning: true };
+
 function addValueIssue(
   ctx: z.RefinementCtx,
   message: string,
@@ -439,7 +442,7 @@ function validateOperand(
         }
       });
       const mixed = !entryIssue && getMixedListMessage(operator, value);
-      if (mixed) addValueIssue(ctx, mixed, ["value"]);
+      if (mixed) addValueIssue(ctx, mixed, ["value"], WARNING);
     }
   } else if ([...arrayOperators, ...arrayListOperators].includes(operator)) {
     const items = itemSchema(schema, schemasByKey);
@@ -467,7 +470,7 @@ function validateOperand(
           }
         });
         const mixed = !entryIssue && getMixedListMessage(operator, value);
-        if (mixed) addValueIssue(ctx, mixed, ["value"]);
+        if (mixed) addValueIssue(ctx, mixed, ["value"], WARNING);
       }
     } else {
       validateFormatOperand(items, value, ctx, ["value"]);
@@ -543,7 +546,7 @@ function validateUnknownOperand(
       });
       // The value's type is unknown to lint, so the list's own types have to agree.
       const mixed = !entryIssue && getMixedListMessage(operator, value);
-      if (mixed) addValueIssue(ctx, mixed, ["value"]);
+      if (mixed) addValueIssue(ctx, mixed, ["value"], WARNING);
     }
   } else if (membershipOperators.includes(operator)) {
     if (
@@ -556,7 +559,7 @@ function validateUnknownOperand(
       );
     } else {
       const mixed = getMixedListMessage(operator, value);
-      if (mixed) addValueIssue(ctx, mixed, ["value"]);
+      if (mixed) addValueIssue(ctx, mixed, ["value"], WARNING);
     }
   } else if (arrayOperators.includes(operator) && (typeof value === "undefined" || !primitive)) {
     addValueIssue(ctx, `when operator is "${operator}", value must be primitive or null`);
@@ -633,9 +636,14 @@ export function getVariableConditionZodSchema(
           : undefined;
       }
       if (!definition) {
+        // reading "enabled" usually means the feature's own state, which takes no variable
+        const state =
+          leaf.feature && ["enabled", "isEnabled"].includes(leaf.variable)
+            ? ` To require feature "${leaf.feature}" to be enabled, leave out "variable".`
+            : "";
         addValueIssue(
           ctx,
-          `Unknown ${leaf.feature ? "feature " : "global "}variable "${leaf.variable}".`,
+          `Unknown ${leaf.feature ? "feature " : "global "}variable "${leaf.variable}".${state}`,
           ["variable"],
           UNKNOWN_REFERENCE,
         );
@@ -686,6 +694,8 @@ export function getVariableConditionZodSchema(
             ? `Conditions cannot read ${json ? "json variables" : what}, since their contents have no declared types. Give ${subject} ${fix} to use it here.`
             : `Conditions cannot read ${what}, since their contents have no declared types, and this condition reads ${json ? "one" : "inside one"} through ${subject}. Give ${location} ${fix} to use it here.`,
           [typeof leaf.path === "undefined" || (direct && json) ? "variable" : "path"],
+          // conditions like this passed lint before, so it warns until the next major version
+          WARNING,
         );
         return;
       }

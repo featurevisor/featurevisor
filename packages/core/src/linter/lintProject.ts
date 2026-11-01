@@ -389,6 +389,13 @@ export async function lintProject(
 
   /** Tree advice in an expression's own terms. */
   function rewordForExpressions(message: string): string {
+    const state =
+      /^Unknown feature variable "([^"]+)"\. To require feature "([^"]+)" to be enabled, leave out "variable"\.$/.exec(
+        message,
+      );
+    if (state) {
+      return `Unknown feature variable "${state[1]}". feature('${state[2]}') alone requires the feature to be enabled, and feature('${state[2]}') == false requires it to be off.`;
+    }
     const unknownSegment = /^Unknown segment "([^"]+)"\./.exec(message);
     if (!unknownSegment) return message;
     const name = unknownSegment[1];
@@ -587,7 +594,9 @@ export async function lintProject(
       await printEntityHeader(item.entityType, item.key, fullPath);
       console.log(CLI_FORMAT_RED, `  => Error: ${item.message}`);
       printExpressionDetails(item);
-      console.log("     Path:", item.path.join(".") || "(root)");
+      // Inside an expression the code frame shows the place. The tree path would name keys the file lacks.
+      if (item.line === undefined || !expressionFrames.has(item))
+        console.log("     Path:", item.path.join(".") || "(root)");
       console.log("");
     }
   }
@@ -715,10 +724,22 @@ export async function lintProject(
         // An expression that did not compile is reported once, as itself.
         !(expressionContext && isInsideFailedExpression(expressionContext.records, issue.path)),
     );
-    if (issues.length === 0) return;
+    // checks stricter than earlier versions had warn until the next major version
+    for (const issue of issues.filter((issue) => issue.warning)) {
+      reportWarning({
+        filePath: path.relative(process.cwd(), fullPath),
+        entityType,
+        key,
+        message: issue.message,
+        path: issue.path,
+        code: issue.code,
+      });
+    }
+    const errors = issues.filter((issue) => !issue.warning);
+    if (errors.length === 0) return;
 
     const items: LintErrorItem[] = [];
-    for (const issue of issues) {
+    for (const issue of errors) {
       const item = recordError({
         filePath: path.relative(process.cwd(), fullPath),
         entityType,

@@ -507,6 +507,15 @@ function addIssue(
   });
 }
 
+/** An issue lint reports as a warning, such as a check stricter than earlier versions had */
+function addWarning(
+  context: z.RefinementCtx,
+  message: string,
+  path: (string | number)[] = ["value"],
+): void {
+  context.addIssue({ code: z.ZodIssueCode.custom, message, path, params: { warning: true } });
+}
+
 function getDateOperatorError(
   attribute: string,
   operator: string,
@@ -641,7 +650,7 @@ function validateAttributeAwareCondition(
       }
     });
     const mixed = !entryIssue && getMixedListMessage(data.operator, data.value);
-    if (mixed) addIssue(context, mixed, ["value"]);
+    if (mixed) addWarning(context, mixed);
 
     return;
   }
@@ -681,7 +690,7 @@ function validateAttributeAwareCondition(
           }
         });
       const mixed = !entryIssue && getMixedListMessage(data.operator, data.value);
-      if (mixed) addIssue(context, mixed, ["value"]);
+      if (mixed) addWarning(context, mixed);
     } else if (!matchesLeafValue(itemLeaf, data.value, schemasByKey)) {
       addIssue(context, `Value does not match the item schema of attribute "${data.attribute}".`);
     }
@@ -850,7 +859,7 @@ export function getConditionsZodSchema(
         const leaf = resolveAttributePath(data.attribute, attributesByKey, schemasByKey);
         // Without a known attribute, the list's own types still have to agree.
         const mixed = !leaf && getMixedListMessage(data.operator, data.value);
-        if (mixed) addIssue(context, mixed, ["value"]);
+        if (mixed) addWarning(context, mixed);
       }
 
       if (arrayListOperators.includes(data.operator)) {
