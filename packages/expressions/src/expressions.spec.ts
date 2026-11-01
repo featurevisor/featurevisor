@@ -3,18 +3,17 @@ import type { Condition, Conditions } from "@featurevisor/types";
 import {
   compile,
   containsExpression,
-  createPositionResolver,
   expandConditions,
-  getAmbiguousNamespaceCharacters,
   isEntityKey,
   isExpression,
-  OPERATOR_SPELLINGS,
-  parse,
   print,
-  quoteString,
-  toExpressions,
 } from "./index";
 import type { ExpressionOptions } from "./index";
+import { getAmbiguousNamespaceCharacters } from "./keys";
+import { OPERATOR_SPELLINGS } from "./operators";
+import { parse } from "./parser";
+import { createPositionResolver } from "./position";
+import { quoteString, toExpressions } from "./print";
 
 function tree(source: string, options: Parameters<typeof compile>[1] = {}) {
   const result = compile(source, options);

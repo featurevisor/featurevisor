@@ -12,12 +12,13 @@ const packages = [
     name: "@featurevisor/expressions",
     runtimeExports: {
       compile: "function",
+      containsExpression: "function",
       expandConditions: "function",
+      formatExpression: "function",
       isEntityKey: "function",
       isExpression: "function",
-      parse: "function",
       print: "function",
-      toExpressions: "function",
+      treeToExpression: "function",
     },
   },
   {
