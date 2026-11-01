@@ -75,7 +75,7 @@ Four values change the **shape of everything you write**:
 - `parser`: author JSON for `"json"`, YAML for `"yml"` (default), or the configured custom format ([custom-parsers.md](references/custom-parsers.md)).
 - `namespaceCharacter`: separator for keys from subdirectories. Default `.`, so `features/checkout/promo.yml` is `checkout.promo`. Some projects use `/`. Every reference must use the project's separator. Confirm against real keys with `npx featurevisor list --segments --json`.
 
-Also note `tags` (every tag you use must be declared), `disallowOperators`, `allowedConditions`, and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
+Also note `tags` (every tag you use must be declared), `disallowOperators`, `allowedConditions`, `allowConditionExpressions` (whether conditions may be written as text, [expressions.md](references/expressions.md)), and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
 
 ## How Featurevisor fits together
 
@@ -89,7 +89,7 @@ Also note `tags` (every tag you use must be declared), `disallowOperators`, `all
 | Target          | `targets/<key>.yml`    | Which definitions go into a datafile.                                                 |
 | Test spec       | `tests/**/*.spec.yml`  | Feature, segment and variable assertions, and standalone scenarios.                   |
 
-**Conditions** are one grammar used everywhere a definition selects or gates: segments, rules, force entries, root gates and overrides. A leaf compares an attribute, names a segment with a bare string, requires a feature, or compares a variable's value. A list means AND, and `and`, `or` and `not` groups nest. `'*'` matches everyone, but only as the whole expression.
+**Conditions** are one grammar used everywhere a definition selects or gates: segments, rules, force entries, root gates and overrides. A leaf compares an attribute, names a segment with a bare string, requires a feature, or compares a variable's value. A list means AND, and `and`, `or` and `not` groups nest. `'*'` matches everyone, but only as the whole value. A project with `allowConditionExpressions: true` may also write conditions as text, such as `country == 'nl' and payingAccounts` ([expressions.md](references/expressions.md)). Match what the project does.
 
 ```yaml
 conditions:
@@ -162,16 +162,17 @@ Every CLI command is local and safe to run without asking, `fmt` included, excep
 - Bare `build` is a **CI command**. It increments `.featurevisor/REVISION` and rewrites state files, which only the deploying pipeline should commit. Locally, yours and the user's, always use `npx featurevisor build --no-state-files`. It writes the same datafiles.
 - `promote --apply` (Sets only) **writes definition files**. Preview first, show the summary, then apply on the user's go ahead ([sets-promotions.md](references/sets-promotions.md)).
 - `migrate` **rewrites a v3 project's definitions for v4**. Show `migrate --diff` first, then run it on the user's go ahead ([upgrading-to-v4.md](references/upgrading-to-v4.md)).
-- `convert --apply` **restructures the whole project** between environments, sets and neither. Run `convert --to=<shape>` without `--apply` first, show the preview, then apply on the user's go ahead ([cli.md](references/cli.md#convert)).
+- `convert --apply` **restructures the whole project** between environments, sets and neither, or rewrites every condition as an expression or as a tree. Run `convert --to=<target>` without `--apply` first, show the preview, then apply on the user's go ahead ([cli.md](references/cli.md#convert)).
+- `fmt --simplify` **changes the shape of datafiles**, writing each condition in its simplest form that evaluates the same. Show `fmt --simplify --diff` first, then apply on the user's go ahead.
 
 | Command                                                                                   | Purpose                                                              |
 | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `npx featurevisor config --json --pretty`                                                 | Project configuration                                                |
 | `npx featurevisor info`                                                                   | Counts of every definition kind                                      |
 | `npx featurevisor lint [--json]`                                                          | Validate definitions and specs                                       |
-| `npx featurevisor fmt [--check]`                                                          | Format definitions in the house layout and key order                 |
+| `npx featurevisor fmt [--check] [--simplify]`                                             | Format definitions in the house layout and key order                 |
 | `npx featurevisor migrate [--diff]`                                                       | Rewrite a v3 project's definitions for v4, once                      |
-| `npx featurevisor convert --to=<flat\|environments\|sets> [--apply]`                      | Change a project between environments, sets and neither              |
+| `npx featurevisor convert --to=<flat\|environments\|sets\|expressions\|trees> [--apply]`  | Change a project's shape, or how its conditions are written          |
 | `npx featurevisor test [--key-pattern=…] [--json]`                                        | Run specs, with exact reruns through `--case`                        |
 | `npx featurevisor test --uncovered` / `--coverage`                                        | Definitions without specs, and rules or overrides the specs selected |
 | `npx featurevisor evaluate --feature=<k> --context='{…}' --explain`                       | Why a feature has its flag, variation and variables                  |
@@ -196,6 +197,7 @@ Read the matching file in full **before** authoring or debugging in that area. D
 | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Create or edit a feature: rules, force, variations, variables, root conditions, expose                      | [features.md](references/features.md)                                                                         |
 | Write conditions: leaves, groups, dependencies, paths, evaluation order                                     | [conditions.md](references/conditions.md)                                                                     |
+| Write conditions as text, with `allowConditionExpressions`                                                  | [expressions.md](references/expressions.md)                                                                   |
 | Look up an operator, or a date, version or regex rule                                                       | [operators.md](references/operators.md)                                                                       |
 | Write or change a segment                                                                                   | [segments.md](references/segments.md)                                                                         |
 | Declare an attribute, its type, format and constraints                                                      | [attributes.md](references/attributes.md)                                                                     |

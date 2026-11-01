@@ -2,11 +2,11 @@
 
 Full docs: <https://featurevisor.com/docs/conditions/>
 
-`conditions` is the one grammar for every place a definition selects or gates: segments, feature rules, force entries, root gates, and feature and global variable overrides. Operators are listed in [operators.md](operators.md).
+`conditions` is the one grammar for every place a definition selects or gates: segments, feature rules, force entries, root gates, and feature and global variable overrides. Operators are listed in [operators.md](operators.md). This file writes conditions as trees. A project with `allowConditionExpressions: true` can write the same conditions as text, such as `country == 'nl'` ([expressions.md](expressions.md)).
 
 ## Leaves
 
-There are four kinds of leaf. Mix them freely in one expression.
+There are four kinds of leaf. Mix them freely in one condition.
 
 ```yaml
 conditions:
@@ -92,7 +92,7 @@ conditions:
 - A list means AND.
 - `and`, `or` and `not` take a nonempty list and nest to any depth. Every leaf kind works inside them.
 - `not` negates the AND of its children. `not: [a, b]` means "not both a and b". For "neither", write `not: [{ or: [a, b] }]`.
-- `'*'` matches everyone, but only as the entire expression: `conditions: '*'`. Inside a list or group it is a lint error.
+- `'*'` matches everyone, but only as the entire value: `conditions: '*'`. Inside a list or group it is a lint error.
 - Empty lists and groups are lint errors.
 
 A single condition does not need a list. `conditions: netherlands` and `conditions: { feature: liveChat }` are both valid.

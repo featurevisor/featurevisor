@@ -72,6 +72,7 @@ npx featurevisor fmt --check
 npx featurevisor fmt --diff
 npx featurevisor fmt features/checkout.yml segments
 npx featurevisor fmt --check --since=origin/main
+npx featurevisor fmt --simplify --diff
 ```
 
 Docs: <https://featurevisor.com/docs/fmt/>
@@ -79,6 +80,8 @@ Docs: <https://featurevisor.com/docs/fmt/>
 Formats every definition and spec in one house style, with no options: a blank line between top level keys, rules, force entries, variations, global variable overrides, the environments that group them, and assertions, Featurevisor's own keys in a fixed order, block lists, quotes only where needed, YAML aliases written out in full without anchors, and comments kept with the key below them. So do not write anchors or aliases such as `&rules` and `*rules`. It never changes what a definition means, and the datafiles a build writes stay byte identical. After editing definitions, run it on the files you edited, so a project that is not formatted yet gets no changes beyond yours.
 
 `--check` writes nothing and exits with 1 when a file needs formatting, for CI. Errors, such as a file that does not parse, exit with 2. `--diff` prints the changes as a unified diff and writes nothing. Add `--check` to it to fail as well. File and directory paths, `--entity-type` and `--key-pattern` narrow the files, as in `lint`, and `--since=<git ref>` keeps the files changed since HEAD left that reference, uncommitted and untracked ones too. `--stdin-filepath=<path>` formats text from stdin as that file and prints it, for editors. A file whose top comments include `# featurevisor-ignore` is left as written, and so is a line ending in `# featurevisor-ignore-line`. Blank lines the author wrote between entries stay, one at most. In a project with Sets, run it without `--set` so every set is formatted together. A file that does not parse is reported and left as it is. Each parser lays out its own files: JSON gets the key order and blank lines, and a custom parser takes part through an optional `format` function ([custom-parsers.md](custom-parsers.md)). Without one, `fmt` leaves its files as they are. `promote` does not format the files it writes, so run `fmt` after a promotion when `--check` reports files.
+
+In a project with `allowConditionExpressions: true`, `fmt` also writes [expressions](expressions.md) one condition a line. It never turns a tree into an expression. `--simplify` also writes each condition in its simplest form that evaluates the same: a whole value's list of one condition as that condition, its `and` group as the list it holds, an `and` or `or` of one condition as that condition, and, with expressions on, expressions side by side as one. Only conditions change, and the datafiles change shape but evaluate the same, so show `--simplify --diff` first and apply on the user's go ahead.
 
 ## migrate
 
@@ -97,6 +100,8 @@ npx featurevisor convert --to=environments
 npx featurevisor convert --to=environments --environments=dev,production --apply
 npx featurevisor convert --to=sets --apply
 npx featurevisor convert --to=flat --keep=production --apply
+npx featurevisor convert --to=expressions
+npx featurevisor convert --to=trees --apply
 ```
 
 Docs: <https://featurevisor.com/docs/convert/>
@@ -108,7 +113,9 @@ Changes a project's shape between `flat` (no environments and no sets), `environ
 - From flat, `--environments` or `--sets` name the lanes, staging and production by default. Assertions that need an environment run in each through a `matrix`.
 - To flat, `--keep` names the lane to keep, and the preview lists what the others lose.
 
-A project with sets and environments together is refused. Exits with 0 after a preview or a conversion and 2 when it cannot convert. `--json` prints the plan and checks. Do not propose a conversion unprompted ([sets-promotions.md](sets-promotions.md#when-to-use-sets-and-when-not-to)).
+`--to=expressions` writes every condition tree that has an exact expression form as an [expression](expressions.md) and sets `allowConditionExpressions: true`. `--to=trees` writes every expression as the tree it builds and removes the option. Both keep comments with their conditions and require every datafile to build byte identical. They work in any shape of project. Do not propose either unprompted.
+
+A project with sets and environments together cannot change its shape. Exits with 0 after a preview or a conversion and 2 when it cannot convert. `--json` prints the plan and checks. Do not propose a conversion unprompted ([sets-promotions.md](sets-promotions.md#when-to-use-sets-and-when-not-to)).
 
 ## test
 
@@ -141,7 +148,7 @@ Builds the datafile in memory from the local project and evaluates it with the S
 - the bucket value and bucket key, such as `Bucket: 75177 / 100000 · key "u1.checkout"`
 - for a composition, each member's source and value
 
-The probes run beside the SDK result and are not a full execution trace. The SDK result stays authoritative. `--explain --json` has the complete evidence.
+In a project that allows expressions, declared conditions print as expressions. The probes run beside the SDK result and are not a full execution trace. The SDK result stays authoritative. `--explain --json` has the complete evidence.
 
 `evaluate` warns when the context does not fit declared attribute types or constraints, without changing the result. Unknown feature or variable keys fail with a spelling suggestion. Repeat `--target=<target>` to evaluate against specific target datafiles.
 
@@ -171,6 +178,7 @@ Comparing HEAD → working-tree
 
 - Without options it compares `HEAD` with the working tree when there are uncommitted changes, otherwise the current branch with the primary branch.
 - Rules and overrides match by key, variations by value and variables by name, so inserting a rule is one addition rather than changes to every rule after it. Formatting, comments and key order are ignored.
+- Conditions that evaluate the same are the same, such as an expression and the tree it builds, or a list of one condition and that condition. Files that only change like this, after `convert` or `fmt --simplify`, are listed apart and not reported as changed.
 - It reads definitions only. It does not evaluate, lint or build.
 
 Use it to summarize your own changes for the user, and to review a branch.
