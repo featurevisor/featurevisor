@@ -867,18 +867,20 @@ describe("convert", () => {
       );
     };
 
-    it("writes trees as expressions with their comments, and back as the same trees", async () => {
+    it("writes trees as expressions with their comments, simplified, and back as trees", async () => {
       conditionsProject();
       const before = snapshot();
 
       expect(await run({ to: "expressions", apply: true })).toBe(0);
       expect(printed).toContain("Conditions: 2 trees written as expressions");
+      expect(printed).toContain("Simplified: 1 condition written in its simplest form");
+      expect(printed).toContain("Every datafile evaluates the same");
       expect(read("featurevisor.config.js")).toBe(
         "module.exports = {\n  allowConditionExpressions: true,\n  tags: ['all'],\n};\n",
       );
-      // a list of one keeps its shape, since its expression would build a single condition
+      // a list of one becomes its condition, which builds a different shape that evaluates the same
       expect(read("segments/netherlands.yml")).toBe(
-        "description: The Netherlands\n\nconditions:\n  - country == 'nl'\n",
+        "description: The Netherlands\n\nconditions: country == 'nl'\n",
       );
       expect(read("features/checkout.yml")).toContain(
         [
@@ -896,7 +898,9 @@ describe("convert", () => {
       expect(printed).toContain("Conditions: 2 expressions written as trees");
       const after = snapshot();
       expect(after["featurevisor.config.js"]).toBe(before["featurevisor.config.js"]);
-      expect(after["segments/netherlands.yml"]).toBe(before["segments/netherlands.yml"]);
+      expect(after["segments/netherlands.yml"]).toBe(
+        "description: The Netherlands\n\nconditions:\n  attribute: country\n  operator: equals\n  value: nl\n",
+      );
       expect(yml.parse(after["features/checkout.yml"])).toEqual(
         yml.parse(before["features/checkout.yml"]),
       );
@@ -914,7 +918,9 @@ describe("convert", () => {
       expect(await run({ to: "expressions", apply: true })).toBe(0);
       expect(read("segments/netherlands.yml")).toContain("operator: equals");
       expect(await run({ to: "expressions" })).toBe(2);
-      expect(printed).toContain("Every condition tree that can be an expression is one already.");
+      expect(printed).toContain(
+        "Every condition is an expression already, in its simplest form, wherever it can be.",
+      );
     });
 
     it("writes expressions as trees in a project that stopped allowing them", async () => {
@@ -934,7 +940,7 @@ describe("convert", () => {
       expect(printed).toContain("The project has no condition expressions to write as trees.");
     });
 
-    it("round trips Example 1, building the same datafiles each way", async () => {
+    it("round trips Example 1, evaluating the same each way", async () => {
       const example = path.resolve(__dirname, "../../../../examples/example-1");
       fs.cpSync(example, root, {
         recursive: true,
@@ -942,7 +948,7 @@ describe("convert", () => {
       });
 
       expect(await run({ to: "expressions", apply: true })).toBe(0);
-      expect(printed).toContain("Every datafile builds the same");
+      expect(printed).toContain("Every datafile evaluates the same");
       expect(read("featurevisor.config.js")).toContain("allowConditionExpressions: true");
       expect(await run({ to: "trees", apply: true })).toBe(0);
       expect(printed).toContain("Every datafile builds the same");

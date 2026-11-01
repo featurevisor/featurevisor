@@ -99,11 +99,12 @@ features, segments and global variables, so readers see condition trees. A
 command writing definitions back must keep authored expressions: read files
 with the parser, as fmt, migrate and convert do, or restore them with
 restoreConditionExpressions, as promote does. fmt formats expressions and never
-turns trees into them. `convert --to=expressions` and `--to=trees` move a
-project between the two, building byte identical datafiles, and
-`fmt --simplify` writes each condition in its simplest form that evaluates the
-same, changing datafile shapes but never evaluation. Both edit YAML documents
-through packages/core/src/rewrite/conditions.ts. examples/example-expressions
+turns trees into them. `convert --to=trees` writes expressions as trees with
+byte identical datafiles. `convert --to=expressions` writes trees as
+expressions, then simplifies as `fmt --simplify` does: each condition in its
+simplest form that evaluates the same, changing datafile shapes but never
+evaluation, which its check proves by comparing conditions in that form. Both
+edit YAML documents through packages/core/src/rewrite/conditions.ts. examples/example-expressions
 shows expressions, with a spec for each.
 
 ## Catalog

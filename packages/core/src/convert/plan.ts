@@ -67,6 +67,8 @@ export interface Plan {
   next: string[];
   /** Conditions written the other way, by a conversion between trees and expressions */
   conditions?: number;
+  /** Conditions written in their simplest form, which changes datafiles' shape, not evaluation */
+  simplified?: number;
 }
 
 const DIRECTORY_OPTIONS = [
@@ -649,7 +651,7 @@ function convertConditions(builder: Builder, project: Project, to: ConditionForm
   const kept = new Set<string>();
   const unmarked = new Set<string>();
   let count = 0;
-  let simpler = 0;
+  let simplified = 0;
   for (const file of project.files) {
     if (!CONDITION_KINDS.includes(file.kind)) continue;
     const doc = builder.load(file);
@@ -663,22 +665,18 @@ function convertConditions(builder: Builder, project: Project, to: ConditionForm
     }
     if (result.kept.length > 0) kept.add(relative);
     if (result.unmarked.length > 0) unmarked.add(relative);
-    if (to === "expressions") {
-      // what fmt --simplify would write more simply afterwards, such as a list of one condition
-      const probe = doc.clone();
-      simpler += simplifyConditions(
-        probe,
-        file.kind as ConditionKind,
-        probe.toJS(),
-        options,
-      ).changed;
-    }
-    if (result.changed === 0) {
+    // then each condition in its simplest form, as fmt --simplify writes it
+    const simpler =
+      to === "expressions"
+        ? simplifyConditions(doc, file.kind as ConditionKind, doc.toJS(), options).changed
+        : 0;
+    if (result.changed + simpler === 0) {
       // only files convert writes have their aliases written out
       builder.expanded.delete(relative);
       continue;
     }
     count += result.changed;
+    simplified += simpler;
     const output = builder.rendered(file, doc);
     if (output !== file.source) builder.write(file.filePath, output);
   }
@@ -693,18 +691,19 @@ function convertConditions(builder: Builder, project: Project, to: ConditionForm
     builder.config({ remove: [SETTING] });
   }
 
-  if (count === 0 && plan.config.edits.length === 0) {
+  if (count + simplified === 0 && plan.config.edits.length === 0) {
     plan.conflicts.push(
       to === "expressions"
-        ? "Every condition tree that can be an expression is one already."
+        ? "Every condition is an expression already, in its simplest form, wherever it can be."
         : "The project has no condition expressions to write as trees.",
     );
     return;
   }
   plan.conditions = count;
-  if (simpler > 0) {
-    plan.next.push(
-      `Run fmt --simplify to write ${simpler} ${simpler === 1 ? "condition" : "conditions"} more simply, such as a list of one condition as that condition. Datafiles change shape, but evaluate the same.`,
+  if (simplified > 0) {
+    plan.simplified = simplified;
+    plan.differences.push(
+      `Datafiles change shape, since ${simplified === 1 ? "a condition is" : `${simplified} conditions are`} written in ${simplified === 1 ? "its" : "their"} simplest form, such as a list of one condition as that condition. Features' hashes change with them, and every evaluation stays the same.`,
     );
   }
   if (kept.size > 0) {

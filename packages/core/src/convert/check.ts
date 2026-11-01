@@ -11,6 +11,7 @@ import { getProjectSetExecutions } from "../sets";
 import { createTestReport } from "../tester/report";
 import { testProject } from "../tester/testProject";
 import { writeSetting } from "./config";
+import { simplestConditions } from "../rewrite/conditions";
 import { isConditionForm, leaveConfigByHand, type Plan } from "./plan";
 
 /**
@@ -185,10 +186,38 @@ function datafilesIn(directory: string): string[] {
 const ENTRIES = ["features", "segments", "variables"];
 
 /**
- * What differs between two datafiles of a lane. An entry both have must be byte identical. An
- * entry only one has may be a dependency of another lane's rules, which `isCarried` decides.
+ * A datafile entry with every `conditions` value in its simplest form and without its hash,
+ * for comparing entries whose conditions were simplified: two entries that evaluate the same
+ * are equal in this form. Conditions a datafile stores as JSON text are read first.
  */
-function compareDatafiles(before: Record<string, any>, after: Record<string, any>) {
+function simplestEntry(value: unknown, key?: string): unknown {
+  if (key === "conditions") {
+    const conditions = typeof value === "string" && /^[[{]/.test(value) ? JSON.parse(value) : value;
+    return simplestConditions(conditions);
+  }
+  if (Array.isArray(value)) return value.map((item) => simplestEntry(item));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([name]) => name !== "hash")
+      .map(([name, item]) => [name, simplestEntry(item, name)]),
+  );
+}
+
+/**
+ * What differs between two datafiles of a lane. An entry both have must be byte identical, or
+ * evaluate the same when the conversion simplified conditions. An entry only one has may be a
+ * dependency of another lane's rules, which `isCarried` decides.
+ */
+function compareDatafiles(
+  before: Record<string, any>,
+  after: Record<string, any>,
+  simplified = false,
+) {
+  const same = (a: unknown, b: unknown) =>
+    simplified
+      ? JSON.stringify(simplestEntry(a)) === JSON.stringify(simplestEntry(b))
+      : JSON.stringify(a) === JSON.stringify(b);
   const problems: string[] = [];
   const fewer: string[] = [];
   const more: string[] = [];
@@ -203,8 +232,7 @@ function compareDatafiles(before: Record<string, any>, after: Record<string, any
     for (const entry of new Set([...Object.keys(a), ...Object.keys(b)])) {
       if (!(entry in b)) fewer.push(`${kind} ${entry}`);
       else if (!(entry in a)) more.push(`${kind} ${entry}`);
-      else if (JSON.stringify(a[entry]) !== JSON.stringify(b[entry]))
-        problems.push(`${kind} ${entry}`);
+      else if (!same(a[entry], b[entry])) problems.push(`${kind} ${entry}`);
     }
   }
   return { problems, fewer, more };
@@ -376,7 +404,7 @@ export async function checkPlan(
           }
           const read = (directory: string) =>
             JSON.parse(fs.readFileSync(path.join(directory, file), "utf8"));
-          const compared = compareDatafiles(read(before), read(after));
+          const compared = compareDatafiles(read(before), read(after), Boolean(plan.simplified));
           for (const problem of compared.problems) {
             result.problems.push(`${at(file)} changes the ${problem}.`);
           }

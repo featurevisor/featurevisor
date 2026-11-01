@@ -9,6 +9,7 @@ import {
 import type { Conditions } from "@featurevisor/types";
 
 import { visitConditionLocations, type ConditionPath } from "../datasource/conditionLocations";
+import { simplestConditions } from "../rewrite/conditions";
 
 /**
  * How diff reads and shows conditions. A condition expression and the tree it builds are the
@@ -43,39 +44,11 @@ function withPathLists(value: unknown): unknown {
   return result;
 }
 
-/** A group of one `and`, `or` or `not` key over a list, as its key and list */
-function groupOf(value: unknown): [string, unknown[]] | undefined {
-  if (!isObject(value) || Object.keys(value).length !== 1) return undefined;
-  const key = Object.keys(value)[0];
-  return ["and", "or", "not"].includes(key) && Array.isArray(value[key])
-    ? [key, value[key] as unknown[]]
-    : undefined;
-}
-
-/**
- * One form for conditions that evaluate the same, as `fmt --simplify` writes them: an `and` or
- * `or` of one condition is that condition, and a whole value's list of one condition, or its
- * `and` group, is that condition or the list it holds.
- */
-function simplest(value: unknown, root: boolean): unknown {
-  let result: unknown = value;
-  const group = groupOf(value);
-  if (Array.isArray(value)) result = value.map((item) => simplest(item, false));
-  else if (group) result = { [group[0]]: group[1].map((item) => simplest(item, false)) };
-  else return value;
-  const simplified = groupOf(result);
-  if (simplified && simplified[0] !== "not" && simplified[1].length === 1) return simplified[1][0];
-  if (root && simplified?.[0] === "and" && simplified[1].length > 1) result = simplified[1];
-  if (root && Array.isArray(result) && result.length === 1) return simplest(result[0], true);
-  return result;
-}
-
 /** The tree a `conditions` value builds, with its expressions expanded, in its simplest form */
 function built(value: unknown, view: ConditionsView): unknown {
   if (value === undefined) return value;
-  return simplest(
+  return simplestConditions(
     withPathLists(expandConditions(value as Conditions, view.options).conditions),
-    true,
   );
 }
 

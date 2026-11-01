@@ -86,6 +86,11 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
       `  Conditions: ${plan.conditions} ${from} ${apply ? "written" : "to write"} as ${to}`,
     );
   }
+  if (plan.simplified) {
+    console.log(
+      `  Simplified: ${plan.simplified} ${plan.simplified === 1 ? "condition" : "conditions"} ${apply ? "written" : "to write"} in ${plan.simplified === 1 ? "its" : "their"} simplest form`,
+    );
+  }
   if (plan.config.byHand) {
     console.log(`  ${CONFIG_MODULE_NAME}: for you to edit after converting, as below`);
   } else if (plan.config.edits.length > 0) {
@@ -105,9 +110,11 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
       console.log(CLI_FORMAT_GREEN, "  ✔ Lint passes");
       console.log(
         CLI_FORMAT_GREEN,
-        isConditionForm(plan.to)
-          ? "  ✔ Every datafile builds the same"
-          : `  ✔ Features and variables build the same in ${check.lanes.join(", ")}`,
+        !isConditionForm(plan.to)
+          ? `  ✔ Features and variables build the same in ${check.lanes.join(", ")}`
+          : plan.simplified
+            ? "  ✔ Every datafile evaluates the same, its conditions in their simplest form"
+            : "  ✔ Every datafile builds the same",
       );
       if (check.tests) {
         const { before, after } = check.tests;
@@ -209,6 +216,7 @@ export async function runConversion(options: PluginHandlerOptions): Promise<numb
         writes: paths.writes,
         removes: paths.removes,
         ...(plan.conditions !== undefined ? { conditions: plan.conditions } : {}),
+        ...(plan.simplified !== undefined ? { simplified: plan.simplified } : {}),
         config: plan.config.edits,
         ...(plan.config.byHand
           ? {

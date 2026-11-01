@@ -300,6 +300,37 @@ function simplifyNode(doc: Document, path: ConditionPath, root: boolean): number
   }
 }
 
+/** A value's group of one `and`, `or` or `not` key over a list, as its key and list */
+function groupIn(value: unknown): [string, unknown[]] | undefined {
+  if (!isObject(value) || Object.keys(value).length !== 1) return undefined;
+  const key = Object.keys(value)[0];
+  return ["and", "or", "not"].includes(key) && Array.isArray(value[key])
+    ? [key, value[key] as unknown[]]
+    : undefined;
+}
+
+/**
+ * A `conditions` value in the simplest form that evaluates the same, as `simplifyConditions`
+ * writes it, apart from joining expressions: an `and` or `or` of one condition is that
+ * condition, and a whole value's list of one condition, or its `and` group, is that condition
+ * or the list it holds. Conditions that evaluate the same compare equal in this form.
+ */
+export function simplestConditions(value: unknown, root = true): unknown {
+  let result: unknown = value;
+  const group = groupIn(value);
+  if (Array.isArray(value)) result = value.map((item) => simplestConditions(item, false));
+  else if (group) {
+    result = { [group[0]]: group[1].map((item) => simplestConditions(item, false)) };
+  } else return value;
+  const simplified = groupIn(result);
+  if (simplified && simplified[0] !== "not" && simplified[1].length === 1) return simplified[1][0];
+  if (root && simplified?.[0] === "and" && simplified[1].length > 1) result = simplified[1];
+  if (root && Array.isArray(result) && result.length === 1) {
+    return simplestConditions(result[0], true);
+  }
+  return result;
+}
+
 /**
  * Writes each condition in a definition in its simplest form that evaluates the same. A whole
  * value's list of one condition becomes that condition, and its `and` group the list it holds.
