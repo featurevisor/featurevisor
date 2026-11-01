@@ -625,6 +625,35 @@ describe("evaluate --explain", () => {
     expect(text).toContain("not an SDK execution trace");
   });
 
+  test("prints declared conditions as expressions in a project that allows them", async () => {
+    const guarded = structuredClone(file);
+    guarded.variables!.supportEmail.conditions = [
+      { attribute: "country", operator: "equals", value: "nl" },
+      { or: [{ feature: "pricing" }, { attribute: "country", operator: "in", value: ["be"] }] },
+    ];
+    jest.mocked(buildRuntimeDatafiles).mockResolvedValue([{ datafile: guarded }]);
+    const printed = () =>
+      log.mock.calls
+        .flat()
+        .join("\n")
+        .replace(/\x1b\[[0-9;]*m/g, "");
+
+    await evaluateFeature(deps, { variable: "supportEmail", context: {}, explain: true });
+    expect(printed()).toContain(
+      'Root conditions (definition): country = "nl" AND (pricing enabled OR country in ["be"])',
+    );
+
+    log.mockClear();
+    const allowing = {
+      ...deps,
+      projectConfig: { allowConditionExpressions: true, namespaceCharacter: "." },
+    } as unknown as Dependencies;
+    await evaluateFeature(allowing, { variable: "supportEmail", context: {}, explain: true });
+    expect(printed()).toContain(
+      "Root conditions (definition): country == 'nl' and (feature('pricing') or country in ['be'])",
+    );
+  });
+
   test("fixes the disabled variation headline with or without explanation", async () => {
     for (const explain of [false, true]) {
       log.mockClear();
