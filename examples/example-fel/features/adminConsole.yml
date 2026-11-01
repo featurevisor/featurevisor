@@ -23,7 +23,9 @@ variablesSchema:
 rules:
   staging:
     - key: admins
-      conditions: audiences.workspaceAdmins and permissions includesAny ['write', 'admin']
+      conditions: |
+        audiences.workspaceAdmins
+        and permissions includesAny ['write', 'admin']
       percentage: 100
       variableOverrides:
         sections:
@@ -57,7 +59,9 @@ rules:
 
   production:
     - key: admins
-      conditions: audiences.workspaceAdmins and permissions includesAny ['write', 'admin']
+      conditions: |
+        audiences.workspaceAdmins
+        and permissions includesAny ['write', 'admin']
       percentage: 100
       variableOverrides:
         sections:

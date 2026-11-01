@@ -1,3 +1,5 @@
 description: Version equals to 5.5
 
-conditions: version == 5.5 or version == '5.5'
+conditions: |
+  version == 5.5
+  or version == '5.5'

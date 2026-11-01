@@ -162,7 +162,9 @@ overrides:
             rows[id=first].label: Treatment row
 
         - key: amsterdam-control
-          conditions: city == 'amsterdam' and feature('allowSignup').variation == 'control'
+          conditions: |
+            city == 'amsterdam'
+            and feature('allowSignup').variation == 'control'
           value:
             label: Control child
             clearedText: ""

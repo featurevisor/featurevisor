@@ -1,3 +1,5 @@
 description: Professional accounts
 
-conditions: account.plan == 'pro' and account.locale == 'nl-NL'
+conditions: |
+  account.plan == 'pro'
+  and account.locale == 'nl-NL'

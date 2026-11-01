@@ -3,7 +3,10 @@ description: Paying teams in the Benelux and DACH markets, never our own staff
 conditions: |
   # Paying teams in our launch markets
   audiences.payingTeams
-  and (markets.benelux or markets.dach)
+  and (
+    markets.benelux
+    or markets.dach
+  )
 
   # Staff have their own preview rule
   and not audiences.staff

@@ -499,7 +499,9 @@ rules:
           - tag
 
     - key: nl_or_ch
-      conditions: countries.netherlands or countries.switzerland
+      conditions: |
+        countries.netherlands
+        or countries.switzerland
       percentage: 100
       variables:
         pageTitle: NL/CH Title
@@ -552,7 +554,9 @@ rules:
           - ch
 
     - key: mobile_eu
-      conditions: mobile and eu
+      conditions: |
+        mobile
+        and eu
       percentage: 100
       variables:
         pageTitle: Mobile EU
@@ -597,7 +601,9 @@ rules:
           - mobile
 
     - key: desktop_eu
-      conditions: desktop and eu
+      conditions: |
+        desktop
+        and eu
       percentage: 100
       variables:
         pageTitle: Desktop EU
@@ -672,7 +678,9 @@ rules:
           - prod
 
     - key: nl_or_ch
-      conditions: countries.netherlands or countries.switzerland
+      conditions: |
+        countries.netherlands
+        or countries.switzerland
       percentage: 100
       variables:
         pageTitle: NL/CH (Prod)
@@ -700,7 +708,9 @@ rules:
           - n2
 
     - key: mobile_eu
-      conditions: mobile and eu
+      conditions: |
+        mobile
+        and eu
       percentage: 100
       variables:
         pageTitle: Mobile EU (Prod)

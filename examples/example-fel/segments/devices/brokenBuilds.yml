@@ -1,3 +1,5 @@
 description: Builds with known crashes
 
-conditions: osVersion == semver('17.4.0') or browser.version == semver('120.0.1')
+conditions: |
+  osVersion == semver('17.4.0')
+  or browser.version == semver('120.0.1')

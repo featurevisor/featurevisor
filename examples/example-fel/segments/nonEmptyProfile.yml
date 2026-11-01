@@ -1,3 +1,6 @@
 description: Users whose shallow profile fields are all populated
 
-conditions: phone notEmpty and interests notEmpty and preferences notEmpty
+conditions: |
+  phone notEmpty
+  and interests notEmpty
+  and preferences notEmpty

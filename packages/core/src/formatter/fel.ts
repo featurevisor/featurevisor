@@ -45,7 +45,7 @@ export function getFelTexts(entityType: EntityType, value: unknown, options: Fel
     let text = formatExpression(record.source, {
       ...options,
       root: record.path.length === record.conditionsPath.length,
-      width: HOUSE_STYLE.fel.width,
+      indent: HOUSE_STYLE.indent,
     });
     if (text === undefined) continue;
     if (HOUSE_STYLE.fel.finalNewline && text.includes("\n")) text += "\n";

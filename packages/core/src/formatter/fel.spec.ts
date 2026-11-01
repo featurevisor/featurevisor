@@ -30,7 +30,7 @@ describe("formatting FEL", () => {
     expect(changed).toBe(true);
     expect(parse(output)).toEqual({
       description: "Checkout",
-      conditions: "loggedIn == true and country exists",
+      conditions: "loggedIn == true\nand country exists\n",
       rules: [
         {
           key: "all",

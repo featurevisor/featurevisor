@@ -31,7 +31,9 @@ variations:
         alignment: center for B
     variableOverrides:
       hero:
-        - conditions: countries.germany or countries.switzerland
+        - conditions: |
+            countries.germany
+            or countries.switzerland
           value:
             title: Hero Title for B in DE or CH
             subtitle: Hero Subtitle for B in DE of CH

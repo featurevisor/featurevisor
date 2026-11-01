@@ -1,3 +1,5 @@
 description: Teams of five or more on a paid plan
 
-conditions: plan in ['pro', 'enterprise'] and seats >= 5
+conditions: |
+  plan in ['pro', 'enterprise']
+  and seats >= 5

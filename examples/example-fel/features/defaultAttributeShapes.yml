@@ -13,7 +13,9 @@ rules:
 
   production:
     - key: dark-mode-sports
-      conditions: prefersDarkMode and interestedInSports
+      conditions: |
+        prefersDarkMode
+        and interestedInSports
       percentage: 100
 
     - key: everyone

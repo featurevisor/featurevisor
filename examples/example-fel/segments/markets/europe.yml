@@ -1,3 +1,6 @@
 description: Every European launch market, built from the market segments
 
-conditions: markets.benelux or markets.dach or markets.nordics
+conditions: |
+  markets.benelux
+  or markets.dach
+  or markets.nordics

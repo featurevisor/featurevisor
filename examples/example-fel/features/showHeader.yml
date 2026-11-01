@@ -14,7 +14,9 @@ rules:
 
   production:
     - key: desktop
-      conditions: version_gt5 and desktop
+      conditions: |
+        version_gt5
+        and desktop
       percentage: 100
 
     - key: mobile

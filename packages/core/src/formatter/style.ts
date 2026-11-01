@@ -59,16 +59,13 @@ export const HOUSE_STYLE = {
   keepBlankLines: true,
 
   /**
-   * How FEL expressions in `conditions` are written, in projects with `allowFEL: true`. fmt
-   * rewrites an expression only when it reads back to exactly the same tree, so nothing here
-   * can change a datafile either. Comment lines stay above the operand below them.
+   * How FEL expressions in `conditions` are written, in projects with `allowFEL: true`: one
+   * condition a line, with a group's conditions between its parentheses, indented by `indent`.
+   * A single condition stays on one line. fmt rewrites an expression only when it reads back
+   * to exactly the same tree, so nothing here can change a datafile either. Comment lines stay
+   * above the condition below them.
    */
   fel: {
-    /**
-     * An expression this long or shorter goes on one line. A longer one, or one with comments,
-     * takes one top level `and` or `or` operand a line, written as a YAML block.
-     */
-    width: 80,
     /** End an expression over several lines with a line break, which YAML writes as `|` */
     finalNewline: true,
   },

@@ -204,7 +204,9 @@ variations:
       variationOverrideOnly:
         - key: netherlands-treatment
           description: Netherlands values when pricing is in treatment
-          conditions: countries.netherlands and feature('pricing').variation == 'treatment'
+          conditions: |
+            countries.netherlands
+            and feature('pricing').variation == 'treatment'
           mutate:
             deep.count: 10
             deep.tags:append: nl
@@ -263,7 +265,9 @@ rules:
       variableOverrides:
         ruleOverrideOnly:
           - key: mobile
-            conditions: mobile and feature('pricing').variation == 'treatment'
+            conditions: |
+              mobile
+              and feature('pricing').variation == 'treatment'
             mutate:
               options.threshold: 75
               entries:append:

@@ -29,7 +29,9 @@ rules:
       percentage: 100
 
     - key: returning
-      conditions: audiences.dormant and lastOrderAt exists
+      conditions: |
+        audiences.dormant
+        and lastOrderAt exists
       percentage: 100
       variables:
         steps: 2
@@ -52,7 +54,9 @@ rules:
       percentage: 100
 
     - key: returning
-      conditions: audiences.dormant and lastOrderAt exists
+      conditions: |
+        audiences.dormant
+        and lastOrderAt exists
       percentage: 100
       variables:
         steps: 2

@@ -9,37 +9,52 @@ const tree = (source: string, root = true) => compile(source, { root }).conditio
 describe("formatExpression", () => {
   it("writes operators, values and lists one way", () => {
     expect(formatExpression("country=='nl'   and  plan in ['a','b']")).toBe(
-      "country == 'nl' and plan in ['a', 'b']",
+      "country == 'nl'\nand plan in ['a', 'b']",
     );
-    expect(formatExpression("seats >= 1e1 and version > semver('5.5')")).toBe(
-      "seats >= 10 and version > semver('5.5')",
-    );
+    expect(formatExpression("seats >= 1e1")).toBe("seats >= 10");
   });
 
-  it("joins a short expression onto one line", () => {
-    expect(formatExpression("markets.europe\nand not audiences.anonymous\n")).toBe(
-      "markets.europe and not audiences.anonymous",
-    );
+  it("puts each condition on its own line, however short", () => {
+    expect(formatExpression("a and b")).toBe("a\nand b");
+    expect(
+      formatExpression("audiences.workspaceAdmins and permissions includesAny ['write', 'admin']"),
+    ).toBe("audiences.workspaceAdmins\nand permissions includesAny ['write', 'admin']");
   });
 
-  it("breaks a long expression before each top level and or or", () => {
-    const source =
-      "device == 'mobile' and osVersion >= semver('17.0.0') and osVersion < semver('19.0.0')";
-    expect(formatExpression(source)).toBe(
-      "device == 'mobile'\nand osVersion >= semver('17.0.0')\nand osVersion < semver('19.0.0')",
+  it("keeps a single condition on one line", () => {
+    expect(formatExpression("roles   notEmpty")).toBe("roles notEmpty");
+    expect(formatExpression("not (plan in ['free'])")).toBe("not plan in ['free']");
+    expect(formatExpression("(netherlands)")).toBe("netherlands");
+  });
+
+  it("puts a group's conditions between its parentheses, indented a level", () => {
+    expect(
+      formatExpression(
+        "roles includes 'owner' or (roles includesAny ['billing', 'editor'] and roles notIncludes 'viewer')",
+      ),
+    ).toBe(
+      [
+        "roles includes 'owner'",
+        "or (",
+        "  roles includesAny ['billing', 'editor']",
+        "  and roles notIncludes 'viewer'",
+        ")",
+      ].join("\n"),
     );
-    expect(formatExpression("a or (b and c)", { width: 5 })).toBe("a\nor (b and c)");
+    expect(formatExpression("not (a and b)", { indent: 4 })).toBe("not (\n    a\n    and b\n)");
+    expect(formatExpression("a and (b or not (c and d))")).toBe(
+      ["a", "and (", "  b", "  or not (", "    c", "    and d", "  )", ")"].join("\n"),
+    );
   });
 
   it("puts parentheses where and and or mix, and drops ones that change nothing", () => {
-    expect(formatExpression("a and b or c")).toBe("(a and b) or c");
+    expect(formatExpression("a and b or c")).toBe("(\n  a\n  and b\n)\nor c");
     expect(formatExpression("(version == 5.5 or version == '5.5')")).toBe(
-      "version == 5.5 or version == '5.5'",
+      "version == 5.5\nor version == '5.5'",
     );
-    expect(formatExpression("not (plan in ['free'])")).toBe("not plan in ['free']");
   });
 
-  it("keeps comments above the operand below them, with the blank lines before them", () => {
+  it("keeps comments above the condition below them, with the blank lines before them", () => {
     const source = [
       "# Everyone with a company address",
       "email   endsWith '@featurevisor.com'",
@@ -59,14 +74,19 @@ describe("formatExpression", () => {
       ].join("\n"),
     );
     expect(formatExpression("# only one\nnetherlands")).toBe("# only one\nnetherlands");
-    expect(formatExpression("a and\n# between the word and the operand\nb")).toBe(
-      "a\n# between the word and the operand\nand b",
+    expect(formatExpression("a and\n# between the word and the condition\nb")).toBe(
+      "a\n# between the word and the condition\nand b",
+    );
+    expect(formatExpression("a or (\n# inside a group\nb and c)")).toBe(
+      "a\nor (\n  # inside a group\n  b\n  and c\n)",
     );
   });
 
-  it("leaves an expression as written when a comment sits inside an operand or at the end", () => {
-    expect(formatExpression("a and (b and\n# inside\nc)")).toBeUndefined();
-    expect(formatExpression("a and b\n# after the last operand")).toBeUndefined();
+  it("leaves an expression as written when a comment is not above a condition", () => {
+    expect(formatExpression("a and (b and c\n# after a group's last condition\n)")).toBeUndefined();
+    expect(formatExpression("a and b\n# after the last condition")).toBeUndefined();
+    expect(formatExpression("plan in [\n# inside one condition\n'a']")).toBeUndefined();
+    expect(formatExpression("not\n# between not and its group\n(a and b)")).toBeUndefined();
   });
 
   it("leaves an expression with an error as written", () => {
@@ -76,13 +96,13 @@ describe("formatExpression", () => {
 
   it("formats an item of a list or a group, where `a and b` is a group", () => {
     const formatted = formatExpression("a  and   b", { root: false });
-    expect(formatted).toBe("a and b");
+    expect(formatted).toBe("a\nand b");
     expect(tree(formatted!, false)).toEqual({ and: ["a", "b"] });
   });
 
   it("reads the project's namespace character", () => {
     expect(formatExpression("countries:nl   and x == 1", { namespaceCharacter: ":" })).toBe(
-      "countries:nl and x == 1",
+      "countries:nl\nand x == 1",
     );
   });
 });
@@ -94,6 +114,12 @@ function random(seed: number) {
     state = (state * 1103515245 + 12345) % 2147483648;
     return state / 2147483648;
   };
+}
+
+/** Whether a formatted line holds at most one condition */
+function oneCondition(line: string): boolean {
+  const text = line.trim().replace(/^(?:(?:and|or|not) )+/, "");
+  return text.startsWith("#") || !/ (?:and|or) /.test(text);
 }
 
 describe("formatExpression on generated expressions", () => {
@@ -140,7 +166,6 @@ describe("formatExpression on generated expressions", () => {
           ? `(${operands[index]})`
           : operands[index]!,
       );
-      const width = pick([Infinity, 60, 20]);
       const withComments = next() < 0.5;
       const source = items
         .map((text, index) => {
@@ -152,10 +177,11 @@ describe("formatExpression on generated expressions", () => {
       const expected = tree(source);
       if (expected === undefined) continue;
 
-      const formatted = formatExpression(source, { width });
+      const formatted = formatExpression(source);
       expect(formatted).toBeDefined();
       expect(sameBuilt(tree(formatted!), expected)).toBe(true);
-      expect(formatExpression(formatted!, { width })).toBe(formatted);
+      expect(formatExpression(formatted!)).toBe(formatted);
+      expect(formatted!.split("\n").every(oneCondition)).toBe(true);
       if (withComments) {
         items.forEach((_, index) => expect(formatted).toContain(`# note ${index}`));
       }

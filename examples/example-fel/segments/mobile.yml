@@ -2,4 +2,6 @@ archived: false
 
 description: mobile users
 
-conditions: device == 'mobile' and phone notExists
+conditions: |
+  device == 'mobile'
+  and phone notExists

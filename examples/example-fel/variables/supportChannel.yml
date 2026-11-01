@@ -17,7 +17,9 @@ overrides:
       value: status-page
 
     - key: priority
-      conditions: audiences.priorityCustomers or audiences.verifiedEnterprise
+      conditions: |
+        audiences.priorityCustomers
+        or audiences.verifiedEnterprise
       value: phone
 
     - key: admins
@@ -32,7 +34,9 @@ overrides:
       value: status-page
 
     - key: priority
-      conditions: audiences.priorityCustomers or audiences.verifiedEnterprise
+      conditions: |
+        audiences.priorityCustomers
+        or audiences.verifiedEnterprise
       value: phone
 
     - key: admins

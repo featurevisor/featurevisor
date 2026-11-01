@@ -32,7 +32,9 @@ variations:
       baz: baz_here
     variableOverrides:
       bar:
-        - conditions: countries.germany or countries.switzerland
+        - conditions: |
+            countries.germany
+            or countries.switzerland
           value: bar for DE or CH
       baz:
         - conditions: countries.netherlands
@@ -44,7 +46,9 @@ force:
       variation: treatment
 
   production:
-    - conditions: userId == '123' and device == 'mobile'
+    - conditions: |
+        userId == '123'
+        and device == 'mobile'
       variation: treatment
       variables:
         bar: yoooooo
@@ -57,7 +61,12 @@ rules:
 
   production:
     - key: "1"
-      conditions: mobile and (countries.germany or countries.switzerland)
+      conditions: |
+        mobile
+        and (
+          countries.germany
+          or countries.switzerland
+        )
       percentage: 80
       variables:
         qux: true

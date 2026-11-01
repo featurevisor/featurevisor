@@ -14,7 +14,7 @@ variablesSchema:
 rules:
   staging:
     - key: plain
-      conditions: country == 'nl' and device == 'mobile'
+      conditions: country == 'nl' and device == 'mobile' # featurevisor-ignore-line
       percentage: 100
       variables:
         style: plain
@@ -53,8 +53,12 @@ rules:
     - key: tree-group
       conditions:
         or:
-          - country == 'dk' and device == 'mobile'
-          - country == 'se' and device == 'tablet'
+          - |
+            country == 'dk'
+            and device == 'mobile'
+          - |
+            country == 'se'
+            and device == 'tablet'
       percentage: 100
       variables:
         style: tree-group
@@ -75,7 +79,7 @@ rules:
 
   production:
     - key: plain
-      conditions: country == 'nl' and device == 'mobile'
+      conditions: country == 'nl' and device == 'mobile' # featurevisor-ignore-line
       percentage: 100
       variables:
         style: plain
@@ -114,8 +118,12 @@ rules:
     - key: tree-group
       conditions:
         or:
-          - country == 'dk' and device == 'mobile'
-          - country == 'se' and device == 'tablet'
+          - |
+            country == 'dk'
+            and device == 'mobile'
+          - |
+            country == 'se'
+            and device == 'tablet'
       percentage: 100
       variables:
         style: tree-group

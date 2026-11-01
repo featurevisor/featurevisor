@@ -1,3 +1,5 @@
 description: Visitors without a user ID or who are not signed in
 
-conditions: userId notExists or loggedIn != true
+conditions: |
+  userId notExists
+  or loggedIn != true

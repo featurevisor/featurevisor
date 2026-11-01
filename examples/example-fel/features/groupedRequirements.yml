@@ -5,7 +5,9 @@ tags:
 
 bucketBy: userId
 
-conditions: feature('redesign') or feature('sidebar')
+conditions: |
+  feature('redesign')
+  or feature('sidebar')
 
 variablesSchema:
   message:
@@ -25,5 +27,7 @@ rules:
       variableOverrides:
         message:
           - key: redesigned-without-pricing
-            conditions: feature('redesign') and not feature('pricing')
+            conditions: |
+              feature('redesign')
+              and not feature('pricing')
             value: Redesigned checkout

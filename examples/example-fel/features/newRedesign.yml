@@ -25,7 +25,9 @@ variations:
       bar: bar for treatment
     variableOverrides:
       foo:
-        - conditions: countries.germany or countries.switzerland
+        - conditions: |
+            countries.germany
+            or countries.switzerland
           value: foo for treatment in DE or CH
       bar:
         - conditions: countries.netherlands

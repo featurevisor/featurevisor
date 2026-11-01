@@ -11,12 +11,16 @@ overrides:
   production:
     # Attribute and feature leaves use AND semantics
     - key: attribute-and-feature-conditions
-      conditions: country == 'nl' and feature('showHeader')
+      conditions: |
+        country == 'nl'
+        and feature('showHeader')
       value: Attribute and feature conditions matched
 
     # Segment and feature leaves also use AND semantics
     - key: segment-and-feature-conditions
-      conditions: countries.germany and feature('pricing').variation == 'treatment'
+      conditions: |
+        countries.germany
+        and feature('pricing').variation == 'treatment'
       value: Segment and feature conditions matched
 
     # A feature leaf can be the only condition

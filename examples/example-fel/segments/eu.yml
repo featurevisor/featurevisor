@@ -1,3 +1,5 @@
 description: EU
 
-conditions: continent == 'europe' and country notIn ['gb']
+conditions: |
+  continent == 'europe'
+  and country notIn ['gb']

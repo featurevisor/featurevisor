@@ -13,7 +13,9 @@ rules:
 
   production:
     - key: pro-accounts
-      conditions: proAccounts and admins
+      conditions: |
+        proAccounts
+        and admins
       percentage: 100
 
     - key: everyone

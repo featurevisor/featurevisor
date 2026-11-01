@@ -1,3 +1,7 @@
 description: Not Chrome v1 browser
 
-conditions: not (browser.name == 'chrome' and browser.version == '1.0')
+conditions: |
+  not (
+    browser.name == 'chrome'
+    and browser.version == '1.0'
+  )

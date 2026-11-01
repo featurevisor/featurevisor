@@ -60,7 +60,9 @@ variations:
             - card
 
         - key: dach-small-carts
-          conditions: markets.dach and cartTotal < 1000
+          conditions: |
+            markets.dach
+            and cartTotal < 1000
           value:
             - sofort
             - card
@@ -68,12 +70,16 @@ variations:
 force:
   staging:
     # QA accounts can try express anywhere, even where the legacy checkout is on
-    - conditions: userId startsWith 'qa-' and couponCode == 'FORCE-EXPRESS'
+    - conditions: |
+        userId startsWith 'qa-'
+        and couponCode == 'FORCE-EXPRESS'
       enabled: true
       variation: express
 
   production:
-    - conditions: userId startsWith 'qa-' and couponCode == 'FORCE-EXPRESS'
+    - conditions: |
+        userId startsWith 'qa-'
+        and couponCode == 'FORCE-EXPRESS'
       enabled: true
       variation: express
 
@@ -90,7 +96,9 @@ rules:
       variableOverrides:
         limits:
           - key: large-orders
-            conditions: audiences.highValueCart or organization.employees > 999
+            conditions: |
+              audiences.highValueCart
+              or organization.employees > 999
             value:
               maxItems: 50
               maxTotal: 25000
@@ -101,7 +109,9 @@ rules:
             value: true
 
     - key: europe
-      conditions: markets.europe and not audiences.anonymous
+      conditions: |
+        markets.europe
+        and not audiences.anonymous
       percentage: 50
 
     - key: everyone
@@ -120,7 +130,9 @@ rules:
       variableOverrides:
         limits:
           - key: large-orders
-            conditions: audiences.highValueCart or organization.employees > 999
+            conditions: |
+              audiences.highValueCart
+              or organization.employees > 999
             value:
               maxItems: 50
               maxTotal: 25000
@@ -131,7 +143,9 @@ rules:
             value: true
 
     - key: europe
-      conditions: markets.europe and not audiences.anonymous
+      conditions: |
+        markets.europe
+        and not audiences.anonymous
       percentage: 50
 
     - key: everyone

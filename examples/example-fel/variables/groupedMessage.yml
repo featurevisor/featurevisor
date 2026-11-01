@@ -7,14 +7,18 @@ type: string
 
 defaultValue: Standard message
 
-conditions: feature('redesign') or feature('sidebar')
+conditions: |
+  feature('redesign')
+  or feature('sidebar')
 
 disabledValue: Unavailable
 
 overrides:
   production:
     - key: redesign
-      conditions: feature('redesign') and not feature('pricing')
+      conditions: |
+        feature('redesign')
+        and not feature('pricing')
       continue: true
       value: Redesigned message
       overrides:

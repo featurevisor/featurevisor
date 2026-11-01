@@ -3,11 +3,11 @@ import type { Conditions } from "@featurevisor/types";
 import { compile } from "./compile.js";
 import { parse } from "./parser.js";
 import { print, sameBuilt } from "./print.js";
-import type { FelNode, FelOptions } from "./types.js";
+import type { FelLogicNode, FelNode, FelOptions } from "./types.js";
 
 export interface FelFormatOptions extends FelOptions {
-  /** Expressions longer than this break before each top level `and` or `or`. Defaults to 80. */
-  width?: number;
+  /** Spaces before each condition inside parentheses, per level. Defaults to 2. */
+  indent?: number;
   /**
    * Whether the expression is a whole `conditions` value, where `a and b` reads as a list,
    * rather than an item of a list or a group. Defaults to true.
@@ -36,69 +36,91 @@ function outer(node: FelNode): { start: number; end: number } {
   return { start: node.outerStart ?? node.start, end: node.outerEnd ?? node.end };
 }
 
-/** One operand on its own, printed as an item of its chain: in parentheses when a group. */
-function printOperand(source: string, options: FelFormatOptions): string | undefined {
-  const result = compile(source, { ...options, root: false });
-  if (result.errors.length || result.conditions === undefined) return undefined;
-  const text = print(result.conditions, { ...options, width: Infinity });
-  if (text === undefined) return undefined;
-  const value = result.conditions as unknown;
-  const group =
-    !!value &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    ("and" in (value as object) || "or" in (value as object));
-  return group ? `(${text})` : text;
+function isGroup(node: FelNode): node is FelLogicNode {
+  return node.kind === "and" || node.kind === "or";
 }
 
 /**
- * An expression whose comments sit between the operands of its top level `and` or `or`, one
- * operand a line, each below its comments. A blank line the author wrote before an operand or
- * its comments stays. Undefined when a comment sits anywhere else, such as inside an operand.
+ * The lines of an expression, one condition a line. A group's conditions go between its
+ * parentheses, indented a level, and every condition after the first starts with its `and` or
+ * `or`. Comment lines go above the condition below them, with any blank line the author wrote
+ * before them. Undefined when a comment sits anywhere else, or a condition does not print.
  */
-function formatWithComments(
-  source: string,
-  ast: FelNode,
-  comments: Comment[],
-  options: FelFormatOptions,
-): string | undefined {
-  const chain = (ast.kind === "and" || ast.kind === "or") && !ast.parenthesized;
-  const operands = chain ? (ast as { children: FelNode[] }).children : [ast];
-  const join = chain ? (ast.kind as "and" | "or") : undefined;
-
+function layOut(source: string, ast: FelNode, options: FelFormatOptions): string | undefined {
+  const comments = findComments(source);
+  const unit = " ".repeat(options.indent ?? 2);
   const lines: string[] = [];
   let next = 0;
-  let previousEnd = 0;
-  for (const [index, operand] of operands.entries()) {
-    const span = outer(operand);
+
+  /** The comments between `from` and `start` above the line at `pad`, or false for one before `from` */
+  const above = (from: number, start: number, pad: string, blankable: boolean): boolean => {
     const before: Comment[] = [];
-    while (next < comments.length && comments[next].start < span.start) {
-      if (comments[next].start < previousEnd) return undefined;
+    while (next < comments.length && comments[next].start < start) {
+      if (comments[next].start < from) return false;
       before.push(comments[next++]);
     }
-    if (next < comments.length && comments[next].start < span.end) return undefined;
+    const gapEnd = before.length ? before[0].start : start;
+    if (blankable && /\n[ \t]*\n/.test(source.slice(from, gapEnd))) lines.push("");
+    lines.push(...before.map((comment) => pad + comment.text));
+    return true;
+  };
 
-    const text = printOperand(source.slice(span.start, span.end), options);
-    if (text === undefined) return undefined;
-    const gapEnd = before.length ? before[0].start : span.start;
-    if (index > 0 && /\n[ \t]*\n/.test(source.slice(previousEnd, gapEnd))) lines.push("");
-    lines.push(...before.map((comment) => comment.text));
-    lines.push(index === 0 || !join ? text : `${join} ${text}`);
-    previousEnd = span.end;
-  }
-  // a comment after the last operand has nothing below it to belong to
-  return next < comments.length ? undefined : lines.join("\n");
+  const condition = (node: FelNode): string | undefined => {
+    const span = outer(node);
+    // a comment inside one condition has no line of its own to go above
+    if (next < comments.length && comments[next].start < span.end) return undefined;
+    const result = compile(source.slice(span.start, span.end), { ...options, root: false });
+    if (result.errors.length || result.conditions === undefined) return undefined;
+    return print(result.conditions, { ...options, width: Infinity });
+  };
+
+  /** A group's operands, each starting a line at `depth` */
+  const chain = (node: FelLogicNode, depth: number, from: number): boolean => {
+    const pad = unit.repeat(depth);
+    let previousEnd = from;
+    for (const [index, child] of node.children.entries()) {
+      if (!above(previousEnd, outer(child).start, pad, index > 0)) return false;
+      if (!operand(child, depth, index === 0 ? "" : `${node.kind} `)) return false;
+      previousEnd = outer(child).end;
+    }
+    return true;
+  };
+
+  /** One operand on a line at `depth` after `lead`, with a group over the lines below it */
+  const operand = (node: FelNode, depth: number, lead: string): boolean => {
+    const pad = unit.repeat(depth);
+    if (node.kind === "not") return operand(node.child, depth, `${lead}not `);
+    if (isGroup(node)) {
+      lines.push(`${pad}${lead}(`);
+      if (!chain(node, depth + 1, node.outerStart ?? node.start)) return false;
+      // a comment after a group's last operand has nothing below it to belong to
+      if (next < comments.length && comments[next].start < outer(node).end) return false;
+      lines.push(`${pad})`);
+      return true;
+    }
+    const text = condition(node);
+    if (text === undefined) return false;
+    lines.push(`${pad}${lead}${text}`);
+    return true;
+  };
+
+  // the expression's own group needs no parentheses
+  const written = isGroup(ast)
+    ? chain(ast, 0, 0)
+    : above(0, outer(ast).start, "", false) && operand(ast, 0, "");
+  if (!written || next < comments.length) return undefined;
+  return lines.join("\n");
 }
 
 /**
- * An expression in house style: one line when it fits `width`, and otherwise one top level
- * operand a line, each line after the first starting with its `and` or `or`. Whole line
- * comments stay above the operand below them, with any blank line the author wrote before
- * them, and keep the expression over several lines.
+ * An expression in house style: one condition a line. A single condition stays on one line.
+ * With more, every condition after the first starts with its `and` or `or`, and a group's
+ * conditions go between its parentheses, indented a level. Whole line comments stay above the
+ * condition below them, with any blank line the author wrote before them.
  *
  * Undefined when the expression should stay as written: it has an error, a comment sits
- * inside an operand or after the last one, or the result would read back to anything but
- * exactly the same tree, so formatting never changes a datafile.
+ * anywhere but above a condition, or the result would read back to anything but exactly the
+ * same tree, so formatting never changes a datafile.
  */
 export function formatExpression(
   source: string,
@@ -110,10 +132,7 @@ export function formatExpression(
   const compiled = compile(source, { ...options, root });
   if (compiled.errors.length || compiled.conditions === undefined) return undefined;
 
-  const comments = findComments(source);
-  const text = comments.length
-    ? formatWithComments(source, ast, comments, options)
-    : print(compiled.conditions, { ...options, width: options.width });
+  const text = layOut(source, ast, options);
   if (text === undefined) return undefined;
 
   const read = compile(text, { ...options, root });

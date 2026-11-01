@@ -497,7 +497,9 @@ rules:
           label: de-nav
 
     - key: nl_or_ch
-      conditions: countries.netherlands or countries.switzerland
+      conditions: |
+        countries.netherlands
+        or countries.switzerland
       percentage: 100
       variables:
         title: NL/CH Title
@@ -533,7 +535,9 @@ rules:
         page.label: nl-ch-nav
 
     - key: mobile_eu
-      conditions: mobile and eu
+      conditions: |
+        mobile
+        and eu
       percentage: 100
       variables:
         title: Mobile EU
@@ -568,7 +572,9 @@ rules:
         featuredProduct.price.currency: EUR
 
     - key: nl_or_ch
-      conditions: countries.netherlands or countries.switzerland
+      conditions: |
+        countries.netherlands
+        or countries.switzerland
       percentage: 100
       variables:
         title: NL/CH (Production)

@@ -32,7 +32,10 @@ rules:
         currency: SEK
 
     - key: euro-markets
-      conditions: markets.benelux or markets.dach or country in ['fi', 'fr', 'it', 'es']
+      conditions: |
+        markets.benelux
+        or markets.dach
+        or country in ['fi', 'fr', 'it', 'es']
       percentage: 100
       variables:
         currency: EUR
@@ -40,7 +43,9 @@ rules:
         discountPercent:
           # A missing plan is != 'free', so it gets the discount too
           - key: small-teams
-            conditions: seats in [1, 2, 3] and plan != 'free'
+            conditions: |
+              seats in [1, 2, 3]
+              and plan != 'free'
             value: 5
 
           - key: large-teams
@@ -65,14 +70,19 @@ rules:
         currency: SEK
 
     - key: euro-markets
-      conditions: markets.benelux or markets.dach or country in ['fi', 'fr', 'it', 'es']
+      conditions: |
+        markets.benelux
+        or markets.dach
+        or country in ['fi', 'fr', 'it', 'es']
       percentage: 100
       variables:
         currency: EUR
       variableOverrides:
         discountPercent:
           - key: small-teams
-            conditions: seats in [1, 2, 3] and plan != 'free'
+            conditions: |
+              seats in [1, 2, 3]
+              and plan != 'free'
             value: 5
 
           - key: large-teams

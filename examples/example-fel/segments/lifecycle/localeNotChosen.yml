@@ -1,3 +1,5 @@
 description: Users who cleared their locale. A missing locale does not match isNull
 
-conditions: locale isNull or locale == ''
+conditions: |
+  locale isNull
+  or locale == ''
