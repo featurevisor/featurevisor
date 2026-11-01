@@ -35,6 +35,10 @@ export const convertPlugin: Plugin = {
       description: "Write condition trees as expressions, and allow them",
     },
     {
+      command: "convert --to=expressions --exact --apply",
+      description: "Write condition trees as expressions, keeping datafiles byte identical",
+    },
+    {
       command: "convert --to=trees --apply",
       description: "Write expressions as condition trees, and stop allowing them",
     },

@@ -103,8 +103,10 @@ turns trees into them. `convert --to=trees` writes expressions as trees with
 byte identical datafiles. `convert --to=expressions` writes trees as
 expressions, then simplifies as `fmt --simplify` does: each condition in its
 simplest form that evaluates the same, changing datafile shapes but never
-evaluation, which its check proves by comparing conditions in that form. Both
-edit YAML documents through packages/core/src/rewrite/conditions.ts. examples/example-expressions
+evaluation, which its check proves by comparing conditions in that form, or
+with `--exact`, byte identical without simplifying. Both edit YAML documents
+through packages/core/src/rewrite/conditions.ts. The default scaffold,
+examples/example-yml, is written as `fmt --simplify` writes it. examples/example-expressions
 shows expressions, with a spec for each.
 
 ## Catalog

@@ -644,7 +644,7 @@ function setsToFlat(builder: Builder, project: Project, keep: string) {
 
 const SETTING = "allowConditionExpressions";
 
-function convertConditions(builder: Builder, project: Project, to: ConditionForm) {
+function convertConditions(builder: Builder, project: Project, to: ConditionForm, exact: boolean) {
   const { plan } = builder;
   const options = { namespaceCharacter: project.config.namespaceCharacter };
   const allowed = project.config.allowConditionExpressions === true;
@@ -665,9 +665,10 @@ function convertConditions(builder: Builder, project: Project, to: ConditionForm
     }
     if (result.kept.length > 0) kept.add(relative);
     if (result.unmarked.length > 0) unmarked.add(relative);
-    // then each condition in its simplest form, as fmt --simplify writes it
+    // then each condition in its simplest form, as fmt --simplify writes it, unless asked to
+    // keep every datafile byte identical
     const simpler =
-      to === "expressions"
+      to === "expressions" && !exact
         ? simplifyConditions(doc, file.kind as ConditionKind, doc.toJS(), options).changed
         : 0;
     if (result.changed + simpler === 0) {
@@ -693,9 +694,11 @@ function convertConditions(builder: Builder, project: Project, to: ConditionForm
 
   if (count + simplified === 0 && plan.config.edits.length === 0) {
     plan.conflicts.push(
-      to === "expressions"
-        ? "Every condition is an expression already, in its simplest form, wherever it can be."
-        : "The project has no condition expressions to write as trees.",
+      to === "trees"
+        ? "The project has no condition expressions to write as trees."
+        : exact
+          ? "Every condition tree that can be an expression is one already."
+          : "Every condition is an expression already, in its simplest form, wherever it can be.",
     );
     return;
   }
@@ -723,6 +726,8 @@ export interface ConvertOptions {
   /** Lanes to create from a flat project, or the order of environments made from sets */
   lanes?: string[];
   keep?: string;
+  /** With --to=expressions, writes trees as expressions without simplifying them */
+  exact?: boolean;
 }
 
 export function planConversion(project: Project, options: ConvertOptions): Plan {
@@ -735,7 +740,13 @@ export function planConversion(project: Project, options: ConvertOptions): Plan 
       );
       return builder.plan;
     }
-    convertConditions(builder, project, to);
+    if (options.exact && to !== "expressions") {
+      builder.plan.conflicts.push(
+        "--exact applies only to --to=expressions. --to=trees always builds the same datafiles.",
+      );
+      return builder.plan;
+    }
+    convertConditions(builder, project, to, options.exact === true);
     if (builder.rewritten.size > 0) {
       builder.plan.differences.push(
         `${[...builder.rewritten].join(", ")} are written as the parser writes them, since convert could not keep their own lines. Check them for comments.`,
@@ -795,6 +806,10 @@ export function planConversion(project: Project, options: ConvertOptions): Plan 
     plan.keep = options.keep;
   } else if (options.keep) {
     plan.conflicts.push("--keep applies only to --to=flat.");
+    return plan;
+  }
+  if (options.exact) {
+    plan.conflicts.push("--exact applies only to --to=expressions.");
     return plan;
   }
 

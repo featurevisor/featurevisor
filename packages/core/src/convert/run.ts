@@ -198,6 +198,7 @@ export async function runConversion(options: PluginHandlerOptions): Promise<numb
       to,
       lanes: lanesOption(parsed.environments ?? parsed.sets),
       keep: parsed.keep as string | undefined,
+      exact: parsed.exact === true,
     });
     const check =
       plan.conflicts.length === 0

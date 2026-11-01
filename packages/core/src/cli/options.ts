@@ -198,6 +198,11 @@ const definitions: Record<string, CLIOptionDefinitions> = {
       description: "comma separated sets to create from a project without either",
     },
     keep: { type: "string", description: "the environment or set a conversion to flat keeps" },
+    exact: {
+      type: "boolean",
+      description:
+        "with --to=expressions, write trees as expressions without simplifying, so datafiles stay byte identical",
+    },
     apply: {
       type: "boolean",
       description: "write the conversion, which otherwise is only previewed",

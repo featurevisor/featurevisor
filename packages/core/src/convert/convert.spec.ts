@@ -957,6 +957,21 @@ describe("convert", () => {
       );
     }, 120000);
 
+    it("keeps datafiles byte identical with --exact, which only expressions take", async () => {
+      conditionsProject();
+      expect(await run({ to: "expressions", exact: true, apply: true })).toBe(0);
+      expect(printed).toContain("Every datafile builds the same");
+      expect(printed).not.toContain("Simplified");
+      // a list of one keeps its shape, since its expression alone would build a single condition
+      expect(read("segments/netherlands.yml")).toBe(
+        "description: The Netherlands\n\nconditions:\n  - country == 'nl'\n",
+      );
+      expect(await run({ to: "trees", exact: true })).toBe(2);
+      expect(printed).toContain("--exact applies only to --to=expressions.");
+      expect(await run({ to: "sets", exact: true })).toBe(2);
+      expect(printed).toContain("--exact applies only to --to=expressions.");
+    });
+
     it("changes no lanes", async () => {
       conditionsProject();
       expect(await run({ to: "expressions", keep: "production" })).toBe(2);
