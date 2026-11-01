@@ -134,7 +134,7 @@ Every SDK evaluates the same datafile, so lint enforces a portable subset:
 - **Dates** (`before`, `after`) take a full ISO 8601 timestamp with a timezone, quoted: `'2026-11-27T00:00:00Z'`. Date-only and zoneless values fail lint. Both operators are strict.
 - **Versions** (`semver*`) are quoted strings such as `'5.5'` or `'5.5.0'`, so YAML keeps them as text.
 - **Regular expressions** (`matches`, `notMatches`) allow only the `g`, `i`, `m` and `s` flags, and reject every `(?` construct, including non-capturing `(?:…)`, plus backreferences and possessive quantifiers.
-- Operators are checked against declared types. A `type: string` attribute with `format: date-time` only takes `before`, `after` and presence operators, and `in` takes a string list.
+- Operators are checked against declared types. A `type: string` attribute with `format: date-time` only takes `before`, `after` and presence operators, and `in` takes a list of the attribute's type: strings, or numbers for an `integer` or `number` attribute.
 
 Details and lint messages: [operators.md](references/operators.md).
 
@@ -234,7 +234,7 @@ Starting files without environments. Replace placeholder keys, and create anythi
 | Shape                              | Template                                                                                                                                                                                                                         |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Attribute                          | [attribute.yml](templates/attribute.yml)                                                                                                                                                                                         |
-| Segment                            | [segment.yml](templates/segment.yml), [segment-complex.yml](templates/segment-complex.yml)                                                                                                                                       |
+| Segment                            | [segment.yml](templates/segment.yml), [segment-complex.yml](templates/segment-complex.yml), [segment-expressions.yml](templates/segment-expressions.yml) for a project with expressions                                          |
 | Feature flag                       | [feature.yml](templates/feature.yml)                                                                                                                                                                                             |
 | A/B test                           | [feature-with-variations.yml](templates/feature-with-variations.yml)                                                                                                                                                             |
 | Feature variables and overrides    | [feature-with-variables.yml](templates/feature-with-variables.yml)                                                                                                                                                               |

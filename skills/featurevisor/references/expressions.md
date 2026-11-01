@@ -46,7 +46,7 @@ conditions: |
 | Key with odd characters | `variable('checkoutSettings')['limits.v2'][0].quota > 5` |
 
 - `==`, `!=`, `>`, `>=`, `<` and `<=` compare. Every other operator keeps its own name between the subject and the value: `plan in ['paid', 'enterprise']`, `email endsWith '@example.com'`, `permissions includesAny ['write', 'admin']`. Presence and emptiness operators follow the subject with no value: `userId exists`, `permissions notEmpty`.
-- Strings use single quotes, with `\'`, `\\`, `\n`, `\t` and `\uXXXX` escapes. Numbers are written as in JSON. A list holds one type, with `null` allowed beside it.
+- Strings use single quotes, with `\'`, `\\`, `\n`, `\t` and `\uXXXX` escapes. Numbers are written as in JSON. A list holds one type, with `null` allowed beside it, and lint warns about a mix with `mixed_list`.
 - Versions compare with `semver(...)`: `version >= semver('5.5.0')`. Without it, `==` compares text.
 - Timestamps are text compared with `before` and `after`: `signupDate after '2026-01-01T00:00:00Z'`.
 - Patterns follow `matches` or `notMatches` as literals with flags: `account.locale matches /^(nl|be)-/i`.
@@ -84,6 +84,7 @@ Lint reports each at its file, line and column, with a hint.
 ## Commands
 
 - `npx featurevisor fmt` writes expressions in one style, one condition a line, in a project that allows them. It never turns a tree into an expression.
-- `npx featurevisor convert --to=expressions` writes every tree that has an exact expression form as one, then each condition in its simplest form, and turns the option on. Its datafiles change shape but must evaluate the same. `--to=trees` writes every expression back as the tree it builds, with byte identical datafiles, and turns the option off. Both preview without `--apply`, and write only once a converted copy passes lint, tests and those datafile checks. They rewrite the whole project, so show the preview and apply on the user's go ahead.
+- `npx featurevisor convert --to=expressions` writes every tree that has an exact expression form as one, then each condition in its simplest form, and turns the option on. Its datafiles change shape but must evaluate the same. `--to=trees` writes every expression back as the tree it builds, with byte identical datafiles, and turns the option off. Both preview without `--apply`, and write only once a converted copy passes lint, tests and those datafile checks. `--exact` with `--to=expressions` skips simplifying, so every datafile stays byte identical. They rewrite the whole project, so show the preview and apply on the user's go ahead.
 - `npx featurevisor fmt --simplify` writes each condition in its simplest form that evaluates the same, such as a list of one condition as that condition, and joins expressions side by side into one. Datafiles change shape but evaluate the same, so show `fmt --simplify --diff` first and apply on the user's go ahead.
-- `evaluate --explain` prints conditions as expressions in a project that allows them, and `diff` treats an expression and its tree as the same condition.
+- `evaluate --explain` prints conditions as expressions in a project that allows them, and `--explain --json` gives each condition's `expression` beside its tree. `diff` treats an expression and its tree as the same condition.
+- [templates/segment-expressions.yml](../templates/segment-expressions.yml) is a segment written as an expression.

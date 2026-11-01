@@ -101,6 +101,7 @@ npx featurevisor convert --to=environments --environments=dev,production --apply
 npx featurevisor convert --to=sets --apply
 npx featurevisor convert --to=flat --keep=production --apply
 npx featurevisor convert --to=expressions
+npx featurevisor convert --to=expressions --exact --apply
 npx featurevisor convert --to=trees --apply
 ```
 
@@ -113,7 +114,7 @@ Changes a project's shape between `flat` (no environments and no sets), `environ
 - From flat, `--environments` or `--sets` name the lanes, staging and production by default. Assertions that need an environment run in each through a `matrix`.
 - To flat, `--keep` names the lane to keep, and the preview lists what the others lose.
 
-`--to=expressions` writes every condition tree that has an exact expression form as an [expression](expressions.md), then each condition in its simplest form as `fmt --simplify` does, and sets `allowConditionExpressions: true`. Its datafiles change shape, so every datafile must evaluate the same. `--to=trees` writes every expression as the tree it builds and removes the option, and every datafile must build byte identical. Both keep comments with their conditions and work in any shape of project. Do not propose either unprompted.
+`--to=expressions` writes every condition tree that has an exact expression form as an [expression](expressions.md), then each condition in its simplest form as `fmt --simplify` does, and sets `allowConditionExpressions: true`. Its datafiles change shape, so every datafile must evaluate the same. `--exact` skips simplifying, keeping every datafile byte identical. `--to=trees` writes every expression as the tree it builds and removes the option, and every datafile must build byte identical. Both keep comments with their conditions and work in any shape of project. Do not propose either unprompted.
 
 A project with sets and environments together cannot change its shape. Exits with 0 after a preview or a conversion and 2 when it cannot convert. `--json` prints the plan and checks. Do not propose a conversion unprompted ([sets-promotions.md](sets-promotions.md#when-to-use-sets-and-when-not-to)).
 
@@ -148,7 +149,7 @@ Builds the datafile in memory from the local project and evaluates it with the S
 - the bucket value and bucket key, such as `Bucket: 75177 / 100000 · key "u1.checkout"`
 - for a composition, each member's source and value
 
-In a project that allows expressions, declared conditions print as expressions. The probes run beside the SDK result and are not a full execution trace. The SDK result stays authoritative. `--explain --json` has the complete evidence.
+In a project that allows expressions, declared conditions print as expressions, and `--explain --json` gives each one's `expression` beside its tree. The probes run beside the SDK result and are not a full execution trace. The SDK result stays authoritative. `--explain --json` has the complete evidence.
 
 `evaluate` warns when the context does not fit declared attribute types or constraints, without changing the result. Unknown feature or variable keys fail with a spelling suggestion. Repeat `--target=<target>` to evaluate against specific target datafiles.
 
