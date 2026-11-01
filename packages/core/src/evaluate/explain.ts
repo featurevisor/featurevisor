@@ -129,10 +129,28 @@ function readableSelector(value: unknown): unknown {
   }
 }
 
-function selectors(value: { conditions?: unknown }): Record<string, unknown> {
-  return {
-    ...(value.conditions !== undefined && { conditions: readableSelector(value.conditions) }),
-  };
+/** Declared conditions as an expression, in a project that allows them, where the tree has one */
+function expressionOf(value: unknown, expressions?: ExpressionOptions): string | undefined {
+  if (!expressions || value === undefined || value === "*") return undefined;
+  try {
+    return print(readableSelector(value) as Conditions, { ...expressions, width: Infinity });
+  } catch {
+    // a tree the printer cannot read has no expression
+    return undefined;
+  }
+}
+
+/** Declared conditions, with their expression in a project that allows them */
+function conditionsOf(value: unknown, expressions?: ExpressionOptions): Record<string, unknown> {
+  const expression = expressionOf(value, expressions);
+  return { conditions: readableSelector(value), ...(expression ? { expression } : {}) };
+}
+
+function selectors(
+  value: { conditions?: unknown },
+  expressions?: ExpressionOptions,
+): Record<string, unknown> {
+  return value.conditions !== undefined ? conditionsOf(value.conditions, expressions) : {};
 }
 
 function authoredPath(
@@ -247,13 +265,13 @@ export function explainEvaluation(
   const variable = !featureKey && variableKey ? datafile.variables?.[variableKey] : undefined;
 
   const describeSelectors = (candidate: Parameters<typeof selectors>[0]) => {
-    const details = selectors(candidate);
+    const details = selectors(candidate, options.expressions);
     const keys = getConditionReferences(candidate.conditions as Conditions | undefined).segments;
     if (keys.size) {
       details.segmentDefinitions = Array.from(keys, (key) => ({
         key,
         present: Object.prototype.hasOwnProperty.call(datafile.segments, key),
-        conditions: readableSelector(datafile.segments[key]?.conditions),
+        ...conditionsOf(datafile.segments[key]?.conditions, options.expressions),
       }));
     }
     return details;
@@ -301,9 +319,11 @@ export function explainEvaluation(
   }
   const conditions = evaluation.conditions ?? variable?.conditions ?? feature?.conditions;
   if (conditions !== undefined) {
-    add("definition", "Declared root conditions (not an execution trace)", {
-      conditions: readableSelector(conditions),
-    });
+    add(
+      "definition",
+      "Declared root conditions (not an execution trace)",
+      conditionsOf(conditions, options.expressions),
+    );
   }
   if (options.conditionsProbe) {
     add("cli-probe", "Supplementary CLI condition probe (not an execution trace)", {
@@ -406,7 +426,7 @@ export function explainEvaluation(
               defaultValue: options.authoredVariable?.defaultValue,
               overrides: authored.map((override, index) => ({
                 path: path.slice(0, index + 1),
-                ...selectors(override),
+                ...selectors(override, options.expressions),
                 ...(override.mutate !== undefined
                   ? { mutate: override.mutate }
                   : { value: override.value }),
@@ -553,15 +573,7 @@ function describeSelector(value: unknown): string {
  * them, where the tree has one, and in words otherwise.
  */
 function describeConditions(value: unknown, expressions?: ExpressionOptions): string {
-  if (expressions && value !== "*") {
-    try {
-      const text = print(value as Conditions, { ...expressions, width: Infinity });
-      if (text !== undefined) return text;
-    } catch {
-      // a tree the printer cannot read is described in words
-    }
-  }
-  return describeSelector(value);
+  return expressionOf(value, expressions) ?? describeSelector(value);
 }
 
 export function printExplanation(

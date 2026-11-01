@@ -652,6 +652,23 @@ describe("evaluate --explain", () => {
     expect(printed()).toContain(
       "Root conditions (definition): country == 'nl' and (feature('pricing') or country in ['be'])",
     );
+
+    // and in the JSON evidence, beside the tree
+    log.mockClear();
+    await evaluateFeature(allowing, {
+      variable: "supportEmail",
+      context: {},
+      explain: true,
+      json: true,
+    });
+    const root = output().explanation.evidence.find(
+      (entry: { title: string }) =>
+        entry.title === "Declared root conditions (not an execution trace)",
+    );
+    expect(root.details.expression).toBe(
+      "country == 'nl' and (feature('pricing') or country in ['be'])",
+    );
+    expect(root.details.conditions).toEqual(guarded.variables!.supportEmail.conditions);
   });
 
   test("fixes the disabled variation headline with or without explanation", async () => {
