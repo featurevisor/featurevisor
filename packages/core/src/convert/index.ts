@@ -2,12 +2,13 @@ import type { Plugin } from "../cli";
 
 /**
  * `featurevisor convert` changes a project's shape, between no environments and no sets,
- * environments, and sets. A project rarely runs it, so the command loads its code only when it
+ * environments, and sets, or writes its conditions as expressions or as trees. A project rarely runs it, so the command loads its code only when it
  * runs, and nothing else imports from here.
  */
 export const convertPlugin: Plugin = {
   command: "convert",
-  description: "Convert a project between environments, sets, and neither",
+  description:
+    "Convert a project between environments, sets, and neither, or its conditions between trees and expressions",
   handler: async function (options) {
     const { runConversion } = require("./run") as typeof import("./run");
     return runConversion(options);
@@ -28,6 +29,14 @@ export const convertPlugin: Plugin = {
     {
       command: "convert --to=flat --keep=production --apply",
       description: "Keep only production, without environments or sets",
+    },
+    {
+      command: "convert --to=expressions --apply",
+      description: "Write condition trees as expressions, and allow them",
+    },
+    {
+      command: "convert --to=trees --apply",
+      description: "Write expressions as condition trees, and stop allowing them",
     },
   ],
 };

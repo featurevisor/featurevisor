@@ -12,13 +12,14 @@ import {
 } from "../tester/cliFormat";
 import { applyPlan, checkPlan, type CheckResult } from "./check";
 import { writeSetting } from "./config";
-import { planConversion, type Plan } from "./plan";
-import { readProject, type Shape } from "./project";
+import { CONDITION_FORMS, isConditionForm, planConversion, type Plan, type Target } from "./plan";
+import { readProject } from "./project";
 
-const SHAPES: Shape[] = ["flat", "environments", "sets"];
+const TARGETS: Target[] = ["flat", "environments", "sets", ...CONDITION_FORMS];
 
 function describeShape(shape: Plan["from"]) {
-  return shape === "flat" ? "no environments and no sets" : shape;
+  if (shape === "flat") return "no environments and no sets";
+  return shape === "trees" ? "condition trees" : shape;
 }
 
 function lanesOption(value: unknown): string[] | undefined {
@@ -75,6 +76,16 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
       `  State files: ${written.state} ${apply ? "written" : "to write"}, ${removed.state} ${apply ? "removed" : "to remove"}`,
     );
   }
+  if (plan.conditions) {
+    const one = plan.conditions === 1;
+    const [from, to] =
+      plan.to === "expressions"
+        ? [one ? "tree" : "trees", one ? "an expression" : "expressions"]
+        : [one ? "expression" : "expressions", one ? "a tree" : "trees"];
+    console.log(
+      `  Conditions: ${plan.conditions} ${from} ${apply ? "written" : "to write"} as ${to}`,
+    );
+  }
   if (plan.config.byHand) {
     console.log(`  ${CONFIG_MODULE_NAME}: for you to edit after converting, as below`);
   } else if (plan.config.edits.length > 0) {
@@ -94,7 +105,9 @@ function printPlan(plan: Plan, root: string, check: CheckResult | undefined, app
       console.log(CLI_FORMAT_GREEN, "  ✔ Lint passes");
       console.log(
         CLI_FORMAT_GREEN,
-        `  ✔ Features and variables build the same in ${check.lanes.join(", ")}`,
+        isConditionForm(plan.to)
+          ? "  ✔ Every datafile builds the same"
+          : `  ✔ Features and variables build the same in ${check.lanes.join(", ")}`,
       );
       if (check.tests) {
         const { before, after } = check.tests;
@@ -165,11 +178,12 @@ export async function runConversion(options: PluginHandlerOptions): Promise<numb
   const { rootDirectoryPath, projectConfig, parsed } = options;
   const json = parsed.json === true;
   try {
-    const to = parsed.to as Shape;
-    if (!SHAPES.includes(to)) {
-      throw new FeaturevisorCLIError("Pass --to=flat, --to=environments or --to=sets.", {
-        code: "invalid_cli_arguments",
-      });
+    const to = parsed.to as Target;
+    if (!TARGETS.includes(to)) {
+      throw new FeaturevisorCLIError(
+        "Pass --to=flat, --to=environments or --to=sets to change the project's shape, or --to=expressions or --to=trees to change how its conditions are written.",
+        { code: "invalid_cli_arguments" },
+      );
     }
     const apply = parsed.apply === true;
     const project = readProject(rootDirectoryPath, projectConfig);
@@ -194,6 +208,7 @@ export async function runConversion(options: PluginHandlerOptions): Promise<numb
         ...(plan.keep ? { keep: plan.keep } : {}),
         writes: paths.writes,
         removes: paths.removes,
+        ...(plan.conditions !== undefined ? { conditions: plan.conditions } : {}),
         config: plan.config.edits,
         ...(plan.config.byHand
           ? {

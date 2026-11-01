@@ -23,13 +23,31 @@ import {
   spreadLanes,
   takeLane,
 } from "./documents";
+import {
+  CONDITION_KINDS,
+  writeExpressionsAsTrees,
+  writeTreesAsExpressions,
+  type ConditionKind,
+} from "./conditions";
 import { directoriesOf, type DefinitionFile, type Project, type Shape } from "./project";
 import { mergeSpecs, specForLane, specForLanes, specKind } from "./tests";
 import { getFormatExpressionOptions } from "../formatter/expressions";
 
+/** How a project writes its conditions, which convert also changes */
+export type ConditionForm = "expressions" | "trees";
+
+/** What convert changes a project to: a shape, or a way of writing conditions */
+export type Target = Shape | ConditionForm;
+
+export const CONDITION_FORMS: ConditionForm[] = ["expressions", "trees"];
+
+export function isConditionForm(target: unknown): target is ConditionForm {
+  return CONDITION_FORMS.includes(target as ConditionForm);
+}
+
 export interface Plan {
-  from: Project["shape"];
-  to: Shape;
+  from: Project["shape"] | ConditionForm;
+  to: Target;
   /** The environments or sets, in order */
   lanes: string[];
   /** The lane a conversion to flat keeps */
@@ -46,6 +64,8 @@ export interface Plan {
   differences: string[];
   /** What to change outside the project afterwards */
   next: string[];
+  /** Conditions written the other way, by a conversion between trees and expressions */
+  conditions?: number;
 }
 
 const DIRECTORY_OPTIONS = [
@@ -115,8 +135,8 @@ class Builder {
 
   constructor(
     private project: Project,
-    from: Project["shape"],
-    to: Shape,
+    from: Plan["from"],
+    to: Target,
     lanes: string[],
   ) {
     this.plan = {
@@ -617,14 +637,102 @@ function setsToFlat(builder: Builder, project: Project, keep: string) {
   builder.moveDatafiles(`from datafiles/${keep}/ to datafiles/`);
 }
 
+// Conditions as expressions or as trees
+
+const SETTING = "allowConditionExpressions";
+
+function convertConditions(builder: Builder, project: Project, to: ConditionForm) {
+  const { plan } = builder;
+  const options = { namespaceCharacter: project.config.namespaceCharacter };
+  const allowed = project.config.allowConditionExpressions === true;
+  const kept = new Set<string>();
+  const unmarked = new Set<string>();
+  let count = 0;
+  for (const file of project.files) {
+    if (!CONDITION_KINDS.includes(file.kind)) continue;
+    const doc = builder.load(file);
+    const write = to === "expressions" ? writeTreesAsExpressions : writeExpressionsAsTrees;
+    const result = write(doc, file.kind as ConditionKind, file.value, options);
+    const relative = builder.relative(file.filePath);
+    for (const at of result.invalid) {
+      plan.conflicts.push(
+        `The expression at ${at.join(".")} in ${relative} has errors, so it has no tree to write. Run lint and fix it first.`,
+      );
+    }
+    if (result.kept.length > 0) kept.add(relative);
+    if (result.unmarked.length > 0) unmarked.add(relative);
+    if (result.changed === 0) {
+      // only files convert writes have their aliases written out
+      builder.expanded.delete(relative);
+      continue;
+    }
+    count += result.changed;
+    const output = builder.rendered(file, doc);
+    if (output !== file.source) builder.write(file.filePath, output);
+  }
+
+  if (to === "expressions" && !allowed) {
+    builder.config({
+      tidy: [[SETTING]],
+      add: [[SETTING, "true", `sets ${SETTING}: true`]],
+    });
+    if (!plan.config.byHand) plan.config.edits = [`sets ${SETTING}: true`];
+  } else if (to === "trees" && allowed) {
+    builder.config({ remove: [SETTING] });
+  }
+
+  if (count === 0 && plan.config.edits.length === 0) {
+    plan.conflicts.push(
+      to === "expressions"
+        ? "Every condition tree that can be an expression is one already."
+        : "The project has no condition expressions to write as trees.",
+    );
+    return;
+  }
+  plan.conditions = count;
+  if (kept.size > 0) {
+    plan.differences.push(
+      `Leaves that have no expression form stay trees, such as a disabled feature's variation, in ${[...kept].join(", ")}.`,
+    );
+  }
+  if (unmarked.size > 0) {
+    plan.differences.push(
+      `Expressions kept as written with # featurevisor-ignore-line are written as trees too, without that comment, in ${[...unmarked].join(", ")}.`,
+    );
+  }
+}
+
 export interface ConvertOptions {
-  to: Shape;
+  to: Target;
   /** Lanes to create from a flat project, or the order of environments made from sets */
   lanes?: string[];
   keep?: string;
 }
 
 export function planConversion(project: Project, options: ConvertOptions): Plan {
+  if (isConditionForm(options.to)) {
+    const to = options.to;
+    const builder = new Builder(project, to === "expressions" ? "trees" : "expressions", to, []);
+    if (options.lanes || options.keep) {
+      builder.plan.conflicts.push(
+        `--to=${to} changes how conditions are written, not the project's shape, so leave out --environments, --sets and --keep.`,
+      );
+      return builder.plan;
+    }
+    convertConditions(builder, project, to);
+    if (builder.rewritten.size > 0) {
+      builder.plan.differences.push(
+        `${[...builder.rewritten].join(", ")} are written as the parser writes them, since convert could not keep their own lines. Check them for comments.`,
+      );
+    }
+    if (builder.expanded.size > 0) {
+      builder.plan.differences.push(
+        `Aliases are written out in full in ${[...builder.expanded].join(", ")}.`,
+      );
+    }
+    return builder.plan;
+  }
+
   const from = project.shape;
   if (from === "sets and environments") {
     const plan = new Builder(project, from, options.to, []).plan;

@@ -43,7 +43,7 @@ rules:
         style: folded-block
 
     - key: list
-      conditions: # featurevisor-ignore-line
+      conditions:
         - country == 'lu'
         - device == 'mobile'
       percentage: 100
@@ -51,7 +51,7 @@ rules:
         style: list
 
     - key: tree-group
-      conditions: # featurevisor-ignore-line
+      conditions:
         or:
           - |
             country == 'dk'
@@ -64,7 +64,7 @@ rules:
         style: tree-group
 
     - key: mixed
-      conditions: # featurevisor-ignore-line
+      conditions:
         - markets.nordics
         - attribute: device
           operator: equals
@@ -108,7 +108,7 @@ rules:
         style: folded-block
 
     - key: list
-      conditions: # featurevisor-ignore-line
+      conditions:
         - country == 'lu'
         - device == 'mobile'
       percentage: 100
@@ -116,7 +116,7 @@ rules:
         style: list
 
     - key: tree-group
-      conditions: # featurevisor-ignore-line
+      conditions:
         or:
           - |
             country == 'dk'
@@ -129,7 +129,7 @@ rules:
         style: tree-group
 
     - key: mixed
-      conditions: # featurevisor-ignore-line
+      conditions:
         - markets.nordics
         - attribute: device
           operator: equals

@@ -1,7 +1,7 @@
 import { parse } from "yaml";
 
 import { jsonParser } from "./json";
-import { applyFormatValues, type FormatComment, type FormatLayout } from "./layout";
+import { applyFormatText, type FormatLayout } from "./layout";
 import { ymlParser } from "./yml";
 import { formatYml, listYmlComments, type YmlLayout } from "./ymlFormat";
 
@@ -560,26 +560,16 @@ describe("formatText", () => {
   });
 });
 
-describe("applyFormatValues", () => {
-  it("replaces the strings and the lists or maps it is given texts for, in a copy", () => {
-    const value = {
-      conditions: "a  and b",
-      rules: [{ conditions: ["x", { or: ["y", "z"] }] }],
-      seats: 5,
-    };
-    const copy = applyFormatValues(value, {
-      formatText: (path) => (path.join(".") === "conditions" ? "a and b" : undefined),
-      replaceValue: (path) =>
-        path.join(".") === "rules.0.conditions" ? "x\nand (y or z)" : undefined,
-    });
+describe("applyFormatText", () => {
+  it("replaces the strings it is given texts for, in a copy", () => {
+    const value = { conditions: "a  and b", rules: [{ conditions: "x" }], seats: 5 };
+    const copy = applyFormatText(value, (path) =>
+      path.join(".") === "conditions" ? "a and b" : undefined,
+    );
 
-    expect(copy).toEqual({
-      conditions: "a and b",
-      rules: [{ conditions: "x\nand (y or z)" }],
-      seats: 5,
-    });
+    expect(copy).toEqual({ conditions: "a and b", rules: [{ conditions: "x" }], seats: 5 });
     expect(value.conditions).toBe("a  and b");
-    expect(applyFormatValues(value, {})).toEqual(value);
+    expect(applyFormatText(value, undefined)).toBe(value);
   });
 
   it("lets the JSON parser write the texts", () => {
@@ -596,68 +586,5 @@ describe("applyFormatValues", () => {
     expect(jsonParser.format!('{"conditions": "a  and b"}', layout)).toBe(
       '{\n  "conditions": "a\\nand b\\n"\n}',
     );
-  });
-});
-
-describe("replaceValue", () => {
-  it("writes a list or map as the text the layout gives it, passing the comments inside", () => {
-    const seen = new Map<string, FormatComment[]>();
-    const replaceValue: YmlLayout["replaceValue"] = (path, _value, comments) => {
-      seen.set(path.join("."), comments);
-      return path.join(".") === "rules.0.conditions" ? "a\nor b\n" : undefined;
-    };
-    const source = [
-      "rules:",
-      "  - key: x",
-      "    conditions:",
-      "      or:",
-      "        - a",
-      "",
-      "        # about b",
-      "        - attribute: b",
-      "          operator: exists # beside the operator",
-      "",
-    ].join("\n");
-    const output = formatYml(source, { replaceValue });
-
-    expect(output).toBe("rules:\n  - key: x\n    conditions: |\n      a\n      or b\n");
-    expect(seen.get("rules.0.conditions")).toEqual([
-      { path: ["or", 1], text: " about b" },
-      { path: ["or", 1], text: " beside the operator" },
-    ]);
-  });
-
-  it("keeps a replaced list item's own comment and blank line above it", () => {
-    const source = "conditions:\n  - a\n\n  # about b\n  - and:\n      - b\n      - c\n";
-    const output = formatYml(source, {
-      keepBlankLines: true,
-      replaceValue: (path) => (path.join(".") === "conditions.1" ? "b\nand c\n" : undefined),
-    });
-
-    expect(output).toBe("conditions:\n  - a\n\n  # about b\n  - |\n    b\n    and c\n");
-  });
-
-  it("offers nothing below a line marked with the ignore comment, or a value holding one", () => {
-    const paths: string[] = [];
-    const replaceValue: YmlLayout["replaceValue"] = (path) => {
-      paths.push(path.join("."));
-      return undefined;
-    };
-    formatYml(
-      [
-        "conditions: # featurevisor-ignore-line",
-        "  - a",
-        "  - or:",
-        "      - b",
-        "rules:",
-        "  - conditions:",
-        "      - | # featurevisor-ignore-line",
-        "        a",
-        "",
-      ].join("\n"),
-      { replaceValue },
-    );
-
-    expect(paths).toEqual([]);
   });
 });

@@ -5,19 +5,17 @@ import type { EntityType } from "@featurevisor/types";
 import { describeParseError } from "../datasource/parseError";
 import { BUILT_IN_PARSERS, lineEndings, sameComments } from "../rewrite/lines";
 import {
-  applyExpressionPlan,
-  emptyExpressionPlan,
-  movedComments,
-  planExpressions,
-  withExpressionPlan,
-  type ExpressionPlan,
+  formatTextOf,
+  getExpressionTexts,
+  withExpressionTexts,
+  type ExpressionTexts,
 } from "./expressions";
 import { getFormatLayout } from "./layout";
 import { HOUSE_STYLE } from "./style";
 
 export interface FormatDefinitionOptions {
   /**
-   * The project's expression options when it allows condition expressions, so conditions in `conditions` are written in
+   * The project's expression options when it allows condition expressions, so they in `conditions` are written in
    * the house style too. Without them, expressions stay as written.
    */
   expressions?: ExpressionOptions;
@@ -116,23 +114,23 @@ function parseSource(parser: CustomParser, source: string, filePath?: string): u
   }
 }
 
-/** What fmt does to the conditions in a source, when the project allows expressions and it parses */
-function planOf(
+/** The house style texts of the expressions in a source, when expressions are formatted and it parses */
+function expressionTextsOf(
   entityType: EntityType,
   source: string,
   parser: CustomParser,
   filePath: string | undefined,
   options: FormatDefinitionOptions,
-): ExpressionPlan {
-  if (!options.expressions) return emptyExpressionPlan();
+): ExpressionTexts {
+  if (!options.expressions) return new Map();
   let value: unknown;
   try {
     value = parser.parse(source, filePath);
   } catch {
     // the format reports the parse error itself
-    return emptyExpressionPlan();
+    return new Map();
   }
-  return planExpressions(entityType, value, options.expressions);
+  return getExpressionTexts(entityType, value, options.expressions);
 }
 
 /**
@@ -145,11 +143,11 @@ function formatOnce(
   source: string,
   parser: CustomParser,
   filePath: string | undefined,
-  plan: ExpressionPlan,
+  texts: ExpressionTexts,
 ): string | undefined {
   const { text, restore } = lineEndings(source, HOUSE_STYLE.endOfLine);
   const layout = getFormatLayout(entityType, parser.extension);
-  applyExpressionPlan(layout, plan);
+  if (texts.size > 0) layout.formatText = formatTextOf(texts);
 
   let output: string | undefined;
   try {
@@ -182,8 +180,8 @@ export function formatDefinition(
   if (!canFormat(parser)) return { output: source, changed: false };
   if (isIgnoredFile(source)) return { output: source, changed: false, ignored: true };
 
-  const plan = planOf(entityType, source, parser, filePath, options);
-  const output = formatOnce(entityType, source, parser, filePath, plan);
+  const texts = expressionTextsOf(entityType, source, parser, filePath, options);
+  const output = formatOnce(entityType, source, parser, filePath, texts);
   if (output === undefined || output === source) {
     // a built-in format reads the source as its parse does, and a custom one may not read it
     if (!BUILT_IN_PARSERS.has(parser)) parseSource(parser, source, filePath);
@@ -201,15 +199,14 @@ export function formatDefinition(
   } catch {
     readable = false;
   }
-  // each condition is as written or as the house style writes it, which reads back the same,
-  // as the expressions package checks
-  if (!readable || !sameValue(withExpressionPlan(before, plan, after), after)) {
+  // each expression is as written or in the house style, which reads back the same, as checked
+  if (!readable || !sameValue(withExpressionTexts(before, texts, after), after)) {
     throw new FormatGuardError("Formatting would change the parsed value.");
   }
-  if (!sameComments(parser, source, output, movedComments(plan))) {
+  if (!sameComments(parser, source, output)) {
     throw new FormatGuardError("Formatting would lose or change a comment.");
   }
-  const again = planOf(entityType, output, parser, filePath, options);
+  const again = expressionTextsOf(entityType, output, parser, filePath, options);
   if (formatOnce(entityType, output, parser, filePath, again) !== output) {
     throw new FormatGuardError("Formatting is not stable: a second pass changes the output.");
   }

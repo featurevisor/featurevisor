@@ -98,8 +98,11 @@ depends only on @featurevisor/types. Datasource expands them when reading
 features, segments and global variables, so readers see condition trees. A
 command writing definitions back must keep authored expressions: read files
 with the parser, as fmt, migrate and convert do, or restore them with
-restoreConditionExpressions, as promote does. examples/example-expressions
-shows them, with a spec for each expression.
+restoreConditionExpressions, as promote does. fmt formats expressions and never
+turns trees into them. `convert --to=expressions` and `--to=trees` move a
+project between the two in packages/core/src/convert/conditions.ts, building
+byte identical datafiles. examples/example-expressions shows them, with a spec
+for each expression.
 
 ## Catalog
 

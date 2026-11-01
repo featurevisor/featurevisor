@@ -822,4 +822,139 @@ describe("convert", () => {
     expect(after["features/checkout.json"]).toBe(before["features/checkout.json"]);
     expect(isMap(load(after["features/checkout.json"], parsers.json).doc.get("rules"))).toBe(true);
   });
+
+  describe("conditions as expressions or trees", () => {
+    const conditionsProject = (config = "module.exports = {\n  tags: ['all'],\n};\n") => {
+      write("featurevisor.config.js", config);
+      write("attributes/userId.yml", "description: User ID\n\ntype: string\n");
+      write("attributes/country.yml", "description: Country\n\ntype: string\n");
+      write("attributes/plan.yml", "description: Plan\n\ntype: string\n");
+      write("targets/all.yml", "description: Everything\n");
+      write(
+        "segments/netherlands.yml",
+        "description: The Netherlands\n\nconditions:\n  - attribute: country\n    operator: equals\n    value: nl\n",
+      );
+      write(
+        "features/checkout.yml",
+        [
+          "description: Checkout",
+          "",
+          "tags:",
+          "  - all",
+          "",
+          "bucketBy: userId",
+          "",
+          "rules:",
+          "  - key: nl",
+          "    conditions:",
+          "      # Dutch accounts",
+          "      - netherlands",
+          "      # paying ones",
+          "      - attribute: plan",
+          "        operator: equals",
+          "        value: paid",
+          "    percentage: 100",
+          "",
+          "  - key: everyone",
+          '    conditions: "*"',
+          "    percentage: 0",
+          "",
+        ].join("\n"),
+      );
+      write(
+        "tests/checkout.spec.yml",
+        "feature: checkout\n\nassertions:\n  - context:\n      country: nl\n      plan: paid\n    at: 50\n    expectedToBeEnabled: true\n\n  - context:\n      country: nl\n      plan: free\n    at: 50\n    expectedToBeEnabled: false\n",
+      );
+    };
+
+    it("writes trees as expressions with their comments, and back as the same trees", async () => {
+      conditionsProject();
+      const before = snapshot();
+
+      expect(await run({ to: "expressions", apply: true })).toBe(0);
+      expect(printed).toContain("Conditions: 2 trees written as expressions");
+      expect(read("featurevisor.config.js")).toBe(
+        "module.exports = {\n  allowConditionExpressions: true,\n  tags: ['all'],\n};\n",
+      );
+      // a list of one keeps its shape, since its expression would build a single condition
+      expect(read("segments/netherlands.yml")).toBe(
+        "description: The Netherlands\n\nconditions:\n  - country == 'nl'\n",
+      );
+      expect(read("features/checkout.yml")).toContain(
+        [
+          "    conditions: |",
+          "      # Dutch accounts",
+          "      netherlands",
+          "",
+          "      # paying ones",
+          "      and plan == 'paid'",
+          "    percentage: 100",
+        ].join("\n"),
+      );
+
+      expect(await run({ to: "trees", apply: true })).toBe(0);
+      expect(printed).toContain("Conditions: 2 expressions written as trees");
+      const after = snapshot();
+      expect(after["featurevisor.config.js"]).toBe(before["featurevisor.config.js"]);
+      expect(after["segments/netherlands.yml"]).toBe(before["segments/netherlands.yml"]);
+      expect(yml.parse(after["features/checkout.yml"])).toEqual(
+        yml.parse(before["features/checkout.yml"]),
+      );
+      expect(after["features/checkout.yml"]).toContain("# Dutch accounts");
+      expect(after["features/checkout.yml"]).toContain("# paying ones");
+    });
+
+    it("keeps a tree marked to keep as written, and refuses when nothing is left", async () => {
+      conditionsProject("module.exports = {\n  allowConditionExpressions: true,\n};\n");
+      write(
+        "segments/netherlands.yml",
+        "description: The Netherlands\n\nconditions: # featurevisor-ignore-line\n  - attribute: country\n    operator: equals\n    value: nl\n",
+      );
+
+      expect(await run({ to: "expressions", apply: true })).toBe(0);
+      expect(read("segments/netherlands.yml")).toContain("operator: equals");
+      expect(await run({ to: "expressions" })).toBe(2);
+      expect(printed).toContain("Every condition tree that can be an expression is one already.");
+    });
+
+    it("writes expressions as trees in a project that stopped allowing them", async () => {
+      conditionsProject();
+      write(
+        "segments/netherlands.yml",
+        "description: The Netherlands\n\nconditions: country == 'nl'\n",
+      );
+
+      expect(await run({ to: "trees", apply: true })).toBe(0);
+      expect(read("segments/netherlands.yml")).toBe(
+        "description: The Netherlands\n\nconditions:\n  attribute: country\n  operator: equals\n  value: nl\n",
+      );
+      expect(read("featurevisor.config.js")).toBe("module.exports = {\n  tags: ['all'],\n};\n");
+
+      expect(await run({ to: "trees" })).toBe(2);
+      expect(printed).toContain("The project has no condition expressions to write as trees.");
+    });
+
+    it("round trips Example 1, building the same datafiles each way", async () => {
+      const example = path.resolve(__dirname, "../../../../examples/example-1");
+      fs.cpSync(example, root, {
+        recursive: true,
+        filter: (source) => !/[\\/](node_modules|datafiles|catalog)$/.test(source),
+      });
+
+      expect(await run({ to: "expressions", apply: true })).toBe(0);
+      expect(printed).toContain("Every datafile builds the same");
+      expect(read("featurevisor.config.js")).toContain("allowConditionExpressions: true");
+      expect(await run({ to: "trees", apply: true })).toBe(0);
+      expect(printed).toContain("Every datafile builds the same");
+      expect(read("featurevisor.config.js")).toBe(
+        fs.readFileSync(path.join(example, "featurevisor.config.js"), "utf8"),
+      );
+    }, 120000);
+
+    it("changes no lanes", async () => {
+      conditionsProject();
+      expect(await run({ to: "expressions", keep: "production" })).toBe(2);
+      expect(printed).toContain("leave out --environments, --sets and --keep");
+    });
+  });
 });

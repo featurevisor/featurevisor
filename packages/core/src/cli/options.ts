@@ -180,8 +180,8 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     ...outputOptions,
     to: {
       type: "string",
-      choices: ["flat", "environments", "sets"],
-      description: "the shape to convert to",
+      choices: ["flat", "environments", "sets", "expressions", "trees"],
+      description: "the shape to convert to, or how to write conditions",
     },
     environments: {
       type: "string",
