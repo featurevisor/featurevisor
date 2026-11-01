@@ -11,6 +11,7 @@ import {
   type ExpressionTexts,
 } from "./expressions";
 import { getFormatLayout } from "./layout";
+import { simplifySource } from "./simplify";
 import { HOUSE_STYLE } from "./style";
 
 export interface FormatDefinitionOptions {
@@ -19,6 +20,12 @@ export interface FormatDefinitionOptions {
    * the house style too. Without them, expressions stay as written.
    */
   expressions?: ExpressionOptions;
+  /**
+   * Writes each condition in its simplest form that evaluates the same before formatting, as
+   * `fmt --simplify` does. Only conditions change, and a datafile may change its shape but
+   * never what it evaluates to.
+   */
+  simplify?: boolean;
 }
 
 export interface FormatResult {
@@ -134,6 +141,26 @@ function expressionTextsOf(
 }
 
 /**
+ * The source with its conditions simplified, which must keep every comment, apart from those
+ * moved into expressions joined as one, and read back as the simplified document
+ */
+function simplified(
+  entityType: EntityType,
+  source: string,
+  parser: CustomParser,
+  filePath: string | undefined,
+  options: FormatDefinitionOptions,
+): string {
+  parseSource(parser, source, filePath);
+  const result = simplifySource(entityType, source, parser, options.expressions);
+  if (!result) throw new FormatGuardError("Simplifying would change the parsed value.");
+  if (!sameComments(parser, source, result.source, result.moved)) {
+    throw new FormatGuardError("Simplifying would lose or change a comment.");
+  }
+  return result.source;
+}
+
+/**
  * One pass of the parser's `format`, or undefined when it leaves the file as it is. Line
  * endings, a byte order mark and the final newline are the same in every format, so they are
  * handled here: the parser sees `\n` line endings, and the output gets the house style's.
@@ -172,22 +199,26 @@ function formatOnce(
  */
 export function formatDefinition(
   entityType: EntityType,
-  source: string,
+  original: string,
   parser: CustomParser,
   filePath?: string,
   options: FormatDefinitionOptions = {},
 ): FormatResult {
-  if (!canFormat(parser)) return { output: source, changed: false };
-  if (isIgnoredFile(source)) return { output: source, changed: false, ignored: true };
+  if (!canFormat(parser)) return { output: original, changed: false };
+  if (isIgnoredFile(original)) return { output: original, changed: false, ignored: true };
 
+  // the guards below check formatting from the simplified source, and simplifying checks itself
+  const source = options.simplify
+    ? simplified(entityType, original, parser, filePath, options)
+    : original;
   const texts = expressionTextsOf(entityType, source, parser, filePath, options);
   const output = formatOnce(entityType, source, parser, filePath, texts);
   if (output === undefined || output === source) {
     // a built-in format reads the source as its parse does, and a custom one may not read it
     if (!BUILT_IN_PARSERS.has(parser)) parseSource(parser, source, filePath);
     return output === undefined
-      ? { output: source, changed: false, declined: true }
-      : { output, changed: false };
+      ? { output: source, changed: source !== original, declined: true }
+      : { output, changed: output !== original };
   }
 
   // the source parsed, so output that does not is the format's fault, not the author's

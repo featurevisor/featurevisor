@@ -147,6 +147,11 @@ const definitions: Record<string, CLIOptionDefinitions> = {
       description: "list files that need formatting and exit with 1 if any do, without writing",
     },
     diff: { type: "boolean", description: "print what formatting would change, without writing" },
+    simplify: {
+      type: "boolean",
+      description:
+        "also write each condition in its simplest form that evaluates the same, which can change datafiles but never evaluation",
+    },
     since: {
       type: "string",
       description:

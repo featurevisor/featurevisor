@@ -1,49 +1,43 @@
 import * as path from "path";
 
-import { toExpressions } from "@featurevisor/expressions";
 import type { EntityType } from "@featurevisor/types";
+import { Document } from "yaml";
 
 import { getProjectConfig, type ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
-import { visitConditionLocations } from "../datasource/conditionLocations";
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
 import { getConditionExpressions } from "../datasource/expressions";
+import {
+  simplifyConditions,
+  writeTreesAsExpressions,
+  type ConditionKind,
+} from "../rewrite/conditions";
 import { buildTargetDatafile } from "./buildProject";
 
 const rootDirectoryPath = path.resolve(__dirname, "../../../../examples/example-1");
 
-function setAtPath(root: unknown, at: (string | number)[], value: unknown): unknown {
-  if (at.length === 0) return value;
-  const [head, ...rest] = at;
-  if (Array.isArray(root)) {
-    const copy = root.slice();
-    copy[head as number] = setAtPath(root[head as number], rest, value);
-    return copy;
-  }
-  const record = root as Record<string, unknown>;
-  return { ...record, [head]: setAtPath(record[head as string], rest, value) };
-}
-
-/** Reads Example 1 as if every condition had been written as an expression. */
-function expressionAdapter(exact: boolean) {
+/**
+ * Reads Example 1 as `convert --to=expressions` writes it, and with `simplified`, as
+ * `fmt --simplify` then writes that.
+ */
+function expressionAdapter(simplified: boolean) {
+  const options = { namespaceCharacter: "." };
   return class extends FilesystemAdapter {
     async readEntity<T>(entityType: EntityType, entityKey: string): Promise<T> {
       const entity = await super.readEntity<T>(entityType, entityKey);
       if (entityType !== "feature" && entityType !== "segment" && entityType !== "variable") {
         return entity;
       }
-      let result: unknown = entity;
-      visitConditionLocations(entityType, entity, (_location, conditions, at) => {
-        if (conditions !== undefined) {
-          result = setAtPath(result, at, toExpressions(conditions as never, { exact }));
-        }
-      });
-      return result as T;
+      const kind = entityType as ConditionKind;
+      const doc = new Document(entity);
+      writeTreesAsExpressions(doc, kind, entity, options);
+      if (simplified) simplifyConditions(doc, kind, doc.toJS(), options);
+      return doc.toJS() as T;
     }
   };
 }
 
-/** Trees in a form where equal meanings compare equal, as the printer's meaning mode reads them. */
+/** Trees in a form where equal meanings compare equal, as fmt --simplify writes them. */
 function meaning(value: unknown, root = false): unknown {
   const isObject = (item: unknown): item is Record<string, unknown> =>
     !!item && typeof item === "object" && !Array.isArray(item);
@@ -101,8 +95,8 @@ describe("Example 1 written as expressions", () => {
     trees = await buildAll(projectConfig, new Datasource(projectConfig, rootDirectoryPath));
   });
 
-  it("builds byte identical datafiles when converted exactly", async () => {
-    const config = { ...projectConfig, adapter: expressionAdapter(true) };
+  it("builds byte identical datafiles when converted", async () => {
+    const config = { ...projectConfig, adapter: expressionAdapter(false) };
     const datasource = new Datasource(config, rootDirectoryPath);
     let expressions = 0;
     for (const key of await datasource.listFeatures()) {
@@ -123,8 +117,8 @@ describe("Example 1 written as expressions", () => {
     }
   });
 
-  it("builds datafiles that mean the same when converted by meaning", async () => {
-    const config = { ...projectConfig, adapter: expressionAdapter(false) };
+  it("builds datafiles that mean the same when converted and simplified", async () => {
+    const config = { ...projectConfig, adapter: expressionAdapter(true) };
     const built = await buildAll(config, new Datasource(config, rootDirectoryPath));
     for (const key of Object.keys(trees)) {
       expect(meaning(built[key])).toEqual(meaning(trees[key]));

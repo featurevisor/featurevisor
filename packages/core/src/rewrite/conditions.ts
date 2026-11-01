@@ -13,11 +13,13 @@ import { visitConditionLocations, type ConditionPath } from "../datasource/condi
 import { HOUSE_STYLE } from "../formatter/style";
 
 /**
- * Writes a definition's conditions as expressions or as trees, editing its YAML document so
- * every other line stays as written. Either way the conditions build exactly the same trees,
- * key order included, so datafiles stay byte identical: a tree becomes an expression only
- * where the expression reads back to that tree, and an expression becomes the tree it builds.
- * Comment lines move with the condition they sit above.
+ * Writes a definition's conditions another way, editing its YAML document so every other line
+ * stays as written. convert writes them as expressions or as trees, building exactly the same
+ * trees, key order included, so datafiles stay byte identical: a tree becomes an expression
+ * only where the expression reads back to that tree, and an expression becomes the tree it
+ * builds. fmt's --simplify writes each condition in its simplest form that evaluates the same,
+ * which may change a datafile's shape but never what it evaluates to. Comment lines move with
+ * the condition they sit above.
  */
 
 export type ConditionKind = "feature" | "segment" | "variable";
@@ -34,6 +36,12 @@ export interface ConditionsResult {
   invalid: ConditionPath[];
   /** Expressions kept as written with the ignore comment, written as trees all the same */
   unmarked: ConditionPath[];
+  /** Comment lines moved from the YAML into expressions, trimmed as parsers list them */
+  moved: string[];
+}
+
+function emptyResult(): ConditionsResult {
+  return { changed: 0, kept: [], invalid: [], unmarked: [], moved: [] };
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -142,6 +150,15 @@ function eachPosition(
   }
 }
 
+/** Whether a value holds a condition leaf written as a tree, at any depth */
+function hasLeaf(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasLeaf);
+  if (!isObject(value)) return false;
+  const keys = Object.keys(value);
+  const group = keys.length === 1 && ["and", "or", "not"].includes(keys[0]);
+  return group && Array.isArray(value[keys[0]]) ? hasLeaf(value[keys[0]]) : true;
+}
+
 /** Whether a value is a condition leaf, rather than a list, a group or a string */
 function isLeaf(value: unknown): boolean {
   if (!isObject(value)) return false;
@@ -159,8 +176,9 @@ export function writeTreesAsExpressions(
   kind: ConditionKind,
   definition: unknown,
   options: ExpressionOptions,
+  { joinOnly = false }: { joinOnly?: boolean } = {},
 ): ConditionsResult {
-  const result: ConditionsResult = { changed: 0, kept: [], invalid: [], unmarked: [] };
+  const result = emptyResult();
   visitConditionLocations(kind, definition, (_location, conditions, path) => {
     if (conditions === undefined) return;
     const top = nodeAt(doc, path);
@@ -171,6 +189,8 @@ export function writeTreesAsExpressions(
       const node = nodeAt(doc, at);
       if (!node || !(isMap(node) || isSeq(node))) return true;
       if (isKeptAsWritten(doc, at, node)) return true;
+      // joining expressions side by side leaves every tree leaf to convert
+      if (joinOnly && hasLeaf(value)) return false;
 
       // a key's value takes its own comments into the expression, a list item keeps them above
       const own = root;
@@ -197,9 +217,112 @@ export function writeTreesAsExpressions(
       }
       replaceAt(doc, at, scalar);
       result.changed++;
+      for (const comment of comments) {
+        result.moved.push(...comment.text.split("\n").map((line) => line.trim()));
+      }
       return true;
     });
   });
+  return result;
+}
+
+/** A group written as a map of one `and`, `or` or `not` key over a list, with its parts */
+function groupOf(node: Node) {
+  if (!isMap(node) || node.items.length !== 1) return undefined;
+  const pair = node.items[0] as Pair;
+  const key = keyOf(pair);
+  if (!key || !["and", "or", "not"].includes(key) || !isSeq(pair.value)) return undefined;
+  return { key, pair, seq: pair.value };
+}
+
+/**
+ * Puts `to` in place of the node at `path`, which wraps it, carrying the wrappers' comments.
+ * Above a whole value they go above its key, where a plain value cannot show them.
+ */
+function lift(doc: Document, path: ConditionPath, to: Node, wrappers: (Node | unknown)[]) {
+  const nodes = wrappers.filter(isNode);
+  const before = joinComments(...nodes.map((node) => node.commentBefore), to.commentBefore);
+  const after = joinComments(to.comment, ...nodes.map((node) => node.comment));
+  to.spaceBefore = nodes[0]?.spaceBefore;
+  const key = pairAt(doc, path)?.key;
+  if (isScalar(to) && isScalar(key)) {
+    key.commentBefore = joinComments(key.commentBefore, before);
+    to.commentBefore = undefined;
+  } else to.commentBefore = before;
+  to.comment = after;
+  replaceAt(doc, path, to);
+}
+
+/** Simplifies the condition at `path` and the conditions inside it, saying how many changed */
+function simplifyNode(doc: Document, path: ConditionPath, root: boolean): number {
+  let node = nodeAt(doc, path);
+  if (!node || isKeptAsWritten(doc, path, node)) return 0;
+  let changed = 0;
+  if (isSeq(node)) {
+    node.items.forEach((item, index) => {
+      if (isNode(item)) changed += simplifyNode(doc, [...path, index], false);
+    });
+  } else {
+    const group = groupOf(node);
+    group?.seq.items.forEach((item, index) => {
+      if (isNode(item)) changed += simplifyNode(doc, [...path, group.key, index], false);
+    });
+  }
+
+  // an `and` or `or` of one condition is that condition
+  const group = groupOf(node);
+  const only = group?.seq.items[0];
+  if (group && group.key !== "not" && group.seq.items.length === 1 && isNode(only)) {
+    lift(doc, path, only, [node, group.pair.key, group.seq]);
+    node = only;
+    changed++;
+  }
+  if (!root) return changed;
+
+  // a whole value's `and` group is the list it holds, and a list of one is that condition,
+  // until neither applies, since a list of one can hold an `and` group
+  for (;;) {
+    const whole = groupOf(node);
+    if (whole?.key === "and" && whole.seq.items.length > 1) {
+      lift(doc, path, whole.seq, [node, whole.pair.key]);
+      node = whole.seq;
+      changed++;
+      continue;
+    }
+    const item = isSeq(node) ? node.items[0] : undefined;
+    if (isSeq(node) && node.items.length === 1 && isNode(item)) {
+      lift(doc, path, item, [node]);
+      node = item;
+      changed++;
+      continue;
+    }
+    return changed;
+  }
+}
+
+/**
+ * Writes each condition in a definition in its simplest form that evaluates the same. A whole
+ * value's list of one condition becomes that condition, and its `and` group the list it holds.
+ * An `and` or `or` of one condition becomes that condition anywhere. With `expressions`, in a
+ * project that allows them, expressions side by side then join into one, where it builds
+ * exactly the same tree. Tree leaves stay trees. `# featurevisor-ignore-line` keeps a value as
+ * written, with everything below it.
+ */
+export function simplifyConditions(
+  doc: Document,
+  kind: ConditionKind,
+  definition: unknown,
+  expressions?: ExpressionOptions,
+): ConditionsResult {
+  const result = emptyResult();
+  visitConditionLocations(kind, definition, (_location, conditions, path) => {
+    if (conditions !== undefined) result.changed += simplifyNode(doc, path, true);
+  });
+  if (expressions) {
+    const joined = writeTreesAsExpressions(doc, kind, doc.toJS(), expressions, { joinOnly: true });
+    result.changed += joined.changed;
+    result.moved.push(...joined.moved);
+  }
   return result;
 }
 
@@ -271,7 +394,7 @@ export function writeExpressionsAsTrees(
   definition: unknown,
   options: ExpressionOptions,
 ): ConditionsResult {
-  const result: ConditionsResult = { changed: 0, kept: [], invalid: [], unmarked: [] };
+  const result = emptyResult();
   visitConditionLocations(kind, definition, (_location, conditions, path) => {
     if (conditions === undefined) return;
     const expanded = expandConditions(conditions as Conditions, options);

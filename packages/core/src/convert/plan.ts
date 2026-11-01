@@ -25,10 +25,11 @@ import {
 } from "./documents";
 import {
   CONDITION_KINDS,
+  simplifyConditions,
   writeExpressionsAsTrees,
   writeTreesAsExpressions,
   type ConditionKind,
-} from "./conditions";
+} from "../rewrite/conditions";
 import { directoriesOf, type DefinitionFile, type Project, type Shape } from "./project";
 import { mergeSpecs, specForLane, specForLanes, specKind } from "./tests";
 import { getFormatExpressionOptions } from "../formatter/expressions";
@@ -648,6 +649,7 @@ function convertConditions(builder: Builder, project: Project, to: ConditionForm
   const kept = new Set<string>();
   const unmarked = new Set<string>();
   let count = 0;
+  let simpler = 0;
   for (const file of project.files) {
     if (!CONDITION_KINDS.includes(file.kind)) continue;
     const doc = builder.load(file);
@@ -661,6 +663,16 @@ function convertConditions(builder: Builder, project: Project, to: ConditionForm
     }
     if (result.kept.length > 0) kept.add(relative);
     if (result.unmarked.length > 0) unmarked.add(relative);
+    if (to === "expressions") {
+      // what fmt --simplify would write more simply afterwards, such as a list of one condition
+      const probe = doc.clone();
+      simpler += simplifyConditions(
+        probe,
+        file.kind as ConditionKind,
+        probe.toJS(),
+        options,
+      ).changed;
+    }
     if (result.changed === 0) {
       // only files convert writes have their aliases written out
       builder.expanded.delete(relative);
@@ -690,6 +702,11 @@ function convertConditions(builder: Builder, project: Project, to: ConditionForm
     return;
   }
   plan.conditions = count;
+  if (simpler > 0) {
+    plan.next.push(
+      `Run fmt --simplify to write ${simpler} ${simpler === 1 ? "condition" : "conditions"} more simply, such as a list of one condition as that condition. Datafiles change shape, but evaluate the same.`,
+    );
+  }
   if (kept.size > 0) {
     plan.differences.push(
       `Leaves that have no expression form stay trees, such as a disabled feature's variation, in ${[...kept].join(", ")}.`,

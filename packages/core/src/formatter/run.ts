@@ -31,6 +31,7 @@ export async function runFormat({
       paths: (parsed.paths as string[] | undefined) || [],
       since: parsed.since as string | undefined,
       set: parsed.set as string | undefined,
+      simplify: parsed.simplify === true,
     };
     if (parsed.stdinFilepath !== undefined) {
       if (options.paths!.length > 0 || options.since !== undefined) {

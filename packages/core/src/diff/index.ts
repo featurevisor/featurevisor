@@ -40,8 +40,8 @@ export interface DefinitionDiff extends DiffSelection {
   summary: { added: number; removed: number; changed: number };
   changes: EntityChange[];
   /**
-   * Files whose conditions are only written another way, as expressions or as trees that build
-   * the same conditions, which change no definition
+   * Files whose conditions are only written another way that evaluates the same, such as an
+   * expression for the tree it builds, which change no definition
    */
   rewritten: string[];
 }
@@ -244,7 +244,7 @@ export function formatDefinitionDiff(result: DefinitionDiff, colour = false): st
     const count = result.rewritten.length;
     lines.push(
       paint(
-        `Conditions written another way, building the same conditions, in ${count} ${count === 1 ? "file" : "files"}: ${result.rewritten.slice(0, 5).join(", ")}${count > 5 ? ` and ${count - 5} more` : ""}`,
+        `Conditions written another way that evaluates the same, in ${count} ${count === 1 ? "file" : "files"}: ${result.rewritten.slice(0, 5).join(", ")}${count > 5 ? ` and ${count - 5} more` : ""}`,
         2,
       ),
     );

@@ -35,6 +35,8 @@ export interface FormatProjectOptions {
   set?: string;
   /** Format this source as the file at `filePath`, reading and writing no files, for editors */
   stdin?: { filePath: string; source: string };
+  /** Write each condition in its simplest form that evaluates the same, before formatting */
+  simplify?: boolean;
 }
 
 export interface FormatFileResult {
@@ -145,7 +147,7 @@ function formatFile(
       source,
       parser,
       filePath,
-      { expressions },
+      { expressions, simplify: options.simplify },
     );
     if (options.stdin) file.output = output;
     if (ignored) return "ignored";
