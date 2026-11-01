@@ -33,6 +33,7 @@ import {
   variableNode,
 } from "./dependencies";
 import { assertFlatAttributeKeys } from "./attributeNamespaces";
+import { expandConditionExpressions } from "./expressions";
 
 export class Datasource {
   private adapter: Adapter;
@@ -66,6 +67,18 @@ export class Datasource {
 
   listSets() {
     return this.adapter.listSets();
+  }
+
+  getExpressionOptions() {
+    return { namespaceCharacter: this.config.namespaceCharacter };
+  }
+
+  /**
+   * A definition exactly as authored, expressions included. Use it only to write a definition
+   * back, so authored expressions survive. Everything else reads the expanded form.
+   */
+  readAuthoredEntity<T>(entityType: EntityType, entityKey: string): Promise<T> {
+    return this.adapter.readEntity<T>(entityType, entityKey);
   }
 
   getExtension() {
@@ -156,8 +169,14 @@ export class Datasource {
       : undefined;
   }
 
-  readFeature(featureKey: FeatureKey) {
-    return this.adapter.readEntity<ParsedFeature>("feature", featureKey);
+  /** The feature with expressions in its conditions expanded into trees, as everything downstream reads it. */
+  async readFeature(featureKey: FeatureKey) {
+    return expandConditionExpressions(
+      "feature",
+      featureKey,
+      await this.adapter.readEntity<ParsedFeature>("feature", featureKey),
+      this.getExpressionOptions(),
+    );
   }
 
   writeFeature(featureKey: FeatureKey, feature: ParsedFeature) {
@@ -194,8 +213,13 @@ export class Datasource {
     return this.adapter.entityExists("segment", segmentKey);
   }
 
-  readSegment(segmentKey: SegmentKey) {
-    return this.adapter.readEntity<Segment>("segment", segmentKey);
+  async readSegment(segmentKey: SegmentKey) {
+    return expandConditionExpressions(
+      "segment",
+      segmentKey,
+      await this.adapter.readEntity<Segment>("segment", segmentKey),
+      this.getExpressionOptions(),
+    );
   }
 
   writeSegment(segmentKey: SegmentKey, segment: Segment) {
@@ -293,8 +317,13 @@ export class Datasource {
     return this.adapter.entityExists("variable", variableKey);
   }
 
-  readVariable(variableKey: VariableKey) {
-    return this.adapter.readEntity<ParsedVariable>("variable", variableKey);
+  async readVariable(variableKey: VariableKey) {
+    return expandConditionExpressions(
+      "variable",
+      variableKey,
+      await this.adapter.readEntity<ParsedVariable>("variable", variableKey),
+      this.getExpressionOptions(),
+    );
   }
 
   writeVariable(variableKey: VariableKey, variable: ParsedVariable) {

@@ -1,0 +1,21 @@
+description: Feature gated by both global and feature variable values
+
+tags:
+  - all
+
+bucketBy: userId
+
+conditions: |
+  variable('runtimePolicy').routing.enabled == true
+  and feature('variablePolicySource')['config.policy'].retries >= 3
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 100

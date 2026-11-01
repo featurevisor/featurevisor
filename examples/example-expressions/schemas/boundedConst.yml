@@ -1,0 +1,10 @@
+# Const value must lie within minimum/maximum when both are set
+description: Fixed integer in range 0-10
+
+type: integer
+
+const: 5
+
+minimum: 0
+
+maximum: 10

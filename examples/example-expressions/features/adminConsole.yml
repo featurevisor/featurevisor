@@ -1,0 +1,94 @@
+description: Workspace administration, gated on roles and permissions held in arrays
+
+tags:
+  - all
+  - expressions
+
+bucketBy: userId
+
+conditions: roles notEmpty
+
+variablesSchema:
+  sections:
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - overview
+
+  readOnly:
+    type: boolean
+    defaultValue: false
+
+rules:
+  staging:
+    - key: admins
+      conditions: |
+        audiences.workspaceAdmins
+        and permissions includesAny ['write', 'admin']
+      percentage: 100
+      variableOverrides:
+        sections:
+          - key: owners
+            conditions: roles includes 'owner'
+            value:
+              - overview
+              - invoices
+              - seats
+              - security
+
+          - key: billing
+            conditions: roles includes 'billing'
+            value:
+              - overview
+              - invoices
+              - seats
+
+    - key: auditors
+      conditions: |
+        roles includes 'viewer'
+        and permissions notIncludesAny ['write', 'admin']
+        and cohorts notIncludes 'suspended'
+      percentage: 100
+      variables:
+        readOnly: true
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0
+
+  production:
+    - key: admins
+      conditions: |
+        audiences.workspaceAdmins
+        and permissions includesAny ['write', 'admin']
+      percentage: 100
+      variableOverrides:
+        sections:
+          - key: owners
+            conditions: roles includes 'owner'
+            value:
+              - overview
+              - invoices
+              - seats
+              - security
+
+          - key: billing
+            conditions: roles includes 'billing'
+            value:
+              - overview
+              - invoices
+              - seats
+
+    - key: auditors
+      conditions: |
+        roles includes 'viewer'
+        and permissions notIncludesAny ['write', 'admin']
+        and cohorts notIncludes 'suspended'
+      percentage: 100
+      variables:
+        readOnly: true
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

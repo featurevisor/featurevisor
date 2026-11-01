@@ -1,0 +1,20 @@
+description: Classic on/off switch, that's not exposed in production
+
+tags:
+  - all
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: "1"
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: "1"
+      conditions: "*"
+      percentage: 80
+
+expose:
+  production: false

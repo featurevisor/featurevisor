@@ -1,0 +1,66 @@
+description: Black Friday promotion that reads the storefront global variable through bracket paths
+
+tags:
+  - all
+  - ecommerce
+  - expressions
+
+bucketBy: userId
+
+conditions: variable('storefront').banners.black-friday.active == true
+
+variablesSchema:
+  headline:
+    type: string
+    defaultValue: Black Friday deals
+
+rules:
+  staging:
+    - key: big-discount
+      conditions: |
+        variable('storefront').banners.black-friday.discount >= 30
+        and audiences.couponHunters
+      percentage: 100
+      variables:
+        headline: 30% off with your code
+
+    - key: local-favourites
+      conditions: variable('storefront').featuredSkus[0] == 'sku-7'
+      percentage: 100
+      variables:
+        headline: Local favourites on sale
+
+    - key: full-shelf
+      conditions: variable('storefront').featuredSkus.length >= 3
+      percentage: 100
+      variables:
+        headline: Shop the full Black Friday shelf
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0
+
+  production:
+    - key: big-discount
+      conditions: |
+        variable('storefront').banners.black-friday.discount >= 30
+        and audiences.couponHunters
+      percentage: 100
+      variables:
+        headline: 30% off with your code
+
+    - key: local-favourites
+      conditions: variable('storefront').featuredSkus[0] == 'sku-7'
+      percentage: 100
+      variables:
+        headline: Local favourites on sale
+
+    - key: full-shelf
+      conditions: variable('storefront').featuredSkus.length >= 3
+      percentage: 100
+      variables:
+        headline: Shop the full Black Friday shelf
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

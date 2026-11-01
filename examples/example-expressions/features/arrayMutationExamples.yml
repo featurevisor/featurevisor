@@ -1,0 +1,58 @@
+description: Feature variable mutations use the same operations as global variables
+
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  methods:
+    type: array
+    items:
+      type: string
+    defaultValue:
+      - card
+      - paypal
+      - paypal
+  navigation:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+      required:
+        - id
+    defaultValue:
+      - id: checkout
+
+rules:
+  staging:
+    - key: all
+      conditions: "*"
+      percentage: 100
+      variables:
+        methods:appendUnique: card
+        methods:removeValue: paypal
+
+  production:
+    - key: all
+      conditions: "*"
+      percentage: 100
+      variableOverrides:
+        methods:
+          - key: replace-paypal
+            conditions: "*"
+            mutate:
+              :removeValue: paypal
+              :appendUnique: paypal
+        navigation:
+          - key: insert-and-replace
+            conditions: "*"
+            mutate:
+              "[0]:before":
+                id: basket
+              "[1]:after":
+                id: confirmation
+              "[id=checkout]":
+                id: payment

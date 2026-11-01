@@ -1,0 +1,30 @@
+variable: emptinessMessage
+
+assertions:
+  - description: selects the empty required variable branch
+    environment: staging
+    context:
+      userId: empty-user
+      phone: ""
+      interests: []
+      preferences: {}
+    expectedValue: Source values are empty
+
+  - description: selects the populated required variable branch
+    environment: production
+    context:
+      userId: populated-user
+      phone: " "
+      interests:
+        - sports
+      preferences:
+        theme: null
+    stickyVariables:
+      emptinessSource:
+        label: Ready
+        items:
+          - one
+        metadata:
+          present: null
+        whitespace: " "
+    expectedValue: Source values are populated

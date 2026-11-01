@@ -5,6 +5,7 @@ import type { Plugin } from "../cli";
 import { CONFIG_MODULE_NAME, getProjectConfigForSet, type ProjectConfig } from "../config";
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
 import { compareValues, type ValueChange } from "./compare";
+import { withBuiltConditions, type ConditionsView } from "./conditions";
 import { describeDefinitionChanges, formatDetails, type DiffDetail } from "./details";
 import { DiffGit, diffError, type DiffSelection, type GitFile } from "./git";
 import { isScenarioSpec } from "../datasource/testSpecs";
@@ -38,6 +39,11 @@ export interface DefinitionDiff extends DiffSelection {
   warnings: string[];
   summary: { added: number; removed: number; changed: number };
   changes: EntityChange[];
+  /**
+   * Files whose conditions are only written another way that evaluates the same, such as an
+   * expression for the tree it builds, which change no definition
+   */
+  rewritten: string[];
 }
 
 export interface DiffOptions {
@@ -159,6 +165,11 @@ export function diffDefinitions(
     warnings: [],
     summary: { added: 0, removed: 0, changed: 0 },
     changes: [],
+    rewritten: [],
+  };
+  const view: ConditionsView = {
+    options: { namespaceCharacter: config.namespaceCharacter },
+    expressions: config.allowConditionExpressions === true,
   };
   const parse = (file: string, content: string | undefined, endpoint: string): unknown => {
     if (content === undefined) return undefined;
@@ -188,8 +199,18 @@ export function diffDefinitions(
           ? [{ path: "", kind, before: previous }]
           : compareValues(previous, next);
     if (!changes.length) continue;
-    result.summary[kind]++;
     const entity = { ...identified.get(file)! };
+    if (
+      kind === "changed" &&
+      !compareValues(
+        withBuiltConditions(entity.entity, previous, view),
+        withBuiltConditions(entity.entity, next, view),
+      ).length
+    ) {
+      result.rewritten.push(file);
+      continue;
+    }
+    result.summary[kind]++;
     if (entity.entity === "test" && isScenarioSpec(next ?? previous)) {
       entity.entity = "scenario";
     }
@@ -198,7 +219,7 @@ export function diffDefinitions(
       file,
       kind,
       changes,
-      details: describeDefinitionChanges(entity.entity, previous, next),
+      details: describeDefinitionChanges(entity.entity, previous, next, view),
     });
   }
   const currentConfig = git
@@ -219,6 +240,15 @@ export function formatDefinitionDiff(result: DefinitionDiff, colour = false): st
   const paint = (value: string, code: number) => (colour ? `\x1b[${code}m${value}\x1b[0m` : value);
   const lines = [`Comparing ${result.from.ref} → ${result.to.ref}`];
   for (const warning of result.warnings) lines.push(paint(`Warning: ${warning}`, 33));
+  if (result.rewritten.length) {
+    const count = result.rewritten.length;
+    lines.push(
+      paint(
+        `Conditions written another way that evaluates the same, in ${count} ${count === 1 ? "file" : "files"}: ${result.rewritten.slice(0, 5).join(", ")}${count > 5 ? ` and ${count - 5} more` : ""}`,
+        2,
+      ),
+    );
+  }
   if (!result.changes.length) {
     lines.push(
       result.reason === "primary" ? "No changes on the primary branch." : "No definition changes.",

@@ -1,0 +1,50 @@
+feature: showHeader
+
+assertions:
+  - description: should be disabled for desktop users below v5
+    environment: production
+    at: 80
+    context:
+      device: desktop
+      version: 1.2.3
+    expectedToBeEnabled: false
+
+  - description: should be enabled for desktop users above v5
+    environment: production
+    at: 80
+    context:
+      device: desktop
+      version: 5.5.0
+    expectedToBeEnabled: true
+
+  - description: should be disabled in checkout target because it is excluded
+    environment: production
+    target: checkout
+    at: 80
+    context:
+      device: desktop
+      version: 5.5.0
+    expectedToBeEnabled: false
+
+  - description: should be enabled for mobile users when passing valid semver
+    environment: production
+    at: 80
+    context:
+      device: mobile
+      version: 1.2.3
+    expectedToBeEnabled: true
+
+  - description: should be enabled for mobile users when passing invalid semver
+    environment: production
+    at: 80
+    context:
+      device: mobile
+      version: 7.0.A101.99gbm.lg
+    expectedToBeEnabled: true
+
+  - description: should be disabled for tablets
+    environment: production
+    at: 80
+    context:
+      device: tablet
+    expectedToBeEnabled: false

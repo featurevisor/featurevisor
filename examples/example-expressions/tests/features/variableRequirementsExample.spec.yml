@@ -1,0 +1,30 @@
+feature: variableRequirementsExample
+
+assertions:
+  - description: accepts the default policy and feature variable
+    environment: production
+    target: variable-requirements
+    at: 50
+    context:
+      country: de
+    expectedToBeEnabled: true
+
+  - description: global policy disables the feature
+    environment: production
+    target: variable-requirements
+    at: 50
+    context:
+      country: us
+    expectedToBeEnabled: false
+    expectedEvaluations:
+      flag:
+        reason: conditions_unmet
+
+  - description: disabled source feature returns its disabled variable value
+    environment: production
+    target: variable-requirements
+    at: 50
+    stickyFeatures:
+      variablePolicySource:
+        enabled: false
+    expectedToBeEnabled: false

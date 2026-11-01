@@ -11,7 +11,8 @@ import { getProjectSetExecutions } from "../sets";
 import { createTestReport } from "../tester/report";
 import { testProject } from "../tester/testProject";
 import { writeSetting } from "./config";
-import { leaveConfigByHand, type Plan } from "./plan";
+import { simplestConditions } from "../rewrite/conditions";
+import { isConditionForm, leaveConfigByHand, type Plan } from "./plan";
 
 /**
  * Converts a temporary copy of the project, then lints, builds and tests both. Every lane's
@@ -81,8 +82,14 @@ function copyProject(root: string, config: ProjectConfig): string {
   return copy;
 }
 
-/** Whether a configuration's settings have the shape a plan converts to */
-function hasShape(config: { sets?: unknown; environments?: unknown }, plan: Plan): boolean {
+/** Whether a configuration's settings have the shape, or allow the conditions, a plan converts to */
+function hasShape(
+  config: { sets?: unknown; environments?: unknown; allowConditionExpressions?: unknown },
+  plan: Plan,
+): boolean {
+  if (isConditionForm(plan.to)) {
+    return (config.allowConditionExpressions === true) === (plan.to === "expressions");
+  }
   return (
     (plan.to === "sets") === Boolean(config.sets) &&
     (plan.to === "environments") === Array.isArray(config.environments)
@@ -179,10 +186,38 @@ function datafilesIn(directory: string): string[] {
 const ENTRIES = ["features", "segments", "variables"];
 
 /**
- * What differs between two datafiles of a lane. An entry both have must be byte identical. An
- * entry only one has may be a dependency of another lane's rules, which `isCarried` decides.
+ * A datafile entry with every `conditions` value in its simplest form and without its hash,
+ * for comparing entries whose conditions were simplified: two entries that evaluate the same
+ * are equal in this form. Conditions a datafile stores as JSON text are read first.
  */
-function compareDatafiles(before: Record<string, any>, after: Record<string, any>) {
+function simplestEntry(value: unknown, key?: string): unknown {
+  if (key === "conditions") {
+    const conditions = typeof value === "string" && /^[[{]/.test(value) ? JSON.parse(value) : value;
+    return simplestConditions(conditions);
+  }
+  if (Array.isArray(value)) return value.map((item) => simplestEntry(item));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([name]) => name !== "hash")
+      .map(([name, item]) => [name, simplestEntry(item, name)]),
+  );
+}
+
+/**
+ * What differs between two datafiles of a lane. An entry both have must be byte identical, or
+ * evaluate the same when the conversion simplified conditions. An entry only one has may be a
+ * dependency of another lane's rules, which `isCarried` decides.
+ */
+function compareDatafiles(
+  before: Record<string, any>,
+  after: Record<string, any>,
+  simplified = false,
+) {
+  const same = (a: unknown, b: unknown) =>
+    simplified
+      ? JSON.stringify(simplestEntry(a)) === JSON.stringify(simplestEntry(b))
+      : JSON.stringify(a) === JSON.stringify(b);
   const problems: string[] = [];
   const fewer: string[] = [];
   const more: string[] = [];
@@ -197,8 +232,7 @@ function compareDatafiles(before: Record<string, any>, after: Record<string, any
     for (const entry of new Set([...Object.keys(a), ...Object.keys(b)])) {
       if (!(entry in b)) fewer.push(`${kind} ${entry}`);
       else if (!(entry in a)) more.push(`${kind} ${entry}`);
-      else if (JSON.stringify(a[entry]) !== JSON.stringify(b[entry]))
-        problems.push(`${kind} ${entry}`);
+      else if (!same(a[entry], b[entry])) problems.push(`${kind} ${entry}`);
     }
   }
   return { problems, fewer, more };
@@ -260,7 +294,11 @@ export async function checkPlan(
   const builds = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-convert-datafiles-"));
   try {
     return await quietly(async () => {
-      const lintBefore = await lintAll(root, config);
+      // expressions written back as trees are checked as if the project still allowed them
+      const lintBefore = await lintAll(
+        root,
+        plan.to === "trees" ? { ...config, allowConditionExpressions: true } : config,
+      );
       if (lintBefore.length > 0) {
         result.problems.push(
           `Lint reports ${lintBefore.length} errors before converting. Fix them first, so the conversion can be checked.`,
@@ -332,8 +370,10 @@ export async function checkPlan(
         return result;
       }
 
-      const pairs: [string, string, string][] =
-        plan.from === "flat"
+      // conditions written another way keep every datafile where it was
+      const pairs: [string, string, string][] = isConditionForm(plan.to)
+        ? [["", beforeDir, afterDir]]
+        : plan.from === "flat"
           ? plan.lanes.map((lane) => [lane, beforeDir, path.join(afterDir, lane)])
           : plan.to === "flat"
             ? [[plan.keep!, path.join(beforeDir, plan.keep!), afterDir]]
@@ -348,30 +388,33 @@ export async function checkPlan(
           ? []
           : plan.lanes.filter((lane) => lane !== except).map((lane) => path.join(directory, lane));
       for (const [lane, before, after] of pairs) {
-        result.lanes.push(lane);
+        if (lane) result.lanes.push(lane);
+        const at = (file: string) => (lane ? `${lane}: ${file}` : file);
+        // conditions written another way change no lane, so nothing comes or goes
+        const carries = (entry: string, file: string, directories: string[]) =>
+          !isConditionForm(plan.to) && isCarried(entry, file, directories);
         const fewer = new Set<string>();
         const more = new Set<string>();
         const beforeFiles = datafilesIn(before);
         const afterFiles = datafilesIn(after);
         for (const file of beforeFiles) {
           if (!afterFiles.includes(file)) {
-            result.problems.push(`${lane}: ${file} is no longer built.`);
+            result.problems.push(`${at(file)} is no longer built.`);
             continue;
           }
           const read = (directory: string) =>
             JSON.parse(fs.readFileSync(path.join(directory, file), "utf8"));
-          const compared = compareDatafiles(read(before), read(after));
+          const compared = compareDatafiles(read(before), read(after), Boolean(plan.simplified));
           for (const problem of compared.problems) {
-            result.problems.push(`${lane}: ${file} changes the ${problem}.`);
+            result.problems.push(`${at(file)} changes the ${problem}.`);
           }
           for (const entry of compared.fewer) {
-            if (isCarried(entry, file, laneDirectories(plan.from, beforeDir, lane)))
-              fewer.add(entry);
-            else result.problems.push(`${lane}: ${file} no longer has the ${entry}.`);
+            if (carries(entry, file, laneDirectories(plan.from, beforeDir, lane))) fewer.add(entry);
+            else result.problems.push(`${at(file)} no longer has the ${entry}.`);
           }
           for (const entry of compared.more) {
-            if (isCarried(entry, file, laneDirectories(plan.to, afterDir, lane))) more.add(entry);
-            else result.problems.push(`${lane}: ${file} now has the ${entry}.`);
+            if (carries(entry, file, laneDirectories(plan.to, afterDir, lane))) more.add(entry);
+            else result.problems.push(`${at(file)} now has the ${entry}.`);
           }
         }
         if (fewer.size > 0) {
@@ -385,7 +428,7 @@ export async function checkPlan(
           );
         }
         for (const file of afterFiles) {
-          if (!beforeFiles.includes(file)) result.added.push(`${lane}/${file}`);
+          if (!beforeFiles.includes(file)) result.added.push(lane ? `${lane}/${file}` : file);
         }
       }
 

@@ -48,6 +48,7 @@
   "license": "MIT",
   "dependencies": {
     "@featurevisor/catalog": "4.3.0",
+    "@featurevisor/expressions": "4.3.0",
     "@featurevisor/parsers": "4.4.0",
     "@featurevisor/sdk": "4.3.0",
     "@featurevisor/types": "4.3.0",

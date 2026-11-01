@@ -573,7 +573,11 @@ function normalizeScenario(value: Scenario, key: string): TestScenario {
         throw new Error(`Scenario child ${index + 1} requires nonempty checks`);
       }
       for (const property of Object.keys(authoredChild)) {
-        if (!["context", "stickyFeatures", "stickyVariables", "checks"].includes(property)) {
+        if (
+          !["description", "context", "stickyFeatures", "stickyVariables", "checks"].includes(
+            property,
+          )
+        ) {
           throw new Error(`Unknown scenario child property "${property}"`);
         }
       }

@@ -1,6 +1,7 @@
 import { parse } from "yaml";
 
-import type { FormatLayout } from "./layout";
+import { jsonParser } from "./json";
+import { applyFormatText, type FormatLayout } from "./layout";
 import { ymlParser } from "./yml";
 import { formatYml, listYmlComments, type YmlLayout } from "./ymlFormat";
 
@@ -426,6 +427,50 @@ describe("the ignore line comment", () => {
     expect(formatYml(output)).toBe(output);
   });
 
+  it("keeps a folded block marked on its first line, its lines moving with its key", () => {
+    const source = [
+      "rules:",
+      "    - key: a",
+      `      conditions: >- ${ignore}`,
+      "          country == 'ch'",
+      "          and device == 'mobile'",
+      "      percentage: 5",
+      "",
+    ].join("\n");
+    const output = formatYml(source);
+
+    expect(output).toBe(
+      [
+        "rules:",
+        "  - key: a",
+        `    conditions: >- ${ignore}`,
+        "        country == 'ch'",
+        "        and device == 'mobile'",
+        "    percentage: 5",
+        "",
+      ].join("\n"),
+    );
+    expect(parse(output)).toEqual(parse(source));
+    expect(formatYml(output)).toBe(output);
+  });
+
+  it("keeps a literal block in a list as written, blank lines included", () => {
+    const source = `notes:\n  - | ${ignore}\n    one\n\n      two\n  - 'x'\n`;
+    const output = formatYml(source);
+
+    expect(output).toBe(`notes:\n  - | ${ignore}\n    one\n\n      two\n  - x\n`);
+    expect(parse(output)).toEqual(parse(source));
+  });
+
+  it("lays out a block that keeps its trailing blank lines, since trimming would lose them", () => {
+    const source = `a: |+ ${ignore}\n    x\n\nb: 1\n`;
+    const output = formatYml(source);
+
+    expect(parse(output)).toEqual(parse(source));
+    expect(output).toContain(`a: |+ ${ignore}\n  x\n`);
+    expect(formatYml(output)).toBe(output);
+  });
+
   it("leaves the comment as text inside a quoted value", () => {
     expect(formatYml(`a: '${ignore}'\n`)).toBe(`a: "${ignore}"\n`);
   });
@@ -487,5 +532,59 @@ describe("the YAML parser", () => {
 
   it("lists comments for Featurevisor to check", () => {
     expect(ymlParser.listComments!("# a\nkey: 1 # b\n")).toEqual(["a", "b"]);
+  });
+});
+
+describe("formatText", () => {
+  const texts: Record<string, string> = {
+    conditions: "a and b",
+    "rules.0.conditions": "x\nand y\n",
+  };
+  const formatText: YmlLayout["formatText"] = (path) => texts[path.join(".")];
+
+  it("writes a string's text as the layout gives it, over several lines as a literal block", () => {
+    const source = "conditions: |-\n  a  and b\nrules:\n  - conditions: 'x and y'\n";
+    const output = formatYml(source, { formatText });
+
+    expect(output).toBe("conditions: a and b\nrules:\n  - conditions: |\n      x\n      and y\n");
+    expect(parse(output)).toEqual({
+      conditions: "a and b",
+      rules: [{ conditions: "x\nand y\n" }],
+    });
+    expect(formatYml(output, { formatText })).toBe(output);
+  });
+
+  it("leaves a line marked with the ignore comment as written", () => {
+    const source = "conditions: 'a  and b' # featurevisor-ignore-line\n";
+    expect(formatYml(source, { formatText })).toBe(source);
+  });
+});
+
+describe("applyFormatText", () => {
+  it("replaces the strings it is given texts for, in a copy", () => {
+    const value = { conditions: "a  and b", rules: [{ conditions: "x" }], seats: 5 };
+    const copy = applyFormatText(value, (path) =>
+      path.join(".") === "conditions" ? "a and b" : undefined,
+    );
+
+    expect(copy).toEqual({ conditions: "a and b", rules: [{ conditions: "x" }], seats: 5 });
+    expect(value.conditions).toBe("a  and b");
+    expect(applyFormatText(value, undefined)).toBe(value);
+  });
+
+  it("lets the JSON parser write the texts", () => {
+    const layout: FormatLayout = {
+      indent: 2,
+      orderKeys: () => undefined,
+      spaceEntries: () => false,
+      spaceItems: () => false,
+      keepBlankLines: false,
+      orderValue: (value) => value,
+      options: {},
+      formatText: (path) => (path.join(".") === "conditions" ? "a\nand b\n" : undefined),
+    };
+    expect(jsonParser.format!('{"conditions": "a  and b"}', layout)).toBe(
+      '{\n  "conditions": "a\\nand b\\n"\n}',
+    );
   });
 });

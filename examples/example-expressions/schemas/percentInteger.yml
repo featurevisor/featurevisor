@@ -1,0 +1,7 @@
+description: Integer percentage 0-100 (inclusive)
+
+type: integer
+
+minimum: 0
+
+maximum: 100

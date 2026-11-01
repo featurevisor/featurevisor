@@ -1,0 +1,44 @@
+description: Root gate, force bypass and mixed rule conditions
+
+tags:
+  - all
+
+bucketBy: userId
+
+conditions: conditionAudience
+
+force:
+  staging:
+    - conditions: userId == 'conditions-qa'
+      enabled: true
+
+  production:
+    - conditions: userId == 'conditions-qa'
+      enabled: true
+
+rules:
+  staging:
+    - key: member
+      conditions: |
+        countries.netherlands
+        and loggedIn == true
+        and feature('conditionSource').variation == 'treatment'
+        and variable('conditionPolicy').enabled == true
+      percentage: 100
+
+    - key: visitor
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: member
+      conditions: |
+        countries.netherlands
+        and loggedIn == true
+        and feature('conditionSource').variation == 'treatment'
+        and variable('conditionPolicy').enabled == true
+      percentage: 100
+
+    - key: visitor
+      conditions: "*"
+      percentage: 100

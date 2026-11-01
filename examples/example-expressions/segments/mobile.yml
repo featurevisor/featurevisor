@@ -1,0 +1,7 @@
+archived: false
+
+description: mobile users
+
+conditions: |
+  device == 'mobile'
+  and phone notExists

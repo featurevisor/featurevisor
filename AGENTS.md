@@ -90,6 +90,25 @@ specs evaluate it, example-targets and example-1 with that SDK, installed as the
 root dev dependency featurevisor-sdk-3, against the v4 SDK. Keep that comparison
 when changing the converter in packages/core/src/builder/schemaV2.ts.
 
+## Condition expressions
+
+packages/expressions parses, compiles, prints and formats condition
+expressions, the strings in conditions that read as text rather than trees, and
+depends only on @featurevisor/types. Datasource expands them when reading
+features, segments and global variables, so readers see condition trees. A
+command writing definitions back must keep authored expressions: read files
+with the parser, as fmt, migrate and convert do, or restore them with
+restoreConditionExpressions, as promote does. fmt formats expressions and never
+turns trees into them. `convert --to=trees` writes expressions as trees with
+byte identical datafiles. `convert --to=expressions` writes trees as
+expressions, then simplifies as `fmt --simplify` does: each condition in its
+simplest form that evaluates the same, changing datafile shapes but never
+evaluation, which its check proves by comparing conditions in that form, or
+with `--exact`, byte identical without simplifying. Both edit YAML documents
+through packages/core/src/rewrite/conditions.ts. The default scaffold,
+examples/example-yml, is written as `fmt --simplify` writes it. examples/example-expressions
+shows expressions, with a spec for each.
+
 ## Catalog
 
 Catalog export and React UI live in packages/catalog. Run its package tests

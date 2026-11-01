@@ -1,0 +1,25 @@
+segment: audiences.trial
+
+assertions:
+  - description: a starter plan from October matches
+    context:
+      plan: starter
+      signupDate: "2026-10-02T09:00:00Z"
+    expectedToMatch: true
+
+  - description: a starter plan from August does not
+    context:
+      plan: starter
+      signupDate: "2026-08-30T09:00:00Z"
+    expectedToMatch: false
+
+  - description: a pro plan does not
+    context:
+      plan: pro
+      signupDate: "2026-10-02T09:00:00Z"
+    expectedToMatch: false
+
+  - description: a missing signup date does not
+    context:
+      plan: starter
+    expectedToMatch: false

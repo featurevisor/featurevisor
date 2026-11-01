@@ -1,0 +1,3 @@
+description: Users who signed up in October 2026 or later
+
+conditions: signupDate after '2026-10-01T00:00:00Z'

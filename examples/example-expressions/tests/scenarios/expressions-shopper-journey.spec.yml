@@ -1,0 +1,138 @@
+description: One Dutch team owner moves through segments, features and global variables written as expressions
+
+environment: production
+
+at: 90
+
+context:
+  userId: user-2
+  loggedIn: true
+  country: nl
+  plan: pro
+  seats: 10
+  email: sam@shop.example
+  cartTotal: 300
+  riskScore: 0.1
+  roles:
+    - owner
+  permissions:
+    - read
+    - write
+
+checks:
+  - segment: audiences.priorityCustomers
+    matches: true
+
+  - segment: markets.europe
+    matches: true
+
+  - feature: smartCheckout
+    enabled: true
+    variation: express
+
+  - feature: smartCheckout
+    variable: paymentMethods
+    operator: includes
+    value: ideal
+
+  - feature: smartCheckout
+    variable: limits
+    path: maxItems
+    operator: equals
+    value: 50
+
+  - feature: regionalPricing
+    variable: currency
+    operator: equals
+    value: EUR
+
+  - feature: upsellBanner
+    variable: message
+    operator: equals
+    value: Pay with iDEAL in one tap
+
+  - feature: fraudScreening
+    variable: action
+    operator: equals
+    value: allow
+
+  - variable: checkoutCopy
+    operator: equals
+    value: Express checkout with iDEAL
+
+  - variable: supportChannel
+    operator: equals
+    value: phone
+
+children:
+  - description: Signed out, the root conditions switch the checkout and everything built on it off
+    context:
+      loggedIn: false
+    checks:
+      - segment: audiences.anonymous
+        matches: true
+
+      - feature: smartCheckout
+        enabled: false
+
+      - feature: upsellBanner
+        enabled: false
+
+      - variable: checkoutCopy
+        operator: equals
+        value: Checkout unavailable
+
+  - description: Our own staff are never priority customers, and get chat as workspace owners
+    context:
+      email: sam@featurevisor.com
+    checks:
+      - segment: audiences.priorityCustomers
+        matches: false
+
+      - segment: audiences.staff
+        matches: true
+
+      - feature: smartCheckout
+        enabled: true
+        variation: express
+
+      - variable: supportChannel
+        operator: equals
+        value: chat
+
+  - description: In the United States the legacy checkout stays and prices are in dollars
+    context:
+      country: us
+    checks:
+      - feature: legacyCheckout
+        enabled: true
+
+      - feature: smartCheckout
+        enabled: false
+
+      - feature: upsellBanner
+        enabled: false
+
+      - feature: regionalPricing
+        variable: currency
+        operator: equals
+        value: USD
+
+  - description: A severe incident reported by the application sends everyone to the status page
+    stickyVariables:
+      platformStatus:
+        maintenance: false
+        incident:
+          active: true
+          severity: 4
+          regions:
+            - apac
+    checks:
+      - feature: statusPage
+        variable: banner
+        operator: equals
+        value: Some services are unavailable
+
+      - variable: supportChannel
+        operator: equals
+        value: status-page

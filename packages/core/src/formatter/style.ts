@@ -59,6 +59,18 @@ export const HOUSE_STYLE = {
   keepBlankLines: true,
 
   /**
+   * How expressions in `conditions` are written, in projects with `allowConditionExpressions: true`: one
+   * condition a line, with a group's conditions between its parentheses, indented by `indent`.
+   * A single condition stays on one line. fmt rewrites an expression only when it reads back
+   * to exactly the same tree, so nothing here can change a datafile either. Comment lines stay
+   * above the condition below them.
+   */
+  expressions: {
+    /** End an expression over several lines with a line break, which YAML writes as `|` */
+    finalNewline: true,
+  },
+
+  /**
    * The order of Featurevisor's own keys in each kind of object. Keys an object has that its
    * list leaves out keep their written order, after the listed ones.
    */

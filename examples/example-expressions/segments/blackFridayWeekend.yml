@@ -1,0 +1,7 @@
+archived: false
+
+description: black friday weekend
+
+conditions: |
+  date after '2023-11-24T00:00:00Z'
+  and date before '2023-11-27T00:00:00Z'

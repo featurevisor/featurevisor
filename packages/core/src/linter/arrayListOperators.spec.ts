@@ -46,7 +46,18 @@ const variables = {
   text: { type: "string", defaultValue: "owner" },
   objects: { type: "array", items: { type: "object" }, defaultValue: [] },
   arrays: { type: "array", items: { type: "array", items: { type: "string" } }, defaultValue: [] },
-  dynamic: { type: "json", defaultValue: '{"roles":["owner"]}' },
+  dynamic: {
+    type: "object",
+    properties: {
+      roles: {
+        oneOf: [
+          { type: "array", items: { type: "string" } },
+          { type: "array", items: { type: "integer" } },
+        ],
+      },
+    },
+    defaultValue: { roles: ["owner"] },
+  },
 } as unknown as Record<string, ParsedVariable>;
 const features = { checkout: { variablesSchema: variables } } as unknown as Record<
   string,
@@ -109,7 +120,7 @@ describe.each(["includesAny", "notIncludesAny"])("array list operator %s", (oper
       expect(result.error.issues).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            message: expect.stringContaining("value must be an array of strings"),
+            message: expect.stringContaining("value must be a list of strings or of numbers"),
           }),
         ]),
       );

@@ -1,0 +1,46 @@
+description: Signup message and feature agree at bucket ${{ bucket }}
+
+matrix:
+  bucket:
+    - 0
+    - 100
+
+environment: production
+
+at: ${{ bucket }}
+
+context:
+  country: gb
+  deviceId: customer-1
+
+checks:
+  - key: matching-signup-path
+    description: The message and variable agree with the selected variation
+    or:
+      - key: control-path
+        description: Control keeps the basic signup path
+        and:
+          - feature: allowSignup
+            key: control-variation
+            enabled: true
+            variation: control
+          - variable: signupMessage
+            operator: equals
+            value: Create your account
+          - feature: allowSignup
+            variable: allowGoogleSignUp
+            operator: equals
+            value: false
+
+      # Named and unnamed sibling groups are both accepted.
+      - and:
+          - feature: allowSignup
+            enabled: true
+            variation: treatment
+          - variable: signupMessage
+            operator: equals
+            value: Sign up with your preferred provider
+          - feature: allowSignup
+            variable: allowGoogleSignUp
+            operator: equals
+            value: true

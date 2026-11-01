@@ -1,0 +1,31 @@
+segment: markets.farFromUtc
+
+assertions:
+  - description: Pacific time is far west of UTC
+    context:
+      timezoneOffset: -8
+    expectedToMatch: true
+
+  - description: Japan is far east of UTC
+    context:
+      timezoneOffset: 9
+    expectedToMatch: true
+
+  - description: exactly five hours east is included
+    context:
+      timezoneOffset: 5
+    expectedToMatch: true
+
+  - description: UTC itself is not
+    context:
+      timezoneOffset: 0
+    expectedToMatch: false
+
+  - description: four hours west is not
+    context:
+      timezoneOffset: -4
+    expectedToMatch: false
+
+  - description: a missing offset is not
+    context: {}
+    expectedToMatch: false

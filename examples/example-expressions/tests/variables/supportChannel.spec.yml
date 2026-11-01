@@ -1,0 +1,76 @@
+variable: supportChannel
+
+assertions:
+  - description: a severe incident sends everyone to the status page
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      cohorts:
+        - incident-drill-us
+    expectedValue: status-page
+
+  - description: a mild incident does not, so priority customers still get a phone line
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      cohorts:
+        - incident-drill-eu
+      country: nl
+      plan: pro
+      seats: 10
+      email: sam@shop.example
+    expectedValue: phone
+
+  - description: verified enterprises get a phone line too
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+      organization:
+        tier: enterprise
+        verified: true
+    expectedValue: phone
+
+  - description: admins get chat through the adminConsole feature
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      roles:
+        - owner
+      permissions:
+        - write
+    expectedValue: chat
+
+  - description: everyone else emails us
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+    expectedValue: email
+
+  - description: production has no drills, so the drill cohort emails us
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+      cohorts:
+        - incident-drill-us
+    expectedValue: email
+
+  - description: a sticky severe status reads through another global variable
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+    stickyVariables:
+      platformStatus:
+        maintenance: false
+        incident:
+          active: true
+          severity: 5
+          regions:
+            - global
+    expectedValue: status-page

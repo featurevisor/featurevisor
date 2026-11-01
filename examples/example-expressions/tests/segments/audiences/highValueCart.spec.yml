@@ -1,0 +1,30 @@
+segment: audiences.highValueCart
+
+assertions:
+  - description: 250 or more matches on any plan
+    context:
+      cartTotal: 250
+    expectedToMatch: true
+
+  - description: just under 250 does not without a plan
+    context:
+      cartTotal: 249.99
+    expectedToMatch: false
+
+  - description: enterprise carts match from 99.5
+    context:
+      plan: enterprise
+      cartTotal: 99.5
+    expectedToMatch: true
+
+  - description: enterprise carts just below 99.5 do not
+    context:
+      plan: enterprise
+      cartTotal: 99.49
+    expectedToMatch: false
+
+  - description: the lower bar is for enterprise only
+    context:
+      plan: pro
+      cartTotal: 100
+    expectedToMatch: false

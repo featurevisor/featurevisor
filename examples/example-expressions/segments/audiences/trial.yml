@@ -1,0 +1,5 @@
+description: Starter plans that signed up after the autumn launch
+
+conditions: |
+  plan == 'starter'
+  and signupDate after '2026-09-01T00:00:00Z'

@@ -1,0 +1,22 @@
+segment: markets.italianCities
+
+assertions:
+  - description: an escaped quote inside the string matches the apostrophe
+    context:
+      city: L'Aquila
+    expectedToMatch: true
+
+  - description: Sant'Antioco matches too
+    context:
+      city: Sant'Antioco
+    expectedToMatch: true
+
+  - description: a unicode escape matches the accented letter
+    context:
+      city: Forlì
+    expectedToMatch: true
+
+  - description: Forli without the accent does not
+    context:
+      city: Forli
+    expectedToMatch: false

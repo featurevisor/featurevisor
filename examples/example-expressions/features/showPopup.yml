@@ -1,0 +1,28 @@
+description: for testing force API in features
+
+tags:
+  - all
+
+bucketBy: userId
+
+force:
+  staging:
+    - conditions: qa
+      enabled: true
+
+    - conditions: userId == 'user-3'
+      enabled: true
+
+rules:
+  staging:
+    - key: "1"
+      conditions: "*"
+      percentage: 0
+
+  production:
+    - key: "1"
+      conditions: "*"
+      percentage: 0
+
+expose:
+  production: false

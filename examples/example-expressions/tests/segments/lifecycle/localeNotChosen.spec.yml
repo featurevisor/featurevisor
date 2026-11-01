@@ -1,0 +1,21 @@
+segment: lifecycle.localeNotChosen
+
+assertions:
+  - description: an explicit null matches isNull
+    context:
+      locale: null
+    expectedToMatch: true
+
+  - description: an empty string matches
+    context:
+      locale: ""
+    expectedToMatch: true
+
+  - description: a missing locale is not null
+    context: {}
+    expectedToMatch: false
+
+  - description: a chosen locale does not match
+    context:
+      locale: nl-NL
+    expectedToMatch: false

@@ -1,0 +1,6 @@
+description: <Who this segment targets>
+
+# Only in a project with allowConditionExpressions: true in featurevisor.config.js
+conditions: |
+  country == 'nl'
+  and plan in ['paid', 'enterprise']

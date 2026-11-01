@@ -85,6 +85,7 @@ async function evaluateFeatureWithDatafile(
   warnings: Array<{ attribute: string; message: string }> = [],
 ) {
   let diagnostics: FeaturevisorDiagnostic[] = [];
+  const expressions = explanationOptions?.expressions;
   const explain = (
     evaluation: Evaluation,
     entries: FeaturevisorDiagnostic[],
@@ -160,7 +161,7 @@ async function evaluateFeatureWithDatafile(
     }
     if (options.verbose) printDiagnostics(evaluationDiagnostics);
     if (explanation) {
-      printExplanation(explanation);
+      printExplanation(explanation, true, expressions);
     } else {
       console.log(CLI_FORMAT_GREEN, `Value: ${JSON.stringify(evaluation.variableValue)}`);
       const composition = datafileContent.variables?.[options.variable]?.compose;
@@ -270,7 +271,7 @@ async function evaluateFeatureWithDatafile(
   }
 
   if (explanation) {
-    printExplanation(explanation.flag);
+    printExplanation(explanation.flag, true, expressions);
   } else {
     console.log(
       flagEvaluation.enabled ? CLI_FORMAT_GREEN : CLI_FORMAT_YELLOW,
@@ -289,7 +290,7 @@ async function evaluateFeatureWithDatafile(
     }
 
     if (explanation) {
-      printExplanation(explanation.variation, false);
+      printExplanation(explanation.variation, false, expressions);
     } else {
       console.log(
         CLI_FORMAT_GREEN,
@@ -299,7 +300,7 @@ async function evaluateFeatureWithDatafile(
       printEvaluationDetails(variationEvaluation);
     }
   } else {
-    if (explanation) printExplanation(explanation.variation, false);
+    if (explanation) printExplanation(explanation.variation, false, expressions);
     else console.log(CLI_FORMAT_YELLOW, "No variations defined.");
   }
 
@@ -317,7 +318,7 @@ async function evaluateFeatureWithDatafile(
           ? JSON.stringify(value.variableValue)
           : value.variableValue;
       if (explanation) {
-        printExplanation(explanation.variables[key], false);
+        printExplanation(explanation.variables[key], false, expressions);
       } else {
         console.log(CLI_FORMAT_GREEN, `Value: ${variableValue}`);
         console.log("\nDetails:\n");
@@ -365,6 +366,9 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     ? {
         set: deps.datasource.getSet(),
         definitionExists,
+        expressions: deps.projectConfig?.allowConditionExpressions
+          ? { namespaceCharacter: deps.projectConfig.namespaceCharacter }
+          : undefined,
         authoredVariable:
           options.variable && definitionExists
             ? await deps.datasource.readVariable(options.variable)

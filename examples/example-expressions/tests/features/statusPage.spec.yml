@@ -1,0 +1,82 @@
+feature: statusPage
+
+assertions:
+  - description: without an incident the root conditions fail
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      country: nl
+    expectedToBeEnabled: false
+
+  - description: a European drill shows the European banner to Dutch users
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      country: nl
+      cohorts:
+        - incident-drill-eu
+    expectedToBeEnabled: true
+    expectedVariables:
+      banner: We are looking into an issue affecting Europe
+
+  - description: a US drill reads the first region by index
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      country: us
+      cohorts:
+        - incident-drill-us
+    expectedVariables:
+      banner: We are looking into an issue affecting North America
+
+  - description: a severe US drill reaches Dutch users through its severity
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      country: nl
+      cohorts:
+        - incident-drill-us
+    expectedVariables:
+      banner: Some services are unavailable
+
+  - description: a mild European drill shows nothing in the United States
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      country: us
+      cohorts:
+        - incident-drill-eu
+    expectedToBeEnabled: false
+
+  - description: a sticky status from the application wins over the overrides
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+      country: jp
+    stickyVariables:
+      platformStatus:
+        maintenance: false
+        incident:
+          active: true
+          severity: 5
+          regions:
+            - apac
+    expectedToBeEnabled: true
+    expectedVariables:
+      banner: Some services are unavailable
+
+  - description: production has no drills
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+      country: nl
+      cohorts:
+        - incident-drill-eu
+    expectedToBeEnabled: false

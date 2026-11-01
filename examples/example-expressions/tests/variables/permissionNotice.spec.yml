@@ -1,0 +1,42 @@
+variable: permissionNotice
+
+assertions:
+  - description: global and feature array prerequisites both match
+    environment: staging
+    at: 50
+    context:
+      userId: writer
+      permissions:
+        - write
+    expectedValue: Write access
+
+  - description: both evaluated arrays contain no write permissions
+    environment: production
+    at: 50
+    context:
+      userId: reader
+      permissions: []
+    expectedValue: Read only access
+
+  - description: null from a disabled feature variable matches neither operator
+    environment: staging
+    at: 50
+    context:
+      userId: missing
+    expectedValue: No evaluated policy
+
+  - description: feature and global prerequisites must both match
+    environment: staging
+    at: 50
+    context:
+      userId: writer
+      permissions:
+        - admin
+    stickyVariables:
+      permissionPolicy:
+        actions:
+          - read
+        candidates:
+          - write
+          - admin
+    expectedValue: No evaluated policy

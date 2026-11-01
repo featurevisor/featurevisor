@@ -1,0 +1,57 @@
+description: Array membership selects a variation and feature variable
+
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  actions:
+    type: array
+    items:
+      type: string
+    defaultValue: []
+
+variations:
+  - value: writer
+    weight: 50
+
+  - value: reader
+    weight: 50
+
+rules:
+  staging:
+    - key: write-access
+      conditions: writePermissions
+      percentage: 100
+      variation: writer
+      variables:
+        actions:
+          - read
+          - write
+
+    - key: read-only-access
+      conditions: readOnlyPermissions
+      percentage: 100
+      variation: reader
+      variables:
+        actions:
+          - read
+
+  production:
+    - key: write-access
+      conditions: writePermissions
+      percentage: 100
+      variation: writer
+      variables:
+        actions:
+          - read
+          - write
+
+    - key: read-only-access
+      conditions: readOnlyPermissions
+      percentage: 100
+      variation: reader
+      variables:
+        actions:
+          - read

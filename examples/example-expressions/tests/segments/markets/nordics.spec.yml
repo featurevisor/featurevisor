@@ -1,0 +1,17 @@
+segment: markets.nordics
+
+assertions:
+  - description: Norway matches, with no written as a plain string
+    context:
+      country: "no"
+    expectedToMatch: true
+
+  - description: Sweden matches
+    context:
+      country: se
+    expectedToMatch: true
+
+  - description: the United Kingdom does not
+    context:
+      country: gb
+    expectedToMatch: false

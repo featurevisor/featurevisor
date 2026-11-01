@@ -89,9 +89,10 @@ export function printFormatResult(result: FormatProjectResult, options: FormatPr
     } else {
       const verb = result.changed === 1 ? "needs" : "need";
       const since = options.since === undefined ? "" : ` --since=${options.since}`;
+      const simplify = options.simplify ? " --simplify" : "";
       console.log(
         CLI_FORMAT_YELLOW,
-        `${files(result.changed)} of ${total} ${verb} formatting. Run: npx featurevisor fmt${since}`,
+        `${files(result.changed)} of ${total} ${verb} formatting. Run: npx featurevisor fmt${simplify}${since}`,
       );
     }
   } else if (result.errors === 0) {

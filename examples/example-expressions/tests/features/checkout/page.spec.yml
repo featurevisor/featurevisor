@@ -1,0 +1,71 @@
+feature: checkout.page
+
+assertions:
+  ##
+  # Everyone
+  #
+  - environment: production
+    at: 60
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariables:
+      showPayments: true
+      showShipping: true
+      paymentMethods:
+        - visa
+        - mastercard
+        - paypal
+
+    expectedEvaluations:
+      flag:
+        ruleKey: "3"
+      variables:
+        showPayments:
+          ruleKey: "3"
+
+  ##
+  # NL
+  #
+  - environment: production
+    at: 60
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariables:
+      showPayments: false
+      showShipping: false
+      paymentMethods:
+        - ideal
+        - paypal
+
+    expectedEvaluations:
+      flag:
+        ruleKey: "1"
+
+  ##
+  # CH
+  #
+  - environment: production
+    at: 80
+    context:
+      country: ch
+    expectedToBeEnabled: false
+    expectedEvaluations:
+      flag:
+        ruleKey: ch
+
+  ##
+  # DE
+  #
+  - environment: production
+    at: 80
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariables:
+      showPayments: false
+      showShipping: false
+      paymentMethods:
+        - sofort
+        - paypal

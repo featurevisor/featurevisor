@@ -1,0 +1,50 @@
+description: Segment checks share environment, bucket and sticky state with getters
+
+environment: production
+
+at: 75
+
+context:
+  country: nl
+  device: mobile
+  loggedIn: true
+
+checks:
+  - segment: conditionAudience
+    matches: true
+  - feature: unifiedConditions
+    enabled: true
+  - variable: conditionMessage
+    operator: equals
+    value: Treatment member
+
+children:
+  - context:
+      country: us
+    stickyFeatures:
+      unifiedConditions:
+        enabled: true
+    checks:
+      - segment: conditionAudience
+        matches: false
+      - feature: unifiedConditions
+        enabled: true
+
+  - stickyFeatures:
+      conditionSource:
+        enabled: false
+    checks:
+      - segment: conditionAudience
+        matches: false
+      - feature: unifiedConditions
+        enabled: false
+
+  - stickyVariables:
+      conditionPolicy:
+        enabled: false
+    checks:
+      - segment: conditionAudience
+        matches: false
+      - variable: conditionMessage
+        operator: equals
+        value: Unavailable

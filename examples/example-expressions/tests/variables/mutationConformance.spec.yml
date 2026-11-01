@@ -1,0 +1,290 @@
+variable: mutationConformance
+
+assertions:
+  - description: uses the complete country fallback after the first parent misses
+    environment: staging
+    target: mutation-conformance
+    context:
+      country: de
+    expectedValue:
+      label: Country fallback
+      clearedText: ""
+      emptyString: ""
+      emptyArray: []
+      emptyObject: {}
+      tags: []
+      flags: []
+      rows: []
+      scratch: []
+      sequence: []
+    checks:
+      - path: emptyString
+        operator: notNull
+      - path: emptyArray
+        operator: notNull
+      - path: emptyObject
+        operator: notNull
+      - path: obsolete
+        operator: notExists
+      - not:
+          - path: obsolete
+            operator: notNull
+      - not:
+          - path: obsolete
+            operator: isNull
+
+  - description: keeps the mutated parent value when no nested child matches
+    environment: staging
+    target: mutation-conformance
+    context:
+      country: nl
+      city: rotterdam
+    expectedValue:
+      label: Parent
+      clearedText: ""
+      emptyString: ""
+      emptyArray: []
+      emptyObject: {}
+      tags:
+        - first
+        - keep
+        - new
+        - last
+      flags:
+        - true
+        - false
+      rows:
+        - id: before
+          label: Before
+        - id: first
+          rank: 1
+          active: true
+          marker: "null"
+          label: Selected by string
+          booleanSelector: true
+          textNullSelector: true
+        - id: second
+          rank: 2
+          active: false
+          marker: present
+          label: Second
+          numericSelector: true
+        - id: ""
+          rank: 3
+          active: false
+          marker: empty
+          label: Empty identifier
+          emptySelector: true
+      scratch:
+        - One
+        - two
+      sequence: []
+
+  - description: combines conditions and prerequisites in the nested treatment child
+    environment: staging
+    target: mutation-conformance
+    at: 25
+    context:
+      country: nl
+      city: amsterdam
+    stickyFeatures:
+      allowSignup:
+        enabled: true
+        variation: treatment
+    stickyVariables:
+      runtimePolicy:
+        routing:
+          enabled: true
+          priority: false
+        regions:
+          - eu
+        support.label: Help
+    expectedValue:
+      label: Treatment child
+      clearedText: ""
+      emptyString: ""
+      emptyArray: []
+      emptyObject: {}
+      tags:
+        - first
+        - keep
+        - new
+        - last
+      flags:
+        - true
+        - false
+      rows:
+        - id: before
+          label: Before
+        - id: first
+          rank: 1
+          active: true
+          marker: "null"
+          label: Treatment row
+          booleanSelector: true
+          textNullSelector: true
+        - id: second
+          rank: 2
+          active: false
+          marker: present
+          label: Second
+          numericSelector: true
+        - id: ""
+          rank: 3
+          active: false
+          marker: empty
+          label: Empty identifier
+          emptySelector: true
+      scratch:
+        - One
+        - two
+      sequence: []
+    children:
+      - expectedValue:
+          label: Control child
+          clearedText: ""
+          emptyString: ""
+          emptyArray: []
+          emptyObject: {}
+          tags:
+            - control
+          flags: []
+          rows: []
+          scratch: []
+          sequence: []
+
+      - stickyFeatures:
+          allowSignup:
+            enabled: true
+            variation: treatment
+        stickyVariables:
+          runtimePolicy:
+            routing:
+              enabled: false
+              priority: false
+            regions:
+              - eu
+            support.label: Help
+        expectedValue:
+          label: Parent
+          clearedText: ""
+          emptyString: ""
+          emptyArray: []
+          emptyObject: {}
+          tags:
+            - first
+            - keep
+            - new
+            - last
+          flags:
+            - true
+            - false
+          rows:
+            - id: before
+              label: Before
+            - id: first
+              rank: 1
+              active: true
+              marker: "null"
+              label: Selected by string
+              booleanSelector: true
+              textNullSelector: true
+            - id: second
+              rank: 2
+              active: false
+              marker: present
+              label: Second
+              numericSelector: true
+            - id: ""
+              rank: 3
+              active: false
+              marker: empty
+              label: Empty identifier
+              emptySelector: true
+          scratch:
+            - One
+            - two
+          sequence: []
+
+  - description: the first nested reset wins over later matching children
+    environment: staging
+    target: mutation-conformance
+    context:
+      country: nl
+      city: amsterdam
+      loggedIn: true
+    stickyFeatures:
+      allowSignup:
+        enabled: true
+        variation: treatment
+    stickyVariables:
+      runtimePolicy:
+        routing:
+          enabled: true
+          priority: false
+        regions:
+          - eu
+        support.label: Help
+    expectedValue:
+      label: Reset
+      clearedText: ""
+      emptyString: ""
+      emptyArray: []
+      emptyObject: {}
+      tags: []
+      flags: []
+      rows: []
+      scratch: []
+      sequence: []
+
+  - description: continuation preserves the bootstrap value when later selectors miss
+    environment: production
+    target: mutation-conformance
+    at: 25
+    context:
+      country: de
+    expectedValue:
+      label: Production
+      clearedText: ""
+      emptyString: ""
+      emptyArray: []
+      emptyObject: {}
+      tags: []
+      flags: []
+      rows: []
+      scratch: []
+      sequence:
+        - base
+
+  - description: continuation applies every matching feature variable and context selector
+    environment: production
+    target: mutation-conformance
+    context:
+      country: nl
+    stickyFeatures:
+      allowSignup:
+        enabled: true
+        variation: treatment
+    stickyVariables:
+      runtimePolicy:
+        routing:
+          enabled: true
+          priority: true
+        regions:
+          - eu
+        support.label: Help
+    expectedValue:
+      label: Production
+      clearedText: ""
+      emptyString: ""
+      emptyArray: []
+      emptyObject: {}
+      tags: []
+      flags: []
+      rows: []
+      scratch: []
+      sequence:
+        - base
+        - treatment
+        - priority
+        - netherlands

@@ -1,0 +1,108 @@
+feature: foo
+
+assertions:
+  - environment: staging
+    at: 40
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: control
+
+  - environment: staging
+    at: 60
+    context:
+      country: ch
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+
+  - environment: staging
+    at: 60
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+
+  - environment: staging
+    at: 60
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      bar: bar_here
+      baz: baz_here
+
+  - environment: staging
+    at: 80
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      bar: bar for DE or CH
+      baz: baz_here
+
+  - environment: staging
+    at: 20
+    context:
+      country: de
+      userId: test-force-id
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      bar: bar for DE or CH
+      baz: baz_here
+
+  - environment: staging
+    at: 70
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      bar: bar_here
+      baz: baz for NL
+
+  ##
+  # Testing `at` with last value of range
+  #
+  - environment: staging
+    at: 100
+    context:
+      country: nl
+    expectedToBeEnabled: true
+
+  - environment: staging
+    at: 49.999
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: control
+
+  - environment: staging
+    at: 50
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: control
+
+  - environment: staging
+    at: 50.001
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+
+  - environment: staging
+    at: 99.999
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+
+  - environment: staging
+    at: 100
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment

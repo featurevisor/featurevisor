@@ -2,11 +2,11 @@
 
 Full docs: <https://featurevisor.com/docs/conditions/>
 
-`conditions` is the one grammar for every place a definition selects or gates: segments, feature rules, force entries, root gates, and feature and global variable overrides. Operators are listed in [operators.md](operators.md).
+`conditions` is the one grammar for every place a definition selects or gates: segments, feature rules, force entries, root gates, and feature and global variable overrides. Operators are listed in [operators.md](operators.md). This file writes conditions as trees. A project with `allowConditionExpressions: true` can write the same conditions as text, such as `country == 'nl'` ([expressions.md](expressions.md)).
 
 ## Leaves
 
-There are four kinds of leaf. Mix them freely in one expression.
+There are four kinds of leaf. Mix them freely in one condition.
 
 ```yaml
 conditions:
@@ -59,7 +59,7 @@ conditions:
 
 ### Variable leaves
 
-A variable leaf compares what the ordinary getter returns, including disabled fallbacks and decoded JSON. Omit `feature` for a global variable.
+A variable leaf compares what the ordinary getter returns, including disabled fallbacks. Omit `feature` for a global variable.
 
 ```yaml
 conditions:
@@ -73,6 +73,7 @@ conditions:
 - A missing getter result is `null`. A missing nested path is absent, which is different from `null`. `isNull` matches only an explicit null. `notNull` requires a present, nonnull value. `exists` and `notExists` test presence.
 - Compare booleans with `equals` or `notEquals`, not `in` or `notIn`.
 - Operands must suit the value's type, but need not satisfy its enum, minimum or pattern. A threshold can sit outside the variable's allowed range.
+- Lint warns, with `untyped_condition`, about a condition reading a value without declared types: a `json` variable, read directly, through an alias or through a composed path, or a path inside an object declared without `properties` or `additionalProperties`. Declare the shape, such as `type: object` with `properties`, to compare what it holds. Presence and emptiness checks on such an object itself still work.
 
 ## Lists and groups
 
@@ -91,7 +92,7 @@ conditions:
 - A list means AND.
 - `and`, `or` and `not` take a nonempty list and nest to any depth. Every leaf kind works inside them.
 - `not` negates the AND of its children. `not: [a, b]` means "not both a and b". For "neither", write `not: [{ or: [a, b] }]`.
-- `'*'` matches everyone, but only as the entire expression: `conditions: '*'`. Inside a list or group it is a lint error.
+- `'*'` matches everyone, but only as the entire value: `conditions: '*'`. Inside a list or group it is a lint error.
 - Empty lists and groups are lint errors.
 
 A single condition does not need a list. `conditions: netherlands` and `conditions: { feature: liveChat }` are both valid.

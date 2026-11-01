@@ -1,0 +1,6 @@
+segment: everyone
+
+assertions:
+  - context:
+      country: nl
+    expectedToMatch: true

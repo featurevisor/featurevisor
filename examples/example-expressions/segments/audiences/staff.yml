@@ -1,0 +1,8 @@
+description: Our own staff and QA inboxes
+
+conditions: |
+  # Everyone with a company address
+  email endsWith '@featurevisor.com'
+
+  # QA inboxes such as qa+checkout@example.com, in any letter case
+  or email matches /^qa\+[a-z0-9-]+@example\.com$/i

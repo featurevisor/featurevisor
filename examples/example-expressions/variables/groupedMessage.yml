@@ -1,0 +1,31 @@
+description: Nested and accumulating messages selected by feature groups
+
+tags:
+  - all
+
+type: string
+
+defaultValue: Standard message
+
+conditions: |
+  feature('redesign')
+  or feature('sidebar')
+
+disabledValue: Unavailable
+
+overrides:
+  production:
+    - key: redesign
+      conditions: |
+        feature('redesign')
+        and not feature('pricing')
+      continue: true
+      value: Redesigned message
+      overrides:
+        - key: sidebar
+          conditions: feature('sidebar') == true
+          value: Redesigned sidebar message
+
+    - key: sidebar-only
+      conditions: not feature('redesign')
+      value: Sidebar message

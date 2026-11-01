@@ -1,0 +1,80 @@
+feature: newRedesign
+
+assertions:
+  ##
+  # production
+  #
+  - environment: production
+    at: 40
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      foo: default foo
+      bar: default bar
+
+  - environment: production
+    at: 60
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      foo: foo for treatment
+      bar: bar for treatment
+
+  - environment: production
+    at: 60
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      foo: foo for treatment in DE or CH
+      bar: bar for treatment
+
+  ##
+  # staging
+  #
+  - environment: staging
+    at: 40
+    context:
+      userId: someone-else
+      country: us
+    expectedToBeEnabled: false
+    expectedVariables:
+      foo: null
+
+  - environment: staging
+    at: 40
+    context:
+      userId: test-force-id
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      foo: foo for treatment
+      bar: bar for treatment
+
+  - environment: staging
+    at: 40
+    context:
+      userId: test-force-id
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      foo: foo for treatment in DE or CH
+      bar: bar for treatment
+
+  - environment: staging
+    at: 40
+    context:
+      userId: test-force-id
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      foo: foo for treatment
+      bar: bar for treatment in NL

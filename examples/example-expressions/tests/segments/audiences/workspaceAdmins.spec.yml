@@ -1,0 +1,43 @@
+segment: audiences.workspaceAdmins
+
+assertions:
+  - description: an owner matches
+    context:
+      roles:
+        - owner
+    expectedToMatch: true
+
+  - description: an owner who is also a viewer still matches through the first branch
+    context:
+      roles:
+        - owner
+        - viewer
+    expectedToMatch: true
+
+  - description: a billing user matches the second branch
+    context:
+      roles:
+        - billing
+    expectedToMatch: true
+
+  - description: an editor who is also a viewer does not
+    context:
+      roles:
+        - editor
+        - viewer
+    expectedToMatch: false
+
+  - description: a viewer does not
+    context:
+      roles:
+        - viewer
+    expectedToMatch: false
+
+  - description: no roles do not
+    context:
+      roles: []
+    expectedToMatch: false
+
+  - description: missing roles do not
+    context: {}
+    expectedToMatch: false

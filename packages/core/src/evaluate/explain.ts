@@ -8,6 +8,7 @@ import type {
   VariableMutations,
 } from "@featurevisor/types";
 import type { Evaluation, FeaturevisorDiagnostic } from "@featurevisor/sdk";
+import { print, type ExpressionOptions } from "@featurevisor/expressions";
 import { colorize } from "../tester/cliFormat";
 import { mutationEntries } from "../builder/mutationEntries";
 import { getConditionReferences } from "../datasource/conditions";
@@ -53,6 +54,8 @@ export interface ExplanationOptions {
   /** Separate CLI checks, never observations from the authoritative call. */
   conditionsProbe?: ConditionsProbe;
   selectionProbes?: ConditionsProbe[];
+  /** Prints declared conditions as expressions, in a project that allows them */
+  expressions?: ExpressionOptions;
 }
 
 export function getEvaluationValue(evaluation: Evaluation): unknown {
@@ -126,10 +129,28 @@ function readableSelector(value: unknown): unknown {
   }
 }
 
-function selectors(value: { conditions?: unknown }): Record<string, unknown> {
-  return {
-    ...(value.conditions !== undefined && { conditions: readableSelector(value.conditions) }),
-  };
+/** Declared conditions as an expression, in a project that allows them, where the tree has one */
+function expressionOf(value: unknown, expressions?: ExpressionOptions): string | undefined {
+  if (!expressions || value === undefined || value === "*") return undefined;
+  try {
+    return print(readableSelector(value) as Conditions, { ...expressions, width: Infinity });
+  } catch {
+    // a tree the printer cannot read has no expression
+    return undefined;
+  }
+}
+
+/** Declared conditions, with their expression in a project that allows them */
+function conditionsOf(value: unknown, expressions?: ExpressionOptions): Record<string, unknown> {
+  const expression = expressionOf(value, expressions);
+  return { conditions: readableSelector(value), ...(expression ? { expression } : {}) };
+}
+
+function selectors(
+  value: { conditions?: unknown },
+  expressions?: ExpressionOptions,
+): Record<string, unknown> {
+  return value.conditions !== undefined ? conditionsOf(value.conditions, expressions) : {};
 }
 
 function authoredPath(
@@ -244,13 +265,13 @@ export function explainEvaluation(
   const variable = !featureKey && variableKey ? datafile.variables?.[variableKey] : undefined;
 
   const describeSelectors = (candidate: Parameters<typeof selectors>[0]) => {
-    const details = selectors(candidate);
+    const details = selectors(candidate, options.expressions);
     const keys = getConditionReferences(candidate.conditions as Conditions | undefined).segments;
     if (keys.size) {
       details.segmentDefinitions = Array.from(keys, (key) => ({
         key,
         present: Object.prototype.hasOwnProperty.call(datafile.segments, key),
-        conditions: readableSelector(datafile.segments[key]?.conditions),
+        ...conditionsOf(datafile.segments[key]?.conditions, options.expressions),
       }));
     }
     return details;
@@ -298,9 +319,11 @@ export function explainEvaluation(
   }
   const conditions = evaluation.conditions ?? variable?.conditions ?? feature?.conditions;
   if (conditions !== undefined) {
-    add("definition", "Declared root conditions (not an execution trace)", {
-      conditions: readableSelector(conditions),
-    });
+    add(
+      "definition",
+      "Declared root conditions (not an execution trace)",
+      conditionsOf(conditions, options.expressions),
+    );
   }
   if (options.conditionsProbe) {
     add("cli-probe", "Supplementary CLI condition probe (not an execution trace)", {
@@ -403,7 +426,7 @@ export function explainEvaluation(
               defaultValue: options.authoredVariable?.defaultValue,
               overrides: authored.map((override, index) => ({
                 path: path.slice(0, index + 1),
-                ...selectors(override),
+                ...selectors(override, options.expressions),
                 ...(override.mutate !== undefined
                   ? { mutate: override.mutate }
                   : { value: override.value }),
@@ -545,7 +568,19 @@ function describeSelector(value: unknown): string {
   return compact(value);
 }
 
-export function printExplanation(explanation: EvaluationExplanation, showNotice = true): void {
+/**
+ * Declared conditions as the project writes them: as an expression in a project that allows
+ * them, where the tree has one, and in words otherwise.
+ */
+function describeConditions(value: unknown, expressions?: ExpressionOptions): string {
+  return expressionOf(value, expressions) ?? describeSelector(value);
+}
+
+export function printExplanation(
+  explanation: EvaluationExplanation,
+  showNotice = true,
+  expressions?: ExpressionOptions,
+): void {
   const { result, evidence } = explanation;
   const detail = (title: string) => evidence.find((entry) => entry.title === title)?.details;
   const line = (label: string, value: string) => console.log(`  ${paint(label, 36)} ${value}`);
@@ -621,12 +656,12 @@ export function printExplanation(explanation: EvaluationExplanation, showNotice 
   const selection = detail("Selected compiled override selectors") ?? force ?? rule;
   if (selection) {
     if (selection.conditions !== undefined)
-      line("Conditions (definition):", describeSelector(selection.conditions));
+      line("Conditions (definition):", describeConditions(selection.conditions, expressions));
     const segments = (selection.segmentDefinitions ?? []) as Array<Record<string, unknown>>;
     for (const segment of segments.slice(0, 4)) {
       console.log(
         paint(
-          `    ${segment.key}: ${segment.present ? describeSelector(segment.conditions) : "absent from datafile"}`,
+          `    ${segment.key}: ${segment.present ? describeConditions(segment.conditions, expressions) : "absent from datafile"}`,
           2,
         ),
       );
@@ -636,7 +671,7 @@ export function printExplanation(explanation: EvaluationExplanation, showNotice 
   }
   const root = detail("Declared root conditions (not an execution trace)");
   if (root?.conditions !== undefined)
-    line("Root conditions (definition):", describeSelector(root.conditions));
+    line("Root conditions (definition):", describeConditions(root.conditions, expressions));
 
   const probes = explanation.evidence.filter(
     (entry) => entry.basis === "cli-probe" && entry.details.expression !== undefined,

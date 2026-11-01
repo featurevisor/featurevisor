@@ -1,0 +1,26 @@
+feature: showPopup
+
+assertions:
+  - environment: staging
+    at: 40
+    context:
+      userId: user-1
+    expectedToBeEnabled: true
+
+  - environment: staging
+    at: 40
+    context:
+      userId: user-2
+    expectedToBeEnabled: true
+
+  - environment: staging
+    at: 40
+    context:
+      userId: user-3
+    expectedToBeEnabled: true
+
+  - environment: staging
+    at: 40
+    context:
+      userId: user-6
+    expectedToBeEnabled: false

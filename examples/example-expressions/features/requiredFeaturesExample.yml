@@ -1,0 +1,24 @@
+description: Demonstrate multiple required feature checks
+
+tags:
+  - all
+
+bucketBy: userId
+
+conditions:
+  - feature('redesign') == true
+  - feature('sidebar').variation == 'treatment'
+  - feature: pricing
+    enabled: false
+    variation: control
+
+rules:
+  staging:
+    - key: "1"
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: "1"
+      conditions: "*"
+      percentage: 100

@@ -147,6 +147,11 @@ const definitions: Record<string, CLIOptionDefinitions> = {
       description: "list files that need formatting and exit with 1 if any do, without writing",
     },
     diff: { type: "boolean", description: "print what formatting would change, without writing" },
+    simplify: {
+      type: "boolean",
+      description:
+        "also write each condition in its simplest form that evaluates the same, which can change datafiles but never evaluation",
+    },
     since: {
       type: "string",
       description:
@@ -180,8 +185,8 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     ...outputOptions,
     to: {
       type: "string",
-      choices: ["flat", "environments", "sets"],
-      description: "the shape to convert to",
+      choices: ["flat", "environments", "sets", "expressions", "trees"],
+      description: "the shape to convert to, or how to write conditions",
     },
     environments: {
       type: "string",
@@ -193,6 +198,11 @@ const definitions: Record<string, CLIOptionDefinitions> = {
       description: "comma separated sets to create from a project without either",
     },
     keep: { type: "string", description: "the environment or set a conversion to flat keeps" },
+    exact: {
+      type: "boolean",
+      description:
+        "with --to=expressions, write trees as expressions without simplifying, so datafiles stay byte identical",
+    },
     apply: {
       type: "boolean",
       description: "write the conversion, which otherwise is only previewed",

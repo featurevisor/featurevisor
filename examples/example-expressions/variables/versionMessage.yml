@@ -1,0 +1,27 @@
+description: A message selected by an evaluated client version
+
+tags:
+  - all
+
+type: string
+
+defaultValue: Upgrade available
+
+overrides:
+  staging:
+    - key: stable
+      conditions: variable('clientVersion') >= semver('1.0.0')
+      value: Stable release
+
+    - key: preview
+      conditions: variable('clientVersion') > semver('1.0.0-1a')
+      value: Preview release
+
+  production:
+    - key: stable
+      conditions: variable('clientVersion') >= semver('1.0.0')
+      value: Stable release
+
+    - key: preview
+      conditions: variable('clientVersion') > semver('1.0.0-1a')
+      value: Preview release

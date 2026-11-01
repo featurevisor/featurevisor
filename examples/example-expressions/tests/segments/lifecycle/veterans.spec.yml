@@ -1,0 +1,20 @@
+segment: lifecycle.veterans
+
+assertions:
+  - description: an early team of twelve matches
+    context:
+      signupDate: "2023-05-01T10:00:00Z"
+      seats: 12
+    expectedToMatch: true
+
+  - description: an early team of two does not
+    context:
+      signupDate: "2023-05-01T10:00:00Z"
+      seats: 2
+    expectedToMatch: false
+
+  - description: a recent team of twelve does not
+    context:
+      signupDate: "2025-05-01T10:00:00Z"
+      seats: 12
+    expectedToMatch: false

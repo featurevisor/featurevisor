@@ -36,6 +36,11 @@ export const fmtPlugin: Plugin = {
       description: "Format only the given files, and the files in the given directories",
     },
     {
+      command: "fmt --simplify",
+      description:
+        "Also write each condition in its simplest form, which can change datafiles but not evaluation",
+    },
+    {
       command: "fmt --entity-type=feature --key-pattern=checkout",
       description: "Format only matching features",
     },

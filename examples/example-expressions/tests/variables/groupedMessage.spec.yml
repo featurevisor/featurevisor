@@ -1,0 +1,60 @@
+variable: groupedMessage
+
+assertions:
+  - description: neither root OR branch matches
+    environment: production
+    target: grouped-requirements
+    stickyFeatures:
+      redesign:
+        enabled: false
+      sidebar:
+        enabled: false
+    expectedValue: Unavailable
+    expectedEvaluation:
+      reason: conditions_unmet
+
+  - description: parent matches while child and following sibling do not
+    environment: production
+    target: grouped-requirements
+    stickyFeatures:
+      redesign:
+        enabled: true
+      sidebar:
+        enabled: false
+      pricing:
+        enabled: false
+    expectedValue: Redesigned message
+
+  - description: nested requirement inherits the parent group
+    environment: production
+    target: grouped-requirements
+    stickyFeatures:
+      redesign:
+        enabled: true
+      sidebar:
+        enabled: true
+      pricing:
+        enabled: false
+    expectedValue: Redesigned sidebar message
+
+  - description: negated sibling matches when parent does not
+    environment: production
+    target: grouped-requirements
+    stickyFeatures:
+      redesign:
+        enabled: false
+      sidebar:
+        enabled: true
+    expectedValue: Sidebar message
+
+  - description: root passes while all overrides fail
+    environment: production
+    target: grouped-requirements
+    stickyFeatures:
+      redesign:
+        enabled: true
+      sidebar:
+        enabled: false
+      pricing:
+        enabled: true
+    expectedValue: Standard message
