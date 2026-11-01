@@ -1,4 +1,4 @@
-description: Fraud checks mixing numbers, null, not groups, and tree leaves beside expressions
+description: Fraud checks with numbers, null, regular expressions and not groups
 
 tags:
   - all
@@ -17,29 +17,25 @@ variablesSchema:
 rules:
   staging:
     - key: manual-review
-      conditions:
-        or:
-          - riskScore >= 0.75
+      conditions: |
+        riskScore >= 0.75
 
-          # An explicit null means scoring failed, which differs from a missing score
-          - |
-            riskScore isNull
-            and cartTotal >= 500
+        # An explicit null means scoring failed, which differs from a missing score
+        or (
+          riskScore isNull
+          and cartTotal >= 500
+        )
 
-          # A tree leaf sits beside expressions in the same group
-          - attribute: couponCode
-            operator: matches
-            value: ^test-
-            regexFlags: i
+        # Test coupons, in any letter case
+        or couponCode matches /^test-/i
       percentage: 100
       variables:
         action: review
 
     - key: step-up
-      conditions:
-        - riskScore >= 0.4
-        - not:
-            - audiences.verifiedEnterprise
+      conditions: |
+        riskScore >= 0.4
+        and not audiences.verifiedEnterprise
       percentage: 100
       variables:
         action: challenge
@@ -50,27 +46,21 @@ rules:
 
   production:
     - key: manual-review
-      conditions:
-        or:
-          - riskScore >= 0.75
-
-          - |
-            riskScore isNull
-            and cartTotal >= 500
-
-          - attribute: couponCode
-            operator: matches
-            value: ^test-
-            regexFlags: i
+      conditions: |
+        riskScore >= 0.75
+        or (
+          riskScore isNull
+          and cartTotal >= 500
+        )
+        or couponCode matches /^test-/i
       percentage: 100
       variables:
         action: review
 
     - key: step-up
-      conditions:
-        - riskScore >= 0.4
-        - not:
-            - audiences.verifiedEnterprise
+      conditions: |
+        riskScore >= 0.4
+        and not audiences.verifiedEnterprise
       percentage: 100
       variables:
         action: challenge

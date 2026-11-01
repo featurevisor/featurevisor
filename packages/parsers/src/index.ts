@@ -4,8 +4,8 @@ import { ymlParser } from "./yml";
 
 export { formatJson, type JsonFormatOptions } from "./jsonFormat";
 export type { YmlFormatOptions } from "./ymlFormat";
-export { applyFormatText, IGNORE_FILE_COMMENT, IGNORE_LINE_COMMENT } from "./layout";
-export type { FormatLayout, FormatPath } from "./layout";
+export { applyFormatValues, IGNORE_FILE_COMMENT, IGNORE_LINE_COMMENT } from "./layout";
+export type { FormatComment, FormatLayout, FormatPath } from "./layout";
 
 export interface CustomParser {
   extension: string;

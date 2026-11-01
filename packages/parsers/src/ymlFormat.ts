@@ -1,7 +1,12 @@
 import { isMap, isNode, isPair, isScalar, isSeq, parse, parseDocument, Scalar, visit } from "yaml";
 import type { Document, Node, Pair, YAMLMap, YAMLSeq } from "yaml";
 
-import { IGNORE_LINE_COMMENT, type FormatLayout, type FormatPath } from "./layout";
+import {
+  IGNORE_LINE_COMMENT,
+  type FormatComment,
+  type FormatLayout,
+  type FormatPath,
+} from "./layout";
 
 /** Choices only YAML can express. Featurevisor passes its own from Core's house style. */
 export interface YmlFormatOptions {
@@ -30,7 +35,13 @@ const DEFAULT_OPTIONS: Required<YmlFormatOptions> = {
 export type YmlLayout = Partial<
   Pick<
     FormatLayout,
-    "indent" | "orderKeys" | "spaceEntries" | "spaceItems" | "keepBlankLines" | "formatText"
+    | "indent"
+    | "orderKeys"
+    | "spaceEntries"
+    | "spaceItems"
+    | "keepBlankLines"
+    | "formatText"
+    | "replaceValue"
   >
 > & { options?: YmlFormatOptions };
 
@@ -230,6 +241,74 @@ interface Context {
   kept: { placeholder: string; text: string; column: number }[];
   /** Nodes that held an anchor, and the copies that replaced aliases */
   changed: Set<Node>;
+  /** Above zero inside a value marked with the ignore comment, which nothing replaces */
+  frozen: number;
+}
+
+/**
+ * The comments inside a list or map, each at the path of the item it belongs to. A comment on
+ * a map's key or on a plain value in it belongs to the map, and so does the comment written on
+ * a list or map below a key. `own` adds the node's own comments, at its own path.
+ */
+function collectComments(node: Node, at: FormatPath, out: FormatComment[], own: boolean) {
+  const add = (comment: string | null | undefined, path: FormatPath) => {
+    if (comment) out.push({ path, text: comment });
+  };
+  if (own) {
+    add(node.commentBefore, at);
+    add(node.comment, at);
+  }
+  if (isSeq(node)) {
+    node.items.forEach((item, index) => {
+      if (isNode(item)) collectComments(item, [...at, index], out, true);
+    });
+  } else if (isMap(node)) {
+    for (const pair of node.items as Pair[]) {
+      if (isScalar(pair.key)) {
+        add(pair.key.commentBefore, at);
+        add(pair.key.comment, at);
+      }
+      const value = pair.value;
+      if (isMap(value) || isSeq(value)) {
+        add(value.commentBefore, at);
+        add(value.comment, at);
+        collectComments(value, [...at, keyOf(pair) ?? ""], out, false);
+      } else if (isNode(value)) {
+        add(value.commentBefore, at);
+        add(value.comment, at);
+      }
+    }
+  }
+}
+
+/**
+ * A plain or block scalar of the layout's text for the list or map at `path`, or undefined to
+ * keep it. `own` moves the node's own comments into the text too, as for a key's value, where
+ * a list item keeps them above it.
+ */
+function replacement(
+  node: unknown,
+  path: FormatPath,
+  context: Context,
+  own: boolean,
+): Scalar | undefined {
+  const replace = context.layout.replaceValue;
+  if (!replace || context.frozen > 0 || !(isMap(node) || isSeq(node))) return undefined;
+  const comments: FormatComment[] = [];
+  collectComments(node, [], comments, own);
+  // a line inside that is kept as written keeps the whole value
+  if (comments.some((comment) => isIgnoreComment(comment.text))) return undefined;
+
+  const text = replace(path, node.toJSON(), comments);
+  if (text === undefined) return undefined;
+  const scalar = new Scalar(text);
+  if (text.includes("\n")) scalar.type = Scalar.BLOCK_LITERAL;
+  else formatScalar(scalar, context.options);
+  if (!own) {
+    scalar.commentBefore = node.commentBefore;
+    scalar.comment = node.comment;
+  }
+  return scalar;
 }
 
 function isBlockScalar(node: Node): boolean {
@@ -289,7 +368,10 @@ function keepPair(pair: Pair, path: FormatPath, context: Context) {
       key.comment = value.comment;
       value.comment = undefined;
     }
+    // nothing below a line kept as written is replaced
+    context.frozen++;
     walk(value, [...path, keyOf(pair)!], false, context);
+    context.frozen--;
     return;
   }
 
@@ -364,7 +446,10 @@ function walk(node: unknown, path: FormatPath, inSequence: boolean, context: Con
       if (ignored.has(pair)) {
         keepPair(pair, path, context);
       } else {
-        walk(pair.value, key === undefined ? path : [...path, key], false, context);
+        const at = key === undefined ? path : [...path, key];
+        const replaced = replacement(pair.value, at, context, true);
+        if (replaced) pair.value = replaced;
+        else walk(pair.value, at, false, context);
       }
     });
     return;
@@ -379,13 +464,18 @@ function walk(node: unknown, path: FormatPath, inSequence: boolean, context: Con
       seq.items.filter((item, index) => index > 0 && isNode(item) && item.spaceBefore),
     );
 
-    seq.items.forEach((item, index) => {
-      const ignored = isInline(item) && isIgnoreComment(item.comment);
-      const text = ignored ? writtenText(context, item.range![0], item) : undefined;
-      if (text === undefined) walk(item, [...path, index], true, context);
+    seq.items.forEach((written, index) => {
+      const ignored = isInline(written) && isIgnoreComment(written.comment);
+      const text = ignored ? writtenText(context, written.range![0], written) : undefined;
+      let item: unknown = written;
+      if (text === undefined) {
+        const replaced = replacement(written, [...path, index], context, false);
+        if (replaced) item = seq.items[index] = replaced;
+        else walk(written, [...path, index], true, context);
+      }
       if (!isNode(item) || isPair(item)) return;
 
-      item.spaceBefore = index > 0 && (spaced || (keep && blank.has(item)));
+      item.spaceBefore = index > 0 && (spaced || (keep && blank.has(written)));
       if (text !== undefined) {
         const placeholder = `${context.prefix}${context.kept.length}z`;
         seq.items[index] = keptStandIn(item, text, placeholder);
@@ -440,7 +530,7 @@ function layOut(source: string, layout: YmlLayout, options: Required<YmlFormatOp
 
   let prefix = "verbatim";
   while (source.includes(prefix)) prefix += "x";
-  const context: Context = { layout, options, source, prefix, kept: [], changed };
+  const context: Context = { layout, options, source, prefix, kept: [], changed, frozen: 0 };
   walk(doc.contents as Node, [], false, context);
 
   // one document a file, so neither --- nor ... marks where it starts or ends

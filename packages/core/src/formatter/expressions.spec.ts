@@ -36,7 +36,8 @@ describe("formatting expressions", () => {
       rules: [
         {
           key: "all",
-          conditions: ["plan in ['pro', 'enterprise']", { or: ["country == 'nl'", "netherlands"] }],
+          conditions:
+            "plan in ['pro', 'enterprise']\nand (\n  country == 'nl'\n  or netherlands\n)\n",
           percentage: 100,
         },
       ],
@@ -115,6 +116,90 @@ describe("formatting expressions", () => {
       conditions: "plan == 'pro'",
       overrides: [{ key: "nl", conditions: "country == 'nl'", value: "b" }],
     });
+  });
+
+  it("writes condition trees as expressions, moving the comments inside them", () => {
+    const source = [
+      "description: Fraud",
+      "",
+      "rules:",
+      "  - key: manual-review",
+      "    conditions:",
+      "      or:",
+      "        - riskScore >= 0.75",
+      "",
+      "        # A test coupon",
+      "        - attribute: couponCode",
+      "          operator: matches",
+      "          value: ^test-",
+      "          regexFlags: i",
+      "    percentage: 100",
+      "",
+    ].join("\n");
+    const { output, changed } = formatDefinition("feature", source, yml, undefined, {
+      expressions,
+    });
+
+    expect(changed).toBe(true);
+    expect(parse(output).rules[0].conditions).toBe(
+      "riskScore >= 0.75\n\n# A test coupon\nor couponCode matches /^test-/i\n",
+    );
+    expect(formatDefinition("feature", output, yml, undefined, { expressions }).changed).toBe(
+      false,
+    );
+  });
+
+  it("keeps a tree that has no exact expression form", () => {
+    const source = [
+      "description: x",
+      "",
+      "conditions:",
+      "  - feature: pricing",
+      "    enabled: false",
+      "    variation: control",
+      "  - operator: equals",
+      "    attribute: country",
+      "    value: nl",
+      "",
+    ].join("\n");
+    const { output } = formatDefinition("segment", source, yml, undefined, { expressions });
+
+    // a disabled feature's variation has no expression form, and a leaf in another key order
+    // than the one built would change a datafile
+    expect(parse(output).conditions).toEqual(parse(source).conditions);
+  });
+
+  it("keeps the conditions below a line marked with the ignore comment as written", () => {
+    const source = [
+      "description: x",
+      "",
+      "conditions: # featurevisor-ignore-line",
+      "  - netherlands",
+      "  - attribute: device",
+      "    operator: equals",
+      "    value: mobile",
+      "",
+    ].join("\n");
+    expect(formatDefinition("segment", source, yml, undefined, { expressions }).output).toBe(
+      source,
+    );
+  });
+
+  it("writes condition trees in JSON files as expressions", () => {
+    const segment = {
+      description: "x",
+      conditions: [{ attribute: "country", operator: "equals", value: "nl" }, "netherlands"],
+    };
+    const { output } = formatDefinition(
+      "segment",
+      JSON.stringify(segment),
+      parsers.json,
+      undefined,
+      {
+        expressions,
+      },
+    );
+    expect(JSON.parse(output).conditions).toBe("country == 'nl'\nand netherlands\n");
   });
 
   it("finds nothing to format outside features, segments and global variables", () => {

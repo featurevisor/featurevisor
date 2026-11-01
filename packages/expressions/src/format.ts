@@ -1,9 +1,15 @@
 import type { Conditions } from "@featurevisor/types";
 
 import { compile } from "./compile.js";
+import { expandConditions } from "./expand.js";
 import { parse } from "./parser.js";
-import { print, sameBuilt } from "./print.js";
-import type { ExpressionLogicNode, ExpressionNode, ExpressionOptions } from "./types.js";
+import { print, printWithNotes, sameBuilt } from "./print.js";
+import type {
+  ExpressionLogicNode,
+  ExpressionNode,
+  ExpressionOptions,
+  ExpressionPath,
+} from "./types.js";
 
 export interface ExpressionFormatOptions extends ExpressionOptions {
   /** Spaces before each condition inside parentheses, per level. Defaults to 2. */
@@ -144,4 +150,48 @@ export function formatExpression(
     return undefined;
   }
   return text;
+}
+
+/** A comment written inside a condition tree, beside the item at `path` in it. */
+export interface TreeComment {
+  path: ExpressionPath;
+  /** The comment's text after its `#`, over one or more lines */
+  text: string;
+}
+
+/**
+ * A condition tree written as one expression in house style, or undefined when it cannot be.
+ * The tree may hold expressions already, as items or group children. Each comment moves above
+ * the condition at its path, and a comment at the tree's own path above the whole expression.
+ *
+ * Undefined when a part has no expression form, such as a disabled feature's variation, a
+ * comment sits where no condition starts, or the expression would read back to anything but
+ * exactly the tree, key order included, so a datafile cannot change.
+ */
+export function treeToExpression(
+  value: Conditions,
+  options: ExpressionFormatOptions & { comments?: TreeComment[] } = {},
+): string | undefined {
+  const root = options.root ?? true;
+  const expanded = expandConditions(value, options);
+  if (expanded.hasErrors) return undefined;
+  const tree = expanded.conditions;
+
+  const notes = new Map<string, string[]>();
+  for (const comment of options.comments ?? []) {
+    const key = JSON.stringify(comment.path);
+    const lines = comment.text.split("\n").map((line) => `#${line}`);
+    notes.set(key, [...(notes.get(key) ?? []), ...lines]);
+  }
+  const used = new Set<string>();
+  const whole = notes.get("[]");
+  if (whole) used.add("[]");
+  const printed = printWithNotes(tree, notes, used, options);
+  if (printed === undefined || used.size !== notes.size) return undefined;
+
+  const source = whole ? `${whole.join("\n")}\n${printed}` : printed;
+  const text = formatExpression(source, { ...options, root });
+  if (text === undefined) return undefined;
+  const read = compile(text, { ...options, root });
+  return read.errors.length || !sameBuilt(read.conditions, tree) ? undefined : text;
 }

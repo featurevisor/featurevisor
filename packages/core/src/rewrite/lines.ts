@@ -158,10 +158,16 @@ export function same(a: unknown, b: unknown): boolean {
 }
 
 /** Whether two texts have the same comments, when the parser can list them */
-export function sameComments(parser: CustomParser, before: string, after: string): boolean {
+export function sameComments(
+  parser: CustomParser,
+  before: string,
+  after: string,
+  moved: string[] = [],
+): boolean {
   if (typeof parser.listComments !== "function") return true;
   const a = [...parser.listComments(before)].sort();
-  const b = [...parser.listComments(after)].sort();
+  // comment lines moved into values, such as into a condition written as an expression
+  const b = [...parser.listComments(after), ...moved].sort();
   return a.length === b.length && a.every((line, index) => line === b[index]);
 }
 

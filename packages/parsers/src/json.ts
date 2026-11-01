@@ -1,6 +1,6 @@
 import type { CustomParser } from "./index";
 import { formatJson, type JsonFormatOptions } from "./jsonFormat";
-import { applyFormatText } from "./layout";
+import { applyFormatValues } from "./layout";
 
 export const jsonParser: CustomParser = {
   extension: "json",
@@ -14,7 +14,7 @@ export const jsonParser: CustomParser = {
   // writes them
   format: function (source, layout) {
     return formatJson(
-      layout.orderValue(applyFormatText(JSON.parse(source), layout.formatText)),
+      layout.orderValue(applyFormatValues(JSON.parse(source), layout)),
       layout.indent,
       layout.options as JsonFormatOptions,
       {

@@ -208,6 +208,32 @@ describe("formatProject on the examples", () => {
     120000,
   );
 
+  it("writes example-1's condition trees as expressions, building byte identical datafiles", async () => {
+    const trees = copy("example-1");
+    const converted = copy("example-1");
+    const configPath = path.join(converted, "featurevisor.config.js");
+    const config = fs.readFileSync(configPath, "utf8");
+    expect(config).toContain("module.exports = {");
+    fs.writeFileSync(
+      configPath,
+      config.replace(
+        "module.exports = {",
+        "module.exports = {\n  allowConditionExpressions: true,",
+      ),
+    );
+
+    const { changed, errors } = await formatAll(converted);
+    expect(errors).toBe(0);
+    expect(changed).toBeGreaterThan(50);
+    expect(await formatAll(converted, true)).toEqual({ changed: 0, errors: 0 });
+
+    await build(trees);
+    await build(converted);
+    const built = outputs(trees);
+    expect(Object.keys(built).length).toBeGreaterThan(0);
+    expect(outputs(converted)).toEqual(built);
+  }, 120000);
+
   it.each(projects)("%s stays as it is when Prettier formats it", async (example) => {
     // Prettier's standalone build, since its main entry loads plugins in a way Jest refuses
     const prettier = require("prettier/standalone");

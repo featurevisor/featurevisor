@@ -63,7 +63,7 @@ Visit [https://featurevisor.com](https://featurevisor.com) for more information.
 
 The project is formatted with `npx featurevisor fmt`, which writes expressions in one house style too, without changing what they mean. A single condition stays on one line. An expression with more takes one condition a line, as a literal block: each condition after the first starts with its `and` or `or`, and a group's conditions go between its parentheses, indented a level. Comment lines stay above the condition below them. `# featurevisor-ignore-line` keeps an expression as written: the plain, double quoted and folded rules here, and the escapes in `segments/markets/italianCities.yml`. `"*"` stays quoted, since a bare `*` starts a YAML alias.
 
-Some leaves stay as YAML objects beside expressions. A disabled feature's variation has no expression form, as in `features/requiredFeaturesExample.yml`. `features/fraudScreening.yml` puts a tree leaf in the same group as expressions on purpose.
+`fmt` also writes condition trees as expressions wherever the expression builds exactly the same datafile, moving the comments inside a tree above the condition they sit beside. A few stay trees. A disabled feature's variation has no expression form, as in `features/requiredFeaturesExample.yml`. A list of one segment, such as `- countries.netherlands`, and an `and:` group written as the whole value build differently from the expression, so they keep their shape and only their items become expressions. `features/yamlStyles.yml` keeps its list, group and mixed rules as written with `# featurevisor-ignore-line` on their `conditions:` lines.
 
 ## Tests
 

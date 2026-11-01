@@ -1,8 +1,8 @@
 export { compile } from "./compile.js";
 export type { CompileOptions } from "./compile.js";
 export { containsExpression, expandConditions } from "./expand.js";
-export { formatExpression } from "./format.js";
-export type { ExpressionFormatOptions } from "./format.js";
+export { formatExpression, treeToExpression } from "./format.js";
+export type { ExpressionFormatOptions, TreeComment } from "./format.js";
 export {
   DEFAULT_NAMESPACE_CHARACTER,
   getAmbiguousNamespaceCharacters,

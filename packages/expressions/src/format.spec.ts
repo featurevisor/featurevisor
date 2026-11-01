@@ -1,7 +1,7 @@
 import type { Condition, Conditions } from "@featurevisor/types";
 
 import { compile } from "./compile";
-import { formatExpression } from "./format";
+import { formatExpression, treeToExpression } from "./format";
 import { print, sameBuilt } from "./print";
 
 const tree = (source: string, root = true) => compile(source, { root }).conditions;
@@ -188,5 +188,119 @@ describe("formatExpression on generated expressions", () => {
       checked++;
     }
     expect(checked).toBeGreaterThan(250);
+  });
+});
+
+describe("treeToExpression", () => {
+  const coupon = { attribute: "couponCode", operator: "matches", value: "^test-", regexFlags: "i" };
+
+  it("writes a tree as one expression, its comments above the conditions they sit beside", () => {
+    const tree = { or: ["riskScore >= 0.75", "riskScore isNull and cartTotal >= 500", coupon] };
+    expect(
+      treeToExpression(tree as Conditions, {
+        comments: [
+          { path: ["or", 1], text: " Scoring failed" },
+          { path: ["or", 2], text: " Test coupons\n in any letter case" },
+        ],
+      }),
+    ).toBe(
+      [
+        "riskScore >= 0.75",
+        "",
+        "# Scoring failed",
+        "or (",
+        "  riskScore isNull",
+        "  and cartTotal >= 500",
+        ")",
+        "",
+        "# Test coupons",
+        "# in any letter case",
+        "or couponCode matches /^test-/i",
+      ].join("\n"),
+    );
+  });
+
+  it("writes not groups, lists and items", () => {
+    expect(treeToExpression(["a", { not: ["b"] }])).toBe("a\nand not b");
+    expect(treeToExpression(["a", { not: ["b", "c"] }])).toBe("a\nand not (\n  b\n  and c\n)");
+    expect(treeToExpression({ and: ["a", "b"] }, { root: false })).toBe("a\nand b");
+    expect(treeToExpression(coupon as Conditions, { root: false })).toBe(
+      "couponCode matches /^test-/i",
+    );
+    expect(treeToExpression(["a"], { comments: [{ path: [], text: " all" }] })).toBeUndefined();
+    expect(treeToExpression(["a", "b"], { comments: [{ path: [], text: " all" }] })).toBe(
+      "# all\na\nand b",
+    );
+  });
+
+  it("keeps a tree that would build differently or has no expression form", () => {
+    // a list of one is a list in a datafile, and an `and` group as a whole value is not a list
+    expect(treeToExpression(["a"])).toBeUndefined();
+    expect(treeToExpression({ and: ["a", "b"] })).toBeUndefined();
+    // a disabled feature's variation, and a leaf in another key order than the one built
+    expect(
+      treeToExpression(["a", { feature: "pricing", enabled: false, variation: "control" }]),
+    ).toBeUndefined();
+    expect(
+      treeToExpression([
+        { operator: "equals", attribute: "country", value: "nl" },
+        "a",
+      ] as Conditions),
+    ).toBeUndefined();
+    expect(treeToExpression(["a", "plan = 'x'"])).toBeUndefined();
+  });
+
+  it("keeps a tree whose comments have no condition to sit above", () => {
+    expect(treeToExpression(["a", "b"], { comments: [{ path: [5], text: " x" }] })).toBeUndefined();
+    expect(
+      treeToExpression(["a", { not: ["b"] }], { comments: [{ path: [1, "not", 0], text: " x" }] }),
+    ).toBeUndefined();
+  });
+
+  it("never writes an expression that builds a different tree", () => {
+    const next = random(11);
+    const pick = <T>(values: T[]) => values[Math.floor(next() * values.length)];
+    const leafOf = (): Condition =>
+      pick<() => Condition>([
+        () => pick(["netherlands", "countries/nl"]),
+        () =>
+          ({ attribute: "country", operator: "equals", value: pick(["nl", 1, null]) }) as Condition,
+        () => ({ attribute: "x", operator: "exists" }) as Condition,
+        () =>
+          ({ feature: "f", ...pick([{}, { enabled: false }, { variation: "v" }]) }) as Condition,
+        () => ({ feature: "f", enabled: false, variation: "v" }) as Condition,
+        () => ({ operator: "equals", attribute: "country", value: "nl" }) as Condition,
+        () => pick(["plan == 'pro' and seats > 5", "not (a or b)"]),
+      ])();
+    const groupOf = (depth: number): Condition => {
+      if (depth > 2 || next() < 0.45) return leafOf();
+      const children = Array.from({ length: 1 + Math.floor(next() * 3) }, () => groupOf(depth + 1));
+      return { [pick(["and", "or", "not"])]: children } as unknown as Condition;
+    };
+    let converted = 0;
+    for (let run = 0; run < 300; run++) {
+      const value = (
+        next() < 0.3
+          ? groupOf(0)
+          : Array.from({ length: 1 + Math.floor(next() * 3) }, () => groupOf(0))
+      ) as Conditions;
+      const text = treeToExpression(value);
+      if (text === undefined) continue;
+      const expanded = compile(text, { root: true }).conditions;
+      // read as a project does: a whole value as a list, and items and children as groups
+      const authored =
+        typeof value === "string"
+          ? compile(value, { root: true }).conditions
+          : JSON.parse(
+              JSON.stringify(value, (_key, item) =>
+                typeof item === "string" && / /.test(item)
+                  ? compile(item, { root: false }).conditions
+                  : item,
+              ),
+            );
+      expect(sameBuilt(expanded, authored)).toBe(true);
+      converted++;
+    }
+    expect(converted).toBeGreaterThan(50);
   });
 });

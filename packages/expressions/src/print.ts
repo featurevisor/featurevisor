@@ -233,6 +233,65 @@ function printNode(value: unknown, options: ExpressionOptions): Printed | undefi
   return text === undefined ? undefined : { text };
 }
 
+/**
+ * A condition tree as expression text, with each note's lines above the operand at its path, or
+ * undefined when part of it has no expression form or a note names no operand. Notes are keyed
+ * by the JSON of a path inside `value`, and each path found is added to `used`.
+ */
+export function printWithNotes(
+  value: unknown,
+  notes: Map<string, string[]>,
+  used: Set<string>,
+  options: ExpressionOptions,
+  path: (string | number)[] = [],
+): string | undefined {
+  const noted = (at: (string | number)[], text: string) => {
+    const key = JSON.stringify(at);
+    const lines = notes.get(key);
+    if (!lines) return text;
+    used.add(key);
+    return `\n${lines.join("\n")}\n${text}`;
+  };
+  const operand = (child: unknown, at: (string | number)[]): string | undefined => {
+    const text = printWithNotes(child, notes, used, options, at);
+    if (text === undefined) return undefined;
+    const group =
+      isObject(child) && (Array.isArray(child.and) || Array.isArray(child.or)) ? `(${text})` : text;
+    return noted(at, group);
+  };
+  const chain = (children: unknown[], join: string, at: (string | number)[]) => {
+    const parts = children.map((child, index) => {
+      const text = operand(child, [...at, index]);
+      // a blank line before each commented operand but the first, as a list spaces its items
+      return index > 0 && text?.startsWith("\n") ? `\n${text}` : text;
+    });
+    return parts.every((part) => part !== undefined) ? parts.join(` ${join} `) : undefined;
+  };
+
+  if (Array.isArray(value)) return value.length ? chain(value, "and", path) : undefined;
+  if (isObject(value) && Object.keys(value).length === 1) {
+    for (const key of ["and", "or"] as const) {
+      if (Array.isArray(value[key]) && value[key].length) {
+        return chain(value[key] as unknown[], key, [...path, key]);
+      }
+    }
+    if (Array.isArray(value.not) && value.not.length) {
+      const children = value.not as unknown[];
+      if (children.length > 1) {
+        const inner = chain(children, "and", [...path, "not"]);
+        return inner === undefined ? undefined : `not (${inner})`;
+      }
+      // a note between `not` and its operand has no line of its own
+      if (notes.has(JSON.stringify([...path, "not", 0]))) return undefined;
+      const child = printWithNotes(children[0], notes, used, options, [...path, "not", 0]);
+      if (child === undefined) return undefined;
+      const group = isObject(children[0]) && !!printNode(children[0], options)?.group;
+      return group ? `not (${child})` : `not ${child}`;
+    }
+  }
+  return printNode(value, options)?.text;
+}
+
 /** Top level operands of a printed value, for breaking long expressions over lines. */
 function printOperands(
   value: Conditions,
