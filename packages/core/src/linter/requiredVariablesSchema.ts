@@ -345,8 +345,9 @@ function schemaSupportsEmptiness(schema: Schema): boolean {
 // A date-time value compares as a time, never as text, matching date-time attributes.
 const dateTimeOperators = [...dateOperators, ...presenceOperators];
 
-/** Params that make lint report an issue as a warning */
-const WARNING = { warning: true };
+/** Params that make lint report an issue as a warning, with its code */
+const MIXED_LIST_WARNING = { warning: true, code: "mixed_list" };
+const UNTYPED_CONDITION_WARNING = { warning: true, code: "untyped_condition" };
 
 function addValueIssue(
   ctx: z.RefinementCtx,
@@ -442,7 +443,7 @@ function validateOperand(
         }
       });
       const mixed = !entryIssue && getMixedListMessage(operator, value);
-      if (mixed) addValueIssue(ctx, mixed, ["value"], WARNING);
+      if (mixed) addValueIssue(ctx, mixed, ["value"], MIXED_LIST_WARNING);
     }
   } else if ([...arrayOperators, ...arrayListOperators].includes(operator)) {
     const items = itemSchema(schema, schemasByKey);
@@ -470,7 +471,7 @@ function validateOperand(
           }
         });
         const mixed = !entryIssue && getMixedListMessage(operator, value);
-        if (mixed) addValueIssue(ctx, mixed, ["value"], WARNING);
+        if (mixed) addValueIssue(ctx, mixed, ["value"], MIXED_LIST_WARNING);
       }
     } else {
       validateFormatOperand(items, value, ctx, ["value"]);
@@ -546,7 +547,7 @@ function validateUnknownOperand(
       });
       // The value's type is unknown to lint, so the list's own types have to agree.
       const mixed = !entryIssue && getMixedListMessage(operator, value);
-      if (mixed) addValueIssue(ctx, mixed, ["value"], WARNING);
+      if (mixed) addValueIssue(ctx, mixed, ["value"], MIXED_LIST_WARNING);
     }
   } else if (membershipOperators.includes(operator)) {
     if (
@@ -559,7 +560,7 @@ function validateUnknownOperand(
       );
     } else {
       const mixed = getMixedListMessage(operator, value);
-      if (mixed) addValueIssue(ctx, mixed, ["value"], WARNING);
+      if (mixed) addValueIssue(ctx, mixed, ["value"], MIXED_LIST_WARNING);
     }
   } else if (arrayOperators.includes(operator) && (typeof value === "undefined" || !primitive)) {
     addValueIssue(ctx, `when operator is "${operator}", value must be primitive or null`);
@@ -695,7 +696,7 @@ export function getVariableConditionZodSchema(
             : `Conditions cannot read ${what}, since their contents have no declared types, and this condition reads ${json ? "one" : "inside one"} through ${subject}. Give ${location} ${fix} to use it here.`,
           [typeof leaf.path === "undefined" || (direct && json) ? "variable" : "path"],
           // conditions like this passed lint before, so it warns until the next major version
-          WARNING,
+          UNTYPED_CONDITION_WARNING,
         );
         return;
       }

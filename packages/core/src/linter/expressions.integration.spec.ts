@@ -349,6 +349,11 @@ describe("lint with expressions", () => {
     const result = await lint();
     expect(pick(result.errors)).toEqual([]);
     const warnings = pick(result.warnings);
+    expect(warnings.map(({ code }) => code)).toEqual([
+      "untyped_condition",
+      "mixed_list",
+      "untyped_condition",
+    ]);
     expect(warnings.map(({ message, line, column }) => ({ message, line, column }))).toEqual([
       {
         message:
