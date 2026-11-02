@@ -20,6 +20,8 @@ export interface DefinitionFile {
   /** The Set it belongs to, in a project with Sets */
   set?: string;
   filePath: string;
+  /** The directory of its kind, such as the tests directory */
+  directory: string;
 }
 
 export interface Project {
@@ -137,7 +139,7 @@ export function readProject(rootDirectoryPath: string): Project {
     for (const [kind, key, name] of KINDS) {
       const base = root.directory(key, name);
       for (const filePath of filesIn(base, parser.extension)) {
-        files.push({ kind, ...(root.set ? { set: root.set } : {}), filePath });
+        files.push({ kind, ...(root.set ? { set: root.set } : {}), filePath, directory: base });
         const relative = path.relative(base, filePath);
         if (
           kind === "attribute" &&

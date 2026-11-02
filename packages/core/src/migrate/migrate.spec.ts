@@ -542,6 +542,101 @@ describe("migrateProject", () => {
     expect(read("features/checkout.yml")).toBe(before);
   });
 
+  describe("spec names", () => {
+    const specFiles = () =>
+      fs
+        .readdirSync(path.join(root, "tests"))
+        .sort()
+        .filter((file) => file.endsWith(".yml"));
+
+    beforeEach(() => {
+      // v3 ran checkout.yml and checkout.spec.yml as two tests, while v4 reads one key from both
+      write(
+        "tests/checkout.yml",
+        [
+          "feature: checkout",
+          "assertions:",
+          "  - environment: staging",
+          "    at: 10",
+          "    sticky:",
+          "      pricing:",
+          "        enabled: true",
+          "    expectedToBeEnabled: true",
+          "",
+        ].join("\n"),
+      );
+      write(
+        "tests/checkout2.spec.yml",
+        "feature: checkout\nassertions:\n  - environment: staging\n    at: 20\n    expectedToBeEnabled: true\n",
+      );
+      write(
+        "tests/pricing.yml",
+        "feature: pricing\nassertions:\n  - environment: staging\n    at: 30\n    expectedToBeEnabled: true\n",
+      );
+    });
+
+    it("names every spec <name>.spec, numbering one whose name v4 would share", async () => {
+      const result = migrateProject(root);
+
+      expect(result.errors).toBe(0);
+      const renamed = result.files
+        .filter((file) => file.renamedTo)
+        .map((file) => ({
+          from: path.basename(file.filePath),
+          to: path.basename(file.renamedTo!),
+          changes: file.changes,
+          collidedWith: file.collidedWith && path.basename(file.collidedWith),
+        }));
+      expect(renamed).toEqual([
+        {
+          from: "checkout.yml",
+          to: "checkout3.spec.yml",
+          changes: ["stickyFeatures"],
+          collidedWith: "checkout.spec.yml",
+        },
+        { from: "pricing.yml", to: "pricing.spec.yml", changes: [], collidedWith: undefined },
+      ]);
+      expect(specFiles()).toEqual([
+        "checkout.spec.yml",
+        "checkout2.spec.yml",
+        "checkout3.spec.yml",
+        "pricing.spec.yml",
+        "supportEmail.spec.yml",
+      ]);
+      // migrated, then renamed
+      expect(read("tests/checkout3.spec.yml")).toContain("    stickyFeatures:\n");
+
+      // every spec v3 ran is still a test of its own
+      await expect(deps().datasource.listTests()).resolves.toEqual(
+        expect.arrayContaining(["checkout", "checkout2", "checkout3", "pricing", "supportEmail"]),
+      );
+      expect((await lintProject(deps(), { json: true })).errors).toEqual([]);
+      await expect(testProject(deps(), { onlyFailures: true, quiet: true })).resolves.toBe(false);
+      expect(migrateProject(root)).toMatchObject({ migrated: 0, errors: 0 });
+    });
+
+    it("renames nothing when checking or showing a diff, and says what it would rename", async () => {
+      const before = specFiles();
+      const log = console.log as jest.Mock;
+
+      expect(await runMigration(root, { _: [], check: true })).toBe(1);
+      expect(await runMigration(root, { _: [], diff: true })).toBe(0);
+      expect(specFiles()).toEqual(before);
+      const planned = log.mock.calls.flat().join("\n");
+      expect(planned).toContain(
+        `Rename ${path.relative(process.cwd(), path.join(root, "tests", "checkout.yml"))} to checkout3.spec.yml, since checkout.spec.yml has the same test key in v4`,
+      );
+
+      log.mockClear();
+      expect(await runMigration(root, { _: [] })).toBe(0);
+      const done = log.mock.calls.flat().join("\n");
+      expect(done).toContain(
+        `Renamed ${path.relative(process.cwd(), path.join(root, "tests", "pricing.yml"))} to pricing.spec.yml`,
+      );
+      expect(specFiles()).not.toContain("checkout.yml");
+    });
+  });
+
   it("removes environments: [] from the configuration", () => {
     write("featurevisor.config.js", "module.exports = {\n  environments: [],\n};\n");
     for (const file of [

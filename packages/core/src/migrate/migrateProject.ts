@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { getProjectConfig } from "../config/projectConfig";
+import { planTestRenames } from "../datasource/testKeys";
 import { describeParseError } from "../datasource/parseError";
 import { unifiedDiff } from "../rewrite/diff";
 import { same } from "../rewrite/lines";
@@ -36,6 +37,10 @@ export interface MigratedFile {
   notes: { path: string; message: string; link: string }[];
   error?: string;
   diff?: string;
+  /** Its new path, for a test spec renamed to `<name>.spec` */
+  renamedTo?: string;
+  /** The file whose test key it shared, when that is why the new name is numbered */
+  collidedWith?: string;
 }
 
 export interface MigrationResult {
@@ -50,6 +55,30 @@ export interface MigrationResult {
 
 const link = (section: string) => `${GUIDE}#${section}`;
 const relative = (filePath: string) => path.relative(process.cwd(), filePath) || filePath;
+
+/**
+ * v4 drops a final `.spec` from test keys, so `checkout.yml` and `checkout.spec.yml`, which v3
+ * ran as two tests, would share one. Every spec is named `<name>.spec`, and a file whose name is
+ * taken is numbered: `checkout2.spec.yml`, then `checkout3.spec.yml` and so on.
+ */
+function planRenames(files: DefinitionFile[], extension: string) {
+  const byDirectory = new Map<string, string[]>();
+  for (const file of files) {
+    if (file.kind !== "test") continue;
+    const relativePath = path.relative(file.directory, file.filePath);
+    byDirectory.set(file.directory, [...(byDirectory.get(file.directory) || []), relativePath]);
+  }
+  const renames = new Map<string, { to: string; collidedWith?: string }>();
+  for (const [directory, relativePaths] of byDirectory) {
+    for (const rename of planTestRenames(relativePaths, extension)) {
+      renames.set(path.join(directory, rename.from), {
+        to: path.join(directory, rename.to),
+        ...(rename.collidedWith ? { collidedWith: path.join(directory, rename.collidedWith) } : {}),
+      });
+    }
+  }
+  return renames;
+}
 
 /** An attribute's key, from its file name */
 function attributeKey(file: DefinitionFile, extension: string) {
@@ -73,13 +102,24 @@ export function migrateProject(
   const write = !options.check && !options.diff;
   const { parser } = project;
   const read = new Map<DefinitionFile, { source: string; value: unknown }>();
+  const renames = planRenames(project.files, parser.extension);
   const report = (file: DefinitionFile, entry: Omit<MigratedFile, "filePath" | "set">) => {
-    if (entry.changes.length === 0 && entry.notes.length === 0 && !entry.error) return;
+    const rename = entry.error ? undefined : renames.get(file.filePath);
+    if (entry.changes.length === 0 && entry.notes.length === 0 && !entry.error && !rename) return;
     result.files.push({
       filePath: relative(file.filePath),
       ...(file.set ? { set: file.set } : {}),
       ...entry,
+      ...(rename ? { renamedTo: relative(rename.to) } : {}),
+      ...(rename?.collidedWith ? { collidedWith: relative(rename.collidedWith) } : {}),
     });
+  };
+  // a spec is renamed after its content, so a file that changes both is written once
+  const renameFile = (file: DefinitionFile, changed: boolean) => {
+    const rename = renames.get(file.filePath);
+    if (!rename) return;
+    if (write) fs.renameSync(file.filePath, rename.to);
+    if (!changed) result.migrated++;
   };
 
   for (const file of project.files) {
@@ -142,6 +182,7 @@ export function migrateProject(
 
     if (same(entry.value, value)) {
       report(file, { changes: [], notes });
+      renameFile(file, false);
       continue;
     }
     try {
@@ -153,6 +194,7 @@ export function migrateProject(
       if (write) fs.writeFileSync(file.filePath, output);
       result.migrated++;
       report(file, { changes, notes, ...(diff ? { diff } : {}) });
+      renameFile(file, true);
     } catch (error) {
       const message =
         error instanceof WriteError
