@@ -11,6 +11,7 @@ import { getProjectConfig } from "../config";
 import { buildDatafile } from "../builder";
 import { Datasource } from "./datasource";
 import { FilesystemAdapter, getExistingStateFilePath } from "./filesystemAdapter";
+import { TestKeyCollisionError } from "./testKeys";
 
 function writeFile(filePath: string, content: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -61,10 +62,9 @@ describe("core: filesystemAdapter", () => {
 
         const collision = path.join(root, "tests", "nested.spec", "checkout.yml");
         writeFile(collision, "checks: []\n");
-        await expect(datasource.listScenarios()).rejects.toThrow(
-          `Scenario key collision for "${key}"`,
-        );
-        expect(() => datasource.getScenarioSourcePath(key)).toThrow("Scenario key collision");
+        await expect(datasource.listScenarios()).rejects.toThrow(TestKeyCollisionError);
+        await expect(datasource.listScenarios()).rejects.toThrow(`\n  ${key}\n`);
+        expect(() => datasource.getScenarioSourcePath(key)).toThrow("share a test key");
         fs.unlinkSync(collision);
         await expect(datasource.listScenarios()).resolves.toEqual([key]);
         writeFile(source, "feature: checkout\nassertions: []\n");
@@ -96,7 +96,57 @@ describe("core: filesystemAdapter", () => {
       }
       expect(discovery.mock.calls.filter(([refresh]) => refresh === true)).toHaveLength(1);
       writeFile(path.join(root, "tests", "entity-0.yml"), "feature: ready\nassertions: []\n");
-      expect(() => datasource.getTestSourcePath("entity-0")).toThrow("Test key collision");
+      expect(() => datasource.getTestSourcePath("entity-0")).toThrow("share a test key");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports every test key collision in one error, with a free name for each", async () => {
+    const root = createProject("module.exports = {};");
+    try {
+      const spec = "feature: ready\nassertions: []\n";
+      for (const file of [
+        "checkout.yml",
+        "checkout.spec.yml",
+        "checkout2.spec.yml",
+        "nested/pricing.yml",
+        "nested/pricing.spec.yml",
+        "alone.yml",
+      ]) {
+        writeFile(path.join(root, "tests", file), spec);
+      }
+      const datasource = new Datasource(getProjectConfig(root), root);
+      const error = await datasource.listTests().catch((thrown) => thrown);
+      expect(error).toBeInstanceOf(TestKeyCollisionError);
+      expect(error.code).toBe("test_key_collision");
+      const tests = path.join(root, "tests");
+      expect(error.collisions).toEqual([
+        {
+          key: "checkout",
+          filePaths: [path.join(tests, "checkout.spec.yml"), path.join(tests, "checkout.yml")],
+          renames: [
+            { from: path.join(tests, "checkout.yml"), to: path.join(tests, "checkout3.spec.yml") },
+          ],
+        },
+        {
+          key: "nested.pricing",
+          filePaths: [
+            path.join(tests, "nested", "pricing.spec.yml"),
+            path.join(tests, "nested", "pricing.yml"),
+          ],
+          renames: [
+            {
+              from: path.join(tests, "nested", "pricing.yml"),
+              to: path.join(tests, "nested", "pricing2.spec.yml"),
+            },
+          ],
+        },
+      ]);
+      expect(error.message).toContain("Spec files share a test key in 2 places.");
+      expect(error.message).toContain("to checkout3.spec.yml, for example.");
+      expect(error.message).toContain("to pricing2.spec.yml, for example.");
+      expect(error.details.collisions).toHaveLength(2);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -133,9 +183,7 @@ describe("core: filesystemAdapter", () => {
       );
       expect(fs.existsSync(path.join(root, "tests", "checkout.spec.yml"))).toBe(false);
       writeFile(path.join(root, "tests", "checkout.spec.yml"), "checks: []\n");
-      await expect(datasource.listScenarios()).rejects.toThrow(
-        'Test identity collision for "checkout"',
-      );
+      await expect(datasource.listScenarios()).rejects.toThrow("\n  checkout\n");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -157,8 +205,8 @@ describe("core: filesystemAdapter", () => {
         expect(datasource.getTestSourcePath(key)).toBe(specPath);
         await expect(datasource.readTest(key)).resolves.toMatchObject({ variable: "ready" });
         writeFile(directPath, "feature: ready\nassertions: []\n");
-        await expect(datasource.listTests()).rejects.toThrow(`Test key collision for "${key}"`);
-        expect(() => datasource.getTestSourcePath(key)).toThrow("Test key collision");
+        await expect(datasource.listTests()).rejects.toThrow(`\n  ${key}\n`);
+        expect(() => datasource.getTestSourcePath(key)).toThrow("share a test key");
         fs.unlinkSync(directPath);
         await expect(datasource.listTests()).resolves.toEqual([key]);
         await datasource.deleteTest(key);

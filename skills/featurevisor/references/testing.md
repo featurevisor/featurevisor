@@ -8,7 +8,7 @@ Examples use the default scaffold. When the project configures environments, add
 
 ## Where specs live
 
-Every `.spec.yml` file under `tests/` (or `sets/<set>/tests/`) is discovered. The root field decides the kind:
+Every spec file under `tests/` (or `sets/<set>/tests/`) is discovered, named `<name>.spec.yml` by convention. A test key drops the final `.spec`, so a plain `<name>.yml` beside `<name>.spec.yml` is the same key, and lint reports the pair with `test_key_collision`. The root field decides the kind:
 
 | Root field              | Kind                 | Convention                        |
 | ----------------------- | -------------------- | --------------------------------- |

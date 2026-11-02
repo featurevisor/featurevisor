@@ -91,7 +91,7 @@ npx featurevisor migrate
 npx featurevisor migrate --check
 ```
 
-Rewrites a v3 project's definitions and specs for v4, run once after installing the v4 CLI. It converts what has one right answer, as [upgrading-to-v4.md](upgrading-to-v4.md) lists, keeps comments, line endings and every line it does not change, and lists what needs a person under "Needs you". It writes files, so show `--diff` first and run it on the user's go ahead. `--check` writes nothing and exits with 1 while anything is left. It exits with 2, writing nothing, while Groups remain or a custom parser has no `stringify`. It needs no project configuration v4 can load, so it runs before anything else works.
+Rewrites a v3 project's definitions and specs for v4, run once after installing the v4 CLI. It converts what has one right answer, as [upgrading-to-v4.md](upgrading-to-v4.md) lists, names every test spec `<name>.spec`, numbering one whose key v4 would share (`checkout2.spec.yml`), keeps comments, line endings and every line it does not change, and lists what needs a person under "Needs you". It writes files, so show `--diff` first and run it on the user's go ahead. `--check` writes nothing and exits with 1 while anything is left. It exits with 2, writing nothing, while Groups remain or a custom parser has no `stringify`. It needs no project configuration v4 can load, so it runs before anything else works.
 
 ## convert
 

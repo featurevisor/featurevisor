@@ -1,3 +1,5 @@
+import * as path from "node:path";
+
 import type { ParsedOptions } from "../cli";
 import { formatFeaturevisorCLIError } from "../error";
 import {
@@ -24,9 +26,19 @@ function printResult(result: MigrationResult, options: MigrateOptions) {
     if (file.error) {
       console.log(CLI_FORMAT_RED, file.filePath);
       console.log(CLI_FORMAT_RED, `  => Error: ${file.error}`);
-    } else if (file.changes.length > 0) {
+      continue;
+    }
+    if (file.changes.length > 0) {
       if (options.diff && file.diff) process.stdout.write(file.diff);
       else console.log(`${write ? "Migrated " : ""}${file.filePath}: ${file.changes.join(", ")}`);
+    }
+    if (file.renamedTo) {
+      const reason = file.collidedWith
+        ? `, since ${path.basename(file.collidedWith)} has the same test key in v4`
+        : "";
+      console.log(
+        `${write ? "Renamed" : "Rename"} ${file.filePath} to ${path.basename(file.renamedTo)}${reason}`,
+      );
     }
   }
 

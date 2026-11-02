@@ -18,6 +18,11 @@ import { Adapter, DatafileFile, DatafileOptions } from "./adapter";
 import { ProjectConfig } from "../config";
 import { getCommit, getHistoryEntity } from "../utils/git";
 import { isScenarioSpec, testSpecKeyFromStorageKey } from "./testSpecs";
+import {
+  describeTestKeyCollisions,
+  testKeyFromRelativePath,
+  TestKeyCollisionError,
+} from "./testKeys";
 import { EntityParseError } from "./parseError";
 import {
   AttributeNamespaceError,
@@ -183,36 +188,29 @@ export class FilesystemAdapter extends Adapter {
     for (const cachedPath of this.testSpecCache.keys()) {
       if (!existingPaths.has(cachedPath)) this.testSpecCache.delete(cachedPath);
     }
-    for (const filePath of filePaths) {
+    // tests and scenarios share one key space, and every collision is reported at once
+    const relativePaths = filePaths.map((filePath) => path.relative(directory, filePath));
+    const collisions = describeTestKeyCollisions(
+      directory,
+      relativePaths,
+      this.parser.extension,
+      this.config.namespaceCharacter,
+    );
+    if (collisions.length > 0) throw new TestKeyCollisionError(collisions);
+    filePaths.forEach((filePath, index) => {
       let scenario = false;
       try {
         scenario = isScenarioSpec(this.readTestSpecFile(filePath, false));
       } catch {
         // An unreadable spec remains in the entity test collection for diagnostics.
       }
-      const relative = path
-        .relative(directory, filePath)
-        .slice(0, -(this.parser.extension.length + 1));
-      const parts = relative.split(path.sep);
-      parts[parts.length - 1] = parts[parts.length - 1].replace(/\.spec$/, "");
-      const key = parts.join(this.config.namespaceCharacter);
-      const collection = scenario ? paths : testPaths;
-      const previous = collection.get(key);
-      if (previous) {
-        throw new Error(
-          `${scenario ? "Scenario" : "Test"} key collision for "${key}": ${previous} and ${filePath}. Rename one source file.`,
-        );
-      }
-      collection.set(key, filePath);
-    }
-    for (const [key, scenarioPath] of paths) {
-      const testPath = testPaths.get(key);
-      if (testPath) {
-        throw new Error(
-          `Test identity collision for "${key}": ${testPath} and ${scenarioPath}. Rename one source file.`,
-        );
-      }
-    }
+      const key = testKeyFromRelativePath(
+        relativePaths[index],
+        this.parser.extension,
+        this.config.namespaceCharacter,
+      );
+      (scenario ? paths : testPaths).set(key, filePath);
+    });
     this.testPathIndex = testPaths;
     this.scenarioPathIndex = paths;
     return paths;

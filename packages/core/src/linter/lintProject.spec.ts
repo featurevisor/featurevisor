@@ -677,6 +677,45 @@ rules:
     );
   });
 
+  it("reports every test key collision and lints the rest of the project", async () => {
+    const tests = path.join(tempProjectPath, "tests", "features");
+    for (const key of ["bar", "baz"]) {
+      fs.copyFileSync(path.join(tests, `${key}.spec.yml`), path.join(tests, `${key}.yml`));
+    }
+    const featurePath = path.join(tempProjectPath, "features", "foo.yml");
+    replaceInFile(featurePath, "bucketBy: userId", "bucketBy: unknownAttribute");
+
+    const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
+    const collisions = result.errors.filter((error) => error.code === "test_key_collision");
+    expect(collisions.map(({ key, filePath }) => [key, path.basename(filePath)])).toEqual([
+      ["features.bar", "bar.yml"],
+      ["features.baz", "baz.yml"],
+    ]);
+    expect(collisions[0].message).toBe(
+      `Test key "features.bar" is also used by ${path.relative(process.cwd(), path.join(tests, "bar.spec.yml"))}.`,
+    );
+    // the collisions stop no other check
+    expect(result.errors).toEqual(
+      expect.arrayContaining([expect.objectContaining({ entityType: "feature", key: "foo" })]),
+    );
+
+    const log = jest.spyOn(console, "log").mockImplementation(() => {});
+    await lintProject(getDeps(tempProjectPath) as any, {});
+    const printed = log.mock.calls.flat().join("\n");
+    expect(printed).toContain('=> Error: Test key "features.bar" is also used by');
+    expect(printed).toContain("Rename this one, for example to bar2.spec.yml.");
+    expect(printed).toContain("Rename this one, for example to baz2.spec.yml.");
+    expect(printed).toContain("Test specs are linted once their keys are unique.");
+
+    const focused = await lintProject(getDeps(tempProjectPath) as any, {
+      json: true,
+      keyPattern: "baz",
+    });
+    expect(
+      focused.errors.filter((error) => error.code === "test_key_collision").map(({ key }) => key),
+    ).toEqual(["features.baz"]);
+  });
+
   it("rejects entity file names containing the namespace character", async () => {
     const root = createTempProject();
     tempProjectPath = root;
