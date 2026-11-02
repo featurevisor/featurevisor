@@ -23,10 +23,12 @@ import type {
   Variation,
 } from "@featurevisor/types";
 
+import { containsExpression } from "@featurevisor/expressions";
 import type { CustomParser } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
+import { visitConditionLocations } from "../datasource/conditionLocations";
 import { restoreConditionExpressions } from "../datasource/expressions";
 import { lintProject, type LintErrorItem } from "../linter";
 import {
@@ -1659,6 +1661,8 @@ async function getPromotionPlan(
  * Definitions are planned in their expanded form, so expressions read as trees. Before
  * writing, every `conditions` value that still equals an authored expression, in the source or
  * the destination, is written as that expression again, so promotion never turns expressions into trees.
+ * Any other condition the destination does not hold yet follows the project's settings: in its
+ * simplest form with `simplifyConditions`, and as expressions with `conditionExpressions`.
  */
 async function withAuthoredExpressions(
   sourceDatasource: Datasource,
@@ -1676,12 +1680,24 @@ async function withAuthoredExpressions(
       // A definition that does not exist on one side has nothing to restore from.
     }
   }
-  return restoreConditionExpressions(
-    plan.type,
-    plan.merged,
-    authored,
-    destinationDatasource.getExpressionOptions(),
-  ) as EntityValue;
+  const options = destinationDatasource.getExpressionOptions();
+  const restored = restoreConditionExpressions(plan.type, plan.merged, authored, options);
+
+  const config = destinationDatasource.getConfig();
+  if (!config.simplifyConditions && !config.conditionExpressions) return restored as EntityValue;
+  // a condition the destination already holds stays as written there
+  const held = new Set<string>();
+  visitConditionLocations(plan.type, plan.destination, (_location, conditions) => {
+    if (conditions !== undefined) held.add(JSON.stringify(conditions));
+  });
+  const { withConfiguredConditions } =
+    require("../rewrite/conditions") as typeof import("../rewrite/conditions");
+  return withConfiguredConditions(plan.type, restored, {
+    simplify: config.simplifyConditions === true,
+    expressions: config.conditionExpressions ? options : undefined,
+    keep: (conditions) =>
+      containsExpression(conditions as never, options) || held.has(JSON.stringify(conditions)),
+  }) as EntityValue;
 }
 
 /**

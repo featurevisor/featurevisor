@@ -160,6 +160,103 @@ describe("promoteProjectSets", function () {
     }
   });
 
+  it("writes the conditions it changes as the project's settings say", async () => {
+    const root = await createProject({
+      configContent:
+        "module.exports = { sets: true, tags: ['all', 'web'], conditionExpressions: true, simplifyConditions: true };",
+    });
+    try {
+      const feature = (set: string) =>
+        [
+          `description: Checkout flow in ${set}`,
+          "tags:",
+          "  - all",
+          "bucketBy: userId",
+          "variablesSchema:",
+          "  payload:",
+          "    schema: payload",
+          "    defaultValue: {}",
+          "rules:",
+          "  - key: team",
+          "    conditions:",
+          "      - attribute: team",
+          "        operator: equals",
+          "        value: engineering",
+          "    percentage: 100",
+          "  - key: everyone",
+          "    conditions:",
+          set === "dev" ? "      - attribute: userId" : "      - internal",
+          ...(set === "dev" ? ["        operator: startsWith", "        value: qa-"] : []),
+          "    percentage: 100",
+          "",
+        ].join("\n");
+      for (const set of ["dev", "staging"]) {
+        await writeFile(root, `sets/${set}/features/checkoutFlow.yml`, feature(set));
+      }
+      const config = getProjectConfig(root);
+      const datasource = new Datasource(config, root);
+      await promoteProjectSets(config, datasource, {
+        from: "dev",
+        to: "staging",
+        includeFeatures: ["checkoutFlow"],
+        conflicts: "source",
+        apply: true,
+      });
+      const rules = (
+        (await datasource.forSet("staging").readAuthoredEntity("feature", "checkoutFlow")) as {
+          rules: unknown[];
+        }
+      ).rules;
+      // the condition staging already held stays as written, and the changed one follows the settings
+      expect(rules).toEqual([
+        {
+          key: "team",
+          conditions: [{ attribute: "team", operator: "equals", value: "engineering" }],
+          percentage: 100,
+        },
+        { key: "everyone", conditions: "userId startsWith 'qa-'", percentage: 100 },
+      ]);
+    } finally {
+      await fs.promises.rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("simplifies the conditions it changes with simplifyConditions alone", async () => {
+    const root = await createProject({
+      configContent:
+        "module.exports = { sets: true, tags: ['all', 'web'], simplifyConditions: true };",
+    });
+    try {
+      await writeFile(
+        root,
+        "sets/dev/segments/internal.yml",
+        [
+          "description: Internal users",
+          "conditions:",
+          "  - attribute: team",
+          "    operator: equals",
+          "    value: platform",
+          "",
+        ].join("\n"),
+      );
+      const config = getProjectConfig(root);
+      const datasource = new Datasource(config, root);
+      await promoteProjectSets(config, datasource, {
+        from: "dev",
+        to: "staging",
+        includeFeatures: ["checkoutFlow"],
+        conflicts: "source",
+        apply: true,
+      });
+      expect(await datasource.forSet("staging").readAuthoredEntity("segment", "internal")).toEqual({
+        description: "Internal users",
+        conditions: { attribute: "team", operator: "equals", value: "platform" },
+      });
+    } finally {
+      await fs.promises.rm(root, { recursive: true, force: true });
+    }
+  });
+
   describe("atomic condition expressions", () => {
     it.each(["source", "destination", "fail"] as const)(
       "keeps variables and rules named conditions distinct from selectors under %s policy",

@@ -332,6 +332,66 @@ export function simplestConditions(value: unknown, root = true): unknown {
 }
 
 /**
+ * A `conditions` value written as expressions wherever an expression reads back to exactly the
+ * tree, as `convert --to=expressions --exact` writes it: the whole value when it can be one
+ * expression, otherwise each list item and group child.
+ */
+export function conditionsAsExpressions(
+  value: unknown,
+  options: ExpressionOptions,
+  root = true,
+): unknown {
+  if (value === null || typeof value !== "object") return value;
+  const text = treeToExpression(value as Conditions, {
+    ...options,
+    root,
+    indent: HOUSE_STYLE.indent,
+  });
+  if (text !== undefined) {
+    return HOUSE_STYLE.expressions.finalNewline && text.includes("\n") ? `${text}\n` : text;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => conditionsAsExpressions(item, options, false));
+  }
+  const group = groupIn(value);
+  return group
+    ? { [group[0]]: group[1].map((child) => conditionsAsExpressions(child, options, false)) }
+    : value;
+}
+
+/**
+ * A definition whose `conditions` values follow the project's settings, apart from those `keep`
+ * accepts: in their simplest form with `simplify`, and as expressions with `expressions`.
+ * Promote writes the conditions it changes this way.
+ */
+export function withConfiguredConditions<T>(
+  kind: ConditionKind,
+  definition: T,
+  settings: {
+    simplify: boolean;
+    expressions?: ExpressionOptions;
+    keep: (conditions: unknown) => boolean;
+  },
+): T {
+  const paths: ConditionPath[] = [];
+  visitConditionLocations(kind, definition, (_location, conditions, path) => {
+    if (conditions !== undefined && !settings.keep(conditions)) paths.push(path);
+  });
+  if (paths.length === 0) return definition;
+  const copy = structuredClone(definition) as Record<string | number, unknown>;
+  for (const path of paths) {
+    let parent = copy;
+    for (const part of path.slice(0, -1)) parent = parent[part] as Record<string | number, unknown>;
+    const last = path[path.length - 1];
+    let value = parent[last];
+    if (settings.simplify) value = simplestConditions(value);
+    if (settings.expressions) value = conditionsAsExpressions(value, settings.expressions);
+    parent[last] = value;
+  }
+  return copy as T;
+}
+
+/**
  * Writes each condition in a definition in its simplest form that evaluates the same. A whole
  * value's list of one condition becomes that condition, and its `and` group the list it holds.
  * An `and` or `or` of one condition becomes that condition anywhere. With `expressions`, in a
