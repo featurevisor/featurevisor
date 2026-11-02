@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.6.0](https://github.com/featurevisor/featurevisor/compare/v4.5.0...v4.6.0) (2026-11-02)
+
+### Features
+
+* migrate test keys ([#440](https://github.com/featurevisor/featurevisor/issues/440)) ([6d27dc7](https://github.com/featurevisor/featurevisor/commit/6d27dc71ef3f827ec24b3c9f5e284e1ea0a02440))
+
+
 ## [4.5.0](https://github.com/featurevisor/featurevisor/compare/v4.4.0...v4.5.0) (2026-11-02)
 
 ### Features

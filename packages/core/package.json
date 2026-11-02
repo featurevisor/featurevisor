@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/core",
-  "version": "4.5.0",
+  "version": "4.6.0",
   "description": "Project configuration, validation and datafile building for Featurevisor tooling",
   "engines": {
     "node": ">=24"
