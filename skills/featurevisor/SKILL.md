@@ -75,7 +75,7 @@ Four values change the **shape of everything you write**:
 - `parser`: author JSON for `"json"`, YAML for `"yml"` (default), or the configured custom format ([custom-parsers.md](references/custom-parsers.md)).
 - `namespaceCharacter`: separator for keys from subdirectories. Default `.`, so `features/checkout/promo.yml` is `checkout.promo`. Some projects use `/`. Every reference must use the project's separator. Confirm against real keys with `npx featurevisor list --segments --json`.
 
-Also note `tags` (every tag you use must be declared), `disallowOperators`, `allowedConditions`, `conditionExpressions` (whether conditions may be written as text, [expressions.md](references/expressions.md)), and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
+Also note `tags` (every tag you use must be declared), `disallowOperators`, `allowedConditions`, `conditionExpressions` (whether conditions may be written as text, [expressions.md](references/expressions.md)), `simplifyConditions` (whether `fmt` writes each condition in its simplest form), and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
 
 ## How Featurevisor fits together
 
