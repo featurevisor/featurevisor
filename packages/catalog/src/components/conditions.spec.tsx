@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import { CatalogProvider } from "../context/CatalogContext";
 import type { CatalogManifest } from "../types";
+import { colourExpression } from "./expressionTokens";
 import { ConditionTree, toExpression } from "./trees";
 import { describeCheck, CheckSentence } from "./checkSentence";
 import { describeConditions, parseConditions } from "./conditionExpression";
@@ -249,5 +250,44 @@ describe("conditions as expressions", () => {
     expect(
       toExpression({ feature: "pricing", enabled: false, variation: "control" }),
     ).toBeUndefined();
+  });
+});
+
+describe("expression colours", () => {
+  const typed = (source: string) =>
+    colourExpression(source).map((line) =>
+      line.filter((token) => token.text.trim()).map((token) => `${token.type}:${token.text}`),
+    );
+
+  it("colours each part of an expression by meaning, as the website does", () => {
+    expect(
+      typed("netherlands\nand (\n  plan in ['paid']\n  or feature('liveChat') == false\n)"),
+    ).toEqual([
+      ["segment:netherlands"],
+      ["logic:and", "logic:("],
+      ["name:plan", "operator:in", "punctuation:[", "string:'paid'", "punctuation:]"],
+      [
+        "logic:or",
+        "call:feature",
+        "punctuation:(",
+        "string:'liveChat'",
+        "punctuation:)",
+        "operator:==",
+        "constant:false",
+      ],
+      ["logic:)"],
+    ]);
+    // each line inside a group starts with an indent guide
+    expect(colourExpression("a\nand (\n  b\n)")[2][0]).toEqual({ type: "guide", text: "  " });
+    expect(typed("email matches /^admin/i and seats >= 50")[0]).toEqual([
+      "name:email",
+      "operator:matches",
+      "regex:/^admin/",
+      "constant:i",
+      "logic:and",
+      "name:seats",
+      "operator:>=",
+      "constant:50",
+    ]);
   });
 });

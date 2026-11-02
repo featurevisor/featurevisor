@@ -10,6 +10,7 @@ import {
   ConditionOutline,
   type ConditionNode,
 } from "./conditionExpression";
+import { colourExpression, type ExpressionTokenType } from "./expressionTokens";
 import { formatComparisonOperator } from "./valueFormat";
 
 function formatValue(value: unknown): string {
@@ -91,6 +92,40 @@ function ConditionViewToggle(props: {
   );
 }
 
+// The website's expression colours, in palette steps the dark theme remaps, so they read in both
+const TOKEN_CLASSES: Record<ExpressionTokenType, string> = {
+  name: "text-text",
+  segment: "rounded bg-slate-100 px-1 text-text ring-1 ring-inset ring-slate-300",
+  logic: "font-semibold text-violet-800",
+  operator: "text-slate-500",
+  comment: "text-slate-500",
+  call: "text-rose-700",
+  string: "text-sky-800",
+  constant: "text-amber-800",
+  regex: "text-emerald-700",
+  punctuation: "text-faint",
+  guide: "inline-block border-l border-violet-200 align-top",
+  plain: "",
+};
+
+/** An expression coloured by meaning, one condition a line as fmt writes it */
+function ExpressionText(props: { source: string }) {
+  const lines = React.useMemo(() => colourExpression(props.source), [props.source]);
+  return (
+    <pre className="whitespace-pre-wrap font-mono text-xs leading-6 text-text [overflow-wrap:anywhere]">
+      {lines.map((line, index) => (
+        <div key={index}>
+          {line.map((token, k) => (
+            <span key={k} className={TOKEN_CLASSES[token.type] || undefined}>
+              {token.text}
+            </span>
+          ))}
+        </div>
+      ))}
+    </pre>
+  );
+}
+
 /** Conditions as an expression laid out as fmt writes it, or undefined without an expression form */
 export function toExpression(conditions: unknown, namespaceCharacter?: string): string | undefined {
   if (conditions === undefined) return undefined;
@@ -121,9 +156,7 @@ function ConditionBody(props: { node: ConditionNode; conditions: unknown; setKey
       <ConditionViewToggle view={view} choose={choose} />
       <div className="min-w-0 flex-1 sm:order-first">
         {view === "expression" && expression !== undefined ? (
-          <pre className="whitespace-pre-wrap font-mono text-xs leading-6 text-text [overflow-wrap:anywhere]">
-            {expression}
-          </pre>
+          <ExpressionText source={expression} />
         ) : (
           outline
         )}
