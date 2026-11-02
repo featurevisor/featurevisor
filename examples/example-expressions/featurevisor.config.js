@@ -4,7 +4,7 @@ module.exports = {
   tags: ["all", "checkout", "sign-in", "sign-up", "ecommerce", "expressions"],
   prettyState: true,
   prettyDatafile: true,
-  allowConditionExpressions: true,
+  conditionExpressions: true,
   // enforceCatchAllRule: true,
   // revisionFileName: "REVISION.txt",
 

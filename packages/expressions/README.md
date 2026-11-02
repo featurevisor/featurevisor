@@ -33,7 +33,7 @@ compile("country = 'nl'").errors;
 //    hint: "Use == to compare, such as country == ...", start: { line: 1, column: 9, ... }, ... }]
 ```
 
-Projects opt in with `allowConditionExpressions: true` in `featurevisor.config.js`. The CLI reads expressions itself, so most projects never import this package directly.
+Projects opt in with `conditionExpressions: true` in `featurevisor.config.js`. The CLI reads expressions itself, so most projects never import this package directly.
 
 ## License
 

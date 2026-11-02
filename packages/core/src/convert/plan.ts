@@ -642,12 +642,12 @@ function setsToFlat(builder: Builder, project: Project, keep: string) {
 
 // Conditions as expressions or as trees
 
-const SETTING = "allowConditionExpressions";
+const SETTING = "conditionExpressions";
 
 function convertConditions(builder: Builder, project: Project, to: ConditionForm, exact: boolean) {
   const { plan } = builder;
   const options = { namespaceCharacter: project.config.namespaceCharacter };
-  const allowed = project.config.allowConditionExpressions === true;
+  const allowed = project.config.conditionExpressions === true;
   const kept = new Set<string>();
   const unmarked = new Set<string>();
   let count = 0;

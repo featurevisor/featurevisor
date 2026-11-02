@@ -74,7 +74,7 @@ describe("formatProject on the examples", () => {
     value: unknown,
     config: ProjectConfig,
   ): unknown {
-    if (!config.allowConditionExpressions) return value;
+    if (!config.conditionExpressions) return value;
     if (entityType !== "feature" && entityType !== "segment" && entityType !== "variable") {
       return value;
     }
@@ -118,7 +118,7 @@ describe("formatProject on the examples", () => {
   // How many expressions still carry the leading spaces unformatExpressions gives them
   async function unstyledExpressions(root: string) {
     const projectConfig = getProjectConfig(root);
-    if (!projectConfig.allowConditionExpressions) return 0;
+    if (!projectConfig.conditionExpressions) return 0;
     const parser = projectConfig.parser as CustomParser;
     const datasource = new Datasource(projectConfig, root);
     const { files } = await formatProject(
@@ -192,8 +192,7 @@ describe("formatProject on the examples", () => {
       await unformat(formatted);
       expect((await formatAll(formatted, true)).changed).toBeGreaterThan(0);
       const unstyled = await unstyledExpressions(formatted);
-      if (getProjectConfig(formatted).allowConditionExpressions)
-        expect(unstyled).toBeGreaterThan(0);
+      if (getProjectConfig(formatted).conditionExpressions) expect(unstyled).toBeGreaterThan(0);
       expect((await formatAll(formatted)).errors).toBe(0);
       expect(await formatAll(formatted, true)).toEqual({ changed: 0, errors: 0 });
       // every expression is back in the house style

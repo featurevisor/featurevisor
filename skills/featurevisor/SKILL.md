@@ -75,7 +75,7 @@ Four values change the **shape of everything you write**:
 - `parser`: author JSON for `"json"`, YAML for `"yml"` (default), or the configured custom format ([custom-parsers.md](references/custom-parsers.md)).
 - `namespaceCharacter`: separator for keys from subdirectories. Default `.`, so `features/checkout/promo.yml` is `checkout.promo`. Some projects use `/`. Every reference must use the project's separator. Confirm against real keys with `npx featurevisor list --segments --json`.
 
-Also note `tags` (every tag you use must be declared), `disallowOperators`, `allowedConditions`, `allowConditionExpressions` (whether conditions may be written as text, [expressions.md](references/expressions.md)), and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
+Also note `tags` (every tag you use must be declared), `disallowOperators`, `allowedConditions`, `conditionExpressions` (whether conditions may be written as text, [expressions.md](references/expressions.md)), and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
 
 ## How Featurevisor fits together
 
@@ -89,7 +89,7 @@ Also note `tags` (every tag you use must be declared), `disallowOperators`, `all
 | Target          | `targets/<key>.yml`    | Which definitions go into a datafile.                                                 |
 | Test spec       | `tests/**/*.spec.yml`  | Feature, segment and variable assertions, and standalone scenarios.                   |
 
-**Conditions** are one grammar used everywhere a definition selects or gates: segments, rules, force entries, root gates and overrides. A leaf compares an attribute, names a segment with a bare string, requires a feature, or compares a variable's value. A list means AND, and `and`, `or` and `not` groups nest. `'*'` matches everyone, but only as the whole value. A project with `allowConditionExpressions: true` may also write conditions as text, such as `country == 'nl' and payingAccounts` ([expressions.md](references/expressions.md)). Match what the project does.
+**Conditions** are one grammar used everywhere a definition selects or gates: segments, rules, force entries, root gates and overrides. A leaf compares an attribute, names a segment with a bare string, requires a feature, or compares a variable's value. A list means AND, and `and`, `or` and `not` groups nest. `'*'` matches everyone, but only as the whole value. A project with `conditionExpressions: true` may also write conditions as text, such as `country == 'nl' and payingAccounts` ([expressions.md](references/expressions.md)). Match what the project does.
 
 ```yaml
 conditions:
@@ -197,7 +197,7 @@ Read the matching file in full **before** authoring or debugging in that area. D
 | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Create or edit a feature: rules, force, variations, variables, root conditions, expose                      | [features.md](references/features.md)                                                                         |
 | Write conditions: leaves, groups, dependencies, paths, evaluation order                                     | [conditions.md](references/conditions.md)                                                                     |
-| Write conditions as text, with `allowConditionExpressions`                                                  | [expressions.md](references/expressions.md)                                                                   |
+| Write conditions as text, with `conditionExpressions`                                                       | [expressions.md](references/expressions.md)                                                                   |
 | Look up an operator, or a date, version or regex rule                                                       | [operators.md](references/operators.md)                                                                       |
 | Write or change a segment                                                                                   | [segments.md](references/segments.md)                                                                         |
 | Declare an attribute, its type, format and constraints                                                      | [attributes.md](references/attributes.md)                                                                     |

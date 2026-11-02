@@ -16,7 +16,7 @@ describe("lint with expressions", () => {
     fs.writeFileSync(destination, content);
   }
 
-  function config(extra = "allowConditionExpressions: true,") {
+  function config(extra = "conditionExpressions: true,") {
     write("featurevisor.config.js", `module.exports = { environments: ["production"], ${extra} };`);
   }
 
@@ -211,7 +211,7 @@ describe("lint with expressions", () => {
   });
 
   it("reports an expression shared through a YAML alias once", async () => {
-    config('allowConditionExpressions: true, environments: ["staging", "production"]');
+    config('conditionExpressions: true, environments: ["staging", "production"]');
     write(
       "features/checkout.yml",
       [
@@ -308,7 +308,7 @@ describe("lint with expressions", () => {
         endColumn: 32,
       },
     ]);
-    expect(errors[0].hint).toContain("allowConditionExpressions: true");
+    expect(errors[0].hint).toContain("conditionExpressions: true");
   });
 
   it("warns about json variables, reads inside open objects and mixed lists", async () => {
@@ -453,17 +453,17 @@ describe("lint with expressions", () => {
     );
   });
 
-  it("rejects an allowConditionExpressions that is not a boolean", () => {
-    config('allowConditionExpressions: "yes",');
+  it("rejects an conditionExpressions that is not a boolean", () => {
+    config('conditionExpressions: "yes",');
     expect(() => getProjectConfig(root)).toThrow(
-      "Invalid allowConditionExpressions: yes. It must be a boolean.",
+      "Invalid conditionExpressions: yes. It must be a boolean.",
     );
   });
 
   it("gives positions inside the expression when files have none", async () => {
     write(
       "featurevisor.config.js",
-      'module.exports = { parser: "json", environments: ["production"], allowConditionExpressions: true };',
+      'module.exports = { parser: "json", environments: ["production"], conditionExpressions: true };',
     );
     write("attributes/country.json", JSON.stringify({ description: "Country", type: "string" }));
     write(

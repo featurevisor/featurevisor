@@ -646,7 +646,7 @@ describe("evaluate --explain", () => {
     log.mockClear();
     const allowing = {
       ...deps,
-      projectConfig: { allowConditionExpressions: true, namespaceCharacter: "." },
+      projectConfig: { conditionExpressions: true, namespaceCharacter: "." },
     } as unknown as Dependencies;
     await evaluateFeature(allowing, { variable: "supportEmail", context: {}, explain: true });
     expect(printed()).toContain(

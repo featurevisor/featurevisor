@@ -169,7 +169,7 @@ export function diffDefinitions(
   };
   const view: ConditionsView = {
     options: { namespaceCharacter: config.namespaceCharacter },
-    expressions: config.allowConditionExpressions === true,
+    expressions: config.conditionExpressions === true,
   };
   const parse = (file: string, content: string | undefined, endpoint: string): unknown => {
     if (content === undefined) return undefined;

@@ -104,7 +104,7 @@ describe("promoteProjectSets", function () {
   it("writes condition expressions as expressions, never as trees", async () => {
     const root = await createProject({
       configContent:
-        "module.exports = { sets: true, tags: ['all', 'web'], allowConditionExpressions: true };",
+        "module.exports = { sets: true, tags: ['all', 'web'], conditionExpressions: true };",
     });
     try {
       for (const set of ["dev", "staging"]) {

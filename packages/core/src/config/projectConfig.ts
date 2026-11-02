@@ -86,7 +86,7 @@ export interface ProjectConfig {
    * Allows expressions as strings in `conditions`. Lint reports them while it is false.
    * Every other command reads them either way. Defaults to false.
    */
-  allowConditionExpressions?: boolean;
+  conditionExpressions?: boolean;
 
   enforceCatchAllRule?: boolean;
   maxVariableStringLength?: number;
@@ -116,7 +116,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     allowFeatureAndVariableKeyCollisions: false,
     requireOverrideKeysInFeatures: false,
     allowedConditions: undefined,
-    allowConditionExpressions: false,
+    conditionExpressions: false,
 
     adapter: FilesystemAdapter,
 
@@ -254,9 +254,9 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     assertAllowedConditions(finalConfig.allowedConditions);
   }
 
-  if (typeof finalConfig.allowConditionExpressions !== "boolean") {
+  if (typeof finalConfig.conditionExpressions !== "boolean") {
     throw new Error(
-      `Invalid allowConditionExpressions: ${finalConfig.allowConditionExpressions}. It must be a boolean.`,
+      `Invalid conditionExpressions: ${finalConfig.conditionExpressions}. It must be a boolean.`,
     );
   }
 

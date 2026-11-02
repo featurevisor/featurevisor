@@ -876,7 +876,7 @@ describe("convert", () => {
       expect(printed).toContain("Simplified: 1 condition written in its simplest form");
       expect(printed).toContain("Every datafile evaluates the same");
       expect(read("featurevisor.config.js")).toBe(
-        "module.exports = {\n  allowConditionExpressions: true,\n  tags: ['all'],\n};\n",
+        "module.exports = {\n  conditionExpressions: true,\n  tags: ['all'],\n};\n",
       );
       // a list of one becomes its condition, which builds a different shape that evaluates the same
       expect(read("segments/netherlands.yml")).toBe(
@@ -909,7 +909,7 @@ describe("convert", () => {
     });
 
     it("keeps a tree marked to keep as written, and refuses when nothing is left", async () => {
-      conditionsProject("module.exports = {\n  allowConditionExpressions: true,\n};\n");
+      conditionsProject("module.exports = {\n  conditionExpressions: true,\n};\n");
       write(
         "segments/netherlands.yml",
         "description: The Netherlands\n\nconditions: # featurevisor-ignore-line\n  - attribute: country\n    operator: equals\n    value: nl\n",
@@ -949,7 +949,7 @@ describe("convert", () => {
 
       expect(await run({ to: "expressions", apply: true })).toBe(0);
       expect(printed).toContain("Every datafile evaluates the same");
-      expect(read("featurevisor.config.js")).toContain("allowConditionExpressions: true");
+      expect(read("featurevisor.config.js")).toContain("conditionExpressions: true");
       expect(await run({ to: "trees", apply: true })).toBe(0);
       expect(printed).toContain("Every datafile builds the same");
       expect(read("featurevisor.config.js")).toBe(

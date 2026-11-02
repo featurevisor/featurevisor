@@ -1,6 +1,6 @@
 # example-expressions
 
-A showcase of condition expressions: `conditions` written as readable text instead of YAML trees. It sets `allowConditionExpressions: true` in `featurevisor.config.js`.
+A showcase of condition expressions: `conditions` written as readable text instead of YAML trees. It sets `conditionExpressions: true` in `featurevisor.config.js`.
 
 The project began as a copy of Example 1 with every condition written as an expression, and it is now its own project. On top of Example 1's definitions it adds a small workspace and shop: markets, audiences, devices and lifecycle segments, eleven features and four global variables. Every expression they hold has a spec.
 

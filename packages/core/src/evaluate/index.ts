@@ -366,7 +366,7 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     ? {
         set: deps.datasource.getSet(),
         definitionExists,
-        expressions: deps.projectConfig?.allowConditionExpressions
+        expressions: deps.projectConfig?.conditionExpressions
           ? { namespaceCharacter: deps.projectConfig.namespaceCharacter }
           : undefined,
         authoredVariable:

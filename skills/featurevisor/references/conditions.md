@@ -2,7 +2,7 @@
 
 Full docs: <https://featurevisor.com/docs/conditions/>
 
-`conditions` is the one grammar for every place a definition selects or gates: segments, feature rules, force entries, root gates, and feature and global variable overrides. Operators are listed in [operators.md](operators.md). This file writes conditions as trees. A project with `allowConditionExpressions: true` can write the same conditions as text, such as `country == 'nl'` ([expressions.md](expressions.md)).
+`conditions` is the one grammar for every place a definition selects or gates: segments, feature rules, force entries, root gates, and feature and global variable overrides. Operators are listed in [operators.md](operators.md). This file writes conditions as trees. A project with `conditionExpressions: true` can write the same conditions as text, such as `country == 'nl'` ([expressions.md](expressions.md)).
 
 ## Leaves
 

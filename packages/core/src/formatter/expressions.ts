@@ -13,7 +13,7 @@ import { HOUSE_STYLE } from "./style";
 
 /** The options fmt formats expressions with, or undefined when the project does not allow them */
 export function getFormatExpressionOptions(config: ProjectConfig): ExpressionOptions | undefined {
-  return config.allowConditionExpressions
+  return config.conditionExpressions
     ? { namespaceCharacter: config.namespaceCharacter }
     : undefined;
 }

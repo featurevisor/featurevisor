@@ -6,7 +6,7 @@ A condition expression writes [conditions](conditions.md) as text, such as `coun
 
 ## Match the project
 
-Expressions are opt in. A project writes them only when `featurevisor.config.js` sets `allowConditionExpressions: true`. Check it with `npx featurevisor config --json`:
+Expressions are opt in. A project writes them only when `featurevisor.config.js` sets `conditionExpressions: true`. Check it with `npx featurevisor config --json`:
 
 - **On, and files use expressions:** write new conditions as expressions, in the style of the files around them.
 - **Off:** write trees. Lint reports every expression with `expression_not_allowed`. Do not turn the option on unless the user asks.

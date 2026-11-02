@@ -135,8 +135,8 @@ describe("formatting expressions", () => {
   });
 
   it("formats expressions only in projects that allow them", () => {
-    const config = (allowConditionExpressions?: boolean) =>
-      ({ allowConditionExpressions, namespaceCharacter: ":" }) as never;
+    const config = (conditionExpressions?: boolean) =>
+      ({ conditionExpressions, namespaceCharacter: ":" }) as never;
     expect(getFormatExpressionOptions(config(true))).toEqual({ namespaceCharacter: ":" });
     expect(getFormatExpressionOptions(config(false))).toBeUndefined();
   });

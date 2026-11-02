@@ -84,11 +84,11 @@ function copyProject(root: string, config: ProjectConfig): string {
 
 /** Whether a configuration's settings have the shape, or allow the conditions, a plan converts to */
 function hasShape(
-  config: { sets?: unknown; environments?: unknown; allowConditionExpressions?: unknown },
+  config: { sets?: unknown; environments?: unknown; conditionExpressions?: unknown },
   plan: Plan,
 ): boolean {
   if (isConditionForm(plan.to)) {
-    return (config.allowConditionExpressions === true) === (plan.to === "expressions");
+    return (config.conditionExpressions === true) === (plan.to === "expressions");
   }
   return (
     (plan.to === "sets") === Boolean(config.sets) &&
@@ -297,7 +297,7 @@ export async function checkPlan(
       // expressions written back as trees are checked as if the project still allowed them
       const lintBefore = await lintAll(
         root,
-        plan.to === "trees" ? { ...config, allowConditionExpressions: true } : config,
+        plan.to === "trees" ? { ...config, conditionExpressions: true } : config,
       );
       if (lintBefore.length > 0) {
         result.problems.push(

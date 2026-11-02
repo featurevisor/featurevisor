@@ -375,7 +375,7 @@ export async function lintProject(
       : undefined;
     if (!expressionContext || !range) {
       // In a project writing expressions, advise them for plain strings too.
-      return projectConfig.allowConditionExpressions
+      return projectConfig.conditionExpressions
         ? { ...item, message: rewordForExpressions(item.message) }
         : item;
     }
@@ -481,7 +481,7 @@ export async function lintProject(
   ) {
     const filePath = path.relative(process.cwd(), fullPath);
     for (const record of records) {
-      if (!projectConfig.allowConditionExpressions) {
+      if (!projectConfig.conditionExpressions) {
         const lines = record.source.split("\n");
         const item = locateExpressionItem(
           {
@@ -491,7 +491,7 @@ export async function lintProject(
             path: record.path,
             code: "expression_not_allowed",
             message: "Condition expressions are not allowed in this project.",
-            hint: "Set allowConditionExpressions: true in featurevisor.config.js to write conditions as expressions, or write this condition as a YAML tree.",
+            hint: "Set conditionExpressions: true in featurevisor.config.js to write conditions as expressions, or write this condition as a YAML tree.",
           },
           fullPath,
           record.path,
