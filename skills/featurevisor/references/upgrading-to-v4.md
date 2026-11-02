@@ -47,24 +47,25 @@ npx featurevisor lint --json --pretty
 
 The CLI needs Node.js 24 or later. If the project has a custom parser, add its `stringify` function first, or no command will load ([custom-parsers.md](custom-parsers.md)).
 
-**`migrate` rewrites what has one right answer**, keeping comments and every line it does not change. It moves `segments`, `requiredFeatures` and a feature's `required` into `conditions` as v4 SDKs read v3 datafiles, converts `double`, `date` and `semver`, rewrites `in` and `notIn` on numbers, renames `sticky` and the removed evaluation reasons in specs, puts mutation maps in the order v3 applied them where values would differ, and renames the configuration settings v4 renamed. It stops before writing anything while Groups remain or a custom parser lacks `stringify`, and lists what needs a person under "Needs you". Review its diff with the user before committing. `migrate --check` exits 1 while anything is left.
+**`migrate` rewrites what has one right answer**, keeping comments and every line it does not change. It moves `segments`, `requiredFeatures` and a feature's `required` into `conditions` as v4 SDKs read v3 datafiles, converts `double`, `date` and `semver`, rewrites `in` and `notIn` on numbers, renames `sticky` and the removed evaluation reasons in specs, puts mutation maps in the order v3 applied them where values would differ, names every test spec `<name>.spec` (v3 ran `checkout.yml` and `checkout.spec.yml` as two tests, which v4 keys alike, so the plain one becomes `checkout2.spec.yml`), and renames the configuration settings v4 renamed. It stops before writing anything while Groups remain or a custom parser lacks `stringify`, and lists what needs a person under "Needs you". Review its diff with the user before committing. `migrate --check` exits 1 while anything is left.
 
 **The lint output is the worklist for the rest.** Fix errors by code, rerun, and repeat until clean. After `migrate`, the first rows are already done:
 
-| Lint code or message                                                                       | Fix                                                                                                           |
-| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `removed_condition_field` on `segments`                                                    | rename to `conditions`. Segment keys stay as strings                                                          |
-| `removed_condition_field` on `requiredFeatures`                                            | move into root `conditions`, writing each key as `{ feature: <key> }`                                         |
-| Feature `required` has been removed                                                        | as above, renaming each `{ key: … }` to `{ feature: … }`                                                      |
-| `removed_schema_type`                                                                      | `double` to `number`, `date` to `string` with `format: date-time`, `semver` to `string` with `format: semver` |
-| date-time attribute with `equals` or another text operator                                 | use `before` or `after`, or declare a plain `string`                                                          |
-| `in` or `notIn` on a non string attribute                                                  | an `or` group of `equals` leaves, wrapped in `not` for `notIn`                                                |
-| `invalid_attribute_namespace`                                                              | move attribute files out of subdirectories, or model nested context as an object attribute                    |
-| `expectedVariation` on a feature without variations, or an unknown `expectedVariables` key | fix the spec                                                                                                  |
-| `invalid_saved_allocation` (build)                                                         | restore state from the deployed revision, or rename the rule after reviewing who switches                     |
-| `removed_test_field` on `sticky`                                                           | rename to `stickyFeatures` in feature assertions and their children                                           |
-| `archived_reference`                                                                       | remove the reference, archive the definition that makes it, or unarchive the target                           |
-| `archived_reference` on a spec's `feature`, `segment` or `variable`                        | delete the spec of the archived definition                                                                    |
+| Lint code or message                                                                       | Fix                                                                                                            |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `removed_condition_field` on `segments`                                                    | rename to `conditions`. Segment keys stay as strings                                                           |
+| `removed_condition_field` on `requiredFeatures`                                            | move into root `conditions`, writing each key as `{ feature: <key> }`                                          |
+| Feature `required` has been removed                                                        | as above, renaming each `{ key: … }` to `{ feature: … }`                                                       |
+| `removed_schema_type`                                                                      | `double` to `number`, `date` to `string` with `format: date-time`, `semver` to `string` with `format: semver`  |
+| date-time attribute with `equals` or another text operator                                 | use `before` or `after`, or declare a plain `string`                                                           |
+| `in` or `notIn` on a non string attribute                                                  | an `or` group of `equals` leaves, wrapped in `not` for `notIn`                                                 |
+| `invalid_attribute_namespace`                                                              | move attribute files out of subdirectories, or model nested context as an object attribute                     |
+| `expectedVariation` on a feature without variations, or an unknown `expectedVariables` key | fix the spec                                                                                                   |
+| `invalid_saved_allocation` (build)                                                         | restore state from the deployed revision, or rename the rule after reviewing who switches                      |
+| `removed_test_field` on `sticky`                                                           | rename to `stickyFeatures` in feature assertions and their children                                            |
+| `archived_reference`                                                                       | remove the reference, archive the definition that makes it, or unarchive the target                            |
+| `archived_reference` on a spec's `feature`, `segment` or `variable`                        | delete the spec of the archived definition                                                                     |
+| `test_key_collision`                                                                       | rename one file of each pair to the free name lint suggests, such as `checkout2.spec.yml`. `migrate` does this |
 
 Before and after, for a feature:
 
