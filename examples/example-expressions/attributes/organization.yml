@@ -1,0 +1,19 @@
+description: The organization that owns the workspace
+
+type: object
+
+properties:
+  id:
+    type: string
+  tier:
+    type: string
+    enum:
+      - smb
+      - midmarket
+      - enterprise
+  verified:
+    type: boolean
+  region:
+    type: string
+  employees:
+    type: integer

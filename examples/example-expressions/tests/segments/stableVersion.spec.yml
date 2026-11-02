@@ -1,0 +1,35 @@
+segment: stableVersion
+
+assertions:
+  - description: Short versions and build metadata keep their meaning
+    matrix:
+      version:
+        - "1"
+        - "1.0"
+        - 1.0.0
+        - 1.0.0+build.2
+        - 1.0.0.1
+        - 9007199254740993.0.0
+    context:
+      version: ${{ version }}
+    expectedToMatch: true
+
+  - description: Prereleases are not stable, including numeric zero
+    matrix:
+      version:
+        - 1.0.0-0
+        - 1.0.0-alpha
+        - 0.9.9
+    context:
+      version: ${{ version }}
+    expectedToMatch: false
+
+  - description: Unicode digits are not version digits
+    context:
+      version: ٢.0.0
+    expectedToMatch: false
+
+  - description: A valid version embedded inside a string does not match
+    context:
+      version: "junk\n1.0.0\njunk"
+    expectedToMatch: false

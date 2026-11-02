@@ -1,0 +1,44 @@
+description: Where to send people for help, reading another global variable and a feature
+
+tags:
+  - all
+  - expressions
+
+type: string
+
+defaultValue: email
+
+overrides:
+  staging:
+    - key: incident
+      conditions: |
+        variable('platformStatus').incident.active == true
+        and variable('platformStatus').incident.severity >= 3
+      value: status-page
+
+    - key: priority
+      conditions: |
+        audiences.priorityCustomers
+        or audiences.verifiedEnterprise
+      value: phone
+
+    - key: admins
+      conditions: feature('adminConsole')
+      value: chat
+
+  production:
+    - key: incident
+      conditions: |
+        variable('platformStatus').incident.active == true
+        and variable('platformStatus').incident.severity >= 3
+      value: status-page
+
+    - key: priority
+      conditions: |
+        audiences.priorityCustomers
+        or audiences.verifiedEnterprise
+      value: phone
+
+    - key: admins
+      conditions: feature('adminConsole')
+      value: chat

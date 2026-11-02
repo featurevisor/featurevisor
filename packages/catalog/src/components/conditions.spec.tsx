@@ -2,7 +2,10 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 
-import { ConditionTree } from "./trees";
+import { CatalogProvider } from "../context/CatalogContext";
+import type { CatalogManifest } from "../types";
+import { colourExpression, expressionParts } from "./expressionTokens";
+import { ConditionTree, ExpressionText, toExpression } from "./trees";
 import { describeCheck, CheckSentence } from "./checkSentence";
 import { describeConditions, parseConditions } from "./conditionExpression";
 import { formatComparison, formatComparisonOperator } from "./valueFormat";
@@ -209,4 +212,123 @@ describe("array list condition presentation", () => {
       ).toContain(operator);
     },
   );
+});
+
+describe("conditions as expressions", () => {
+  function renderIn(projectConfig: CatalogManifest["projectConfig"], conditions: unknown) {
+    const manifest = {
+      schemaVersion: "1",
+      generatedAt: "",
+      sets: false,
+      setKeys: [],
+      projectConfig,
+    } as unknown as CatalogManifest;
+    return render(
+      <CatalogProvider initialManifest={manifest}>
+        <ConditionTree conditions={conditions as never} />
+      </CatalogProvider>,
+    );
+  }
+  const conditions = [
+    "netherlands",
+    { attribute: "plan", operator: "in", value: ["paid", "enterprise"] },
+  ];
+
+  it("offers the expression view only in a project that writes expressions", () => {
+    expect(renderIn({ tags: [] }, conditions)).not.toContain('aria-label="Show conditions as"');
+    const html = renderIn({ tags: [], conditionExpressions: true }, conditions);
+    expect(html).toContain('aria-label="Show conditions as"');
+    // the outline shows until the reader chooses
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Tree<\/button>/);
+  });
+
+  it("writes conditions as fmt writes their expression", () => {
+    expect(toExpression(conditions, ".")).toBe("netherlands\nand plan in ['paid', 'enterprise']");
+    expect(toExpression("*")).toBe("'*'");
+    expect(toExpression("countries.netherlands", ".")).toBe("countries.netherlands");
+    // a disabled feature's variation has no expression form, so it stays an outline
+    expect(
+      toExpression({ feature: "pricing", enabled: false, variation: "control" }),
+    ).toBeUndefined();
+  });
+});
+
+describe("expression colours", () => {
+  const typed = (source: string) =>
+    colourExpression(source).map((line) =>
+      line.filter((token) => token.text.trim()).map((token) => `${token.type}:${token.text}`),
+    );
+
+  it("colours each part of an expression by meaning, as the website does", () => {
+    expect(
+      typed("netherlands\nand (\n  plan in ['paid']\n  or feature('liveChat') == false\n)"),
+    ).toEqual([
+      ["segment:netherlands"],
+      ["logic:and", "logic:("],
+      ["name:plan", "operator:in", "punctuation:[", "string:'paid'", "punctuation:]"],
+      [
+        "logic:or",
+        "call:feature",
+        "punctuation:(",
+        "string:'liveChat'",
+        "punctuation:)",
+        "operator:==",
+        "constant:false",
+      ],
+      ["logic:)"],
+    ]);
+    // each line inside a group starts with an indent guide
+    expect(colourExpression("a\nand (\n  b\n)")[2][0]).toEqual({ type: "guide", text: "  " });
+    expect(typed("email matches /^admin/i and seats >= 50")[0]).toEqual([
+      "name:email",
+      "operator:matches",
+      "regex:/^admin/",
+      "constant:i",
+      "logic:and",
+      "name:seats",
+      "operator:>=",
+      "constant:50",
+    ]);
+  });
+});
+
+describe("expression links", () => {
+  const references = (source: string) =>
+    colourExpression(source).flatMap((line) =>
+      expressionParts(line)
+        .filter((part) => part.reference)
+        .map((part) => [part.tokens.map((token) => token.text).join(""), part.reference]),
+    );
+
+  it("names what each part refers to, as the tree view links its leaves", () => {
+    expect(
+      references(
+        "countries.netherlands\nand account.seats >= 50\nand feature('buyButton').label == 'Buy now'\nand feature('pricing').variation == 'control'\nand variable('checkoutSettings').currency == 'EUR'\nand feature('buyButton')['label.v2'] == 'Buy'",
+      ),
+    ).toEqual([
+      ["countries.netherlands", { type: "segment", key: "countries.netherlands" }],
+      ["account.seats", { type: "attribute", key: "account" }],
+      ["feature('buyButton')", { type: "feature", key: "buyButton" }],
+      ["label", { type: "feature", key: "buyButton", variable: "label" }],
+      ["feature('pricing')", { type: "feature", key: "pricing" }],
+      ["variable('checkoutSettings')", { type: "variable", key: "checkoutSettings" }],
+      ["feature('buyButton')", { type: "feature", key: "buyButton" }],
+      ["'label.v2'", { type: "feature", key: "buyButton", variable: "label.v2" }],
+    ]);
+  });
+
+  it("links each reference in its Set, keeping the text as written", () => {
+    const html = render(
+      <ExpressionText
+        source={"netherlands\nand feature('buyButton').label == 'Buy'"}
+        setKey="web"
+      />,
+    );
+    expect(html).toContain('href="/sets/web/segments/netherlands"');
+    expect(html).toContain('href="/sets/web/features/buyButton"');
+    expect(html).toContain('href="/sets/web/features/buyButton/variables#label"');
+    expect(html.replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'")).toBe(
+      "netherlands\nand feature('buyButton').label == 'Buy'".replace("\n", ""),
+    );
+  });
 });

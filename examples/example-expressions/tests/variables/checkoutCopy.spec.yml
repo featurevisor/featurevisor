@@ -1,0 +1,107 @@
+variable: checkoutCopy
+
+assertions:
+  - description: signed out shoppers get the disabled value from the root conditions
+    environment: staging
+    at: 10
+    context:
+      userId: user-1
+      loggedIn: false
+      country: nl
+    expectedValue: Checkout unavailable
+
+  - description: Dutch staff on express with iDEAL, evaluated end to end
+    environment: staging
+    at: 10
+    context:
+      userId: user-1
+      loggedIn: true
+      country: nl
+      email: alex@featurevisor.com
+    expectedValue: Express checkout with iDEAL
+    expectedEvaluation:
+      variableOverrideKey: ideal
+
+  - description: express with a large cart picks the second nested override
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+      loggedIn: true
+      cartTotal: 300
+    stickyFeatures:
+      smartCheckout:
+        enabled: true
+        variation: express
+        variables:
+          paymentMethods:
+            - card
+    expectedValue: Express checkout for large orders
+
+  - description: express without a nested match keeps the parent value
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      loggedIn: true
+      cartTotal: 50
+    stickyFeatures:
+      smartCheckout:
+        enabled: true
+        variation: express
+        variables:
+          paymentMethods:
+            - card
+    expectedValue: Express checkout
+
+  - description: an enterprise plan on control
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      loggedIn: true
+      plan: enterprise
+    stickyFeatures:
+      smartCheckout:
+        enabled: true
+        variation: control
+    expectedValue: Enterprise checkout
+
+  - description: an enterprise organization without a plan
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      loggedIn: true
+      organization:
+        tier: enterprise
+    stickyFeatures:
+      smartCheckout:
+        enabled: true
+        variation: control
+    expectedValue: Enterprise checkout
+
+  - description: a French locale
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+      loggedIn: true
+      locale: fr-BE
+    stickyFeatures:
+      smartCheckout:
+        enabled: true
+        variation: control
+    expectedValue: Paiement
+
+  - description: everyone else signed in gets the default
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      loggedIn: true
+      locale: nl-NL
+    stickyFeatures:
+      smartCheckout:
+        enabled: false
+    expectedValue: Checkout

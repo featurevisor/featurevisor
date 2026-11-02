@@ -1,0 +1,76 @@
+feature: sidebar
+
+assertions:
+  - environment: production
+    at: 5
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: control
+
+  - environment: production
+    at: 90
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+
+  - environment: production
+    at: 90
+    context:
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      position: right
+      color: red
+
+  - environment: production
+    at: 90
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      position: right
+      color: yellow
+      title: Sidebar Title for production
+
+  - environment: production
+    at: 90
+    context:
+      country: us
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      sections:
+        - home
+        - about
+        - contact
+
+  - environment: production
+    at: 90
+    context:
+      country: de
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      sections:
+        - home
+        - about
+        - contact
+        - imprint
+
+  - environment: production
+    at: 70
+    context:
+      country: nl
+      userId: "123"
+    expectedToBeEnabled: true
+    expectedVariation: treatment
+    expectedVariables:
+      sections:
+        - home
+        - about
+        - contact
+        - bitterballen

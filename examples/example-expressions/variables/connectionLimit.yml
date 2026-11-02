@@ -1,0 +1,14 @@
+description: Client connection count checked against shared service bounds
+
+tags:
+  - all
+
+type: integer
+
+defaultValue: 10
+
+overrides:
+  production:
+    - key: netherlands
+      conditions: countries.netherlands
+      value: 30

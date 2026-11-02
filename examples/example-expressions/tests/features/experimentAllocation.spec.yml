@@ -1,0 +1,53 @@
+feature: experimentAllocation
+
+assertions:
+  - description: bar allocation at ${{ bucket }} percent in ${{ environment }}
+    matrix:
+      environment:
+        - staging
+        - production
+      bucket:
+        - 0
+        - 20
+        - 40
+    environment: ${{ environment }}
+    at: ${{ bucket }}
+    context:
+      userId: allocation-example
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: bar
+
+  - description: qux allocation at ${{ bucket }} percent in ${{ environment }}
+    matrix:
+      environment:
+        - staging
+        - production
+      bucket:
+        - 40.001
+        - 60
+        - 80
+    environment: ${{ environment }}
+    at: ${{ bucket }}
+    context:
+      userId: allocation-example
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: qux
+
+  - description: holdout allocation at ${{ bucket }} percent in ${{ environment }}
+    matrix:
+      environment:
+        - staging
+        - production
+      bucket:
+        - 80.001
+        - 90
+        - 100
+    environment: ${{ environment }}
+    at: ${{ bucket }}
+    context:
+      userId: allocation-example
+      country: nl
+    expectedToBeEnabled: true
+    expectedVariation: holdout

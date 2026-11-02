@@ -1,0 +1,3 @@
+description: Version greater than 5
+
+conditions: version > semver('5.0.0')

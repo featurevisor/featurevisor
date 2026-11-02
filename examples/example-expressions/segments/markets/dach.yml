@@ -1,0 +1,3 @@
+description: Germany, Austria and Switzerland
+
+conditions: country in ['de', 'at', 'ch']

@@ -1,0 +1,26 @@
+segment: markets.europe
+
+assertions:
+  - description: Belgium matches through markets.benelux
+    context:
+      country: be
+    expectedToMatch: true
+
+  - description: Switzerland matches through markets.dach
+    context:
+      country: ch
+    expectedToMatch: true
+
+  - description: Finland matches through markets.nordics
+    context:
+      country: fi
+    expectedToMatch: true
+
+  - description: the United States matches none of the three
+    context:
+      country: us
+    expectedToMatch: false
+
+  - description: a missing country matches none of the three
+    context: {}
+    expectedToMatch: false

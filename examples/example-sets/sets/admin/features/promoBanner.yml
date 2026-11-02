@@ -8,8 +8,7 @@ bucketBy: userId
 rules:
   staging:
     - key: support
-      conditions:
-        - support
+      conditions: support
       percentage: 100
 
     - key: everyone

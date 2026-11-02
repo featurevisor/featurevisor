@@ -1,0 +1,5 @@
+description: Verified enterprise organizations, read through nested attribute paths
+
+conditions: |
+  organization.tier == 'enterprise'
+  and organization.verified == true

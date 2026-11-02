@@ -1,0 +1,11 @@
+# Array with minItems, maxItems (bounded list of strings)
+description: Bounded list of tag strings (1-10 items)
+
+type: array
+
+items:
+  type: string
+
+minItems: 1
+
+maxItems: 10

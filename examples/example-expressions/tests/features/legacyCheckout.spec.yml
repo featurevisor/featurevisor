@@ -1,0 +1,33 @@
+feature: legacyCheckout
+
+assertions:
+  - description: the United States keeps the legacy checkout
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+      country: us
+    expectedToBeEnabled: true
+
+  - description: Canada keeps it too
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      country: ca
+    expectedToBeEnabled: true
+
+  - description: everywhere else it is off
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+      country: nl
+    expectedToBeEnabled: false
+
+  - description: a missing country falls through to the catch all
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+    expectedToBeEnabled: false

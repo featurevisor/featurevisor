@@ -1,0 +1,68 @@
+feature: bar
+
+assertions:
+  - description: qux allocation and holdout disable bar
+    matrix:
+      environment:
+        - staging
+        - production
+      bucket:
+        - 60
+        - 90
+    environment: ${{ environment }}
+    at: ${{ bucket }}
+    expectedToBeEnabled: false
+    expectedEvaluations:
+      flag:
+        reason: conditions_unmet
+
+  - environment: staging
+    at: 30
+    context:
+      country: us
+    stickyFeatures:
+      experimentAllocation:
+        enabled: true
+        variation: bar
+    expectedToBeEnabled: true
+    expectedVariation: control
+    expectedVariables:
+      color: red
+      hero:
+        title: Hero Title
+        subtitle: Hero Subtitle
+        alignment: center
+
+  - environment: staging
+    at: 40
+    context:
+      country: us
+    stickyFeatures:
+      experimentAllocation:
+        enabled: true
+        variation: bar
+    expectedToBeEnabled: true
+    expectedVariation: b
+    expectedVariables:
+      color: red
+      hero:
+        title: Hero Title for B
+        subtitle: Hero Subtitle for B
+        alignment: center for B
+
+  - environment: staging
+    at: 40
+    context:
+      country: de
+    stickyFeatures:
+      experimentAllocation:
+        enabled: true
+        variation: bar
+    expectedToBeEnabled: true
+    expectedVariation: b
+    expectedVariables:
+      color: red
+      hero:
+        title: Hero Title for B in DE or CH
+        subtitle: Hero Subtitle for B in DE of CH
+        alignment: center for B in DE or CH

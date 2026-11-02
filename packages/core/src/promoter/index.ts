@@ -23,10 +23,13 @@ import type {
   Variation,
 } from "@featurevisor/types";
 
+import { containsExpression } from "@featurevisor/expressions";
 import type { CustomParser } from "@featurevisor/parsers";
 
 import type { ProjectConfig } from "../config";
 import { Datasource } from "../datasource";
+import { visitConditionLocations } from "../datasource/conditionLocations";
+import { restoreConditionExpressions } from "../datasource/expressions";
 import { lintProject, type LintErrorItem } from "../linter";
 import {
   CLI_COLOR_CYAN,
@@ -1655,6 +1658,49 @@ async function getPromotionPlan(
 }
 
 /**
+ * Definitions are planned in their expanded form, so expressions read as trees. Before
+ * writing, every `conditions` value that still equals an authored expression, in the source or
+ * the destination, is written as that expression again, so promotion never turns expressions into trees.
+ * Any other condition the destination does not hold yet follows the project's settings: in its
+ * simplest form with `simplifyConditions`, and as expressions with `conditionExpressions`.
+ */
+async function withAuthoredExpressions(
+  sourceDatasource: Datasource,
+  destinationDatasource: Datasource,
+  plan: EntityPlan,
+): Promise<EntityValue> {
+  if (plan.type !== "feature" && plan.type !== "segment" && plan.type !== "variable") {
+    return plan.merged;
+  }
+  const authored: unknown[] = [];
+  for (const datasource of [sourceDatasource, destinationDatasource]) {
+    try {
+      authored.push(await datasource.readAuthoredEntity(plan.type, plan.key));
+    } catch {
+      // A definition that does not exist on one side has nothing to restore from.
+    }
+  }
+  const options = destinationDatasource.getExpressionOptions();
+  const restored = restoreConditionExpressions(plan.type, plan.merged, authored, options);
+
+  const config = destinationDatasource.getConfig();
+  if (!config.simplifyConditions && !config.conditionExpressions) return restored as EntityValue;
+  // a condition the destination already holds stays as written there
+  const held = new Set<string>();
+  visitConditionLocations(plan.type, plan.destination, (_location, conditions) => {
+    if (conditions !== undefined) held.add(JSON.stringify(conditions));
+  });
+  const { withConfiguredConditions } =
+    require("../rewrite/conditions") as typeof import("../rewrite/conditions");
+  return withConfiguredConditions(plan.type, restored, {
+    simplify: config.simplifyConditions === true,
+    expressions: config.conditionExpressions ? options : undefined,
+    keep: (conditions) =>
+      containsExpression(conditions as never, options) || held.has(JSON.stringify(conditions)),
+  }) as EntityValue;
+}
+
+/**
  * A promoted file's text: the value as the parser writes it, merged into the lines of the file it
  * replaces, or for a new file the file it came from. Wherever the promotion leaves those lines
  * alone, their comments, blank lines, quoting, line endings and final newline stay. Undefined when
@@ -1689,10 +1735,14 @@ async function writePlan(
   destinationDatasource: Datasource,
   plans: EntityPlan[],
 ) {
-  for (const plan of plans) {
-    if (deepEqual(plan.destination, plan.merged)) {
+  for (const original of plans) {
+    if (deepEqual(original.destination, original.merged)) {
       continue;
     }
+    const plan = {
+      ...original,
+      merged: await withAuthoredExpressions(sourceDatasource, destinationDatasource, original),
+    };
 
     // read before writing, since the file it replaces is where its lines come from
     const destinationPath = destinationDatasource.getEntitySourcePath(plan.type, plan.key);

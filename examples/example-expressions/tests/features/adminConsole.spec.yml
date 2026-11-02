@@ -1,0 +1,124 @@
+feature: adminConsole
+
+assertions:
+  - description: an owner with write access sees every section
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      roles:
+        - owner
+      permissions:
+        - read
+        - write
+    expectedToBeEnabled: true
+    expectedVariables:
+      sections:
+        - overview
+        - invoices
+        - seats
+        - security
+      readOnly: false
+
+  - description: a billing editor sees invoices and seats
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+      roles:
+        - billing
+        - editor
+      permissions:
+        - read
+        - write
+    expectedToBeEnabled: true
+    expectedVariables:
+      sections:
+        - overview
+        - invoices
+        - seats
+
+  - description: an editor with admin permission sees the overview only
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      roles:
+        - editor
+      permissions:
+        - admin
+    expectedToBeEnabled: true
+    expectedVariables:
+      sections:
+        - overview
+
+  - description: an owner with read access only is neither an admin nor an auditor
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      roles:
+        - owner
+      permissions:
+        - read
+    expectedToBeEnabled: false
+
+  - description: a viewer with read access gets the read only console
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      roles:
+        - viewer
+      permissions:
+        - read
+      cohorts: []
+    expectedToBeEnabled: true
+    expectedVariables:
+      sections:
+        - overview
+      readOnly: true
+
+  - description: a suspended viewer does not
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      roles:
+        - viewer
+      permissions:
+        - read
+      cohorts:
+        - suspended
+    expectedToBeEnabled: false
+
+  - description: missing permissions make notIncludesAny false, so the viewer is out
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      roles:
+        - viewer
+      cohorts: []
+    expectedToBeEnabled: false
+
+  - description: missing cohorts make notIncludes false too
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      roles:
+        - viewer
+      permissions:
+        - read
+    expectedToBeEnabled: false
+
+  - description: no roles fail the root conditions
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+      roles: []
+      permissions:
+        - admin
+    expectedToBeEnabled: false

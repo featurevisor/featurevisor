@@ -1,0 +1,3 @@
+description: Preferred locale, such as nl-NL or fr-BE
+
+type: string

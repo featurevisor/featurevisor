@@ -881,7 +881,7 @@ function testStandardProject(projectDirectoryPath) {
           error.message.includes(
             operator.endsWith("Any")
               ? "each candidate must be a string, number, boolean or null"
-              : "value must be an array of strings",
+              : "value must be a list of strings or of numbers",
           ),
         ),
       );

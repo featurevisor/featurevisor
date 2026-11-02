@@ -17,7 +17,7 @@
     "production": [
       {
         "key": "nl",
-        "conditions": ["netherlands"],
+        "conditions": "netherlands",
         "percentage": 100
       },
 

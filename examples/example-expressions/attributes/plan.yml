@@ -1,0 +1,9 @@
+description: Subscription plan of the workspace
+
+type: string
+
+enum:
+  - free
+  - starter
+  - pro
+  - enterprise

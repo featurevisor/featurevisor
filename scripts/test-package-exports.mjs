@@ -8,6 +8,20 @@ const require = createRequire(import.meta.url);
 const rootDirectory = dirname(dirname(fileURLToPath(import.meta.url)));
 const packages = [
   {
+    directory: "expressions",
+    name: "@featurevisor/expressions",
+    runtimeExports: {
+      compile: "function",
+      containsExpression: "function",
+      expandConditions: "function",
+      formatExpression: "function",
+      isEntityKey: "function",
+      isExpression: "function",
+      print: "function",
+      treeToExpression: "function",
+    },
+  },
+  {
     directory: "sdk",
     name: "@featurevisor/sdk",
     runtimeExports: {
@@ -126,7 +140,7 @@ function assertReactClientModules() {
 }
 
 async function main() {
-  for (const directory of ["types", "sdk", "react", "vue"]) {
+  for (const directory of ["types", "expressions", "sdk", "react", "vue"]) {
     assertDeclarations(directory);
   }
   assertReactClientModules();

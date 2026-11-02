@@ -1,0 +1,42 @@
+feature: baz
+
+assertions:
+  - description: At 10%, the feature should be enabled
+    environment: production
+    at: 10
+    context:
+      country: nl
+    expectedToBeEnabled: true
+
+  - description: At 70%, the feature should be enabled
+    environment: production
+    at: 70
+    context:
+      country: nl
+    expectedToBeEnabled: true
+
+  - description: At 90%, the feature should be disabled
+    environment: production
+    at: 90
+    context:
+      country: nl
+    expectedToBeEnabled: false
+
+  - description: At ${{ at }} in country ${{ country }} in city ${{ city }}, the feature should be disabled
+    matrix:
+      environment:
+        - production
+      at:
+        - 85
+        - 90
+      country:
+        - nl
+      city:
+        - amsterdam
+        - utrecht
+    environment: ${{ environment }}
+    at: ${{ at }}
+    context:
+      country: ${{ country }}
+      city: ${{ city }}
+    expectedToBeEnabled: false

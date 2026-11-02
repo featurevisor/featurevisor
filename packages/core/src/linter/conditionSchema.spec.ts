@@ -418,29 +418,30 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
   });
 
   describe("array-aware operators", () => {
-    it.each(["in", "notIn"])("limits %s to declared string leaves", (operator) => {
+    it.each(["in", "notIn"])("limits %s to declared string and numeric leaves", (operator) => {
       for (const [attribute, value] of [
         ["country", ["de", "fr"]],
         ["browser.name", ["chrome"]],
         ["account.plan", ["pro"]],
         ["labels.region", ["eu"]],
         ["customer.tier", ["gold"]],
+        ["age", [18, 21]],
+        ["customer.balance", [10.5, null]],
       ] as const) {
         expectConditionsSuccess({ attribute, operator, value: [...value] });
       }
-      for (const attribute of [
-        "age",
-        "version",
-        "browser.version",
-        "active",
-        "createdAt",
-        "customer.balance",
-      ]) {
+      for (const attribute of ["version", "browser.version", "active", "createdAt"]) {
         expectConditionsFailure(
           { attribute, operator, value: ["1"] },
           attribute === "createdAt"
             ? "date-time attribute"
-            : "can only be used with string attributes",
+            : "can only be used with string, integer or number attributes",
+        );
+      }
+      for (const attribute of ["age", "customer.balance"]) {
+        expectConditionsFailure(
+          { attribute, operator, value: ["1"] },
+          `Value at index 0 does not match the schema of attribute "${attribute}"`,
         );
       }
       expectConditionsFailure(
@@ -449,25 +450,41 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
       );
       expectConditionsFailure(
         { attribute: "browser.name", operator, value: [1] },
-        "value must be an array of strings",
+        'Value at index 0 does not match the schema of attribute "browser.name"',
+      );
+      expectConditionsFailure(
+        { attribute: "country", operator, value: [true] },
+        "value must be a list of strings or of numbers",
       );
     });
 
-    it.each(["in", "notIn"])("reports one useful %s error for numeric membership", (operator) => {
+    it.each(["in", "notIn"])("reports one useful %s error for a union of types", (operator) => {
       const schema = getConditionsZodSchema(minimalProjectConfig(), TEST_ATTRIBUTES);
-      const result = schema.safeParse([{ attribute: "age", operator, value: [18, 21] }]);
+      const result = schema.safeParse([{ attribute: "version", operator, value: [1, 2] }]);
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues).toHaveLength(1);
-        expect(result.error.issues[0].message).toContain(
-          `Operator "${operator}" can only be used with string attributes`,
-        );
-        expect(result.error.issues[0].message).toContain(
-          operator === "notIn" ? "Use a not group containing an or group" : "Use an or group",
+        expect(result.error.issues[0].message).toBe(
+          `Operator "${operator}" can only be used with string, integer or number attributes, or nested paths declared as one of them.`,
         );
         expect(result.error.issues[0].path).toEqual([0, "value"]);
       }
     });
+
+    it.each(["in", "notIn"])(
+      "keeps one type per list for %s without a known attribute",
+      (operator) => {
+        const schema = getConditionsZodSchema(minimalProjectConfig(), TEST_ATTRIBUTES);
+        const result = schema.safeParse({ attribute: "unknownThing", operator, value: [1, "a"] });
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues.map((issue) => issue.message)).toEqual([
+            'Unknown attribute "unknownThing".',
+            `when operator is "${operator}", the list mixes strings and numbers. A list holds one type, with null allowed beside it. Quote every value or none.`,
+          ]);
+        }
+      },
+    );
 
     it("accepts in/notIn on string attributes", () => {
       expectConditionsSuccess({
@@ -480,7 +497,7 @@ describe("conditionSchema.ts :: getConditionsZodSchema", () => {
     it("rejects non-array values for in/notIn", () => {
       expectConditionsFailure(
         { attribute: "country", operator: "notIn", value: "de" },
-        "value must be an array",
+        "value must be a list of strings or of numbers",
       );
     });
 

@@ -1731,6 +1731,33 @@ describe("catalog export", () => {
     ).rejects.toThrow(message);
   });
 
+  it("accepts a description on scenario children, as Core does", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-scenario-described-"));
+    const datasource = {
+      ...createDatasource(),
+      listScenarios: async () => ["checkout-readiness.spec"],
+      readScenario: async () => ({
+        checks: [{ feature: "checkout", enabled: true }],
+        children: [
+          {
+            description: "Signed out",
+            context: { loggedIn: false },
+            checks: [{ feature: "checkout", enabled: false }],
+          },
+        ],
+      }),
+    };
+
+    try {
+      await exportCatalog(createRuntime(), root, createProjectConfig(root), datasource, {
+        compactStorage: false,
+        copyAssets: false,
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it.each(["scenario", "key", "feature", "segment", "variable"])(
     "rejects marker or owner property %s in a scenario root",
     async (property) => {

@@ -1,6 +1,6 @@
 description: Visitors from the Netherlands
 
 conditions:
-  - attribute: country
-    operator: equals
-    value: nl
+  attribute: country
+  operator: equals
+  value: nl

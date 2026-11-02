@@ -1,0 +1,36 @@
+variable: runtimeMessage
+
+assertions:
+  - description: ordinary policy matches the parent override
+    environment: production
+    target: variable-requirements
+    context:
+      country: de
+    expectedValue: European service
+
+  - description: evaluated feature variable selects a nested override
+    environment: production
+    target: variable-requirements
+    context:
+      country: nl
+    expectedValue: Priority European service
+
+  - description: transitive requirements can disable the variable
+    environment: production
+    target: variable-requirements
+    context:
+      country: us
+    expectedValue: Unavailable
+
+  - description: literal dotted property and null check match after continuation
+    environment: production
+    target: variable-requirements
+    stickyVariables:
+      runtimePolicy:
+        routing:
+          enabled: true
+          priority: false
+        regions:
+          - eu
+        support.label: null
+    expectedValue: Service without a support label

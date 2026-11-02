@@ -1,0 +1,23 @@
+feature: discount
+
+assertions:
+  - description: At 10%, the feature should be disabled on 1st January 2023
+    environment: production
+    at: 10
+    context:
+      date: "2023-01-01T00:00:00Z"
+    expectedToBeEnabled: false
+
+  - description: At 70%, the feature should be disabled on 25th December 2023
+    environment: production
+    at: 70
+    context:
+      date: "2023-12-25T00:00:00Z"
+    expectedToBeEnabled: false
+
+  - description: At 90%, the feature should be enabled on 25th November 2023
+    environment: production
+    at: 90
+    context:
+      date: "2023-11-25T00:00:00Z"
+    expectedToBeEnabled: true

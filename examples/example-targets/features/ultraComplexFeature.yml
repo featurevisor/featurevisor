@@ -37,9 +37,8 @@ variations:
         - conditions: chromeUsers
           value: auto
         - conditions:
-            and:
-              - premiumUsers
-              - chromeUsers
+            - premiumUsers
+            - chromeUsers
           value: dark
       fontSize:
         - conditions: premiumUsers
@@ -56,9 +55,8 @@ variations:
           value: expanded
       animation:
         - conditions:
-            and:
-              - premiumUsers
-              - chromeUsers
+            - premiumUsers
+            - chromeUsers
           value: fade
 
   - value: treatment
@@ -81,9 +79,8 @@ variations:
         - conditions: premiumChromeUsers
           value: 18
         - conditions:
-            and:
-              - premiumUsers
-              - adminUsers
+            - premiumUsers
+            - adminUsers
           value: 20
       layout:
         - conditions: chromeUsers
@@ -107,18 +104,16 @@ variations:
           value: dark
       fontSize:
         - conditions:
-            and:
-              - premiumUsers
-              - chromeUsers
+            - premiumUsers
+            - chromeUsers
           value: 16
 
 force:
   production:
     # Premium Chrome users with admin role get experimental (most specific, must come first)
     - conditions:
-        and:
-          - premiumChromeUsers
-          - adminUsers
+        - premiumChromeUsers
+        - adminUsers
       enabled: true
       variation: experimental
       variables:
@@ -128,11 +123,10 @@ force:
 
     # Premium OR Admin on Chrome (must come before general admin)
     - conditions:
-        and:
-          - or:
-              - premiumUsers
-              - adminUsers
-          - chromeUsers
+        - or:
+            - premiumUsers
+            - adminUsers
+        - chromeUsers
       enabled: true
       variation: treatment
       variables:
@@ -159,9 +153,8 @@ rules:
     # Premium Chrome users - highest priority
     - key: premium-chrome-complex
       conditions:
-        and:
-          - premiumUsers
-          - chromeUsers
+        - premiumUsers
+        - chromeUsers
       percentage: 100
 
     # Premium OR Admin users

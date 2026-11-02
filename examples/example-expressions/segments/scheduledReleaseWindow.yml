@@ -1,0 +1,5 @@
+description: A release window with an inclusive start and exclusive end
+
+conditions: |
+  date after '2026-11-26T23:59:59.999Z'
+  and date before '2026-11-28T00:00:00Z'

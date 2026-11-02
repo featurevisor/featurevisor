@@ -1,0 +1,3 @@
+description: Swiss cities written with their accents
+
+conditions: city in ['Zürich', 'Genève', 'Bâle', 'Lausanne']

@@ -1,0 +1,51 @@
+feature: unifiedConditions
+
+assertions:
+  - description: a mixed rule matches after the root segment gate
+    environment: production
+    at: 75
+    context:
+      country: nl
+      device: mobile
+      loggedIn: true
+    expectedToBeEnabled: true
+    expectedEvaluations:
+      flag:
+        reason: rule
+        ruleKey: member
+
+  - description: an unmet rule falls through to the wildcard
+    environment: production
+    at: 75
+    context:
+      country: nl
+      device: mobile
+      loggedIn: false
+    expectedToBeEnabled: true
+    expectedEvaluations:
+      flag:
+        reason: rule
+        ruleKey: visitor
+
+  - description: an unmet root segment reports conditions
+    environment: production
+    at: 25
+    context:
+      country: nl
+      device: mobile
+    expectedToBeEnabled: false
+    expectedEvaluations:
+      flag:
+        reason: conditions_unmet
+        conditions: conditionAudience
+
+  - description: force bypasses an unmet root gate
+    environment: production
+    at: 75
+    context:
+      userId: conditions-qa
+      country: us
+    expectedToBeEnabled: true
+    expectedEvaluations:
+      flag:
+        reason: forced

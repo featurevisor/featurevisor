@@ -1,0 +1,83 @@
+segment: conditionAudience
+
+assertions:
+  - description: all leaf kinds match in the selected environment and bucket
+    environment: production
+    at: 75
+    context:
+      country: nl
+      device: mobile
+    expectedToMatch: true
+
+  - description: the feature variation depends on at
+    environment: production
+    at: 25
+    context:
+      country: nl
+      device: mobile
+    expectedToMatch: false
+
+  - description: dependencies use the assertion environment
+    environment: staging
+    at: 75
+    context:
+      country: nl
+      device: mobile
+    expectedToMatch: false
+
+  - description: the referenced segment must also match
+    environment: production
+    at: 75
+    context:
+      country: us
+      device: mobile
+    expectedToMatch: false
+
+  - description: attributes are ANDed with dependency leaves
+    environment: production
+    at: 75
+    context:
+      country: nl
+      device: desktop
+    expectedToMatch: false
+
+  - description: feature stickies override the allocated variation
+    environment: production
+    at: 25
+    context:
+      country: nl
+      device: mobile
+    stickyFeatures:
+      conditionSource:
+        enabled: true
+        variation: treatment
+        variables:
+          policy:
+            enabled: true
+    expectedToMatch: true
+
+  - description: global variable stickies participate in membership
+    environment: production
+    at: 75
+    context:
+      country: nl
+      device: mobile
+    stickyVariables:
+      conditionPolicy:
+        enabled: false
+    expectedToMatch: false
+
+  - description: feature variable stickies participate in membership
+    environment: production
+    at: 75
+    context:
+      country: nl
+      device: mobile
+    stickyFeatures:
+      conditionSource:
+        enabled: true
+        variation: treatment
+        variables:
+          policy:
+            enabled: false
+    expectedToMatch: false

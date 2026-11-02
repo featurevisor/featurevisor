@@ -1,0 +1,11 @@
+description: Workspace roles of the signed in user
+
+type: array
+
+items:
+  type: string
+  enum:
+    - viewer
+    - editor
+    - billing
+    - owner

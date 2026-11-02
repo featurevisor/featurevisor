@@ -7,8 +7,7 @@ bucketBy: userId
 
 rules:
   - key: internal
-    conditions:
-      - internal
+    conditions: internal
     percentage: 100
 
   - key: everyone

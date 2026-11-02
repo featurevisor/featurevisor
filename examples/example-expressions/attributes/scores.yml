@@ -1,0 +1,9 @@
+description: Historical scores
+
+type: array
+
+items:
+  type: string
+  enum:
+    - beginner
+    - advanced

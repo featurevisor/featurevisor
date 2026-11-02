@@ -1,0 +1,32 @@
+feature: footer
+
+assertions:
+  - environment: staging
+    at: 40
+    context:
+      version: 4
+    expectedToBeEnabled: true
+
+  - environment: staging
+    at: 40
+    context:
+      version: 5.4
+    expectedToBeEnabled: true
+
+  - environment: staging
+    at: 40
+    context:
+      version: "5"
+    expectedToBeEnabled: true
+
+  - environment: staging
+    at: 40
+    context:
+      version: 5.5
+    expectedToBeEnabled: false
+
+  - environment: staging
+    at: 40
+    context:
+      version: "5.5"
+    expectedToBeEnabled: false

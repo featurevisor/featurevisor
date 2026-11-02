@@ -1,0 +1,54 @@
+description: Emptiness checks cover feature and global variables, paths, null and missing values
+
+environment: staging
+
+context:
+  userId: empty-user
+  phone: ""
+  interests: []
+  preferences: {}
+
+checks:
+  - feature: emptinessExample
+    enabled: true
+  - feature: emptinessExample
+    variable: status
+    operator: notEmpty
+  - variable: emptinessSource
+    path: label
+    operator: empty
+  - variable: emptinessSource
+    path: items
+    operator: empty
+  - variable: emptinessSource
+    path: metadata
+    operator: empty
+  - variable: emptinessSource
+    path: whitespace
+    operator: notEmpty
+  - not:
+      - variable: emptinessSource
+        path: missing
+        operator: notEmpty
+  - variable: emptinessMessage
+    operator: notEmpty
+
+children:
+  - stickyVariables:
+      emptinessSource:
+        label: Ready
+        items:
+          - one
+        metadata:
+          present: null
+        whitespace: " "
+    checks:
+      - variable: emptinessSource
+        path: label
+        operator: notEmpty
+      - variable: emptinessSource
+        path: items
+        operator: notEmpty
+      - variable: emptinessSource
+        path: metadata
+        operator: notEmpty

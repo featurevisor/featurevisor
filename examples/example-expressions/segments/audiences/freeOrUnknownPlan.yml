@@ -1,0 +1,5 @@
+description: The free plan, or no plan at all, written out explicitly
+
+conditions: |
+  plan == 'free'
+  or plan notExists

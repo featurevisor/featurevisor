@@ -1,0 +1,22 @@
+segment: devices.prereleaseOs
+
+assertions:
+  - description: a later beta matches
+    context:
+      osVersion: 18.0.0-beta.2
+    expectedToMatch: true
+
+  - description: a release candidate sorts after the betas
+    context:
+      osVersion: 18.0.0-rc.1
+    expectedToMatch: true
+
+  - description: an alpha sorts before beta.1
+    context:
+      osVersion: 18.0.0-alpha.1
+    expectedToMatch: false
+
+  - description: the final release is not a prerelease
+    context:
+      osVersion: 18.0.0
+    expectedToMatch: false

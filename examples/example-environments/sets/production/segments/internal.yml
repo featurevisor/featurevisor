@@ -1,6 +1,6 @@
 description: Internal users
 
 conditions:
-  - attribute: team
-    operator: equals
-    value: engineering
+  attribute: team
+  operator: equals
+  value: engineering

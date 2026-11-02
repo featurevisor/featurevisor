@@ -1,0 +1,16 @@
+segment: lifecycle.newcomers
+
+assertions:
+  - description: a mid October signup matches
+    context:
+      signupDate: "2026-10-15T08:00:00Z"
+    expectedToMatch: true
+
+  - description: a September signup does not
+    context:
+      signupDate: "2026-09-30T23:59:59Z"
+    expectedToMatch: false
+
+  - description: a missing signup date does not
+    context: {}
+    expectedToMatch: false

@@ -1,0 +1,24 @@
+description: Structured values used by emptiness requirements and checks
+
+tags:
+  - all
+
+type: object
+
+properties:
+  label:
+    type: string
+  items:
+    type: array
+    items:
+      type: string
+  metadata:
+    type: object
+  whitespace:
+    type: string
+
+defaultValue:
+  label: ""
+  items: []
+  metadata: {}
+  whitespace: " "

@@ -1,0 +1,69 @@
+description: Incident banner driven by the platformStatus global variable
+
+tags:
+  - all
+  - expressions
+
+bucketBy: userId
+
+conditions: variable('platformStatus').incident.active == true
+
+variablesSchema:
+  banner:
+    type: string
+    defaultValue: We are looking into an issue
+
+rules:
+  staging:
+    - key: europe
+      conditions: |
+        variable('platformStatus').incident.regions includesAny ['eu', 'global']
+        and markets.europe
+      percentage: 100
+      variables:
+        banner: We are looking into an issue affecting Europe
+
+    - key: north-america
+      conditions: |
+        variable('platformStatus').incident.regions[0] == 'us'
+        and markets.northAmerica
+      percentage: 100
+      variables:
+        banner: We are looking into an issue affecting North America
+
+    - key: severe
+      conditions: variable('platformStatus').incident.severity >= 3
+      percentage: 100
+      variables:
+        banner: Some services are unavailable
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0
+
+  production:
+    - key: europe
+      conditions: |
+        variable('platformStatus').incident.regions includesAny ['eu', 'global']
+        and markets.europe
+      percentage: 100
+      variables:
+        banner: We are looking into an issue affecting Europe
+
+    - key: north-america
+      conditions: |
+        variable('platformStatus').incident.regions[0] == 'us'
+        and markets.northAmerica
+      percentage: 100
+      variables:
+        banner: We are looking into an issue affecting North America
+
+    - key: severe
+      conditions: variable('platformStatus').incident.severity >= 3
+      percentage: 100
+      variables:
+        banner: Some services are unavailable
+
+    - key: everyone
+      conditions: "*"
+      percentage: 0

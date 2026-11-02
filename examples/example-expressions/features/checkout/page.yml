@@ -1,0 +1,59 @@
+description: Testing variables without having any variations
+
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  showPayments:
+    type: boolean
+    defaultValue: false
+
+  showShipping:
+    type: boolean
+    defaultValue: false
+
+  paymentMethods:
+    type: array
+    defaultValue:
+      - visa
+      - mastercard
+
+rules:
+  staging:
+    - key: "1"
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: "1"
+      conditions: countries.netherlands
+      percentage: 100
+      variables:
+        paymentMethods:
+          - ideal
+          - paypal
+
+    - key: "2"
+      conditions: countries.germany
+      percentage: 100
+      variables:
+        paymentMethods:
+          - sofort
+          - paypal
+
+    - key: ch
+      conditions: countries.switzerland
+      percentage: 0
+
+    - key: "3"
+      conditions: "*"
+      percentage: 100
+      variables:
+        showPayments: true
+        showShipping: true
+        paymentMethods:
+          - visa
+          - mastercard
+          - paypal

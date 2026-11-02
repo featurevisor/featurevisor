@@ -1,0 +1,27 @@
+segment: countries.germany
+
+assertions:
+  - context:
+      country: de
+    expectedToMatch: true
+
+  - context:
+      country: de
+      someOtherAttribute: someOtherValue
+    expectedToMatch: true
+
+  - context:
+      country: notDe
+    expectedToMatch: false
+
+  - description: Testing in country ${{ country }} in city ${{ city }}
+    matrix:
+      country:
+        - nl
+      city:
+        - amsterdam
+        - utrecht
+    context:
+      country: ${{ country }}
+      city: ${{ city }}
+    expectedToMatch: false

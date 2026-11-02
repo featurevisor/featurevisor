@@ -1,0 +1,93 @@
+description: Show sidebar or not
+
+tags:
+  - all
+
+bucketBy: userId
+
+variablesSchema:
+  position:
+    description: position of the sidebar
+    type: string
+    defaultValue: left
+  color:
+    type: string
+    defaultValue: red
+  sections:
+    type: array
+    defaultValue: []
+  title:
+    type: string
+    defaultValue: Sidebar Title
+  title2:
+    type: string
+    defaultValue: Sidebar Title 2
+  title3:
+    type: string
+    defaultValue: Sidebar Title 3
+  title4:
+    type: string
+    defaultValue: Sidebar Title 4
+  title5:
+    type: string
+    defaultValue: Sidebar Title 5
+  title6:
+    type: string
+    defaultValue: Sidebar Title 6
+  title7:
+    type: string
+    defaultValue: Sidebar Title 7
+
+variations:
+  - value: control
+    weight: 10
+
+  - value: treatment
+    weight: 90
+    variables:
+      position: right
+      color: red
+      sections:
+        - home
+        - about
+        - contact
+    variableOverrides:
+      color:
+        - conditions:
+            - countries.germany
+          value: yellow
+        - conditions:
+            - countries.switzerland
+          value: white
+      sections:
+        - conditions:
+            - countries.germany
+          value:
+            - home
+            - about
+            - contact
+            - imprint
+        - conditions:
+            - countries.netherlands
+          value:
+            - home
+            - about
+            - contact
+            - bitterballen
+
+rules:
+  staging:
+    - key: "1"
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: "1"
+      conditions: "*"
+      percentage: 100
+      variables:
+        title: Sidebar Title for production
+
+expose:
+  staging:
+    - all

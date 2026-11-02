@@ -1,0 +1,3 @@
+description: Anything but a desktop. A missing device matches, since != matches a missing value
+
+conditions: device != 'desktop'

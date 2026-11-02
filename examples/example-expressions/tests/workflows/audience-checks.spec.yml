@@ -1,0 +1,46 @@
+description: Audience membership and configuration remain consistent for ${{ country }}
+
+matrix:
+  country:
+    - nl
+    - de
+
+environment: staging
+
+target: connection-tests
+
+context:
+  userId: customer-1
+  country: ${{ country }}
+
+checks:
+  - key: supported-country
+    or:
+      - segment: countries.netherlands
+        matches: true
+      - segment: countries.germany
+        matches: true
+  - key: one-country-at-a-time
+    not:
+      - segment: countries.netherlands
+        matches: true
+      - segment: countries.germany
+        matches: true
+  - segment: everyone
+    matches: true
+  - variable: connectionLimit
+    operator: greaterThan
+    value: 0
+  - feature: checkout.page
+    variable: paymentMethods
+    operator: includes
+    value: visa
+
+children:
+  - context:
+      country: ch
+    checks:
+      - segment: countries.switzerland
+        matches: true
+      - segment: countries.netherlands
+        matches: false

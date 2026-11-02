@@ -1,0 +1,34 @@
+description: Parent and child use their own sticky feature assignments
+
+environment: production
+
+stickyFeatures:
+  allowSignup:
+    enabled: true
+    variation: control
+
+checks:
+  - feature: allowSignup
+    enabled: true
+    variation: control
+  - variable: signupMessage
+    operator: equals
+    value: Create your account
+
+children:
+  - stickyFeatures:
+      allowSignup:
+        enabled: true
+        variation: treatment
+    checks:
+      - feature: allowSignup
+        enabled: true
+        variation: treatment
+      - variable: signupMessage
+        operator: equals
+        value: Sign up with your preferred provider
+      - not:
+          - feature: allowSignup
+            variable: allowGoogleSignUp
+            operator: equals
+            value: false

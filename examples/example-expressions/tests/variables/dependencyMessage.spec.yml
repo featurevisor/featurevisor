@@ -1,0 +1,42 @@
+variable: dependencyMessage
+
+assertions:
+  - description: matches attribute and feature conditions together
+    environment: production
+    context:
+      country: nl
+      device: mobile
+      version: 1.2.3
+    expectedValue: Attribute and feature conditions matched
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: attribute-and-feature-conditions
+
+  - description: matches segment and feature conditions together
+    environment: production
+    context:
+      country: de
+      device: tablet
+    expectedValue: Segment and feature conditions matched
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: segment-and-feature-conditions
+
+  - description: matches an override selected only by a feature condition
+    environment: production
+    context:
+      country: fr
+      device: tablet
+    expectedValue: Feature condition matched
+    expectedEvaluation:
+      reason: variable_override_rule
+      variableOverrideKey: feature-condition-only
+
+  - description: uses the default when no condition based override matches
+    environment: staging
+    context:
+      country: fr
+      device: tablet
+    expectedValue: No condition based override matched
+    expectedEvaluation:
+      reason: variable_default

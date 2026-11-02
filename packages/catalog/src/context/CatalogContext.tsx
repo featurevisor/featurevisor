@@ -24,6 +24,11 @@ export function CatalogProvider(props: {
   return <CatalogContext.Provider value={value}>{props.children}</CatalogContext.Provider>;
 }
 
+/** The Catalog's context, or null outside a CatalogProvider, for parts that also render alone */
+export function useOptionalCatalog() {
+  return React.useContext(CatalogContext);
+}
+
 export function useCatalog() {
   const context = React.useContext(CatalogContext);
 

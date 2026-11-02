@@ -429,7 +429,6 @@ describe("composed variable requirement paths", () => {
     [["label"], "contains", "Buy"],
     [["delivery", "threshold"], "greaterThan", 4],
     [["nested", "delivery", "threshold"], "equals", 5],
-    [["json", "anything"], "exists", undefined],
   ])("derives the source schema for %j", (path, operator, value) => {
     expect(
       requirements().safeParse({
@@ -450,6 +449,23 @@ describe("composed variable requirement paths", () => {
     expect(
       requirements().safeParse({ variable: "checkoutConfig", path, operator, value }).success,
     ).toBe(false);
+  });
+  it.each([[["json"]], [["json", "anything"]]])("rejects reading json source at %j", (path) => {
+    const result = requirements().safeParse({
+      variable: "checkoutConfig",
+      path,
+      operator: "exists",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map(({ message, path }) => ({ message, path }))).toEqual([
+        {
+          message:
+            'Conditions cannot read json values, since their contents have no declared types, and this condition reads one through global variable "checkoutConfig". Give global variable "json/policy" a declared shape, such as type object with properties, to use it here.',
+          path: ["path"],
+        },
+      ]);
+    }
   });
   it("supports structural checks with literal property paths", () => {
     expect(

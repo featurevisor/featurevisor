@@ -1,0 +1,110 @@
+variable: accumulatingPolicy
+
+assertions:
+  - description: replaces the complete value in staging
+    environment: staging
+    expectedValue:
+      items:
+        - id: staging
+          label: Staging
+          message: Staging policy
+    expectedEvaluation:
+      variableOverridePaths:
+        - - staging-extra
+        - - staging-reset
+
+  - description: uses the default when neither selector matches
+    environment: production
+    context:
+      country: de
+      device: desktop
+    expectedValue:
+      items:
+        - id: base
+          label: Base
+          message: Base policy
+
+  - description: appends the Netherlands item for one matching parent
+    environment: production
+    context:
+      country: nl
+      city: rotterdam
+      device: desktop
+    expectedValue:
+      items:
+        - id: base
+          label: Base
+          message: Base policy
+        - id: nl
+          label: Netherlands
+          message: Dutch policy
+    expectedEvaluation:
+      variableOverridePaths:
+        - - netherlands
+    children:
+      - context:
+          city: amsterdam
+        expectedValue:
+          items:
+            - id: base
+              label: Base
+              message: Base policy
+            - id: nl
+              label: Amsterdam
+              message: Amsterdam policy
+        expectedEvaluation:
+          variableOverridePaths:
+            - - netherlands
+            - - netherlands
+              - amsterdam
+            - - netherlands
+              - amsterdam-message
+
+  - description: mobile selectors can miss without changing the accumulated value
+    environment: production
+    context:
+      country: de
+      device: mobile
+    expectedValue:
+      items:
+        - id: mobile
+          label: Mobile
+          message: Mobile policy
+        - id: mobile-tail
+          label: Mobile tail
+          message: Mobile tail policy
+    expectedEvaluation:
+      variableOverridePaths:
+        - - mobile-prepend
+        - - mobile-append
+        - - mobile-select
+        - - mobile-remove
+
+  - description: combines parent, child, and device matches in order
+    environment: production
+    context:
+      country: nl
+      city: amsterdam
+      device: mobile
+    expectedValue:
+      items:
+        - id: mobile
+          label: Mobile
+          message: Mobile policy
+        - id: nl
+          label: Amsterdam
+          message: Mobile Netherlands policy
+        - id: mobile-tail
+          label: Mobile tail
+          message: Mobile tail policy
+    expectedEvaluation:
+      variableOverridePaths:
+        - - netherlands
+        - - netherlands
+          - amsterdam
+        - - netherlands
+          - amsterdam-message
+        - - mobile-prepend
+        - - mobile-append
+        - - mobile-select
+        - - mobile-remove

@@ -1,0 +1,52 @@
+description: Live platform status. Staging overrides simulate incidents for drills
+
+tags:
+  - all
+  - expressions
+
+type: object
+
+properties:
+  maintenance:
+    type: boolean
+  incident:
+    type: object
+    properties:
+      active:
+        type: boolean
+      severity:
+        type: integer
+      regions:
+        type: array
+        items:
+          type: string
+
+defaultValue:
+  maintenance: false
+  incident:
+    active: false
+    severity: 0
+    regions: []
+
+overrides:
+  staging:
+    - key: europe-drill
+      conditions: cohorts includes 'incident-drill-eu'
+      value:
+        maintenance: false
+        incident:
+          active: true
+          severity: 2
+          regions:
+            - eu
+            - global
+
+    - key: us-drill
+      conditions: cohorts includes 'incident-drill-us'
+      value:
+        maintenance: false
+        incident:
+          active: true
+          severity: 4
+          regions:
+            - us

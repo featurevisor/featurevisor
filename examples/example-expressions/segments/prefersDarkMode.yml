@@ -1,0 +1,3 @@
+description: Users who prefer dark mode via flat object attribute
+
+conditions: preferences.theme == 'dark'

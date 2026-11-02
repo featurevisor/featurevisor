@@ -268,7 +268,7 @@ describe("string composition authoring and inferred shapes", () => {
   ])("rejects incompatible mutations for %s: %j", (source, mutation) => {
     expect(mutate(source as string, mutation).success).toBe(false);
   });
-  it("uses source schemas for requirement paths through aliases, maps and JSON", () => {
+  it("uses source schemas for requirement paths through aliases and maps, never JSON", () => {
     const required = getConditionsZodSchema(
       {} as any,
       {},
@@ -293,9 +293,16 @@ describe("string composition authoring and inferred shapes", () => {
     expect(
       required.safeParse({ variable: "count", operator: "greaterThan", value: 1 }).success,
     ).toBe(true);
-    expect(
-      required.safeParse({ variable: "jsonAlias", path: ["anything"], operator: "exists" }).success,
-    ).toBe(true);
+    for (const path of [undefined, ["anything"]]) {
+      const result = required.safeParse({ variable: "jsonAlias", path, operator: "exists" });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toContain(
+          'this condition reads one through global variable "jsonAlias". Give global variable "raw" a declared shape',
+        );
+        expect(result.error.issues[0].path).toEqual([path ? "path" : "variable"]);
+      }
+    }
   });
   it("terminates inference through mixed alias and map cycles", () => {
     const cyclic: Record<string, ParsedVariable> = {

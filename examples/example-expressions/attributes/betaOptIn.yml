@@ -1,0 +1,3 @@
+description: Whether the user opted in to beta features
+
+type: boolean

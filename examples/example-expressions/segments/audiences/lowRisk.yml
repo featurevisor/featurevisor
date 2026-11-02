@@ -1,0 +1,5 @@
+description: Orders scored below a quarter on fraud risk
+
+conditions: |
+  riskScore >= 0
+  and riskScore < 0.25

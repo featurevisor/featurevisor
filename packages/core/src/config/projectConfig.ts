@@ -82,6 +82,16 @@ export interface ProjectConfig {
   requireOverrideKeysInFeatures?: boolean;
   /** Kinds of condition each location accepts. An omitted location accepts every kind. */
   allowedConditions?: AllowedConditions;
+  /**
+   * Allows expressions as strings in `conditions`. Lint reports them while it is false.
+   * Every other command reads them either way. Defaults to false.
+   */
+  conditionExpressions?: boolean;
+  /**
+   * Writes each condition in its simplest form that evaluates the same: `fmt` simplifies as
+   * with `--simplify`, and promote writes the conditions it changes that way. Defaults to false.
+   */
+  simplifyConditions?: boolean;
 
   enforceCatchAllRule?: boolean;
   maxVariableStringLength?: number;
@@ -111,6 +121,8 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     allowFeatureAndVariableKeyCollisions: false,
     requireOverrideKeysInFeatures: false,
     allowedConditions: undefined,
+    conditionExpressions: false,
+    simplifyConditions: false,
 
     adapter: FilesystemAdapter,
 
@@ -246,6 +258,18 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
 
   if (typeof finalConfig.allowedConditions !== "undefined") {
     assertAllowedConditions(finalConfig.allowedConditions);
+  }
+
+  if (typeof finalConfig.conditionExpressions !== "boolean") {
+    throw new Error(
+      `Invalid conditionExpressions: ${finalConfig.conditionExpressions}. It must be a boolean.`,
+    );
+  }
+
+  if (typeof finalConfig.simplifyConditions !== "boolean") {
+    throw new Error(
+      `Invalid simplifyConditions: ${finalConfig.simplifyConditions}. It must be a boolean.`,
+    );
   }
 
   if (!Array.isArray(finalConfig.reservedKeys)) {

@@ -94,6 +94,9 @@ export interface CatalogManifest {
   projectConfig: {
     tags: string[];
     environments?: string[];
+    /** Whether the project writes conditions as expressions, which offers that view of them */
+    conditionExpressions?: boolean;
+    namespaceCharacter?: string;
   };
   dev?: {
     editors: DevEditor[];

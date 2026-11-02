@@ -4,7 +4,7 @@ import { ymlParser } from "./yml";
 
 export { formatJson, type JsonFormatOptions } from "./jsonFormat";
 export type { YmlFormatOptions } from "./ymlFormat";
-export { IGNORE_FILE_COMMENT, IGNORE_LINE_COMMENT } from "./layout";
+export { applyFormatText, IGNORE_FILE_COMMENT, IGNORE_LINE_COMMENT } from "./layout";
 export type { FormatLayout, FormatPath } from "./layout";
 
 export interface CustomParser {
@@ -42,3 +42,6 @@ export const parsers: { [key: string]: CustomParser } = {
 export type BuiltInParser = keyof typeof parsers; // keys of parsers object
 
 export type Parser = BuiltInParser | CustomParser;
+
+export { locateYamlString } from "./locate";
+export type { LocatedString, SourcePosition } from "./locate";

@@ -1,0 +1,3 @@
+description: Italian cities whose names need escapes in single quoted strings
+
+conditions: city in ['L\'Aquila', 'Sant\'Antioco', 'Forl\u00ec'] # featurevisor-ignore-line

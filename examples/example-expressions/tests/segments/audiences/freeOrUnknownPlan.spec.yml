@@ -1,0 +1,16 @@
+segment: audiences.freeOrUnknownPlan
+
+assertions:
+  - description: free matches
+    context:
+      plan: free
+    expectedToMatch: true
+
+  - description: a missing plan matches through notExists
+    context: {}
+    expectedToMatch: true
+
+  - description: pro does not
+    context:
+      plan: pro
+    expectedToMatch: false
