@@ -16,6 +16,8 @@ const common = {
   },
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1",
+    // workspace siblings from source, so a stale build cannot pass the tests
+    "^@featurevisor/expressions$": "<rootDir>/../expressions/src/index.ts",
   },
 };
 

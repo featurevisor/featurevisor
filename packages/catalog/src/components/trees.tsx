@@ -1,7 +1,15 @@
 import * as React from "react";
+import { treeToExpression } from "@featurevisor/expressions";
 import type { Conditions } from "@featurevisor/types";
 
-import { parseConditions, ConditionOutline, type ConditionNode } from "./conditionExpression";
+import { useConditionView, type ConditionView } from "../conditionView";
+import { useOptionalCatalog } from "../context/CatalogContext";
+import {
+  conditionsOf,
+  parseConditions,
+  ConditionOutline,
+  type ConditionNode,
+} from "./conditionExpression";
 import { formatComparisonOperator } from "./valueFormat";
 
 function formatValue(value: unknown): string {
@@ -47,12 +55,94 @@ export function ValueTokens(props: { value: unknown }) {
   );
 }
 
+const VIEWS: { value: ConditionView; label: string }[] = [
+  { value: "tree", label: "Tree" },
+  { value: "expression", label: "Expression" },
+];
+
+/** Shows conditions as the outline or as expressions, for every condition at once */
+function ConditionViewToggle(props: {
+  view: ConditionView;
+  choose: (view: ConditionView, anchor?: Element) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Show conditions as"
+      className="inline-flex shrink-0 self-end rounded-lg bg-elevated p-0.5 sm:self-start"
+    >
+      {VIEWS.map(({ value, label }) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={props.view === value}
+          onClick={(event) => props.choose(value, event.currentTarget)}
+          className={[
+            "rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            props.view === value
+              ? "bg-surface text-text shadow-sm ring-1 ring-border"
+              : "text-muted hover:text-text",
+          ].join(" ")}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Conditions as an expression laid out as fmt writes it, or undefined without an expression form */
+export function toExpression(conditions: unknown, namespaceCharacter?: string): string | undefined {
+  if (conditions === undefined) return undefined;
+  // everyone, or a segment named on its own, reads the same in an expression
+  if (typeof conditions === "string") return conditions === "*" ? "'*'" : conditions;
+  return treeToExpression(conditions as Conditions, { namespaceCharacter, indent: 2 });
+}
+
+/**
+ * Conditions as the outline, or, in a project that writes expressions, as an expression laid
+ * out as fmt writes it when the reader chooses. A condition with no expression form, such as a
+ * disabled feature's variation, stays an outline.
+ */
+function ConditionBody(props: { node: ConditionNode; conditions: unknown; setKey?: string }) {
+  const projectConfig = useOptionalCatalog()?.manifest.projectConfig;
+  const offered = projectConfig?.conditionExpressions === true;
+  const [view, choose] = useConditionView();
+  const namespaceCharacter = projectConfig?.namespaceCharacter;
+  const expression = React.useMemo(
+    () => (offered ? toExpression(props.conditions, namespaceCharacter) : undefined),
+    [offered, props.conditions, namespaceCharacter],
+  );
+  const outline = <ConditionOutline node={props.node} setKey={props.setKey} />;
+  if (!offered) return outline;
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <ConditionViewToggle view={view} choose={choose} />
+      <div className="min-w-0 flex-1 sm:order-first">
+        {view === "expression" && expression !== undefined ? (
+          <pre className="whitespace-pre-wrap font-mono text-xs leading-6 text-text [overflow-wrap:anywhere]">
+            {expression}
+          </pre>
+        ) : (
+          outline
+        )}
+        {view === "expression" && expression === undefined && (
+          <p className="mt-2 text-xs text-muted">
+            Shown as a tree, since it has no expression form.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** All selectors and gates share the same expression renderer. */
 export function ConditionTree(props: { conditions?: Conditions; setKey?: string }) {
   const node = parseConditions(props.conditions);
   return node ? (
     <div className="rounded-lg border border-border bg-surface px-3 py-3 text-sm sm:px-4">
-      <ConditionOutline node={node} setKey={props.setKey} />
+      <ConditionBody node={node} conditions={props.conditions} setKey={props.setKey} />
     </div>
   ) : (
     <p className="text-sm text-muted">No conditions found.</p>
@@ -72,7 +162,11 @@ export function RootConditionsBox(props: {
       </h3>
       <p className="mt-1 text-sm text-muted">{props.children}</p>
       <div className="mt-3 rounded-lg border border-border bg-surface px-3 py-3 sm:px-4">
-        <ConditionOutline node={props.node} setKey={props.setKey} />
+        <ConditionBody
+          node={props.node}
+          conditions={conditionsOf(props.node)}
+          setKey={props.setKey}
+        />
       </div>
     </section>
   );

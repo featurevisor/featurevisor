@@ -105,6 +105,14 @@ function toLeaf(value: unknown): LeafNode | undefined {
   };
 }
 
+// The conditions each parsed node was read from, to show them as an expression
+const sources = new WeakMap<ConditionNode, unknown>();
+
+/** The conditions a node from `parseConditions` was read from */
+export function conditionsOf(node: ConditionNode): unknown {
+  return sources.get(node);
+}
+
 /** A plain array means AND, and a bare string always names a segment. */
 export function parseConditions(value: unknown): ConditionNode | undefined {
   if (value === undefined || value === null) return undefined;
@@ -113,7 +121,9 @@ export function parseConditions(value: unknown): ConditionNode | undefined {
     const children = value
       .map((item) => parseConditions(item))
       .filter((item): item is ConditionNode => Boolean(item));
-    return children.length === 1 ? children[0] : { kind: "group", operator: "and", children };
+    // a list of one is that condition, read from its own source
+    if (children.length === 1) return children[0];
+    return withSource({ kind: "group", operator: "and", children }, value);
   }
 
   if (typeof value === "object") {
@@ -124,11 +134,17 @@ export function parseConditions(value: unknown): ConditionNode | undefined {
       const children = items
         .map((item) => parseConditions(item))
         .filter((item): item is ConditionNode => Boolean(item));
-      return { kind: "group", operator, children };
+      return withSource({ kind: "group", operator, children }, value);
     }
   }
 
-  return toLeaf(value);
+  const leaf = toLeaf(value);
+  return leaf && withSource(leaf, value);
+}
+
+function withSource(node: ConditionNode, value: unknown): ConditionNode {
+  sources.set(node, value);
+  return node;
 }
 
 /** Read the root gate without treating segment strings as features. */

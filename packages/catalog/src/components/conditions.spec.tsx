@@ -2,7 +2,9 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 
-import { ConditionTree } from "./trees";
+import { CatalogProvider } from "../context/CatalogContext";
+import type { CatalogManifest } from "../types";
+import { ConditionTree, toExpression } from "./trees";
 import { describeCheck, CheckSentence } from "./checkSentence";
 import { describeConditions, parseConditions } from "./conditionExpression";
 import { formatComparison, formatComparisonOperator } from "./valueFormat";
@@ -209,4 +211,43 @@ describe("array list condition presentation", () => {
       ).toContain(operator);
     },
   );
+});
+
+describe("conditions as expressions", () => {
+  function renderIn(projectConfig: CatalogManifest["projectConfig"], conditions: unknown) {
+    const manifest = {
+      schemaVersion: "1",
+      generatedAt: "",
+      sets: false,
+      setKeys: [],
+      projectConfig,
+    } as unknown as CatalogManifest;
+    return render(
+      <CatalogProvider initialManifest={manifest}>
+        <ConditionTree conditions={conditions as never} />
+      </CatalogProvider>,
+    );
+  }
+  const conditions = [
+    "netherlands",
+    { attribute: "plan", operator: "in", value: ["paid", "enterprise"] },
+  ];
+
+  it("offers the expression view only in a project that writes expressions", () => {
+    expect(renderIn({ tags: [] }, conditions)).not.toContain('aria-label="Show conditions as"');
+    const html = renderIn({ tags: [], conditionExpressions: true }, conditions);
+    expect(html).toContain('aria-label="Show conditions as"');
+    // the outline shows until the reader chooses
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Tree<\/button>/);
+  });
+
+  it("writes conditions as fmt writes their expression", () => {
+    expect(toExpression(conditions, ".")).toBe("netherlands\nand plan in ['paid', 'enterprise']");
+    expect(toExpression("*")).toBe("'*'");
+    expect(toExpression("countries.netherlands", ".")).toBe("countries.netherlands");
+    // a disabled feature's variation has no expression form, so it stays an outline
+    expect(
+      toExpression({ feature: "pricing", enabled: false, variation: "control" }),
+    ).toBeUndefined();
+  });
 });

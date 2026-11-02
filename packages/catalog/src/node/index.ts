@@ -2743,6 +2743,7 @@ export async function exportCatalog(
       tags: projectConfig.tags,
       environments: projectConfig.environments,
       namespaceCharacter: projectConfig.namespaceCharacter,
+      conditionExpressions: projectConfig.conditionExpressions,
     });
     let canReuse =
       options.compactStorage &&
@@ -2831,6 +2832,8 @@ export async function exportCatalog(
         environments: Array.isArray(projectConfig.environments)
           ? projectConfig.environments
           : undefined,
+        conditionExpressions: projectConfig.conditionExpressions === true || undefined,
+        namespaceCharacter: projectConfig.namespaceCharacter,
       },
       dev: options.dev ? { editors: devEditors } : undefined,
       testReport: testReport && {
