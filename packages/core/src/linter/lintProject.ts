@@ -28,7 +28,12 @@ import { getVariableZodSchema } from "./variableSchema";
 
 import { getLintIssuesFromZodError } from "./printError";
 import { Dependencies } from "../dependencies";
-import { CLI_FORMAT_BOLD_UNDERLINE, CLI_FORMAT_GREEN, CLI_FORMAT_RED } from "../tester/cliFormat";
+import {
+  CLI_FORMAT_BOLD_UNDERLINE,
+  CLI_FORMAT_GREEN,
+  CLI_FORMAT_RED,
+  CLI_FORMAT_YELLOW,
+} from "../tester/cliFormat";
 import { Plugin } from "../cli";
 import { parseRegexOption } from "../cli/validation";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
@@ -51,6 +56,7 @@ import { getTestContextWarnings } from "./contextWarnings";
 import { createCompositionWarningInspector } from "./compositionWarnings";
 import { diagnosticParseOptions } from "./diagnostics";
 import { EntityParseError } from "../datasource/parseError";
+import { TestKeyCollisionError, type TestKeyCollisionDetail } from "../datasource/testKeys";
 import { isEntityKey } from "@featurevisor/expressions";
 import type { ExpressionPosition } from "@featurevisor/expressions";
 import { ConditionExpressionError, getConditionExpressions } from "../datasource/expressions";
@@ -1435,8 +1441,50 @@ export async function lintProject(
     }
   }
 
+  // Spec files that share a test key stop tests and scenarios from being listed, so lint
+  // reports every collision as an issue of its own and checks the specs once they are fixed
+  let testKeyCollisionsReported = false;
+  async function reportTestKeyCollisions(collisions: TestKeyCollisionDetail[]) {
+    for (const collision of collisions) {
+      if (keyPattern && !keyPattern.test(collision.key)) continue;
+      const [kept, ...others] = collision.filePaths;
+      for (const filePath of others) {
+        const rename = collision.renames.find((candidate) => candidate.from === filePath);
+        await reportSimpleError({
+          entityType: "test",
+          key: collision.key,
+          fullPath: filePath,
+          message: `Test key "${collision.key}" is also used by ${path.relative(process.cwd(), kept)}.`,
+          detail: `A test key drops a final ".spec", so both files are one test. Rename this one${rename ? `, for example to ${path.basename(rename.to)}` : ""}.`,
+          code: "test_key_collision",
+        });
+      }
+    }
+    if (!isJsonMode) {
+      console.log(CLI_FORMAT_YELLOW, "Test specs are linted once their keys are unique.");
+      console.log("");
+    }
+  }
+  async function listSpecs(list: () => Promise<string[]>): Promise<string[]> {
+    try {
+      return await list();
+    } catch (error) {
+      if (!(error instanceof TestKeyCollisionError)) throw error;
+      if (!testKeyCollisionsReported) {
+        testKeyCollisionsReported = true;
+        if (
+          !options.entityType ||
+          options.entityType === "test" ||
+          options.entityType === "scenario"
+        )
+          await reportTestKeyCollisions(error.collisions);
+      }
+      return [];
+    }
+  }
+
   // lint tests
-  const tests = await datasource.listTests();
+  const tests = await listSpecs(() => datasource.listTests());
 
   const testsZodSchema = getTestsZodSchema(
     projectConfig,
@@ -1500,7 +1548,7 @@ export async function lintProject(
   }
 
   // lint scenarios
-  const scenarios = await datasource.listScenarios();
+  const scenarios = await listSpecs(() => datasource.listScenarios());
   const scenariosZodSchema = getScenariosZodSchema(
     projectConfig,
     features as [string, ...string[]],
