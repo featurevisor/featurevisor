@@ -9,7 +9,7 @@ percentage = 100
 
 [[rules.production]]
 key = "nl"
-conditions = [ "netherlands" ]
+conditions = "netherlands"
 percentage = 100
 
 [[rules.production]]

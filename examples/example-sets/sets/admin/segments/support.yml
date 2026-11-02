@@ -1,6 +1,6 @@
 description: Support team members
 
 conditions:
-  - attribute: role
-    operator: equals
-    value: support
+  attribute: role
+  operator: equals
+  value: support

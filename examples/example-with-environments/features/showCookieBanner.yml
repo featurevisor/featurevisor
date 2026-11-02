@@ -13,8 +13,7 @@ rules:
 
   production:
     - key: nl
-      conditions:
-        - netherlands # enabled in prod for NL only
+      conditions: netherlands # enabled in prod for NL only
       percentage: 100
 
     - key: everyone

@@ -1,6 +1,6 @@
 description = "The Netherlands"
 
-[[conditions]]
+[conditions]
 attribute = "country"
 operator = "equals"
 value = "nl"
