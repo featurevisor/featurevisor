@@ -4,8 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 
 import { CatalogProvider } from "../context/CatalogContext";
 import type { CatalogManifest } from "../types";
-import { colourExpression } from "./expressionTokens";
-import { ConditionTree, toExpression } from "./trees";
+import { colourExpression, expressionParts } from "./expressionTokens";
+import { ConditionTree, ExpressionText, toExpression } from "./trees";
 import { describeCheck, CheckSentence } from "./checkSentence";
 import { describeConditions, parseConditions } from "./conditionExpression";
 import { formatComparison, formatComparisonOperator } from "./valueFormat";
@@ -289,5 +289,46 @@ describe("expression colours", () => {
       "operator:>=",
       "constant:50",
     ]);
+  });
+});
+
+describe("expression links", () => {
+  const references = (source: string) =>
+    colourExpression(source).flatMap((line) =>
+      expressionParts(line)
+        .filter((part) => part.reference)
+        .map((part) => [part.tokens.map((token) => token.text).join(""), part.reference]),
+    );
+
+  it("names what each part refers to, as the tree view links its leaves", () => {
+    expect(
+      references(
+        "countries.netherlands\nand account.seats >= 50\nand feature('buyButton').label == 'Buy now'\nand feature('pricing').variation == 'control'\nand variable('checkoutSettings').currency == 'EUR'\nand feature('buyButton')['label.v2'] == 'Buy'",
+      ),
+    ).toEqual([
+      ["countries.netherlands", { type: "segment", key: "countries.netherlands" }],
+      ["account.seats", { type: "attribute", key: "account" }],
+      ["feature('buyButton')", { type: "feature", key: "buyButton" }],
+      ["label", { type: "feature", key: "buyButton", variable: "label" }],
+      ["feature('pricing')", { type: "feature", key: "pricing" }],
+      ["variable('checkoutSettings')", { type: "variable", key: "checkoutSettings" }],
+      ["feature('buyButton')", { type: "feature", key: "buyButton" }],
+      ["'label.v2'", { type: "feature", key: "buyButton", variable: "label.v2" }],
+    ]);
+  });
+
+  it("links each reference in its Set, keeping the text as written", () => {
+    const html = render(
+      <ExpressionText
+        source={"netherlands\nand feature('buyButton').label == 'Buy'"}
+        setKey="web"
+      />,
+    );
+    expect(html).toContain('href="/sets/web/segments/netherlands"');
+    expect(html).toContain('href="/sets/web/features/buyButton"');
+    expect(html).toContain('href="/sets/web/features/buyButton/variables#label"');
+    expect(html.replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'")).toBe(
+      "netherlands\nand feature('buyButton').label == 'Buy'".replace("\n", ""),
+    );
   });
 });

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Link } from "react-router-dom";
 import { treeToExpression } from "@featurevisor/expressions";
 import type { Conditions } from "@featurevisor/types";
 
@@ -10,7 +11,14 @@ import {
   ConditionOutline,
   type ConditionNode,
 } from "./conditionExpression";
-import { colourExpression, type ExpressionTokenType } from "./expressionTokens";
+import { getEntityRoute } from "../entityTypes";
+import {
+  colourExpression,
+  expressionParts,
+  type ExpressionReference,
+  type ExpressionTokenType,
+} from "./expressionTokens";
+import { slugifyFragment } from "./variables";
 import { formatComparisonOperator } from "./valueFormat";
 
 function formatValue(value: unknown): string {
@@ -108,18 +116,58 @@ const TOKEN_CLASSES: Record<ExpressionTokenType, string> = {
   plain: "",
 };
 
-/** An expression coloured by meaning, one condition a line as fmt writes it */
-function ExpressionText(props: { source: string }) {
+// A linked part's underline: always there but transparent, fading in on hover or focus in its
+// own colour at under half strength, so the link shows without competing with the colours. The
+// group is named, since a condition can sit in a card that is a group of its own for its
+// permalink, and an unnamed group-hover would light every link in the card at once.
+const LINKED_TOKEN =
+  "underline decoration-transparent decoration-1 underline-offset-[3px] transition-[text-decoration-color] duration-150 group-hover/reference:decoration-[color:color-mix(in_oklab,currentColor_45%,transparent)] group-focus-visible/reference:decoration-[color:color-mix(in_oklab,currentColor_45%,transparent)]";
+
+/** Where a reference in an expression leads, as the tree view links the same leaf */
+function referenceRoute(reference: ExpressionReference, setKey?: string) {
+  if (reference.type === "feature" && reference.variable !== undefined) {
+    const feature = getEntityRoute("feature", reference.key, setKey);
+    return `${feature}/variables#${slugifyFragment(reference.variable)}`;
+  }
+  return getEntityRoute(reference.type, reference.key, setKey);
+}
+
+/**
+ * An expression coloured by meaning, one condition a line as fmt writes it. Each segment,
+ * attribute, feature and variable it names links to its definition, as in the tree view,
+ * keeping its colour.
+ */
+export function ExpressionText(props: { source: string; setKey?: string }) {
   const lines = React.useMemo(() => colourExpression(props.source), [props.source]);
   return (
     <pre className="whitespace-pre-wrap font-mono text-xs leading-6 text-text [overflow-wrap:anywhere]">
       {lines.map((line, index) => (
         <div key={index}>
-          {line.map((token, k) => (
-            <span key={k} className={TOKEN_CLASSES[token.type] || undefined}>
-              {token.text}
-            </span>
-          ))}
+          {expressionParts(line).map((part, k) => {
+            const tokens = part.tokens.map((token, j) => (
+              <span
+                key={j}
+                className={
+                  [TOKEN_CLASSES[token.type], part.reference && LINKED_TOKEN]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
+              >
+                {token.text}
+              </span>
+            ));
+            return part.reference ? (
+              <Link
+                key={k}
+                to={referenceRoute(part.reference, props.setKey)}
+                className="group/reference rounded-sm focus-visible:outline-none"
+              >
+                {tokens}
+              </Link>
+            ) : (
+              <React.Fragment key={k}>{tokens}</React.Fragment>
+            );
+          })}
         </div>
       ))}
     </pre>
@@ -156,7 +204,7 @@ function ConditionBody(props: { node: ConditionNode; conditions: unknown; setKey
       <ConditionViewToggle view={view} choose={choose} />
       <div className="min-w-0 flex-1 sm:order-first">
         {view === "expression" && expression !== undefined ? (
-          <ExpressionText source={expression} />
+          <ExpressionText source={expression} setKey={props.setKey} />
         ) : (
           outline
         )}

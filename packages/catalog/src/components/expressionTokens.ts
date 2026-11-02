@@ -197,3 +197,86 @@ export function colourExpression(source: string): ExpressionToken[][] {
   flush();
   return lines;
 }
+
+/** What a run of an expression's tokens names, to link it as the tree view links its leaves */
+export interface ExpressionReference {
+  type: "segment" | "attribute" | "feature" | "variable";
+  key: string;
+  /** A feature variable, read from the feature in `key` */
+  variable?: string;
+}
+
+export interface ExpressionPart {
+  tokens: ExpressionToken[];
+  reference?: ExpressionReference;
+}
+
+/** The text inside a quoted string, with its escapes read */
+function unquote(text: string): string {
+  return text.slice(1, -1).replace(/\\(.)/g, "$1");
+}
+
+/**
+ * A line's tokens in runs, each run naming what it refers to: a segment, an attribute path's
+ * top level attribute, a whole `feature('…')` or `variable('…')` call, and a feature variable
+ * read after the call as `.label` or `['label.v2']`. `.variation`, a global variable's path and
+ * everything else stay unlinked, as in the tree view.
+ */
+export function expressionParts(line: ExpressionToken[]): ExpressionPart[] {
+  const parts: ExpressionPart[] = [];
+  const at = (index: number) => line[index];
+  const previous = (index: number) => {
+    for (let k = index - 1; k >= 0; k--) if (line[k].text.trim()) return line[k];
+    return undefined;
+  };
+  let index = 0;
+  while (index < line.length) {
+    const token = at(index);
+    if (token.type === "segment") {
+      parts.push({ tokens: [token], reference: { type: "segment", key: token.text } });
+      index++;
+      continue;
+    }
+    if (token.type === "name" && ![".", "]"].includes(previous(index)?.text ?? "")) {
+      const key = token.text.split(".")[0];
+      parts.push({ tokens: [token], reference: { type: "attribute", key } });
+      index++;
+      continue;
+    }
+    const call = [at(index), at(index + 1), at(index + 2), at(index + 3)];
+    if (
+      token.type === "call" &&
+      (token.text === "feature" || token.text === "variable") &&
+      call[1]?.text === "(" &&
+      call[2]?.type === "string" &&
+      call[3]?.text === ")"
+    ) {
+      const key = unquote(call[2].text);
+      parts.push({ tokens: call as ExpressionToken[], reference: { type: token.text, key } });
+      index += 4;
+      if (token.text !== "feature") continue;
+      // a feature variable read from the feature, by name or by a quoted key
+      const next = at(index);
+      const name = at(index + 1);
+      if (next?.text === "." && name?.type === "name" && name.text !== "variation") {
+        parts.push({ tokens: [next] });
+        parts.push({
+          tokens: [name],
+          reference: { type: "feature", key, variable: name.text.split(".")[0] },
+        });
+        index += 2;
+      } else if (next?.text === "[" && name?.type === "string" && at(index + 2)?.text === "]") {
+        parts.push({ tokens: [next] });
+        parts.push({
+          tokens: [name],
+          reference: { type: "feature", key, variable: unquote(name.text) },
+        });
+        index += 2;
+      }
+      continue;
+    }
+    parts.push({ tokens: [token] });
+    index++;
+  }
+  return parts;
+}
