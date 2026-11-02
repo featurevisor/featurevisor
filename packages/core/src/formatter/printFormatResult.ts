@@ -31,7 +31,12 @@ export function printStdinResult(result: FormatProjectResult, options: FormatPro
   }
 }
 
-export function printFormatResult(result: FormatProjectResult, options: FormatProjectOptions) {
+/** `simplifyFlag` is the flag that repeats this run's simplifying, when the project's setting does not */
+export function printFormatResult(
+  result: FormatProjectResult,
+  options: FormatProjectOptions,
+  simplifyFlag = options.simplify ? "--simplify" : "",
+) {
   const write = !options.check && !options.diff;
 
   if (result.unsupported) {
@@ -89,7 +94,7 @@ export function printFormatResult(result: FormatProjectResult, options: FormatPr
     } else {
       const verb = result.changed === 1 ? "needs" : "need";
       const since = options.since === undefined ? "" : ` --since=${options.since}`;
-      const simplify = options.simplify ? " --simplify" : "";
+      const simplify = simplifyFlag ? ` ${simplifyFlag}` : "";
       console.log(
         CLI_FORMAT_YELLOW,
         `${files(result.changed)} of ${total} ${verb} formatting. Run: npx featurevisor fmt${simplify}${since}`,

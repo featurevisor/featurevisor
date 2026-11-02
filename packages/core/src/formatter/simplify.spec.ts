@@ -1,6 +1,13 @@
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+
 import { parsers } from "@featurevisor/parsers";
 
+import { getProjectConfig } from "../config";
+import { Datasource } from "../datasource";
 import { formatDefinition } from "./formatDefinition";
+import { runFormat } from "./run";
 
 // fmt --simplify writes each condition in its simplest form that evaluates the same
 
@@ -119,5 +126,42 @@ describe("fmt --simplify", () => {
   it("formats without simplifying unless asked", () => {
     const source = segment("  - netherlands");
     expect(formatDefinition("segment", source, yml).changed).toBe(false);
+  });
+
+  it("simplifies by default with simplifyConditions, and --no-simplify turns it off", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-simplify-"));
+    const log = jest.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      fs.writeFileSync(
+        path.join(root, "featurevisor.config.js"),
+        "module.exports = { simplifyConditions: true };\n",
+      );
+      fs.mkdirSync(path.join(root, "segments"));
+      fs.writeFileSync(
+        path.join(root, "segments/netherlands.yml"),
+        segment("  - attribute: country", "    operator: equals", "    value: nl"),
+      );
+      const projectConfig = getProjectConfig(root);
+      const datasource = new Datasource(projectConfig, root);
+      const run = (parsed: Record<string, unknown>) =>
+        runFormat({
+          rootDirectoryPath: root,
+          projectConfig,
+          datasource,
+          parsed: { _: [], ...parsed },
+        });
+
+      expect(await run({ check: true, simplify: false })).toBe(0);
+      expect(await run({ check: true })).toBe(1);
+      // the setting already simplifies, so the rerun hint needs no --simplify
+      expect(log.mock.calls.flat().join("\n")).toMatch(/Run: npx featurevisor fmt$/m);
+      expect(await run({})).toBe(0);
+      expect(fs.readFileSync(path.join(root, "segments/netherlands.yml"), "utf8")).toBe(
+        segment("  attribute: country", "  operator: equals", "  value: nl"),
+      );
+    } finally {
+      log.mockRestore();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });

@@ -87,6 +87,11 @@ export interface ProjectConfig {
    * Every other command reads them either way. Defaults to false.
    */
   conditionExpressions?: boolean;
+  /**
+   * Writes each condition in its simplest form that evaluates the same: `fmt` simplifies as
+   * with `--simplify`, and promote writes the conditions it changes that way. Defaults to false.
+   */
+  simplifyConditions?: boolean;
 
   enforceCatchAllRule?: boolean;
   maxVariableStringLength?: number;
@@ -117,6 +122,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     requireOverrideKeysInFeatures: false,
     allowedConditions: undefined,
     conditionExpressions: false,
+    simplifyConditions: false,
 
     adapter: FilesystemAdapter,
 
@@ -257,6 +263,12 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   if (typeof finalConfig.conditionExpressions !== "boolean") {
     throw new Error(
       `Invalid conditionExpressions: ${finalConfig.conditionExpressions}. It must be a boolean.`,
+    );
+  }
+
+  if (typeof finalConfig.simplifyConditions !== "boolean") {
+    throw new Error(
+      `Invalid simplifyConditions: ${finalConfig.simplifyConditions}. It must be a boolean.`,
     );
   }
 

@@ -19,6 +19,9 @@ export async function runFormat({
   parsed,
 }: PluginHandlerOptions): Promise<number> {
   const json = parsed.json === true;
+  // --simplify and --no-simplify win over the project's simplifyConditions
+  const simplifyByDefault = projectConfig.simplifyConditions === true;
+  const simplify = typeof parsed.simplify === "boolean" ? parsed.simplify : simplifyByDefault;
   try {
     const options: FormatProjectOptions = {
       check: parsed.check === true,
@@ -31,7 +34,7 @@ export async function runFormat({
       paths: (parsed.paths as string[] | undefined) || [],
       since: parsed.since as string | undefined,
       set: parsed.set as string | undefined,
-      simplify: parsed.simplify === true,
+      simplify,
     };
     if (parsed.stdinFilepath !== undefined) {
       if (options.paths!.length > 0 || options.since !== undefined) {
@@ -54,7 +57,8 @@ export async function runFormat({
     } else if (options.stdin) {
       printStdinResult(result, options);
     } else {
-      printFormatResult(result, options);
+      const flag = simplify === simplifyByDefault ? "" : simplify ? "--simplify" : "--no-simplify";
+      printFormatResult(result, options, flag);
     }
 
     // --diff alone shows the changes, and --check fails on them, with or without --diff

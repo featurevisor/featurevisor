@@ -150,7 +150,7 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     simplify: {
       type: "boolean",
       description:
-        "also write each condition in its simplest form that evaluates the same, which can change datafiles but never evaluation",
+        "also write each condition in its simplest form that evaluates the same, which can change datafiles but never evaluation. On by default with simplifyConditions in the configuration, and --no-simplify turns it off",
     },
     since: {
       type: "string",
