@@ -701,6 +701,201 @@ describe("convert", () => {
     expect(plan.conflicts).toHaveLength(1);
   });
 
+  describe("environments that inherit", () => {
+    const settings = [
+      "module.exports = {",
+      '  environments: ["dev", "staging", "production"],',
+      '  inheritEnvironments: { dev: { from: "staging" } },',
+      '  requiredEnvironmentsInRules: ["production"],',
+      '  tags: ["all"],',
+      "};",
+      "",
+    ].join("\n");
+    const rollout = (percentage: number) =>
+      [
+        "description: Rollout",
+        "",
+        "tags:",
+        "  - all",
+        "",
+        "bucketBy: userId",
+        "",
+        "variations:",
+        "  - value: control",
+        "    weight: 50",
+        "",
+        "  - value: treatment",
+        "    weight: 50",
+        "",
+        "rules:",
+        "  staging:",
+        "    # the rollout so far",
+        "    - key: everyone",
+        '      conditions: "*"',
+        `      percentage: ${percentage}`,
+        "",
+        "  production:",
+        "    - key: everyone",
+        '      conditions: "*"',
+        `      percentage: ${percentage}`,
+        "",
+      ].join("\n");
+    const history = [
+      { variation: "control", range: [0, 20000] },
+      { variation: "treatment", range: [20000, 40000] },
+      { variation: "control", range: [40000, 60000] },
+      { variation: "treatment", range: [60000, 80000] },
+    ];
+    const state = (features: Record<string, unknown>) => JSON.stringify({ features });
+    const saved = {
+      rollout: {
+        variations: [
+          { value: "control", weight: 50 },
+          { value: "treatment", weight: 50 },
+        ],
+        traffic: [{ key: "everyone", percentage: 80000, allocation: history }],
+      },
+    };
+
+    const inheritingProject = () => {
+      write("featurevisor.config.js", settings);
+      write("attributes/userId.yml", "description: User ID\n\ntype: string\n");
+      write("targets/all.yml", "description: Everything\n");
+      write("features/rollout.yml", rollout(80));
+      write(
+        "features/own.yml",
+        [
+          "description: Own rules",
+          "",
+          "tags:",
+          "  - all",
+          "",
+          "bucketBy: userId",
+          "",
+          "rules:",
+          "  dev: []",
+          "",
+          "  production: []",
+          "",
+        ].join("\n"),
+      );
+      write(
+        "features/noRules.yml",
+        "description: No rules\n\ntags:\n  - all\n\nbucketBy: userId\n\nrules:\n  production: []\n",
+      );
+      write(
+        "variables/supportEmail.yml",
+        [
+          "description: Support email",
+          "",
+          "tags:",
+          "  - all",
+          "",
+          "type: string",
+          "",
+          "defaultValue: help@example.com",
+          "",
+          "overrides:",
+          "  staging:",
+          "    - key: everyone",
+          '      conditions: "*"',
+          "      value: staging@example.com",
+          "",
+        ].join("\n"),
+      );
+      write(".featurevisor/existing-state-staging.json", state(saved));
+      write(".featurevisor/existing-state-production.json", state(saved));
+    };
+
+    it("writes inherited lists into the lane, with their comments", async () => {
+      inheritingProject();
+      expect(await run({ to: "sets", apply: true })).toBe(0);
+
+      expect(read("sets/dev/features/rollout.yml")).toContain(
+        'rules:\n  # the rollout so far\n  - key: everyone\n    conditions: "*"\n    percentage: 80\n',
+      );
+      expect(read("sets/dev/variables/supportEmail.yml")).toContain("value: staging@example.com");
+      expect(read("sets/dev/features/own.yml")).toContain("rules: []\n");
+    });
+
+    it("removes every setting that needs environments, and says so", async () => {
+      inheritingProject();
+      expect(await run({ to: "sets", apply: true })).toBe(0);
+
+      const written = read("featurevisor.config.js");
+      expect(written).not.toContain("environments");
+      expect(written).not.toContain("inheritEnvironments");
+      expect(written).not.toContain("requiredEnvironmentsInRules");
+      expect(printed).toContain(
+        "Writes what dev inherits from staging into 2 files, which then stop following staging.",
+      );
+    });
+
+    it("carries the inherited allocation to the lane's own state", async () => {
+      inheritingProject();
+      expect(await run({ to: "sets", apply: true })).toBe(0);
+
+      const statePath = getExistingStateFilePath(getProjectConfigForSet(config(), "dev"), false);
+      expect(JSON.parse(fs.readFileSync(statePath, "utf8")).features.rollout).toEqual(
+        saved.rollout,
+      );
+    });
+
+    it("keeps an inheriting lane's datafiles byte identical after a rollout history", async () => {
+      inheritingProject();
+      const projectConfig = config();
+      const plan = planConversion(readProject(root, projectConfig), { to: "sets" });
+
+      const result = await checkPlan(plan, root, projectConfig);
+
+      expect(result.problems).toEqual([]);
+      expect(result.passed).toBe(true);
+      expect(result.lanes).toEqual(["dev", "staging", "production"]);
+    });
+
+    it("gives the kept environment what it inherits when going flat", async () => {
+      inheritingProject();
+      expect(await run({ to: "flat", keep: "dev", apply: true })).toBe(0);
+
+      expect(read("features/rollout.yml")).toContain(
+        'rules:\n  # the rollout so far\n  - key: everyone\n    conditions: "*"\n    percentage: 80\n',
+      );
+      expect(read("features/own.yml")).toContain("rules: []\n");
+      expect(read("variables/supportEmail.yml")).toContain("value: staging@example.com");
+      expect(read("featurevisor.config.js")).not.toContain("nvironments");
+      expect(
+        JSON.parse(read(".featurevisor/existing-state.json")).features.rollout.traffic[0]
+          .allocation,
+      ).toEqual(history);
+    });
+
+    it("gives a feature without rules an empty list when going flat or to sets", async () => {
+      write(
+        "featurevisor.config.js",
+        'module.exports = {\n  environments: ["staging", "production"],\n  tags: ["all"],\n};\n',
+      );
+      write("attributes/userId.yml", "description: User ID\n\ntype: string\n");
+      write("targets/all.yml", "description: Everything\n");
+      write(
+        "features/noRules.yml",
+        "description: No rules\n\ntags:\n  - all\n\nbucketBy: userId\n",
+      );
+
+      expect(await run({ to: "sets", apply: true })).toBe(0);
+      expect(read("sets/staging/features/noRules.yml")).toContain("rules: []\n");
+      expect(read("sets/production/features/noRules.yml")).toContain("rules: []\n");
+    });
+
+    it("never infers inheritance going back to environments", async () => {
+      inheritingProject();
+      expect(await run({ to: "sets", apply: true })).toBe(0);
+      expect(await run({ to: "environments", apply: true })).toBe(0);
+
+      expect(read("featurevisor.config.js")).not.toContain("inheritEnvironments");
+      expect(read("features/rollout.yml")).toContain("  dev:\n");
+    });
+  });
+
   describe("checks", () => {
     const planned = () => {
       const projectConfig = config();

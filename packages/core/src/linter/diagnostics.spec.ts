@@ -174,23 +174,25 @@ describe("authoring diagnostics", () => {
     ).toBe(true);
   });
 
-  it.each([false, true])(
-    "describes missing rules in the configured shape (environments: %s)",
-    async (environments) => {
-      if (environments)
-        write("featurevisor.config.js", 'module.exports = { environments: ["production"] };');
-      write("features/missingRules.yml", "description: Missing rules\nbucketBy: userId\n");
-      const result = await lint();
-      expect(result.errors).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            path: ["rules"],
-            message: `Missing required \`rules\`. Expected ${environments ? "an object mapping environments to lists of rules" : "a list of rules"}.`,
-          }),
-        ]),
-      );
-    },
-  );
+  it("allows a feature to leave out rules in a project with environments", async () => {
+    write("featurevisor.config.js", 'module.exports = { environments: ["production"] };');
+    write("features/missingRules.yml", "description: Missing rules\nbucketBy: userId\n");
+    const result = await lint();
+    expect(result.errors.filter((error) => error.path?.[0] === "rules")).toEqual([]);
+  });
+
+  it("describes missing rules in a project without environments", async () => {
+    write("features/missingRules.yml", "description: Missing rules\nbucketBy: userId\n");
+    const result = await lint();
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: ["rules"],
+          message: "Missing required `rules`. Expected a list of rules.",
+        }),
+      ]),
+    );
+  });
 
   it("keeps confident operator suggestions compact and retains the list for distant typos", async () => {
     write(

@@ -71,7 +71,7 @@ npx featurevisor info
 Four values change the **shape of everything you write**:
 
 - `sets`: when `true`, every definition lives under `sets/<set>/` and commands take `--set`. Read [sets-promotions.md](references/sets-promotions.md) first.
-- `environments`: when declared, feature `rules`, `force` and `expose`, and global variable `overrides`, are maps keyed by environment. Without it they are direct lists, and `expose` is a boolean or tag list.
+- `environments`: when declared, feature `rules`, `force` and `expose`, and global variable `overrides`, are maps keyed by environment. Without it they are direct lists, and `expose` is a boolean or tag list. With `inheritEnvironments`, an environment left out of a map uses another environment's entry, so check it before saying an environment is off, and before writing entries into definitions that do not need them ([configuration.md](references/configuration.md#add-another-environment-later)).
 - `parser`: author JSON for `"json"`, YAML for `"yml"` (default), or the configured custom format ([custom-parsers.md](references/custom-parsers.md)).
 - `namespaceCharacter`: separator for keys from subdirectories. Default `.`, so `features/checkout/promo.yml` is `checkout.promo`. Some projects use `/`. Every reference must use the project's separator. Confirm against real keys with `npx featurevisor list --segments --json`.
 

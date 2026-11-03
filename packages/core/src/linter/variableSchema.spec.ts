@@ -40,6 +40,48 @@ function parse(value: unknown) {
   ).safeParse(value);
 }
 
+describe("requiredEnvironmentsInOverrides", () => {
+  const required = (variable: Record<string, unknown>, settings: Partial<ProjectConfig> = {}) =>
+    getVariableZodSchema(
+      { ...config, requiredEnvironmentsInOverrides: ["production"], ...settings },
+      attributes,
+      ["europe"],
+      features,
+      schemas,
+      {} as never,
+    ).safeParse({ description: "Support email", ...variable });
+  const ordinary = { type: "string", defaultValue: "support@example.com" };
+  const override = { key: "everyone", conditions: "*", value: "help@example.com" };
+  const missing = {
+    path: ["overrides", "production"],
+    message:
+      'Missing overrides for required environment "production". Add them, or write "production: []" for none there.',
+    params: { code: "missing_required_environment" },
+  };
+
+  it("accepts overrides or an empty list for the environment", () => {
+    expect(required({ ...ordinary, overrides: { production: [override] } }).success).toBe(true);
+    expect(required({ ...ordinary, overrides: { production: [] } }).success).toBe(true);
+  });
+
+  it.each([
+    ["the environment", { ...ordinary, overrides: { staging: [override] } }],
+    ["all of overrides", ordinary],
+    ["the overrides of a composition", { compose: "gate" }],
+  ])("fails when %s is left out", (_, variable) => {
+    const issues = required(variable).error?.issues;
+    expect(issues).toEqual(expect.arrayContaining([expect.objectContaining(missing)]));
+  });
+
+  it("leaves archived variables alone", () => {
+    expect(required({ ...ordinary, archived: true }).success).toBe(true);
+  });
+
+  it("asks for nothing without the setting", () => {
+    expect(required(ordinary, { requiredEnvironmentsInOverrides: undefined }).success).toBe(true);
+  });
+});
+
 describe("global variable schema", () => {
   it.each([
     ["double", 1.5, "Replace `type: double` with `type: number`."],

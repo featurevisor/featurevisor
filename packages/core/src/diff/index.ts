@@ -6,7 +6,14 @@ import { CONFIG_MODULE_NAME, getProjectConfigForSet, type ProjectConfig } from "
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
 import { compareValues, type ValueChange } from "./compare";
 import { withBuiltConditions, type ConditionsView } from "./conditions";
-import { describeDefinitionChanges, formatDetails, type DiffDetail } from "./details";
+import {
+  describeDefinitionChanges,
+  describeInheritanceChanges,
+  formatDetails,
+  formatInheritanceChange,
+  type DiffDetail,
+  type InheritanceChange,
+} from "./details";
 import { DiffGit, diffError, type DiffSelection, type GitFile } from "./git";
 import { isScenarioSpec } from "../datasource/testSpecs";
 
@@ -33,6 +40,8 @@ export interface EntityChange extends Entity {
   kind: "added" | "removed" | "changed";
   changes: ValueChange[];
   details: DiffDetail[];
+  /** What this change means for environments that inherit, when anything */
+  inheritance?: InheritanceChange[];
 }
 
 export interface DefinitionDiff extends DiffSelection {
@@ -214,12 +223,19 @@ export function diffDefinitions(
     if (entity.entity === "test" && isScenarioSpec(next ?? previous)) {
       entity.entity = "scenario";
     }
+    const inheritance = describeInheritanceChanges(
+      entity.entity,
+      previous,
+      next,
+      config.inheritEnvironments,
+    );
     result.changes.push({
       ...entity,
       file,
       kind,
       changes,
       details: describeDefinitionChanges(entity.entity, previous, next, view),
+      ...(inheritance.length > 0 ? { inheritance } : {}),
     });
   }
   const currentConfig = git
@@ -270,6 +286,9 @@ export function formatDefinitionDiff(result: DefinitionDiff, colour = false): st
       continue;
     }
     lines.push(...formatDetails(entity.details, colour));
+    for (const change of entity.inheritance || []) {
+      lines.push(`  ${paint(formatInheritanceChange(change), 36)}`);
+    }
   }
   lines.push(
     "",

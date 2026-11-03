@@ -4,6 +4,7 @@ import { Plugin } from "../cli";
 import { getProjectSetExecutions, printSetHeader } from "../sets";
 import { CLI_COLOR_CYAN, CLI_FORMAT_BOLD, colorize } from "../tester/cliFormat";
 import { buildRuntimeDatafiles } from "../builder/buildRuntimeDatafiles";
+import { getInheritedEnvironment } from "../builder/environments";
 
 const INFO_LABEL_WIDTH = "Total Variables (in features):".length;
 
@@ -38,6 +39,8 @@ async function showTargetInfo(deps: Dependencies, target: string | string[]) {
       console.log("");
       console.log(CLI_FORMAT_BOLD, `Target "${entry.target}"`);
       printInfoLine("Environment", environment);
+      const inheritsFrom = getInheritedEnvironment(projectConfig, environment);
+      if (inheritsFrom) printInfoLine("Inherits from", inheritsFrom);
       printInfoLine("Features", Object.keys(entry.datafile.features).length);
       printInfoLine("Segments", Object.keys(entry.datafile.segments).length);
       printInfoLine("Total Variables", Object.keys(entry.datafile.variables || {}).length);

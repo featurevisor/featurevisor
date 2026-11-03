@@ -53,11 +53,7 @@ export const diagnosticParseOptions = {
       const shapes: Record<string, string> = {
         bucketBy: "an attribute key, an array of attribute keys, or { or: [attribute keys] }",
         segments: '"*", a segment key, an array of segments, or an and/or/not group',
-        rules:
-          issue.code === "invalid_type" &&
-          (issue.expected === "object" || issue.expected === "record")
-            ? "an object mapping environments to lists of rules"
-            : "a list of rules",
+        rules: "a list of rules",
       };
       const expected =
         shapes[String(field)] ||

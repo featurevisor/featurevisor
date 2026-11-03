@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import { isMap, isSeq, Scalar, YAMLMap } from "yaml";
 import type { Document, Node } from "yaml";
-import type { EntityType } from "@featurevisor/types";
+import type { EntityType, ExistingState } from "@featurevisor/types";
 
 import { CONFIG_MODULE_NAME, getProjectConfigForSet } from "../config";
 import { getExistingStateFilePath } from "../datasource/filesystemAdapter";
@@ -89,6 +89,13 @@ const LANE_KEYS: Partial<Record<Kind, string[]>> = {
 
 const SHARED: Kind[] = ["attribute", "schema", "segment", "target"];
 
+/** Settings that mean nothing without environments, which go when they do */
+const ENVIRONMENT_SETTINGS = [
+  "inheritEnvironments",
+  "requiredEnvironmentsInRules",
+  "requiredEnvironmentsInOverrides",
+] as const;
+
 /** featurevisor.config.js in a plan */
 export interface ConfigPlan {
   /** What convert changed, or what the user changes by hand, as the summary says it */
@@ -133,6 +140,8 @@ class Builder {
   rewritten = new Set<string>();
   /** Whether fmt leaves each file as it is, asked once however many lanes it is written to */
   private wasFormatted = new Map<DefinitionFile, boolean>();
+  /** Files each lane's inherited lists are written out into, by the environment they come from */
+  private inherited = new Map<string, Set<DefinitionFile>>();
   private configPath: string;
   private configText?: string;
 
@@ -203,6 +212,68 @@ class Builder {
     if (!fs.existsSync(from)) return;
     const content = fs.readFileSync(from, "utf8");
     this.remove(from);
+    for (const target of to) this.write(target, content);
+  }
+
+  /** `environments`, and the settings that cannot stay without it */
+  get environmentSettings(): string[] {
+    const { config } = this.project;
+    return ["environments", ...ENVIRONMENT_SETTINGS.filter((name) => config[name] !== undefined)];
+  }
+
+  /**
+   * The environment whose list a lane takes at `key`: its own, or the one it inherits from, as
+   * the lane builds. A lane that stops being an environment has nothing left to inherit from.
+   */
+  laneOf(file: DefinitionFile, map: YAMLMap, key: string, lane: string): string {
+    const from = this.project.config.inheritEnvironments?.[lane]?.from;
+    const lanes = map.get(key);
+    if (!from || !isMap(lanes) || lanes.has(lane) || !lanes.has(from)) return lane;
+    this.inherited.set(lane, (this.inherited.get(lane) || new Set()).add(file));
+    return from;
+  }
+
+  /** Says which lanes had inherited lists written out, which their files did not say before */
+  noteInherited() {
+    for (const [lane, written] of this.inherited) {
+      const { from } = this.project.config.inheritEnvironments![lane];
+      this.plan.differences.push(
+        `Writes what ${lane} inherits from ${from} into ${files(written.size)}, which then stop following ${from}.`,
+      );
+    }
+  }
+
+  /**
+   * Moves an environment's state to where it goes next. A feature inheriting its rules allocates
+   * from the state of the environment it inherits from, and after this only from the lane's own,
+   * so that state comes along, or the lane's users would change variations.
+   */
+  moveEnvironmentState(lane: string, to: string[]) {
+    const { config, parser } = this.project;
+    const stateFile = this.state(lane, "environments");
+    const from = config.inheritEnvironments?.[lane]?.from;
+    if (!from) return this.moveState(stateFile, to);
+
+    const read = (filePath: string): ExistingState =>
+      fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, "utf8")) : { features: {} };
+    const inherited = read(this.state(from, "environments"));
+    const state = read(stateFile);
+    const has = (value: unknown, key: string) =>
+      Object.prototype.hasOwnProperty.call(value ?? {}, key);
+    for (const file of this.project.files) {
+      if (file.kind !== "feature") continue;
+      const { rules } = file.value as { rules?: unknown };
+      if (has(rules, lane) || !has(rules, from)) continue;
+      const key = file.relative
+        .slice(0, -(parser.extension.length + 1))
+        .split(path.sep)
+        .join(config.namespaceCharacter);
+      if (inherited.features[key]) state.features[key] = inherited.features[key];
+      else delete state.features[key];
+    }
+    if (!fs.existsSync(stateFile) && Object.keys(state.features).length === 0) return;
+    this.remove(stateFile);
+    const content = JSON.stringify(state, null, config.prettyState ? 2 : undefined);
     for (const target of to) this.write(target, content);
   }
 
@@ -369,7 +440,12 @@ function environmentsToSets(builder: Builder, project: Project) {
       if (map) {
         for (const key of LANE_KEYS[file.kind] || []) {
           // a feature with no rules in an environment keeps no rules in its set
-          takeLane(map, key, lane, key === "rules" ? [] : undefined);
+          takeLane(
+            map,
+            key,
+            builder.laneOf(file, map, key, lane),
+            key === "rules" ? [] : undefined,
+          );
         }
       }
       builder.write(target, builder.rendered(file, doc));
@@ -377,9 +453,10 @@ function environmentsToSets(builder: Builder, project: Project) {
     builder.remove(file.filePath);
   }
   for (const lane of lanes) {
-    builder.moveState(builder.state(lane, "environments"), [builder.state(lane, "sets")]);
+    builder.moveEnvironmentState(lane, [builder.state(lane, "sets")]);
   }
-  builder.configureSets(["environments"]);
+  builder.noteInherited();
+  builder.configureSets(builder.environmentSettings);
   builder.plan.next.push(
     "Pass --set=<name> where CI and scripts passed --environment=<name>. Applications load the same datafile paths.",
   );
@@ -596,10 +673,11 @@ function environmentsToFlat(builder: Builder, project: Project, keep: string) {
       const map = rootMap(doc);
       for (const key of (map && LANE_KEYS[file.kind]) || []) {
         const lanes = map!.get(key);
-        if (isMap(lanes) && lanes.items.length > (lanes.has(keep) ? 1 : 0)) {
+        const lane = builder.laneOf(file, map!, key, keep);
+        if (isMap(lanes) && lanes.items.length > (lanes.has(lane) ? 1 : 0)) {
           dropped.set(key, (dropped.get(key) || 0) + 1);
         }
-        takeLane(map!, key, keep, key === "rules" ? [] : undefined);
+        takeLane(map!, key, lane, key === "rules" ? [] : undefined);
       }
     }
     if (!result) builder.remove(file.filePath);
@@ -610,13 +688,14 @@ function environmentsToFlat(builder: Builder, project: Project, keep: string) {
   }
   const others = builder.plan.lanes.filter((lane) => lane !== keep);
   for (const lane of others) builder.remove(builder.state(lane, "environments"));
-  builder.moveState(builder.state(keep, "environments"), [builder.state(undefined, "flat")]);
+  builder.moveEnvironmentState(keep, [builder.state(undefined, "flat")]);
+  builder.noteInherited();
   for (const [what, count] of dropped) {
     builder.plan.differences.push(
       `Drops ${others.join(", ")} from ${what} in ${files(count)}, keeping ${keep}.`,
     );
   }
-  builder.config({ remove: ["environments"] });
+  builder.config({ remove: builder.environmentSettings });
   builder.moveDatafiles(`from datafiles/${keep}/ to datafiles/`);
 }
 

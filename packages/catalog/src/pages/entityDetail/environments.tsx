@@ -5,16 +5,71 @@ import type { EntityDetail } from "../../types";
 import { EmptyState } from "../../components/ui";
 import { MutationView } from "../../components/mutations";
 import { parseConditions, describeConditions } from "../../components/conditionExpression";
+import { useOptionalCatalog } from "../../context/CatalogContext";
+import {
+  getInheritedFrom,
+  withInherited,
+  type InheritEnvironments,
+} from "../../environmentInheritance";
 
-export function getEnvironmentItems(detail: EntityDetail, tab: "rules" | "force" | "overrides") {
+export function useInheritEnvironments() {
+  return useOptionalCatalog()?.manifest.projectConfig.inheritEnvironments;
+}
+
+export function getEnvironmentItems(
+  detail: EntityDetail,
+  tab: "rules" | "force" | "overrides",
+  inherit?: InheritEnvironments,
+) {
   const entity = detail.entity as Record<string, any>;
-  const value = entity[tab];
+  const value = withInherited(entity[tab], inherit);
 
   if (!value || Array.isArray(value)) {
     return [];
   }
 
   return Object.keys(value).sort(sortEnvironmentKeys);
+}
+
+/**
+ * Says where an environment's list comes from, once and above it. An inherited list is as live as
+ * any other, so it looks like any other. Only an environment that inherits has anything to say.
+ */
+export function InheritanceNotice(props: {
+  authored: unknown;
+  environment?: string;
+  inherit?: InheritEnvironments;
+  base: string;
+  /** What the list is called, such as "this feature's rules" */
+  list: string;
+}) {
+  const { environment, inherit, authored } = props;
+  const from = getInheritedFrom(authored, environment, inherit);
+  const parent = environment ? inherit?.[environment]?.from : undefined;
+  const entry = environment ? (authored as Record<string, unknown> | undefined)?.[environment] : [];
+  const emptied = !from && parent && Array.isArray(entry) && entry.length === 0;
+  if (!from && !emptied) return null;
+
+  const link = (
+    <Link to={`../${props.base}/${from ?? parent}`} className="text-primary hover:underline">
+      {from ?? parent}
+    </Link>
+  );
+  return (
+    <p className="text-sm text-muted">
+      {from ? (
+        <>
+          Inherited from {link}. Add <code className="font-mono text-xs">{environment}</code> to{" "}
+          {props.list} to give it its own.
+        </>
+      ) : (
+        <>
+          An empty list for <code className="font-mono text-xs">{environment}</code>, so nothing is
+          inherited from {link}.
+        </>
+      )}
+    </p>
+  );
 }
 
 function getEnvironmentSortGroup(value: string) {
@@ -31,7 +86,7 @@ function getEnvironmentSortGroup(value: string) {
   return 1;
 }
 
-function sortEnvironmentKeys(left: string, right: string) {
+export function sortEnvironmentKeys(left: string, right: string) {
   const leftGroup = getEnvironmentSortGroup(left);
   const rightGroup = getEnvironmentSortGroup(right);
 
@@ -260,8 +315,15 @@ export function EnvironmentComparison(props: {
   compared: [string, string];
   rowsByEnvironment: Record<string, unknown>;
   kind: "rules" | "force" | "overrides";
+  /** The lists as written, to say which of the compared environments inherits */
+  authored?: unknown;
+  inherit?: InheritEnvironments;
 }) {
   const [left, right] = props.compared;
+  const inherited = props.compared.flatMap((environment) => {
+    const from = getInheritedFrom(props.authored, environment, props.inherit);
+    return from ? [`${environment} inherits these from ${from}.`] : [];
+  });
   const rowsFor = (environment: string) => {
     const rows = props.rowsByEnvironment?.[environment];
     return (Array.isArray(rows) ? rows : []) as Array<Record<string, unknown>>;
@@ -338,6 +400,7 @@ export function EnvironmentComparison(props: {
         {props.kind === "force"
           ? "Entries are paired by position."
           : `${props.kind === "overrides" ? "Overrides" : "Rules"} are paired by key.`}
+        {inherited.length > 0 && ` ${inherited.join(" ")}`}
       </p>
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full table-fixed text-sm">

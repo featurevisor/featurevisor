@@ -23,19 +23,24 @@ import {
 import {
   EnvironmentComparison,
   EnvironmentPills,
+  InheritanceNotice,
   getEnvironmentItems,
   useComparedEnvironments,
+  useInheritEnvironments,
   useSelectedEnvironment,
 } from "./environments";
+import { withInheritedEntries } from "../../environmentInheritance";
 
 export function FeatureRulesTab() {
   const { detail, setKey } = useEntityDetail();
   const { environmentKey } = useParams();
   const entity = detail.entity as Record<string, any>;
-  const environments = getEnvironmentItems(detail, "rules");
+  const inherit = useInheritEnvironments();
+  const environments = getEnvironmentItems(detail, "rules", inherit);
   const selectedEnvironment = useSelectedEnvironment(environments, environmentKey);
-  const rules = environments.length > 0 ? entity.rules?.[selectedEnvironment] : entity.rules;
-  const expose = environments.length > 0 ? entity.expose?.[selectedEnvironment] : entity.expose;
+  const resolved = withInheritedEntries(entity, inherit);
+  const rules = environments.length > 0 ? resolved.rules?.[selectedEnvironment] : entity.rules;
+  const expose = environments.length > 0 ? resolved.expose?.[selectedEnvironment] : entity.expose;
 
   if (detail.type !== "feature") return <Navigate to=".." replace />;
 
@@ -46,13 +51,15 @@ export function FeatureRulesTab() {
       environments={environments}
       selectedEnvironment={selectedEnvironment}
       rows={rules || []}
-      rowsByEnvironment={environments.length > 0 ? entity.rules : undefined}
+      rowsByEnvironment={environments.length > 0 ? resolved.rules : undefined}
+      authored={entity.rules}
+      list="this feature's rules"
       expose={expose}
       requirement={parseEntityConditions(entity)}
       featureVariations={Array.isArray(entity.variations) ? entity.variations : undefined}
       showFallthrough
       forceDecides={hasDecidingForce(
-        environments.length > 0 ? entity.force?.[selectedEnvironment] : entity.force,
+        environments.length > 0 ? resolved.force?.[selectedEnvironment] : entity.force,
       )}
       observedRuleKeys={
         detail.observedRules
@@ -76,9 +83,11 @@ export function FeatureForceTab() {
   const { detail, setKey } = useEntityDetail();
   const { environmentKey } = useParams();
   const entity = detail.entity as Record<string, any>;
-  const environments = getEnvironmentItems(detail, "force");
+  const inherit = useInheritEnvironments();
+  const environments = getEnvironmentItems(detail, "force", inherit);
   const selectedEnvironment = useSelectedEnvironment(environments, environmentKey);
-  const rows = environments.length > 0 ? entity.force?.[selectedEnvironment] : entity.force;
+  const resolved = withInheritedEntries(entity, inherit);
+  const rows = environments.length > 0 ? resolved.force?.[selectedEnvironment] : entity.force;
 
   if (detail.type !== "feature") return <Navigate to=".." replace />;
 
@@ -90,7 +99,9 @@ export function FeatureForceTab() {
       environments={environments}
       selectedEnvironment={selectedEnvironment}
       rows={rows || []}
-      rowsByEnvironment={environments.length > 0 ? entity.force : undefined}
+      rowsByEnvironment={environments.length > 0 ? resolved.force : undefined}
+      authored={entity.force}
+      list="this feature's force entries"
       setKey={setKey}
     />
   );
@@ -104,6 +115,9 @@ function FeatureRows(props: {
   selectedEnvironment?: string;
   rows: any[];
   rowsByEnvironment?: Record<string, unknown>;
+  /** The lists as written, which say where the selected environment's list comes from */
+  authored?: unknown;
+  list: string;
   expose?: unknown;
   /** Rules only: requirements are checked before rules, while forced values bypass them. */
   requirement?: ConditionNode;
@@ -118,6 +132,7 @@ function FeatureRows(props: {
 }) {
   useScrollToHash([props.base, props.selectedEnvironment, props.rows.length]);
   const { compared, setCompared } = useComparedEnvironments(props.environments);
+  const inherit = useInheritEnvironments();
 
   if (props.environments.length > 0 && props.selectedEnvironment) {
     const isKnown = props.environments.includes(props.selectedEnvironment);
@@ -141,9 +156,19 @@ function FeatureRows(props: {
           compared={compared}
           rowsByEnvironment={props.rowsByEnvironment}
           kind={props.base === "force" ? "force" : "rules"}
+          authored={props.authored}
+          inherit={inherit}
         />
       ) : (
         <>
+          <InheritanceNotice
+            authored={props.authored}
+            environment={props.selectedEnvironment}
+            inherit={inherit}
+            base={props.base}
+            list={props.list}
+          />
+
           {typeof props.expose !== "undefined" && (
             <ExposeNotice
               expose={props.expose}

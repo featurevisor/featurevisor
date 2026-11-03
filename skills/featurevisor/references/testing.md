@@ -272,7 +272,7 @@ assertions:
 
 `target: web` evaluates against that target's datafile, as an application loading it would. A definition the target leaves out evaluates as missing, which is how to test that a target excludes it. Use `matrix: { target: [web, mobile] }` with `target: ${{ target }}` to repeat across targets. `npx featurevisor test --target=web` runs untargeted assertions plus those for `web`.
 
-With environments configured, every feature and global variable assertion needs `environment: <name>`. Without environments, `environment` is a lint error.
+With environments configured, every feature and global variable assertion needs `environment: <name>`. Without environments, `environment` is a lint error. Assertions do not inherit, so an environment using `inheritEnvironments` has none until you write them.
 
 ## What to cover
 

@@ -405,6 +405,23 @@ export function getVariableZodSchema(
       )
     : overridesArraySchema;
 
+  const refineRequiredEnvironments = (
+    variable: { archived?: boolean; overrides?: unknown },
+    ctx: z.RefinementCtx,
+  ) => {
+    if (variable.archived === true) return;
+    for (const environment of projectConfig.requiredEnvironmentsInOverrides || []) {
+      if (!Object.prototype.hasOwnProperty.call(variable.overrides ?? {}, environment)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Missing overrides for required environment "${environment}". Add them, or write "${environment}: []" for none there.`,
+          params: { code: "missing_required_environment" },
+          path: ["overrides", environment],
+        });
+      }
+    }
+  };
+
   const variableSchema = z
     .object({
       archived: z.boolean().optional(),
@@ -452,6 +469,7 @@ export function getVariableZodSchema(
     .strict()
     .superRefine((variable, ctx) => {
       refineRemovedConditionFields(variable, ctx);
+      refineRequiredEnvironments(variable, ctx);
       const variableKey = getVariableKey();
       const hasReference = Boolean(variable.schema);
       const inlineFields = [
@@ -800,6 +818,7 @@ export function getVariableZodSchema(
     )
     .superRefine((variable, ctx) => {
       refineRemovedConditionFields(variable, ctx);
+      refineRequiredEnvironments(variable, ctx);
       for (const [alias, reference] of getCompositionEntries(variable)) {
         if (!referenceSchema.safeParse(reference).success) continue;
         if ("feature" in reference) {

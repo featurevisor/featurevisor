@@ -10,6 +10,8 @@ import { comparisonOperators } from "../linter/comparisonOperators";
 import { assertNoGroupDefinitions, REMOVED_GROUPS_MESSAGE } from "./removedGroups";
 import { assertAllowedConditions } from "./allowedConditions";
 import type { AllowedConditions } from "./allowedConditions";
+import { assertEnvironmentSettings } from "./environmentSettings";
+import type { InheritEnvironments } from "./environmentSettings";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
@@ -61,6 +63,15 @@ export interface ProjectConfig {
   setsDirectoryPath: string;
 
   environments?: string[];
+  /**
+   * Environments that use another environment's `rules`, `force`, `expose` and `overrides`
+   * wherever a definition leaves theirs out, one level deep.
+   */
+  inheritEnvironments?: InheritEnvironments;
+  /** Environments every feature's `rules` must write out, if only as an empty list. */
+  requiredEnvironmentsInRules?: string[];
+  /** Environments every global variable's `overrides` must write out, if only as an empty list. */
+  requiredEnvironmentsInOverrides?: string[];
   sets: boolean;
   tags: string[];
   reservedKeys?: string[];
@@ -104,6 +115,9 @@ export interface ProjectConfig {
 export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   const baseConfig: ProjectConfig = {
     environments: undefined,
+    inheritEnvironments: undefined,
+    requiredEnvironmentsInRules: undefined,
+    requiredEnvironmentsInOverrides: undefined,
     sets: DEFAULT_SETS,
     promotionFlows: undefined,
     namespaceCharacter: DEFAULT_NAMESPACE_CHARACTER,
@@ -324,6 +338,8 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     });
   }
 
+  assertEnvironmentSettings(finalConfig);
+
   if (
     typeof finalConfig.namespaceCharacter !== "string" ||
     finalConfig.namespaceCharacter.length === 0
@@ -414,8 +430,11 @@ export function showProjectConfig(
       continue;
     }
 
+    const value = projectConfig[key];
     console.log(
-      `  ${colorize(key.padEnd(longestKeyLength, " "), CLI_COLOR_CYAN)}: ${projectConfig[key]}`,
+      `  ${colorize(key.padEnd(longestKeyLength, " "), CLI_COLOR_CYAN)}: ${
+        value && typeof value === "object" && !Array.isArray(value) ? JSON.stringify(value) : value
+      }`,
     );
   }
 }

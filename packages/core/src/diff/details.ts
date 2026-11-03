@@ -265,6 +265,58 @@ function fields(
 }
 
 /** Conditions read as every command reads them, shown as trees */
+/** A change to one environment's list, as it reaches an environment that inherits from it */
+export interface InheritanceChange {
+  environment: string;
+  from: string;
+  key: string;
+  change: "reaches" | "stops" | "starts";
+}
+
+const INHERITED_KEYS: Record<string, string[]> = {
+  feature: ["rules", "force", "expose"],
+  variable: ["overrides"],
+};
+
+/** What a definition's change means for environments that inherit, which its file cannot say */
+export function describeInheritanceChanges(
+  entity: string,
+  before: unknown,
+  after: unknown,
+  inheritEnvironments: Record<string, { from: string }> | undefined,
+): InheritanceChange[] {
+  if (!record(before) || !record(after) || !inheritEnvironments) return [];
+  const has = (value: unknown, key: string) => record(value) && own(value, key);
+  return (INHERITED_KEYS[entity] || []).flatMap((key) =>
+    Object.entries(inheritEnvironments).flatMap(([environment, { from }]) => {
+      const had = has(before[key], environment);
+      const hasNow = has(after[key], environment);
+      const change = (kind: InheritanceChange["change"]) => [
+        { environment, from, key, change: kind },
+      ];
+      if (!had && hasNow) return has(before[key], from) ? change("stops") : [];
+      if (had && !hasNow) return has(after[key], from) ? change("starts") : [];
+      if (had) return [];
+      const list = (value: unknown) =>
+        record(value) && own(value, from) ? value[from] : undefined;
+      return isDeepStrictEqual(list(before[key]), list(after[key])) ? [] : change("reaches");
+    }),
+  );
+}
+
+export function formatInheritanceChange({
+  environment,
+  from,
+  key,
+  change,
+}: InheritanceChange): string {
+  if (change === "reaches")
+    return `Also reaches ${environment}, which inherits ${key} from ${from}.`;
+  return change === "stops"
+    ? `${environment} stops inheriting ${key} from ${from}.`
+    : `${environment} now inherits ${key} from ${from}.`;
+}
+
 const TREES: ConditionsView = { options: {}, expressions: false };
 
 export function describeDefinitionChanges(

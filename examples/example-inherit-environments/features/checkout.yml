@@ -1,0 +1,18 @@
+description: Checkout redesign. Says nothing about dev, so dev inherits staging's rules
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: netherlands
+      conditions: netherlands
+      percentage: 100
+
+    - key: everyone
+      conditions: "*"
+      percentage: 25

@@ -373,6 +373,74 @@ describe("core: definition diff", () => {
     expect(formatDefinitionDiff(result, true)).toContain("\x1b[32m");
   });
 
+  describe("environments that inherit", () => {
+    const feature = (rules: Record<string, unknown>) =>
+      JSON.stringify({ description: "Checkout", bucketBy: "userId", rules });
+    const rule = (percentage: number) => [{ key: "everyone", conditions: "*", percentage }];
+    const inheritance = () => diff({ from: "HEAD", to: "working-tree" }).changes[0].inheritance;
+
+    beforeEach(() => {
+      write(
+        "featurevisor.config.js",
+        'module.exports = { environments: ["dev", "staging"], inheritEnvironments: { dev: { from: "staging" } } };\n',
+      );
+      write("features/checkout.yml", feature({ staging: rule(50) }));
+      commit();
+    });
+
+    it("says a change to a list also reaches what inherits it", () => {
+      write("features/checkout.yml", feature({ staging: rule(80) }));
+      expect(inheritance()).toEqual([
+        { environment: "dev", from: "staging", key: "rules", change: "reaches" },
+      ]);
+      expect(formatDefinitionDiff(diff({ from: "HEAD", to: "working-tree" }))).toContain(
+        "Also reaches dev, which inherits rules from staging.",
+      );
+    });
+
+    it("says when an environment stops inheriting, and starts again", () => {
+      write("features/checkout.yml", feature({ dev: rule(100), staging: rule(50) }));
+      expect(inheritance()).toEqual([
+        { environment: "dev", from: "staging", key: "rules", change: "stops" },
+      ]);
+      expect(formatDefinitionDiff(diff({ from: "HEAD", to: "working-tree" }))).toContain(
+        "dev stops inheriting rules from staging.",
+      );
+
+      commit();
+      write("features/checkout.yml", feature({ staging: rule(50) }));
+      expect(inheritance()).toEqual([
+        { environment: "dev", from: "staging", key: "rules", change: "starts" },
+      ]);
+      expect(formatDefinitionDiff(diff({ from: "HEAD", to: "working-tree" }))).toContain(
+        "dev now inherits rules from staging.",
+      );
+    });
+
+    it("says nothing once an environment has its own list", () => {
+      write("features/checkout.yml", feature({ dev: rule(100), staging: rule(50) }));
+      commit();
+      write("features/checkout.yml", feature({ dev: rule(100), staging: rule(80) }));
+      expect(inheritance()).toBeUndefined();
+    });
+
+    it("reads a global variable's overrides", () => {
+      const variable = (value: string) =>
+        JSON.stringify({
+          description: "Support email",
+          type: "string",
+          defaultValue: "a",
+          overrides: { staging: [{ key: "everyone", conditions: "*", value }] },
+        });
+      write("variables/supportEmail.yml", variable("b"));
+      commit();
+      write("variables/supportEmail.yml", variable("c"));
+      expect(inheritance()).toEqual([
+        { environment: "dev", from: "staging", key: "overrides", change: "reaches" },
+      ]);
+    });
+  });
+
   it("reports repositories without commits and directories outside Git clearly", () => {
     const empty = path.join(root, "empty");
     fs.mkdirSync(empty);

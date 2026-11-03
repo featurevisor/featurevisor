@@ -52,6 +52,8 @@ export interface EntitySummary {
   /** It depends on a deprecated feature, directly or through other entities. */
   dependsOnDeprecated?: boolean;
   environments?: string[];
+  /** Environments whose rules or overrides come from another, for `inherits:` */
+  inheritedEnvironments?: string[];
   variationValues?: string[];
   variableKeys?: string[];
   hasVariations?: boolean;
@@ -94,6 +96,8 @@ export interface CatalogManifest {
   projectConfig: {
     tags: string[];
     environments?: string[];
+    /** Environments that use another environment's lists where a definition leaves theirs out */
+    inheritEnvironments?: Record<string, { from: string }>;
     /** Whether the project writes conditions as expressions, which offers that view of them */
     conditionExpressions?: boolean;
     namespaceCharacter?: string;

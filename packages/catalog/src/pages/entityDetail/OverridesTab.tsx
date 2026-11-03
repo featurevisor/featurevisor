@@ -17,18 +17,26 @@ import {
 import {
   EnvironmentComparison,
   EnvironmentPills,
+  InheritanceNotice,
   getEnvironmentItems,
   useComparedEnvironments,
+  useInheritEnvironments,
   useSelectedEnvironment,
 } from "./environments";
+import { getInheritedFrom, withInherited } from "../../environmentInheritance";
 
 export function VariableOverridesTab() {
   const { detail, setKey } = useEntityDetail();
   const { environmentKey } = useParams();
   const entity = detail.entity as Record<string, any>;
-  const environments = getEnvironmentItems(detail, "overrides");
+  const inherit = useInheritEnvironments();
+  const environments = getEnvironmentItems(detail, "overrides", inherit);
   const selectedEnvironment = useSelectedEnvironment(environments, environmentKey);
-  const rows = environments.length > 0 ? entity.overrides?.[selectedEnvironment] : entity.overrides;
+  const resolved = withInherited(entity.overrides, inherit);
+  const rows = environments.length > 0 ? resolved?.[selectedEnvironment] : entity.overrides;
+  // A preview is worked out where the list is written
+  const previewEnvironment =
+    getInheritedFrom(entity.overrides, selectedEnvironment, inherit) ?? selectedEnvironment;
 
   if (detail.type !== "variable") return <Navigate to=".." replace />;
 
@@ -37,8 +45,9 @@ export function VariableOverridesTab() {
       environments={environments}
       selectedEnvironment={selectedEnvironment}
       rows={Array.isArray(rows) ? rows : []}
-      rowsByEnvironment={environments.length > 0 ? entity.overrides : undefined}
-      preview={detail.accumulationPreview?.[environments.length > 0 ? selectedEnvironment : ""]}
+      rowsByEnvironment={environments.length > 0 ? resolved : undefined}
+      authored={entity.overrides}
+      preview={detail.accumulationPreview?.[environments.length > 0 ? previewEnvironment : ""]}
       defaultValue={entity.defaultValue}
       composed={entity.compose !== undefined}
       alias={typeof entity.compose === "string"}
@@ -157,6 +166,8 @@ function VariableOverrideRows(props: {
   defaultValue?: unknown;
   composed?: boolean;
   alias?: boolean;
+  /** The lists as written, which say where the selected environment's list comes from */
+  authored?: unknown;
   /** Root conditions, checked before composition sources and overrides. */
   gate?: ConditionNode;
   observedPaths?: Set<string>;
@@ -166,6 +177,7 @@ function VariableOverrideRows(props: {
   const gated = props.gate !== undefined;
   useScrollToHash([base, props.selectedEnvironment, props.rows.length]);
   const { compared, setCompared } = useComparedEnvironments(props.environments);
+  const inherit = useInheritEnvironments();
 
   if (props.environments.length > 0 && props.selectedEnvironment) {
     const isKnown = props.environments.includes(props.selectedEnvironment);
@@ -189,9 +201,18 @@ function VariableOverrideRows(props: {
           compared={compared}
           rowsByEnvironment={props.rowsByEnvironment}
           kind="overrides"
+          authored={props.authored}
+          inherit={inherit}
         />
       ) : (
         <>
+          <InheritanceNotice
+            authored={props.authored}
+            environment={props.selectedEnvironment}
+            inherit={inherit}
+            base={base}
+            list="this variable's overrides"
+          />
           {props.gate && (
             <RootConditionsBox node={props.gate} setKey={props.setKey}>
               {props.composed

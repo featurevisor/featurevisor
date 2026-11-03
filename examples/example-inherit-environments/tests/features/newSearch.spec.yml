@@ -1,0 +1,23 @@
+feature: newSearch
+
+assertions:
+  - description: Dev has its own rule
+    environment: dev
+    at: 90
+    context:
+      userId: user-2
+    expectedToBeEnabled: true
+
+  - description: Staging is still off for everyone not forced
+    environment: staging
+    at: 90
+    context:
+      userId: user-2
+    expectedToBeEnabled: false
+
+  - description: Dev inherits the force entries
+    environment: dev
+    at: 90
+    context:
+      userId: user-1
+    expectedToBeEnabled: true

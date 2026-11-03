@@ -1,0 +1,21 @@
+description: Pricing experiment. Inherited rules split users as staging does
+
+bucketBy: userId
+
+variations:
+  - value: control
+    weight: 50
+
+  - value: treatment
+    weight: 50
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 50

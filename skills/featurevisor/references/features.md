@@ -119,7 +119,7 @@ rules:
       percentage: 25
 ```
 
-An environment without a list has no rules, so the feature is disabled there unless a force entry applies. An explicit empty list such as `staging: []` fails lint, so omit the key instead.
+An environment without a list has no rules, so the feature is disabled there unless a force entry applies. `staging: []` says the same, and a feature may leave out `rules` altogether. The exception is an environment with [`inheritEnvironments`](configuration.md#add-another-environment-later), which uses another environment's list when it has none of its own, while `dev: []` still means none.
 
 ## Variations
 

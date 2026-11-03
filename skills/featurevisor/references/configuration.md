@@ -86,3 +86,36 @@ rules:
 ```
 
 Adding environments to an existing project changes every feature's `rules`, `force` and `expose`, every global variable's `overrides`, and every test assertion. It is a migration, so propose it explicitly rather than as a side effect. When the user asks, `npx featurevisor convert --to=environments` previews it and `--apply` writes it, configuration included ([cli.md](cli.md#convert)). Removing environments is `convert --to=flat --keep=<environment>`. When lanes need separate review and promotion rather than per environment rules, Sets fit better ([sets-promotions.md](sets-promotions.md)).
+
+### Add another environment later
+
+A project that already has environments can gain one without touching any definition, which is the right answer when only some teams need it:
+
+```js
+module.exports = {
+  environments: ['dev', 'staging', 'production'],
+
+  inheritEnvironments: {
+    dev: { from: 'staging' },
+  },
+}
+```
+
+| A definition says for `dev` | In `dev`                    |
+| --------------------------- | --------------------------- |
+| Nothing                     | what it has for `staging`   |
+| `dev: []`                   | none, and nothing inherited |
+| `dev:` with entries         | its own                     |
+
+- `rules`, `force`, `expose` and `overrides` each inherit separately, and a list replaces the inherited one whole. `expose: { dev: true }` exposes in `dev` what staging does not.
+- It is resolved at build time, so `dev`'s datafiles match staging's until a definition differs. SDKs need no change.
+- Inherited rules allocate from staging's state file, so a user gets the same variation in both. Do not copy state files by hand.
+- Only one level, so `from` cannot be an environment that inherits. Several environments may inherit from one.
+- Test assertions do not inherit. Add ones that name `dev` when asked.
+- Without the setting, every feature is disabled in `dev`, including features that a team enabled there but which depend on a feature nobody else touched. Do not write `dev` entries into every definition to work around that. Propose this setting.
+
+`npx featurevisor list --features --with-environment=dev` lists who has written their own rules, and `--without-environment=dev` who has not. Both work with `--variables`.
+
+### Require an environment
+
+Leaving out an environment passes lint, so a forgotten `production` entry ships a feature disabled. `requiredEnvironmentsInRules: ['production']` makes every feature's `rules` write it, and `requiredEnvironmentsInOverrides: ['production']` every global variable's `overrides`, with the lint code `missing_required_environment`. `production: []` satisfies them, archived definitions are exempt, and an environment that inherits cannot be listed.

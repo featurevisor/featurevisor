@@ -55,6 +55,59 @@ describe("core: lintProject", function () {
     jest.restoreAllMocks();
   });
 
+  it("reports every definition missing a required environment at once, with one code", async () => {
+    const root = createTempProject(
+      `module.exports = ${JSON.stringify({
+        environments: ["staging", "production"],
+        requiredEnvironmentsInRules: ["production"],
+        requiredEnvironmentsInOverrides: ["production"],
+      })};`,
+    );
+    const write = (file: string, content: string) => {
+      fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      fs.writeFileSync(path.join(root, file), content);
+    };
+    write("attributes/userId.yml", "description: User\ntype: string\n");
+    write("features/noRules.yml", "description: No rules\nbucketBy: userId\n");
+    write(
+      "features/onlyStaging.yml",
+      "description: Only staging\nbucketBy: userId\nrules:\n  staging: []\n",
+    );
+    write(
+      "features/deliberate.yml",
+      "description: Deliberately off\nbucketBy: userId\nrules:\n  production: []\n",
+    );
+    write(
+      "variables/noOverrides.yml",
+      "description: No overrides\ntype: string\ndefaultValue: hello\n",
+    );
+
+    try {
+      const result = await lintProject(getDeps(root) as any, { json: true });
+      expect(
+        result.errors.map(({ code, key, message, path: at }) => ({ code, key, message, at })),
+      ).toEqual([
+        {
+          code: "missing_required_environment",
+          key: "noRules",
+          message:
+            'Missing rules for required environment "production". Add them, or write "production: []" to keep the feature off there.',
+          at: ["rules", "production"],
+        },
+        expect.objectContaining({ code: "missing_required_environment", key: "onlyStaging" }),
+        {
+          code: "missing_required_environment",
+          key: "noOverrides",
+          message:
+            'Missing overrides for required environment "production". Add them, or write "production: []" for none there.',
+          at: ["overrides", "production"],
+        },
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("returns JSON-friendly empty errors array for a valid project", async () => {
     const result = await lintProject(getDeps(tempProjectPath) as any, { json: true });
 

@@ -120,6 +120,17 @@ export function getFilterChips(index: CatalogIndex, entityPath: EntityPath): Fil
   const entities = index.entities[type] || [];
   const chips: FilterChip[] = [];
 
+  if (entityPath === "features" || entityPath === "variables") {
+    sortValuesOf(entities.flatMap((entity) => entity.inheritedEnvironments || [])).forEach(
+      (environment) =>
+        chips.push({
+          label: `Inherits in ${environment}`,
+          token: `inherits:${environment}`,
+          group: "Environment",
+        }),
+    );
+  }
+
   if (entityPath === "features") {
     sortValuesOf(entities.flatMap((entity) => entity.environments || [])).forEach((environment) =>
       chips.push({ label: environment, token: `in:${environment}`, group: "Environment" }),
@@ -210,6 +221,7 @@ function hasDependents(entity: EntitySummary) {
 const KNOWN_QUALIFIERS = new Set([
   "tag",
   "in",
+  "inherits",
   "archived",
   "deprecated",
   "type",
@@ -330,6 +342,7 @@ function matchesQualifier(
   }
   if (key === "tag") return listIncludes(entity.tags, value);
   if (key === "in") return listIncludes(entity.environments, value);
+  if (key === "inherits") return listIncludes(entity.inheritedEnvironments, value);
   if (key === "archived") return String(Boolean(entity.archived)) === value;
   if (key === "deprecated") return String(Boolean(entity.deprecated)) === value;
   if (key === "type")

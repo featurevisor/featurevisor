@@ -1,0 +1,14 @@
+variable: maxCartItems
+
+assertions:
+  - description: Dev has its own override
+    environment: dev
+    context:
+      userId: user-1
+    expectedValue: 1000
+
+  - description: Production has none, so everyone gets the default
+    environment: production
+    context:
+      userId: user-1
+    expectedValue: 20

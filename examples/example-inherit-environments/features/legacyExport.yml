@@ -1,0 +1,17 @@
+description: Legacy export. Left out of staging's datafiles, so out of dev's too
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+expose:
+  staging: false

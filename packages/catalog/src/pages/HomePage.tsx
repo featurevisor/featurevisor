@@ -151,6 +151,12 @@ export function OverviewPage() {
                   className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 hover:ring-slate-400"
                 >
                   {environment}
+                  {manifest.projectConfig.inheritEnvironments?.[environment] && (
+                    <span className="font-normal text-faint">
+                      {" "}
+                      inherits from {manifest.projectConfig.inheritEnvironments[environment].from}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>

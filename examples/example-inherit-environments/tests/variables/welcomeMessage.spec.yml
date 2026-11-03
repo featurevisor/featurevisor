@@ -1,0 +1,14 @@
+variable: welcomeMessage
+
+assertions:
+  - description: An empty list gives dev the default
+    environment: dev
+    context:
+      userId: user-1
+    expectedValue: Welcome
+
+  - description: Staging has its override
+    environment: staging
+    context:
+      userId: user-1
+    expectedValue: Welcome to staging

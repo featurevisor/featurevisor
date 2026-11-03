@@ -81,7 +81,7 @@ Do not run `git commit`, `git push` or a bare `build` on the user's behalf witho
 
 Hosting guides: [GitHub Actions](https://featurevisor.com/docs/integrations/github-actions/), [Cloudflare Pages](https://featurevisor.com/docs/integrations/cloudflare-pages/), [GitHub Pages](https://featurevisor.com/docs/integrations/github-pages/) and [general deployment](https://featurevisor.com/docs/deployment/). Fetch the matching one rather than improvising.
 
-A build with `--environment` writes only that environment while advancing the shared revision. Build every environment before publishing the whole output directory.
+A build with `--environment` writes only that environment while advancing the shared revision. Build every environment before publishing the whole output directory. An environment with [`inheritEnvironments`](configuration.md#add-another-environment-later) builds the same datafiles as its parent until a definition differs, and reads the parent's state file without writing to it.
 
 ## Consuming datafiles
 

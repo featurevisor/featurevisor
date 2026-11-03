@@ -662,6 +662,63 @@ describe("promoteProjectSets", function () {
       },
     );
   });
+  it("keeps what each environment left out left out, and empty lists empty", async () => {
+    const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), "featurevisor-promote-"));
+    try {
+      await writeFile(
+        root,
+        "featurevisor.config.js",
+        "module.exports = { sets: true, tags: ['all'], environments: ['dev', 'staging'], inheritEnvironments: { dev: { from: 'staging' } } };",
+      );
+      const rule = [{ key: "everyone", conditions: "*", percentage: 50 }];
+      const feature = (rules?: Record<string, unknown>) =>
+        JSON.stringify({
+          description: "Checkout",
+          bucketBy: "userId",
+          ...(rules ? { rules } : {}),
+        });
+      const variable = (overrides: Record<string, unknown>) =>
+        JSON.stringify({
+          description: "Support email",
+          type: "string",
+          defaultValue: "a",
+          overrides,
+        });
+      const override = [{ key: "everyone", conditions: "*", value: "b" }];
+      for (const set of ["source", "destination"]) {
+        await writeFile(
+          root,
+          `sets/${set}/attributes/userId.yml`,
+          "description: User ID\ntype: string\n",
+        );
+      }
+      await writeFile(root, "sets/source/features/checkout.yml", feature({ staging: rule }));
+      await writeFile(root, "sets/source/features/off.yml", feature({ dev: [], staging: rule }));
+      await writeFile(root, "sets/source/features/noRules.yml", feature());
+      await writeFile(root, "sets/source/variables/email.yml", variable({ staging: override }));
+      await writeFile(root, "sets/source/variables/none.yml", variable({ dev: [] }));
+
+      const config = getProjectConfig(root);
+      const datasource = new Datasource(config, root);
+      await promoteProjectSets(config, datasource, {
+        from: "source",
+        to: "destination",
+        apply: true,
+      });
+
+      const promoted = datasource.forSet("destination");
+      const read = (type: "feature" | "variable", key: string) =>
+        promoted.readAuthoredEntity(type, key);
+      expect(await read("feature", "checkout")).toMatchObject({ rules: { staging: rule } });
+      expect(await read("feature", "off")).toMatchObject({ rules: { dev: [], staging: rule } });
+      expect(await read("feature", "noRules")).not.toHaveProperty("rules");
+      expect(await read("variable", "email")).toHaveProperty("overrides", { staging: override });
+      expect(await read("variable", "none")).toHaveProperty("overrides", { dev: [] });
+    } finally {
+      await fs.promises.rm(root, { recursive: true, force: true });
+    }
+  });
+
   describe.each([false, true])(
     "composed override promotion with environments=%s",
     (environments) => {

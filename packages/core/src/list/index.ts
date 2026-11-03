@@ -36,6 +36,7 @@ import {
 } from "./matrix";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import { getTargetFeatureKeys, getTargetVariableKeys, resolveTargets } from "../targeting";
+import { resolveForEnvironment } from "../builder/environments";
 import {
   CLI_COLOR_CYAN,
   CLI_COLOR_GREEN,
@@ -217,15 +218,30 @@ function assertNoRemovedSticky(assertions: FeatureAssertion[], key: string) {
 }
 
 /** A feature's rules for one environment, or its direct list when environments are not configured. */
-function getRulesIn(feature: ParsedFeature, environment: string | false) {
+function getRulesIn(
+  feature: ParsedFeature,
+  environment: string | false,
+  projectConfig: Pick<ProjectConfig, "inheritEnvironments">,
+) {
   const rules = feature.rules as unknown;
   if (Array.isArray(rules)) return environment === false ? rules : [];
   if (environment === false || !rules || typeof rules !== "object") return [];
-  return (rules as Record<string, Array<{ percentage: number }>>)[environment] || [];
+  return (
+    resolveForEnvironment(
+      rules as Record<string, Array<{ percentage: number }>>,
+      environment,
+      projectConfig,
+    ).value || []
+  );
+}
+
+/** Whether a definition writes `rules` or `overrides` for an environment itself */
+function writesEnvironment(byEnvironment: unknown, environment: string) {
+  return Object.prototype.hasOwnProperty.call(byEnvironment ?? {}, environment);
 }
 
 export async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
-  const { datasource, options } = deps;
+  const { datasource, options, projectConfig } = deps;
   if (
     options.case !== undefined &&
     (typeof options.case !== "string" || options.case.length === 0)
@@ -368,7 +384,7 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       // --disabled, or --disabled-in=<environment>: every rule is at 0%, or there are none
       const disabledIn = options.disabled ? false : options.disabledIn;
       if (typeof disabledIn !== "undefined") {
-        const rules = getRulesIn(parsedFeature, disabledIn);
+        const rules = getRulesIn(parsedFeature, disabledIn, projectConfig);
         if (rules.some((rule) => rule.percentage > 0)) {
           continue;
         }
@@ -377,10 +393,20 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       // --enabled, or --enabled-in=<environment>: a rule is above 0%
       const enabledIn = options.enabled ? false : options.enabledIn;
       if (typeof enabledIn !== "undefined") {
-        const rules = getRulesIn(parsedFeature, enabledIn);
+        const rules = getRulesIn(parsedFeature, enabledIn, projectConfig);
         if (!rules.some((rule) => rule.percentage > 0)) {
           continue;
         }
+      }
+
+      // --with-environment=<environment>, --without-environment=<environment>
+      if (
+        (options.withEnvironment &&
+          !writesEnvironment(parsedFeature.rules, options.withEnvironment)) ||
+        (options.withoutEnvironment &&
+          writesEnvironment(parsedFeature.rules, options.withoutEnvironment))
+      ) {
+        continue;
       }
 
       // --tag=<tag>
@@ -496,6 +522,15 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         if (!tags.every((tag) => variableTags.includes(tag))) {
           continue;
         }
+      }
+
+      // --with-environment=<environment>, --without-environment=<environment>
+      const { overrides } = entity as ParsedVariable;
+      if (
+        (options.withEnvironment && !writesEnvironment(overrides, options.withEnvironment)) ||
+        (options.withoutEnvironment && writesEnvironment(overrides, options.withoutEnvironment))
+      ) {
+        continue;
       }
 
       if (options.withTests || options.withoutTests) {
@@ -945,17 +980,23 @@ function toFlag(option: string) {
 function assertListEnvironmentOptions(
   options: Record<string, any>,
   environments: ProjectConfig["environments"],
+  names: string[],
 ) {
-  for (const option of ["enabledIn", "disabledIn"]) {
+  for (const option of names) {
     const environment = options[option];
     if (typeof environment === "undefined") continue;
 
     if (!Array.isArray(environments)) {
-      const replacement = option === "enabledIn" ? "--enabled" : "--disabled";
-      throw new FeaturevisorCLIError(
-        `This project does not configure environments. Use ${replacement} instead of ${toFlag(option)}.`,
-        { code: "invalid_environment", details: { option, environment, available: [] } },
-      );
+      const instead =
+        option === "enabledIn"
+          ? " Use --enabled instead of --enabled-in."
+          : option === "disabledIn"
+            ? " Use --disabled instead of --disabled-in."
+            : ` Omit ${toFlag(option)}.`;
+      throw new FeaturevisorCLIError(`This project does not configure environments.${instead}`, {
+        code: "invalid_environment",
+        details: { option, environment, available: [] },
+      });
     }
 
     if (!environments.includes(environment)) {
@@ -1040,8 +1081,16 @@ function assertListOptions(options: Record<string, any>, projectConfig?: Project
     }
   }
 
+  const writtenEnvironments = ["withEnvironment", "withoutEnvironment"];
   if (selector === "features") {
-    assertListEnvironmentOptions(options, projectConfig?.environments);
+    assertListEnvironmentOptions(options, projectConfig?.environments, [
+      "enabledIn",
+      "disabledIn",
+      ...writtenEnvironments,
+    ]);
+  }
+  if (selector === "variables") {
+    assertListEnvironmentOptions(options, projectConfig?.environments, writtenEnvironments);
   }
 
   if (selector !== "features") {
@@ -1065,6 +1114,16 @@ function assertListOptions(options: Record<string, any>, projectConfig?: Project
         },
       );
     }
+  }
+
+  if (
+    !["features", "variables"].includes(selector) &&
+    (options.withEnvironment || options.withoutEnvironment)
+  ) {
+    throw new FeaturevisorCLIError(
+      "Options --with-environment and --without-environment can only be used with --features or --variables.",
+      { code: "incompatible_cli_options", details: { selector } },
+    );
   }
 
   if (

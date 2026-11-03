@@ -1992,22 +1992,23 @@ export function getFeatureZodSchema(
       rules: !Array.isArray(projectConfig.environments)
         ? // no rules leaves the feature disabled, as leaving out an environment does
           rulesSchema
-        : z.partialRecord(
-            z.enum(environmentKeys as [string, ...string[]]),
-            // leaving the environment out says the same as an empty list
-            rulesSchema.superRefine((value, ctx) => {
-              if (value.length === 0) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message: "Must have at least one rule. Leave the environment out instead.",
-                });
-              }
-            }),
-          ),
+        : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), rulesSchema).optional(),
     })
     .strict()
     .superRefine((value, ctx) => {
       refineRemovedConditionFields(value, ctx);
+      if (value.archived !== true) {
+        for (const environment of projectConfig.requiredEnvironmentsInRules || []) {
+          if (!Object.prototype.hasOwnProperty.call(value.rules ?? {}, environment)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Missing rules for required environment "${environment}". Add them, or write "${environment}: []" to keep the feature off there.`,
+              params: { code: "missing_required_environment" },
+              path: ["rules", environment],
+            });
+          }
+        }
+      }
       if (Object.prototype.hasOwnProperty.call(value, "required")) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -2266,10 +2267,9 @@ export function getFeatureZodSchema(
       variations: z.array(editorVariation).optional(),
       rules: !Array.isArray(projectConfig.environments)
         ? z.array(editorRule).min(1)
-        : z.partialRecord(
-            z.enum(environmentKeys as [string, ...string[]]),
-            z.array(editorRule).min(1),
-          ),
+        : z
+            .partialRecord(z.enum(environmentKeys as [string, ...string[]]), z.array(editorRule))
+            .optional(),
       force: (!Array.isArray(projectConfig.environments)
         ? z.array(editorForce)
         : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), z.array(editorForce))

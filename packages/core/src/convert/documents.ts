@@ -57,7 +57,12 @@ export function pairOf(map: YAMLMap, key: string): Pair | undefined {
  */
 export function takeLane(map: YAMLMap, key: string, lane: string, empty?: unknown) {
   const pair = pairOf(map, key);
-  if (!pair || !isMap(pair.value)) return;
+  if (!pair) {
+    // A feature may leave out `rules` with environments, but not without them
+    if (empty !== undefined) setKey(map, key, new Document(empty).contents as Node);
+    return;
+  }
+  if (!isMap(pair.value)) return;
   const lanes = pair.value;
   const lanePair = pairOf(lanes, lane);
   if (lanePair && lanePair.value) {

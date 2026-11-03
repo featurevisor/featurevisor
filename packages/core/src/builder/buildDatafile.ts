@@ -1,6 +1,10 @@
 import * as fs from "fs";
 import * as path from "path";
-import { resolveBuildEnvironments } from "./environments";
+import {
+  getInheritedEnvironment,
+  resolveBuildEnvironments,
+  resolveForEnvironment,
+} from "./environments";
 import { parsePositiveIntegerOption } from "../cli/validation";
 import { inflateEntries } from "./inflate";
 
@@ -269,6 +273,13 @@ export async function buildDatafile(
 ): Promise<DatafileContent> {
   await assertNoLegacyDatasourceGroups(datasource);
   const inflation = parsePositiveIntegerOption("--inflate", options.inflate, 1);
+  // Inherited rules allocate as their environment does, so a user gets the same variation in both.
+  // Read here, not passed in, so no caller can get different buckets by forgetting it. Whether that
+  // environment has been built yet makes no difference, since saved traffic rebuilds to itself.
+  const inheritedEnvironment = getInheritedEnvironment(projectConfig, options.environment);
+  const inheritedState = inheritedEnvironment
+    ? await datasource.readState(inheritedEnvironment)
+    : undefined;
   const disallowedOperators = projectConfig.disallowOperators || [];
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
@@ -465,7 +476,11 @@ export async function buildDatafile(
         if (options.features && options.features.indexOf(featureKey) === -1) continue;
 
         const expose = options.environment
-          ? (parsedFeature.expose?.[options.environment] as Expose | undefined)
+          ? resolveForEnvironment(
+              parsedFeature.expose as Record<string, Expose> | undefined,
+              options.environment,
+              projectConfig,
+            ).value
           : (parsedFeature.expose as Expose | undefined);
         if (expose === false) continue;
         if (Array.isArray(expose)) {
@@ -537,11 +552,26 @@ export async function buildDatafile(
       let expose: Expose | undefined;
       let rules: Rule[];
       let force: Force[] | undefined;
+      let rulesInheritedFrom: string | undefined;
 
       if (options.environment) {
-        expose = parsedFeature.expose?.[options.environment] as Expose | undefined;
-        rules = (parsedFeature.rules?.[options.environment] || []) as Rule[];
-        force = parsedFeature.force?.[options.environment] as Force[] | undefined;
+        expose = resolveForEnvironment(
+          parsedFeature.expose as Record<string, Expose> | undefined,
+          options.environment,
+          projectConfig,
+        ).value;
+        const resolvedRules = resolveForEnvironment(
+          parsedFeature.rules as Record<string, Rule[]> | undefined,
+          options.environment,
+          projectConfig,
+        );
+        rules = resolvedRules.value || [];
+        rulesInheritedFrom = resolvedRules.inheritedFrom;
+        force = resolveForEnvironment(
+          parsedFeature.force as Record<string, Force[]> | undefined,
+          options.environment,
+          projectConfig,
+        ).value;
       } else {
         expose = parsedFeature.expose as Expose | undefined;
         rules = parsedFeature.rules as Rule[];
@@ -618,13 +648,15 @@ export async function buildDatafile(
         traffic: getTraffic(
           parsedFeature.variations,
           rules,
-          existingState.features[featureKey],
+          rulesInheritedFrom
+            ? inheritedState?.features[featureKey]
+            : existingState.features[featureKey],
           featureKey,
           projectConfig.adapter === FilesystemAdapter ||
             projectConfig.adapter?.prototype instanceof FilesystemAdapter
             ? path.relative(
                 datasource.getRootDirectoryPath() || process.cwd(),
-                getExistingStateFilePath(projectConfig, options.environment),
+                getExistingStateFilePath(projectConfig, rulesInheritedFrom ?? options.environment),
               )
             : undefined,
         ).map((t: Traffic) => {
@@ -808,9 +840,11 @@ export async function buildDatafile(
   };
   for (const { key, value: parsedVariable } of parsedVariables) {
     const sourceOverrides = options.environment
-      ? (parsedVariable.overrides as Record<string, ParsedVariableOverride[]> | undefined)?.[
-          options.environment
-        ]
+      ? resolveForEnvironment(
+          parsedVariable.overrides as Record<string, ParsedVariableOverride[]> | undefined,
+          options.environment,
+          projectConfig,
+        ).value
       : (parsedVariable.overrides as ParsedVariableOverride[] | undefined);
     // A composition has no static starting value, even without continuation.
     const useProgram =
