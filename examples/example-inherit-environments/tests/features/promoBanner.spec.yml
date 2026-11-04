@@ -1,0 +1,16 @@
+feature: promoBanner
+
+assertions:
+  - description: An empty list keeps it off in dev
+    environment: dev
+    at: 50
+    context:
+      userId: user-1
+    expectedToBeEnabled: false
+
+  - description: Staging has it on
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+    expectedToBeEnabled: true

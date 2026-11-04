@@ -44,6 +44,7 @@ With environments configured:
 ```bash
 npx featurevisor list --features --enabled-in=production --json --pretty
 npx featurevisor list --features --enabled-in=staging --disabled-in=production --json --pretty
+npx featurevisor list --features --not-defined-in=dev --json --pretty
 ```
 
 The last is the "waiting to be released" report. These filters read rule percentages only: a feature with a 0% rule can still be on for a force entry, and a rule above 0% can still be off behind root conditions.

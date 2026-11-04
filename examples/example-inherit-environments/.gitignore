@@ -1,0 +1,10 @@
+node_modules
+*.log
+npm-debug.log*
+.DS_Store
+
+dist
+datafiles
+catalog
+out
+src

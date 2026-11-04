@@ -1984,6 +1984,35 @@ describe("catalog export", () => {
     expect(index.entities.feature[0]).toMatchObject({ environmentsDiffer: true });
   });
 
+  it("exports what an environment inherits, without counting usage twice", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
+    const inheritEnvironments = { development: { from: "staging" } };
+    await exportCatalog(
+      createRuntime(),
+      root,
+      {
+        ...createProjectConfig(root),
+        environments: ["development", "staging", "production"],
+        inheritEnvironments,
+      },
+      createDatasource(),
+      { copyAssets: false, compactStorage: false },
+    );
+
+    const read = (...parts: string[]) =>
+      JSON.parse(fs.readFileSync(path.join(root, "catalog", "data", ...parts), "utf8"));
+    expect(read("manifest.json").projectConfig.inheritEnvironments).toEqual(inheritEnvironments);
+
+    const [feature] = read("root", "index.json").entities.feature;
+    expect(feature.environments).toEqual(["development", "production", "staging"]);
+    expect(feature.inheritedEnvironments).toEqual(["development"]);
+    // staging and production differ, and development differs from neither on its own account
+    expect(feature.environmentsDiffer).toBe(true);
+
+    const detail = read("root", "entities", "feature", "checkout.json");
+    expect(Object.keys(detail.entity.rules)).toEqual(["staging", "production"]);
+  });
+
   it("exports compact storage unless the plain layout is requested", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
     await exportCatalog(createRuntime(), root, createProjectConfig(root), createDatasource(), {

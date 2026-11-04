@@ -60,7 +60,7 @@ Many "weird behaviour" reports come from mismatched vocabulary. Ground the user 
 | **Datafile**    | The static JSON an SDK loads, one per target and environment. v4 datafiles have `schemaVersion: "4"` and need v4 SDKs. |
 | **Revision**    | A number each CI build increments and writes into datafiles.                                                           |
 | **State files** | `.featurevisor/` files recording saved variation ranges between builds. Only CI commits them.                          |
-| **Environment** | An optional stage name, such as `production`, keying rules within one definition.                                      |
+| **Environment** | An optional stage name, such as `production`, keying rules within one definition. One may inherit from another.        |
 
 ## Patterns
 

@@ -1,0 +1,18 @@
+feature: checkout
+
+assertions:
+  - description: Dev inherits staging's rule for everyone
+    environment: dev
+    at: 90
+    context:
+      userId: user-1
+      country: de
+    expectedToBeEnabled: true
+
+  - description: Production keeps its own rules
+    environment: production
+    at: 90
+    context:
+      userId: user-1
+      country: de
+    expectedToBeEnabled: false

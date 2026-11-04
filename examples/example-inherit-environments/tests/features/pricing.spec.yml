@@ -1,0 +1,24 @@
+feature: pricing
+
+assertions:
+  - description: Dev splits users as staging does, in this half
+    matrix:
+      environment:
+        - dev
+        - staging
+    environment: ${{ environment }}
+    at: 30
+    context:
+      userId: user-1
+    expectedVariation: control
+
+  - description: Dev splits users as staging does, in the other half
+    matrix:
+      environment:
+        - dev
+        - staging
+    environment: ${{ environment }}
+    at: 70
+    context:
+      userId: user-1
+    expectedVariation: treatment

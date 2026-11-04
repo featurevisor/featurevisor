@@ -65,7 +65,7 @@ overrides:
 - Every override needs a unique `key`, `conditions`, and exactly one of `value` or `mutate`.
 - Conditions take every leaf kind: segments, attributes, features and variables ([conditions.md](conditions.md)).
 - A catch-all `conditions: '*'` must be last.
-- With environments configured, put each list under its environment key.
+- With environments configured, put each list under its environment key. An environment left out has no overrides, unless it [inherits from another](configuration.md#add-another-environment-later).
 
 ### Change part of a structured value
 

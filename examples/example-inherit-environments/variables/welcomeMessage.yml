@@ -1,0 +1,15 @@
+description: Welcome message. An empty list gives dev the default, rather than inheriting
+
+type: string
+
+defaultValue: Welcome
+
+overrides:
+  dev: []
+
+  staging:
+    - key: everyone
+      conditions: "*"
+      value: Welcome to staging
+
+  production: []

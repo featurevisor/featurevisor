@@ -1,0 +1,18 @@
+description: Largest cart. Its team allows more in dev
+
+type: integer
+
+defaultValue: 20
+
+overrides:
+  dev:
+    - key: everyone
+      conditions: "*"
+      value: 1000
+
+  staging:
+    - key: everyone
+      conditions: "*"
+      value: 100
+
+  production: []

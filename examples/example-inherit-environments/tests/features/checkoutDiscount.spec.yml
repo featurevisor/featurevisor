@@ -1,0 +1,10 @@
+feature: checkoutDiscount
+
+assertions:
+  - description: Works in dev, since checkout inherits staging's rules there
+    environment: dev
+    at: 50
+    context:
+      userId: user-1
+      country: de
+    expectedToBeEnabled: true

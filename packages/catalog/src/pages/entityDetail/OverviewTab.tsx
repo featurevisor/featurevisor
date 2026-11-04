@@ -5,6 +5,8 @@ import { Link } from "react-router-dom";
 import { entityLabels, getBasePath, getEntityRoute } from "../../entityTypes";
 import type { CatalogEntityType, EntityDetail } from "../../types";
 import { useCatalog } from "../../context/CatalogContext";
+import { getInheritedFrom, withInheritedEntries } from "../../environmentInheritance";
+import { sortEnvironmentKeys, useInheritEnvironments } from "./environments";
 import {
   Badge,
   EntityKey,
@@ -275,8 +277,13 @@ export function CompositionTable(props: {
 
 /** At a glance summary of a feature, per environment when the project has them. */
 function FeatureSummary(props: { entity: Record<string, unknown> }) {
-  const { entity } = props;
+  const { entity: authored } = props;
+  const inherit = useInheritEnvironments();
+  const entity = withInheritedEntries(authored, inherit);
   const rulesByEnvironment = getEnvironmentMap(entity.rules);
+  if (inherit) {
+    rulesByEnvironment.sort(([left], [right]) => sortEnvironmentKeys(left || "", right || ""));
+  }
   const forceByEnvironment = new Map(getEnvironmentMap(entity.force));
   const exposeByEnvironment =
     entity.expose && typeof entity.expose === "object" && !Array.isArray(entity.expose)
@@ -334,6 +341,11 @@ function FeatureSummary(props: { entity: Record<string, unknown> }) {
                           <Link to={rulesPath} className="text-primary hover:underline">
                             {environment}
                           </Link>
+                          {getInheritedFrom(authored.rules, environment, inherit) && (
+                            <span className="ml-2">
+                              <Badge>inherited</Badge>
+                            </span>
+                          )}
                           {notExposed}
                         </td>
                       )}

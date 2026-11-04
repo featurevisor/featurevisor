@@ -278,6 +278,14 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     promotable: { type: "boolean", description: "filter by promotable status" },
     disabledIn: { type: "string", description: "filter features disabled in an environment" },
     enabledIn: { type: "string", description: "filter features enabled in an environment" },
+    definedIn: {
+      type: "string",
+      description: "filter definitions with their own rules or overrides for an environment",
+    },
+    notDefinedIn: {
+      type: "string",
+      description: "filter definitions with no rules or overrides of their own for an environment",
+    },
     disabled: { type: "boolean", description: "filter disabled features, without environments" },
     enabled: { type: "boolean", description: "filter enabled features, without environments" },
     tag: { type: "array", description: "filter features or variables by one or more tags" },

@@ -1,0 +1,19 @@
+{
+  "name": "@featurevisor/example-inherit-environments",
+  "private": true,
+  "version": "4.6.0",
+  "description": "Featurevisor project where a dev environment inherits from staging",
+  "scripts": {
+    "lint": "featurevisor lint",
+    "fmt": "featurevisor fmt",
+    "build": "featurevisor build",
+    "test": "featurevisor test",
+    "export": "featurevisor catalog export",
+    "start": "featurevisor catalog",
+    "generate-code": "featurevisor generate-code --language typescript --out-dir ./src",
+    "find-duplicate-segments": "featurevisor find-duplicate-segments"
+  },
+  "dependencies": {
+    "@featurevisor/cli": "4.6.0"
+  }
+}

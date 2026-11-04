@@ -760,6 +760,88 @@ describe("core: list", function () {
     ]);
   });
 
+  describe("environments a definition writes, and those it inherits", () => {
+    const rule = (percentage: number) => [{ key: "everyone", conditions: "*", percentage }];
+    const features: Record<string, ParsedFeature> = {
+      own: createFeatureFixture({ key: "own", rules: { dev: rule(100), staging: rule(100) } }),
+      off: createFeatureFixture({ key: "off", rules: { dev: [], staging: rule(100) } }),
+      following: createFeatureFixture({ key: "following", rules: { staging: rule(100) } }),
+      none: createFeatureFixture({ key: "none", rules: undefined }),
+    };
+    const variables: Record<string, ParsedVariable> = {
+      ownVariable: { type: "string", defaultValue: "a", overrides: { dev: [] } },
+      followingVariable: { type: "string", defaultValue: "a", overrides: { staging: [] } },
+      noOverrides: { type: "string", defaultValue: "a" },
+    };
+    const list = async <T extends object>(
+      type: "feature" | "variable",
+      options: Record<string, unknown>,
+      projectConfig: Record<string, unknown> = {
+        environments: ["dev", "staging"],
+        inheritEnvironments: { dev: { from: "staging" } },
+      },
+    ) => {
+      const result = await listEntities<T & { key: string }>(
+        {
+          rootDirectoryPath: "",
+          projectConfig: projectConfig as any,
+          datasource: {
+            listFeatures: async () => Object.keys(features),
+            readFeature: async (key: string) => features[key],
+            listVariables: async () => Object.keys(variables),
+            readVariable: async (key: string) => variables[key],
+          } as any,
+          options,
+        },
+        type,
+      );
+      return result.map(({ key }) => key);
+    };
+
+    test("reads inherited rules for what happens in an environment", async () => {
+      expect(await list("feature", { enabledIn: "dev" })).toEqual(["own", "following"]);
+      expect(await list("feature", { disabledIn: "dev" })).toEqual(["off", "none"]);
+    });
+
+    test("reads only authored rules without the setting", async () => {
+      const projectConfig = { environments: ["dev", "staging"] };
+      expect(await list("feature", { enabledIn: "dev" }, projectConfig)).toEqual(["own"]);
+    });
+
+    test("reads what is written for who has adopted an environment", async () => {
+      expect(await list("feature", { definedIn: "dev" })).toEqual(["own", "off"]);
+      expect(await list("feature", { notDefinedIn: "dev" })).toEqual(["following", "none"]);
+      expect(await list("variable", { definedIn: "dev" })).toEqual(["ownVariable"]);
+      expect(await list("variable", { notDefinedIn: "dev" })).toEqual([
+        "followingVariable",
+        "noOverrides",
+      ]);
+    });
+
+    const deps = (options: Record<string, unknown>, projectConfig: Record<string, unknown>) => ({
+      rootDirectoryPath: "",
+      projectConfig: projectConfig as any,
+      datasource: {} as any,
+      options,
+    });
+
+    test("validates the environment, and which definitions the flags apply to", async () => {
+      await expect(listProject(deps({ features: true, definedIn: "dev" }, {}))).rejects.toThrow(
+        "This project does not configure environments. Omit --defined-in.",
+      );
+      await expect(
+        listProject(deps({ variables: true, notDefinedIn: "qa" }, { environments: ["dev"] })),
+      ).rejects.toThrow(
+        'Unknown environment "qa" for --not-defined-in. Available environments: dev.',
+      );
+      await expect(
+        listProject(deps({ segments: true, definedIn: "dev" }, { environments: ["dev"] })),
+      ).rejects.toThrow(
+        "Options --defined-in and --not-defined-in can only be used with --features or --variables.",
+      );
+    });
+  });
+
   test("validates environment filters against the project configuration", async function () {
     const deps = {
       rootDirectoryPath: "",

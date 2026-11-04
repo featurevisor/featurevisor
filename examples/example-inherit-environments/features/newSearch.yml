@@ -1,0 +1,27 @@
+description: New search. Its team rolled it out further in dev, and still inherits force entries
+
+bucketBy: userId
+
+force:
+  staging:
+    - conditions:
+        attribute: userId
+        operator: equals
+        value: user-1
+      enabled: true
+
+rules:
+  dev:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 0
+
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 0

@@ -103,6 +103,7 @@ export function OverviewPage() {
   const unusedSchemas = unused("schema");
   const failingSpecs = (index.entities.test || []).filter((entity) => entity.testPassed === false);
   const environments = manifest.projectConfig.environments || [];
+  const { inheritEnvironments } = manifest.projectConfig;
   const historyPath = setKey
     ? `/data/sets/${encodeRouteSegment(setKey)}/history`
     : "/data/project/history";
@@ -151,6 +152,12 @@ export function OverviewPage() {
                   className="rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition-colors hover:bg-slate-50 hover:ring-slate-400"
                 >
                   {environment}
+                  {inheritEnvironments?.[environment]?.from && (
+                    <span className="font-normal text-faint">
+                      {" "}
+                      inherits from {inheritEnvironments[environment].from}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>

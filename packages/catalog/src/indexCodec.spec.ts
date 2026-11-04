@@ -43,6 +43,7 @@ const complete: Required<EntitySummary> = {
   attributeType: "string",
   attributeFormat: "date-time",
   environmentsDiffer: true,
+  inheritedEnvironments: ["dev"],
   searchTerms: ["rule:shared", "value:shared", "assertion:日本語"],
   lastModified: { commit: "abc", author: "shared", timestamp: "2026-09-30T10:00:00Z" },
 };

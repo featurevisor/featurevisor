@@ -10,6 +10,7 @@ import { FeaturevisorCLIError } from "../error";
 import { suggestKey } from "../linter/diagnostics";
 import { getContextWarnings } from "../linter/contextWarnings";
 import { explainEvaluation, getEvaluationValue, printExplanation } from "./explain";
+import { getInheritedEnvironment, getInheritedKeys } from "../builder/environments";
 import type { ExplanationOptions } from "./explain";
 import { assertExplanationMatchesEvaluation } from "./validateExplanation";
 import { probeConditions } from "./probeConditions";
@@ -362,6 +363,18 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
     inflate: options.inflate,
   });
 
+  const authoredVariable =
+    options.explain && options.variable && definitionExists
+      ? await deps.datasource.readVariable(options.variable)
+      : undefined;
+  // Only an environment that inherits needs a feature as it is written
+  const inherits =
+    deps.projectConfig && getInheritedEnvironment(deps.projectConfig, options.environment);
+  const authored =
+    authoredVariable ??
+    (options.explain && options.feature && definitionExists && inherits
+      ? await deps.datasource.readFeature(options.feature)
+      : undefined);
   const explanationOptions: ExplanationOptions | undefined = options.explain
     ? {
         set: deps.datasource.getSet(),
@@ -369,9 +382,10 @@ export async function evaluateFeature(deps: Dependencies, options: EvaluateOptio
         expressions: deps.projectConfig?.conditionExpressions
           ? { namespaceCharacter: deps.projectConfig.namespaceCharacter }
           : undefined,
-        authoredVariable:
-          options.variable && definitionExists
-            ? await deps.datasource.readVariable(options.variable)
+        authoredVariable,
+        inherited:
+          authored && inherits
+            ? getInheritedKeys(authored, options.environment, deps.projectConfig)
             : undefined,
       }
     : undefined;

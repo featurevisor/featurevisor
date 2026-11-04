@@ -107,7 +107,7 @@ npx featurevisor convert --to=trees --apply
 
 Docs: <https://featurevisor.com/docs/convert/>
 
-Changes a project's shape between `flat` (no environments and no sets), `environments` and `sets`, rewriting definitions, specs, state files and `featurevisor.config.js`, and keeping comments and every line it does not change. When it cannot edit `featurevisor.config.js`, such as one that spreads its settings in from another file, it converts the rest and prints the settings for the user to change there by hand, after converting. Without `--apply` it previews and writes nothing. Before writing, it converts a temporary copy, lints and tests both, and builds both: every feature and global variable must build byte identical in each environment or set, or nothing is written.
+Changes a project's shape between `flat` (no environments and no sets), `environments` and `sets`, rewriting definitions, specs, state files and `featurevisor.config.js`, and keeping comments and every line it does not change. When it cannot edit `featurevisor.config.js`, such as one that spreads its settings in from another file, it converts the rest and prints the settings for the user to change there by hand, after converting. Without `--apply` it previews and writes nothing. Before writing, it converts a temporary copy, lints and tests both, and builds both: every feature and global variable must build byte identical in each environment or set, or nothing is written. An environment using `inheritEnvironments` gets what it inherits written into its definitions, with its allocations, and `convert` never adds that setting.
 
 - From environments to sets, each environment becomes a set with a copy of the attributes, segments, schemas and targets, each feature keeps only that environment's rules (`rules: []` where it had none), and `promotionFlows` follows the order of `environments`. Datafile paths stay the same, so only `--environment=` in CI becomes `--set=`.
 - From sets to environments, shared definitions must be equal in every set, and a global variable must be in every set. Otherwise it lists the conflicts and exits with 2. `--environments` reorders the lanes.
@@ -214,19 +214,20 @@ npx featurevisor list --datafiles --json
 
 Feature filters combine with AND:
 
-| Flag                                             | Keeps features                                              |
-| ------------------------------------------------ | ----------------------------------------------------------- |
-| `--tag=<tag>`                                    | with the tag. Repeat for several                            |
-| `--target=<target>`                              | selected by the target. Repeat for a union                  |
-| `--variable=<key>`                               | declaring the feature variable                              |
-| `--variation=<value>`                            | with the variation value                                    |
-| `--with-variations`, `--without-variations`      | with or without variations                                  |
-| `--with-variables`, `--without-variables`        | with or without feature variables                           |
-| `--with-tests`, `--without-tests`                | referenced by any spec, or by none                          |
-| `--enabled-in=<env>`, `--disabled-in=<env>`      | with a rule above 0%, or only 0% rules, in that environment |
-| `--enabled`, `--disabled`                        | the same, in a project without environments                 |
-| `--key-pattern=<regex>`, `--description=<regex>` | matching key or description                                 |
-| `--archived=true`                                | archived ones, which are excluded by default                |
+| Flag                                             | Keeps features                                                                                       |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `--tag=<tag>`                                    | with the tag. Repeat for several                                                                     |
+| `--target=<target>`                              | selected by the target. Repeat for a union                                                           |
+| `--variable=<key>`                               | declaring the feature variable                                                                       |
+| `--variation=<value>`                            | with the variation value                                                                             |
+| `--with-variations`, `--without-variations`      | with or without variations                                                                           |
+| `--with-variables`, `--without-variables`        | with or without feature variables                                                                    |
+| `--with-tests`, `--without-tests`                | referenced by any spec, or by none                                                                   |
+| `--enabled-in=<env>`, `--disabled-in=<env>`      | with a rule above 0%, or only 0% rules, in that environment, including inherited rules               |
+| `--defined-in=<env>`, `--not-defined-in=<env>`   | writes `rules` for that environment itself, or does not. Also for `--variables`, reading `overrides` |
+| `--enabled`, `--disabled`                        | the same, in a project without environments                                                          |
+| `--key-pattern=<regex>`, `--description=<regex>` | matching key or description                                                                          |
+| `--archived=true`                                | archived ones, which are excluded by default                                                         |
 
 Use `--enabled-in` and `--disabled-in` in projects with environments, and `--enabled` and `--disabled` in projects without them. The CLI rejects the wrong pair, and unknown environment names, with `invalid_environment`. Force entries and root conditions are not considered, only rule percentages.
 

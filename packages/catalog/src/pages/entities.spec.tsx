@@ -12,6 +12,7 @@ import { EditLink } from "../components/editLink";
 import { describeConditions, parseEntityConditions } from "../components/conditionExpression";
 import {
   EntityDetailPage,
+  FeatureForceTab,
   FeatureRulesTab,
   FeatureVariablesTab,
   FeatureVariationsTab,
@@ -29,6 +30,7 @@ import {
   matchesQuery,
   parseSearchQuery,
 } from "./ListPage";
+import { EnvironmentComparison } from "./entityDetail/environments";
 import type { CatalogIndex, CatalogManifest, EntitySummary } from "../types";
 
 const manifest: CatalogManifest = {
@@ -48,6 +50,150 @@ function render(node: React.ReactNode, route = "/") {
     </MemoryRouter>,
   );
 }
+
+describe("environments that inherit", () => {
+  const inheriting: CatalogManifest = {
+    ...manifest,
+    projectConfig: {
+      tags: [],
+      environments: ["dev", "staging", "production"],
+      inheritEnvironments: { dev: { from: "staging" } },
+    },
+  };
+  const rule = (key: string, percentage = 50) => ({ key, conditions: "*", percentage });
+  const renderTab = (
+    tab: React.ReactNode,
+    route: string,
+    type: "feature" | "variable",
+    entity: Record<string, unknown>,
+    catalog = inheriting,
+  ) =>
+    renderToStaticMarkup(
+      <MemoryRouter initialEntries={[route]}>
+        <CatalogProvider initialManifest={catalog}>
+          <Routes>
+            <Route element={<Outlet context={{ detail: { type, key: "checkout", entity } }} />}>
+              <Route path="/:base/:environmentKey" element={tab} />
+              <Route path="*" element={tab} />
+            </Route>
+          </Routes>
+        </CatalogProvider>
+      </MemoryRouter>,
+    );
+  const rules = (
+    entity: Record<string, unknown>,
+    route = "/rules/dev",
+    catalog?: CatalogManifest,
+  ) => renderTab(<FeatureRulesTab />, route, "feature", entity, catalog);
+
+  it("shows staging's rules in dev, saying where they come from", () => {
+    const html = rules({ rules: { staging: [rule("everyone")], production: [rule("nl")] } });
+    expect(html).toContain("Inherited from");
+    expect(html).toContain("everyone");
+    expect(html).not.toContain(">nl<");
+    expect(html).toContain("this feature&#x27;s rules");
+    expect(html).toMatch(/href="[^"]*\/rules\/dev"/);
+    expect(html).toMatch(/href="[^"]*\/rules\/staging"[^>]*>staging<\/a>\. Add/);
+  });
+
+  it("says nothing of inheriting in the environment that wrote the list", () => {
+    const html = rules({ rules: { staging: [rule("everyone")] } }, "/rules/staging");
+    expect(html).toContain("everyone");
+    expect(html).not.toContain("Inherited from");
+  });
+
+  it("offers no dev pill when there is nothing to inherit, or nothing configured", () => {
+    const entity = { rules: { production: [rule("nl")] } };
+    expect(rules(entity, "/rules/production")).not.toMatch(/\/rules\/dev"/);
+
+    const plain = { ...manifest, projectConfig: { tags: [], environments: ["dev", "staging"] } };
+    const html = rules({ rules: { staging: [rule("everyone")] } }, "/rules/staging", plain);
+    expect(html).not.toMatch(/\/rules\/dev"/);
+    expect(html).not.toContain("Inherited from");
+  });
+
+  it("says an empty list inherits nothing", () => {
+    const html = rules({ rules: { dev: [], staging: [rule("everyone")] } });
+    expect(html).toContain("An empty list for");
+    expect(html).toContain("The feature is disabled for everyone in dev.");
+    expect(html).not.toContain("Inherited from");
+    expect(html).not.toContain(">everyone<");
+  });
+
+  it("reads inherited force entries and exposure for the rules below them", () => {
+    const html = rules({
+      rules: { dev: [rule("own")], staging: [rule("everyone")] },
+      force: { staging: [{ conditions: "*", enabled: true }] },
+      expose: { staging: false },
+    });
+    expect(html).toContain("own");
+    expect(html).toContain("Not exposed");
+    expect(html).not.toContain("Inherited from");
+  });
+
+  it("shows inherited force entries on their tab", () => {
+    const html = renderTab(<FeatureForceTab />, "/force/dev", "feature", {
+      rules: { staging: [] },
+      force: { staging: [{ conditions: "*", enabled: true }] },
+    });
+    expect(html).toContain("this feature&#x27;s force entries");
+  });
+
+  it("shows inherited overrides with the preview worked out where they are written", () => {
+    const html = renderTab(<VariableOverridesTab />, "/overrides/dev", "variable", {
+      type: "string",
+      defaultValue: "a",
+      overrides: { staging: [{ key: "everyone", conditions: "*", value: "b" }] },
+    });
+    expect(html).toContain("Inherited from");
+    expect(html).toContain("everyone");
+    expect(html).toContain("this variable&#x27;s overrides");
+  });
+
+  it("gives an inheriting environment a row on the Overview", () => {
+    const html = renderTab(<OverviewTab />, "/", "feature", {
+      description: "Checkout",
+      rules: { staging: [rule("everyone")], production: [rule("nl", 100)] },
+    });
+    expect(html).toContain("inherited");
+    const order = ["dev", "staging", "production"].map((name) => html.indexOf(`/rules/${name}"`));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(order[0]).toBeGreaterThan(-1);
+  });
+
+  it("says which compared environment inherits", () => {
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <EnvironmentComparison
+          compared={["dev", "staging"]}
+          rowsByEnvironment={{ dev: [rule("everyone")], staging: [rule("everyone")] }}
+          kind="rules"
+          authored={{ staging: [rule("everyone")] }}
+          inherit={inheriting.projectConfig.inheritEnvironments}
+        />
+      </MemoryRouter>,
+    );
+    expect(html).toContain("Both environments are identical.");
+    expect(html).toContain("dev inherits these from staging.");
+    expect(html).not.toContain("Not defined");
+  });
+
+  it("finds who has not adopted an environment", () => {
+    const feature = { inheritedEnvironments: ["dev"] } as EntitySummary;
+    expect(matchesQuery(feature, "inherited:dev")).toBe(true);
+    expect(matchesQuery(feature, "inherited:staging")).toBe(false);
+    expect(getUnknownQualifiers("inherited:dev")).toEqual([]);
+
+    const index = {
+      entities: { feature: [{ key: "checkout", ...feature }], variable: [] },
+    } as unknown as CatalogIndex;
+    expect(getFilterChips(index, "features")).toContainEqual({
+      label: "Inherited in dev",
+      token: "inherited:dev",
+      group: "Environment",
+    });
+  });
+});
 
 describe("Catalog entity surfaces", () => {
   it("retains the entity route and query in rule permalinks", () => {

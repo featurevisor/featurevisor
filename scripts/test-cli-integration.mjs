@@ -1936,6 +1936,72 @@ function testAliasCompositionProject() {
   rmSync(join(project, "variables/invalidAlias.yml"));
 }
 
+function testInheritingEnvironments() {
+  const project = copyProject("example-inherit-environments");
+  console.log("\nTesting examples/example-inherit-environments");
+
+  runJson(project, ["config", "--json"], (config) => {
+    assert.deepEqual(config.inheritEnvironments, { dev: { from: "staging" } });
+    assert.deepEqual(config.requireRulesIn, ["production"]);
+    assert.deepEqual(config.requireOverridesIn, ["production"]);
+  });
+  run(project, ["config"], ({ stdout }) => {
+    assert.match(clean(stdout), /inheritEnvironments\s*: \{"dev":\{"from":"staging"\}\}/);
+  });
+  run(project, ["lint"]);
+  run(project, ["test", "--only-failures"]);
+  run(project, ["build"]);
+
+  const read = (environment) =>
+    JSON.parse(
+      readFileSync(join(project, "datafiles", environment, "featurevisor-all.json"), "utf8"),
+    );
+  const dev = read("dev");
+  const staging = read("staging");
+  assert.deepEqual(dev.features.checkout, staging.features.checkout);
+  assert.deepEqual(dev.variables.supportEmail, staging.variables.supportEmail);
+  assert.equal(dev.features.legacyExport, undefined);
+  assert.deepEqual(dev.features.promoBanner.traffic, []);
+  assert.notDeepEqual(staging.features.promoBanner.traffic, []);
+
+  run(project, ["info", "--target=all"], ({ stdout }) => {
+    assert.match(clean(stdout), /Environment:\s+dev\s+Inherits from:\s+staging/);
+    assert.doesNotMatch(clean(stdout), /Environment:\s+staging\s+Inherits from/);
+  });
+  const keys = (entities) => entities.map(({ key }) => key);
+  runJson(project, ["list", "--features", "--defined-in=dev", "--json"], (features) => {
+    assert.deepEqual(keys(features), ["checkoutDiscount", "newSearch", "promoBanner"]);
+  });
+  runJson(project, ["list", "--features", "--not-defined-in=dev", "--json"], (features) => {
+    assert.deepEqual(keys(features), ["checkout", "legacyExport", "pricing"]);
+  });
+  runJson(project, ["list", "--variables", "--not-defined-in=dev", "--json"], (variables) => {
+    assert.deepEqual(keys(variables), ["supportEmail"]);
+  });
+  fail(project, ["list", "--features", "--defined-in=qa"], /Unknown environment "qa"/);
+  fail(project, ["list", "--segments", "--defined-in=dev"], /--features or --variables/);
+  run(
+    project,
+    [
+      "evaluate",
+      "--environment=dev",
+      "--feature=checkout",
+      '--context={"userId":"user-1"}',
+      "--explain",
+    ],
+    ({ stdout }) => {
+      assert.match(clean(stdout), /Inherited from staging:\s+rules/);
+    },
+  );
+
+  writeFileSync(
+    join(project, "features", "forgotten.yml"),
+    "description: Forgotten\n\nbucketBy: userId\n",
+  );
+  fail(project, ["lint"], /Missing rules for required environment "production"/);
+  rmSync(join(project, "features", "forgotten.yml"));
+}
+
 function testCompositionProject() {
   const project = copyProject("example-composition");
   const state = snapshotStateFiles(project);
@@ -2214,6 +2280,7 @@ try {
   testMutationPrecomputation(standardProject);
   testOrderedMutationCodeGeneration(standardProject);
   testSetProject(setProject);
+  testInheritingEnvironments();
   testCompositionProject();
   testAliasCompositionProject();
   testSlashNamespaces();

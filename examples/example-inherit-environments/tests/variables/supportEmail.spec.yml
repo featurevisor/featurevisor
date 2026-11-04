@@ -1,0 +1,15 @@
+variable: supportEmail
+
+assertions:
+  - description: Dev inherits staging's override
+    environment: dev
+    context:
+      userId: user-1
+    expectedValue: support-staging@example.com
+
+  - description: Production keeps its own
+    environment: production
+    context:
+      userId: user-1
+      country: nl
+    expectedValue: support-nl@example.com

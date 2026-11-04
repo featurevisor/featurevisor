@@ -1,0 +1,16 @@
+description: Support email. Says nothing about dev, so dev inherits staging's overrides
+
+type: string
+
+defaultValue: support@example.com
+
+overrides:
+  staging:
+    - key: everyone
+      conditions: "*"
+      value: support-staging@example.com
+
+  production:
+    - key: netherlands
+      conditions: netherlands
+      value: support-nl@example.com

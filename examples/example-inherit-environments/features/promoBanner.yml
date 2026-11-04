@@ -1,0 +1,13 @@
+description: Promotion banner. An empty list keeps it off in dev, rather than inheriting
+
+bucketBy: userId
+
+rules:
+  dev: []
+
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production: []

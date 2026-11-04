@@ -51,6 +51,8 @@ export interface ExplanationOptions {
   definitionExists?: boolean;
   /** The definition is read through the project's configured datasource. */
   authoredVariable?: ParsedVariable;
+  /** What this definition takes from another environment, in an environment that inherits */
+  inherited?: { from: string; keys: string[] };
   /** Separate CLI checks, never observations from the authoritative call. */
   conditionsProbe?: ConditionsProbe;
   selectionProbes?: ConditionsProbe[];
@@ -287,6 +289,13 @@ export function explainEvaluation(
     });
   }
 
+  if (options.inherited) {
+    add("definition", "Inherited from another environment", {
+      from: options.inherited.from,
+      keys: options.inherited.keys,
+    });
+  }
+
   if (evaluation.error) {
     add("sdk-result", "Evaluation error", {
       name: evaluation.error.name,
@@ -419,7 +428,13 @@ export function explainEvaluation(
             (evaluation.variableOverrideKey !== undefined ? [evaluation.variableOverrideKey] : []);
           const authored =
             options.authoredVariable && path.length > 0
-              ? authoredPath(options.authoredVariable, options.environment, path)
+              ? authoredPath(
+                  options.authoredVariable,
+                  options.inherited?.keys.includes("overrides")
+                    ? options.inherited.from
+                    : options.environment,
+                  path,
+                )
               : undefined;
           if (authored) {
             add("definition", "Authored value construction (build time)", {
@@ -617,6 +632,11 @@ export function printExplanation(
       );
     }
   }
+
+  const inherited = detail("Inherited from another environment");
+  // Once per definition, as for the notice below. Every section's JSON still has it.
+  if (inherited && showNotice)
+    line(`Inherited from ${inherited.from}:`, (inherited.keys as string[]).join(", "));
 
   const rule = detail("Matched rule");
   if (rule)

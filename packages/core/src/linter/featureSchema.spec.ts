@@ -151,6 +151,12 @@ function baseFeature(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function featureWithoutRules() {
+  const feature: Record<string, unknown> = baseFeature();
+  delete feature.rules;
+  return feature;
+}
+
 describe("disabled variation fallbacks", () => {
   it.each([{ variations: undefined }, { variations: [] }])(
     "allows a standalone fallback with $variations",
@@ -179,7 +185,7 @@ describe("variation weights and rule fields", () => {
     return result.success ? [] : result.error.issues;
   }
 
-  it("allows no rules without environments, and asks to leave out an environment instead", () => {
+  it("allows an empty list of rules, with or without environments", () => {
     const flat = getFeatureSchema({ environments: undefined }).safeParse(
       baseFeature({ rules: [] }),
     );
@@ -189,12 +195,46 @@ describe("variation weights and rule fields", () => {
       issues({
         rules: { staging: [], production: [{ key: "r1", conditions: "*", percentage: 0 }] },
       }),
-    ).toContainEqual(
-      expect.objectContaining({
-        path: ["rules", "staging"],
-        message: "Must have at least one rule. Leave the environment out instead.",
-      }),
+    ).toEqual([]);
+  });
+
+  it("requires rules only in a project without environments", () => {
+    const withoutRules = featureWithoutRules();
+
+    expect(getFeatureSchema({ environments: undefined }).safeParse(withoutRules).success).toBe(
+      false,
     );
+    expect(getFeatureSchema().safeParse(withoutRules).success).toBe(true);
+  });
+
+  describe("requireRulesIn", () => {
+    const rule = [{ key: "r1", conditions: "*", percentage: 100 }];
+    const required = (feature: Record<string, unknown>) =>
+      getFeatureSchema({ requireRulesIn: ["production"] }).safeParse(feature);
+
+    it("accepts rules or an empty list for the environment", () => {
+      expect(required(baseFeature({ rules: { production: rule } })).success).toBe(true);
+      expect(required(baseFeature({ rules: { production: [] } })).success).toBe(true);
+    });
+
+    it("fails when the environment or all of rules is left out", () => {
+      for (const feature of [baseFeature({ rules: { staging: rule } }), featureWithoutRules()]) {
+        const result = required(feature);
+        expect(result.success).toBe(false);
+        expect(result.error?.issues).toEqual([
+          expect.objectContaining({
+            path: ["rules", "production"],
+            message:
+              'Missing rules for required environment "production". Add them, or write "production: []" to keep the feature off there.',
+            params: { code: "missing_required_environment" },
+          }),
+        ]);
+      }
+    });
+
+    it("leaves archived features alone", () => {
+      expect(required({ ...featureWithoutRules(), archived: true }).success).toBe(true);
+    });
   });
 
   it("requires feature variation weights to sum to 100", () => {

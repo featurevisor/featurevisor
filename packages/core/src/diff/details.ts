@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 
+import { ENVIRONMENT_KEYS, writesEnvironment } from "../config/environmentSettings";
 import { describeConditions, sameConditions, type ConditionsView } from "./conditions";
 
 /** Authored identities for readable reports, separate from positional JSON field changes. */
@@ -265,6 +266,55 @@ function fields(
 }
 
 /** Conditions read as every command reads them, shown as trees */
+/** A change to one environment's list, as it reaches an environment that inherits from it */
+export interface InheritanceChange {
+  environment: string;
+  from: string;
+  key: string;
+  change: "reaches" | "stops" | "starts";
+}
+
+/** What a definition's change means for environments that inherit, which its file cannot say */
+export function describeInheritanceChanges(
+  entity: string,
+  before: unknown,
+  after: unknown,
+  inheritEnvironments: Record<string, { from: string }> | undefined,
+): InheritanceChange[] {
+  // A new definition reaches them too. A removed one is gone from every environment alike.
+  if (!record(after) || !inheritEnvironments) return [];
+  const previous = record(before) ? before : {};
+  const keys: readonly string[] = ENVIRONMENT_KEYS[entity as keyof typeof ENVIRONMENT_KEYS] || [];
+  return keys.flatMap((key) =>
+    Object.entries(inheritEnvironments).flatMap(([environment, { from }]) => {
+      const had = writesEnvironment(previous[key], environment);
+      const has = writesEnvironment(after[key], environment);
+      const change = (kind: InheritanceChange["change"]) => [
+        { environment, from, key, change: kind },
+      ];
+      if (!had && has) return writesEnvironment(previous[key], from) ? change("stops") : [];
+      if (had && !has) return writesEnvironment(after[key], from) ? change("starts") : [];
+      if (had) return [];
+      const list = (value: unknown) =>
+        record(value) && own(value, from) ? value[from] : undefined;
+      return isDeepStrictEqual(list(previous[key]), list(after[key])) ? [] : change("reaches");
+    }),
+  );
+}
+
+export function formatInheritanceChange({
+  environment,
+  from,
+  key,
+  change,
+}: InheritanceChange): string {
+  if (change === "reaches")
+    return `Also reaches ${environment}, which inherits ${key} from ${from}.`;
+  return change === "stops"
+    ? `${environment} stops inheriting ${key} from ${from}.`
+    : `${environment} now inherits ${key} from ${from}.`;
+}
+
 const TREES: ConditionsView = { options: {}, expressions: false };
 
 export function describeDefinitionChanges(

@@ -46,6 +46,7 @@ import {
   type AuthoredReference,
 } from "../dependencyReferences";
 import { encodeCatalogIndex } from "../indexCodec";
+import { getInheritedEnvironments, withInheritedEntries } from "../environmentInheritance";
 import { rewriteCatalogHtml } from "./html";
 
 const CATALOG_SCHEMA_VERSION = "1";
@@ -2323,8 +2324,10 @@ async function buildSetCatalog(
   for (const plan of entityPlan) {
     for (const key of plan.keys) {
       const entity = plan.entities[key];
+      // Status and drift are about behaviour, so they read what each environment inherits too
+      const resolved = withInheritedEntries(entity, projectConfig.inheritEnvironments);
       const featureEnvironmentStatus =
-        plan.type === "feature" ? getFeatureEnvironmentStatus(entity) : {};
+        plan.type === "feature" ? getFeatureEnvironmentStatus(resolved) : {};
       const sourceFileInfo = getSourceFileInfo(
         context.repositorySourceRootDirectoryPath,
         projectConfig,
@@ -2476,8 +2479,12 @@ async function buildSetCatalog(
           ...getDependencySummary(plan.type, key, dependencyGraph, maps, nodeExists),
           environments:
             plan.type === "feature"
-              ? getFeatureEnvironmentKeys(entity, environments)
+              ? getFeatureEnvironmentKeys(resolved, environments)
               : environments,
+          inheritedEnvironments:
+            plan.type === "feature" || plan.type === "variable"
+              ? getInheritedEnvironments(entity, projectConfig.inheritEnvironments)
+              : undefined,
           variationValues: plan.type === "feature" ? getFeatureVariationValues(entity) : undefined,
           variableKeys: plan.type === "feature" ? getFeatureVariableKeys(entity) : undefined,
           hasVariations: plan.type === "feature" ? Boolean(entity.variations?.length) : undefined,
@@ -2505,7 +2512,7 @@ async function buildSetCatalog(
               : undefined,
           environmentsDiffer:
             plan.type === "feature"
-              ? getFeatureEnvironmentsDiffer(entity as ParsedFeature, projectConfig.environments)
+              ? getFeatureEnvironmentsDiffer(resolved as ParsedFeature, projectConfig.environments)
               : undefined,
           ...featureEnvironmentStatus,
         }),
@@ -2742,6 +2749,7 @@ export async function exportCatalog(
       testReport: options.testReport,
       tags: projectConfig.tags,
       environments: projectConfig.environments,
+      inheritEnvironments: projectConfig.inheritEnvironments,
       namespaceCharacter: projectConfig.namespaceCharacter,
       conditionExpressions: projectConfig.conditionExpressions,
     });
@@ -2832,6 +2840,7 @@ export async function exportCatalog(
         environments: Array.isArray(projectConfig.environments)
           ? projectConfig.environments
           : undefined,
+        inheritEnvironments: projectConfig.inheritEnvironments,
         conditionExpressions: projectConfig.conditionExpressions === true || undefined,
         namespaceCharacter: projectConfig.namespaceCharacter,
       },
