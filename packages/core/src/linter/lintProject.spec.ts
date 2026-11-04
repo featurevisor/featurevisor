@@ -59,8 +59,8 @@ describe("core: lintProject", function () {
     const root = createTempProject(
       `module.exports = ${JSON.stringify({
         environments: ["staging", "production"],
-        requiredEnvironmentsInRules: ["production"],
-        requiredEnvironmentsInOverrides: ["production"],
+        requireRulesIn: ["production"],
+        requireOverridesIn: ["production"],
       })};`,
     );
     const write = (file: string, content: string) => {

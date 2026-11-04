@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 
+import { ENVIRONMENT_KEYS, writesEnvironment } from "../config/environmentSettings";
 import { describeConditions, sameConditions, type ConditionsView } from "./conditions";
 
 /** Authored identities for readable reports, separate from positional JSON field changes. */
@@ -273,11 +274,6 @@ export interface InheritanceChange {
   change: "reaches" | "stops" | "starts";
 }
 
-const INHERITED_KEYS: Record<string, string[]> = {
-  feature: ["rules", "force", "expose"],
-  variable: ["overrides"],
-};
-
 /** What a definition's change means for environments that inherit, which its file cannot say */
 export function describeInheritanceChanges(
   entity: string,
@@ -285,21 +281,23 @@ export function describeInheritanceChanges(
   after: unknown,
   inheritEnvironments: Record<string, { from: string }> | undefined,
 ): InheritanceChange[] {
-  if (!record(before) || !record(after) || !inheritEnvironments) return [];
-  const has = (value: unknown, key: string) => record(value) && own(value, key);
-  return (INHERITED_KEYS[entity] || []).flatMap((key) =>
+  // A new definition reaches them too. A removed one is gone from every environment alike.
+  if (!record(after) || !inheritEnvironments) return [];
+  const previous = record(before) ? before : {};
+  const keys: readonly string[] = ENVIRONMENT_KEYS[entity as keyof typeof ENVIRONMENT_KEYS] || [];
+  return keys.flatMap((key) =>
     Object.entries(inheritEnvironments).flatMap(([environment, { from }]) => {
-      const had = has(before[key], environment);
-      const hasNow = has(after[key], environment);
+      const had = writesEnvironment(previous[key], environment);
+      const has = writesEnvironment(after[key], environment);
       const change = (kind: InheritanceChange["change"]) => [
         { environment, from, key, change: kind },
       ];
-      if (!had && hasNow) return has(before[key], from) ? change("stops") : [];
-      if (had && !hasNow) return has(after[key], from) ? change("starts") : [];
+      if (!had && has) return writesEnvironment(previous[key], from) ? change("stops") : [];
+      if (had && !has) return writesEnvironment(after[key], from) ? change("starts") : [];
       if (had) return [];
       const list = (value: unknown) =>
         record(value) && own(value, from) ? value[from] : undefined;
-      return isDeepStrictEqual(list(before[key]), list(after[key])) ? [] : change("reaches");
+      return isDeepStrictEqual(list(previous[key]), list(after[key])) ? [] : change("reaches");
     }),
   );
 }

@@ -69,9 +69,9 @@ export interface ProjectConfig {
    */
   inheritEnvironments?: InheritEnvironments;
   /** Environments every feature's `rules` must write out, if only as an empty list. */
-  requiredEnvironmentsInRules?: string[];
+  requireRulesIn?: string[];
   /** Environments every global variable's `overrides` must write out, if only as an empty list. */
-  requiredEnvironmentsInOverrides?: string[];
+  requireOverridesIn?: string[];
   sets: boolean;
   tags: string[];
   reservedKeys?: string[];
@@ -116,8 +116,8 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   const baseConfig: ProjectConfig = {
     environments: undefined,
     inheritEnvironments: undefined,
-    requiredEnvironmentsInRules: undefined,
-    requiredEnvironmentsInOverrides: undefined,
+    requireRulesIn: undefined,
+    requireOverridesIn: undefined,
     sets: DEFAULT_SETS,
     promotionFlows: undefined,
     namespaceCharacter: DEFAULT_NAMESPACE_CHARACTER,

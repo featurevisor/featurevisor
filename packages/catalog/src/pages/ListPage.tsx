@@ -120,21 +120,21 @@ export function getFilterChips(index: CatalogIndex, entityPath: EntityPath): Fil
   const entities = index.entities[type] || [];
   const chips: FilterChip[] = [];
 
-  if (entityPath === "features" || entityPath === "variables") {
+  const pushInheritedChips = () =>
     sortValuesOf(entities.flatMap((entity) => entity.inheritedEnvironments || [])).forEach(
       (environment) =>
         chips.push({
-          label: `Inherits in ${environment}`,
-          token: `inherits:${environment}`,
+          label: `Inherited in ${environment}`,
+          token: `inherited:${environment}`,
           group: "Environment",
         }),
     );
-  }
 
   if (entityPath === "features") {
     sortValuesOf(entities.flatMap((entity) => entity.environments || [])).forEach((environment) =>
       chips.push({ label: environment, token: `in:${environment}`, group: "Environment" }),
     );
+    pushInheritedChips();
     if (entities.some((entity) => entity.hasVariations))
       chips.push({ label: "With variations", token: "with:variations", group: "Contains" });
     if (entities.some((entity) => entity.hasVariables))
@@ -144,6 +144,7 @@ export function getFilterChips(index: CatalogIndex, entityPath: EntityPath): Fil
   }
 
   if (entityPath === "variables") {
+    pushInheritedChips();
     sortValuesOf(entities.map((entity) => entity.variableType)).forEach((variableType) =>
       chips.push({ label: variableType, token: `type:${variableType}`, group: "Type" }),
     );
@@ -221,7 +222,7 @@ function hasDependents(entity: EntitySummary) {
 const KNOWN_QUALIFIERS = new Set([
   "tag",
   "in",
-  "inherits",
+  "inherited",
   "archived",
   "deprecated",
   "type",
@@ -342,7 +343,7 @@ function matchesQualifier(
   }
   if (key === "tag") return listIncludes(entity.tags, value);
   if (key === "in") return listIncludes(entity.environments, value);
-  if (key === "inherits") return listIncludes(entity.inheritedEnvironments, value);
+  if (key === "inherited") return listIncludes(entity.inheritedEnvironments, value);
   if (key === "archived") return String(Boolean(entity.archived)) === value;
   if (key === "deprecated") return String(Boolean(entity.deprecated)) === value;
   if (key === "type")

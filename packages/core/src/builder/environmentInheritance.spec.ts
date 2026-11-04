@@ -63,6 +63,35 @@ describe("resolving what an environment says", () => {
   });
 });
 
+describe("Catalog's copy of the rule", () => {
+  // Catalog cannot import Core, so it reads authored lists with its own copy
+  const catalog = require("../../../catalog/src/environmentInheritance");
+  const maps = [
+    undefined,
+    {},
+    { staging: ["x"] },
+    { production: ["x"] },
+    { dev: [], staging: ["x"] },
+    { dev: ["own"], staging: ["x"] },
+    { dev: false, staging: true },
+    { staging: false },
+    { staging: [] },
+  ];
+
+  it.each(
+    maps.flatMap((map) =>
+      ["dev", "staging", "production"].flatMap((environment) => [
+        { map, environment, inherit: INHERIT.inheritEnvironments },
+        { map, environment, inherit: undefined },
+      ]),
+    ),
+  )("agrees on $environment of $map, inheriting $inherit", ({ map, environment, inherit }) => {
+    const core = resolveForEnvironment<unknown>(map, environment, { inheritEnvironments: inherit });
+    expect(catalog.getInheritedFrom(map, environment, inherit)).toBe(core.inheritedFrom);
+    expect(catalog.withInherited(map, inherit)?.[environment]).toEqual(core.value);
+  });
+});
+
 describe("building an environment that inherits", () => {
   let root: string;
   let logged: string[];
@@ -612,6 +641,36 @@ describe("building an environment that inherits", () => {
         title: "Inherited from another environment",
         details: { from: "staging", keys: ["rules"] },
       });
+    });
+
+    it("names what is inherited once in the terminal, and in every section of the JSON", async () => {
+      project();
+      feature("checkout", {
+        variablesSchema: {
+          label: { type: "string", defaultValue: "Buy" },
+          colour: { type: "string", defaultValue: "#111827" },
+        },
+        rules: { staging: RULE(100) },
+      });
+      const evaluate = (json: boolean) =>
+        evaluateFeature(deps() as never, {
+          environment: "dev",
+          feature: "checkout",
+          context: USER,
+          json,
+          explain: true,
+        });
+
+      await evaluate(false);
+      expect(logged.filter((line) => line.includes("Inherited from staging:"))).toHaveLength(1);
+
+      await evaluate(true);
+      const { explanation } = output();
+      const titles = (section: { evidence: Array<{ title: string }> }) =>
+        section.evidence.map((entry) => entry.title);
+      for (const section of [explanation.flag, explanation.variables.label]) {
+        expect(titles(section)).toContain("Inherited from another environment");
+      }
     });
 
     it("says nothing about inheriting in an environment that does not", async () => {

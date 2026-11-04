@@ -186,13 +186,19 @@ async function reload() {
   await waitFor("performance.timeOrigin !== " + previous, "New document after reload");
 }
 
-function fixture(directory, { sets, environments, base, plans = ["free", "premium"] }) {
+function fixture(directory, { sets, environments, inherit, base, plans = ["free", "premium"] }) {
   const configuration = {
     sets,
     tags: ["web", "mobile"],
     namespaceCharacter: "/",
     catalogBasePath: base,
     ...(environments ? { environments: ["staging", "production"] } : {}),
+    ...(inherit
+      ? {
+          environments: ["dev", "staging", "production"],
+          inheritEnvironments: { dev: { from: "staging" } },
+        }
+      : {}),
     catalogDirectoryPath: join(directory, "catalog"),
     setsDirectoryPath: join(directory, "sets"),
     ...Object.fromEntries(
@@ -1056,6 +1062,47 @@ async function runCase({ base, hash, sets, environments }, index) {
   }
 }
 
+async function runInheritance(sets) {
+  const directory = join(temporary, "inherit-" + sets);
+  const data = fixture(directory, { base: "/", sets, environments: true, inherit: true });
+  await exportQuietly(data, directory, { browserRouter: true });
+  server = await startServer(data, directory, false);
+  const errors = [];
+  const unlisten = cdp.listen(({ method, params }) => {
+    if (method === "Runtime.exceptionThrown") errors.push(params.exceptionDetails);
+  });
+  const scope = sets ? "/sets/" + encode(setKeys[0]) : "";
+  const entity = scope + "/features/" + encode(featureKey);
+  const has = (text) => "document.body.innerText.includes(" + json(text) + ")";
+  try {
+    // dev has no rules of its own, so it shows staging's and says where they come from
+    await cdp.send("Page.navigate", { url: server.origin + entity + "/rules/dev" });
+    await waitFor(has("Inherited from"), "The notice shows");
+    await waitFor(has("everyone"), "Inherited rules show");
+    await click('p a[href$="/rules/staging"]');
+    await waitFor("location.pathname.endsWith('/rules/staging')");
+    await waitFor(has("everyone"));
+    assert.equal(await evaluate(has("Inherited from")), false);
+
+    await cdp.send("Page.navigate", { url: server.origin + entity });
+    await waitFor(has("ENVIRONMENTS") + " || " + has("Environments"));
+    await waitFor(has("inherited"), "The Overview marks it");
+
+    await cdp.send("Page.navigate", {
+      url: server.origin + scope + "/features?q=" + encodeURIComponent("inherited:dev"),
+    });
+    await waitFor(has("Inherited in dev"), "The filter chip shows");
+    await waitFor(has(featureKey), "The filter finds it");
+
+    assert.deepEqual(errors, []);
+    console.log("✓ inheritance " + (sets ? "sets and environments" : "environments"));
+  } finally {
+    unlisten();
+    await server.close();
+    server = undefined;
+  }
+}
+
 async function runLiveReload(hash) {
   const directory = join(temporary, "live-" + hash);
   const base = "/before/catalog/";
@@ -1333,6 +1380,8 @@ async function main() {
         }
       }
     }
+    await runInheritance(false);
+    await runInheritance(true);
     await runLiveReload(false);
     await runLiveReload(true);
     await runInteractions();

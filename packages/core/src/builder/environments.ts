@@ -1,4 +1,5 @@
 import type { ProjectConfig } from "../config";
+import { ENVIRONMENT_KEYS, writesEnvironment } from "../config/environmentSettings";
 import { FeaturevisorCLIError } from "../error";
 
 type InheritConfig = Pick<ProjectConfig, "inheritEnvironments">;
@@ -11,17 +12,15 @@ export function getInheritedEnvironment(
   return environment ? config.inheritEnvironments?.[environment]?.from : undefined;
 }
 
-const ENVIRONMENT_KEYS = ["rules", "force", "expose", "overrides"] as const;
-
 /** Which of a definition's environment keys come from another environment, when any do. */
 export function getInheritedKeys(
-  definition: Partial<Record<(typeof ENVIRONMENT_KEYS)[number], unknown>>,
+  definition: { rules?: unknown; force?: unknown; expose?: unknown; overrides?: unknown },
   environment: string | false | undefined,
   config: InheritConfig,
 ): { from: string; keys: string[] } | undefined {
   const from = getInheritedEnvironment(config, environment);
   if (!from) return undefined;
-  const keys = ENVIRONMENT_KEYS.filter(
+  const keys = [...ENVIRONMENT_KEYS.feature, ...ENVIRONMENT_KEYS.variable].filter(
     (key) =>
       resolveForEnvironment(
         definition[key] as Record<string, unknown> | undefined,
@@ -42,10 +41,11 @@ export function resolveForEnvironment<T>(
   environment: string,
   config: InheritConfig,
 ): { value?: T; inheritedFrom?: string } {
-  const has = (key: string) => Object.prototype.hasOwnProperty.call(byEnvironment ?? {}, key);
-  if (has(environment)) return { value: byEnvironment![environment] };
+  if (writesEnvironment(byEnvironment, environment)) return { value: byEnvironment![environment] };
   const from = getInheritedEnvironment(config, environment);
-  return from && has(from) ? { value: byEnvironment![from], inheritedFrom: from } : {};
+  return from && writesEnvironment(byEnvironment, from)
+    ? { value: byEnvironment![from], inheritedFrom: from }
+    : {};
 }
 
 /** Resolve selection before reading state or writing any output. */

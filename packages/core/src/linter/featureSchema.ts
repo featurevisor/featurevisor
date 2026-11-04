@@ -15,6 +15,7 @@ import {
 } from "./schemaFormats";
 
 import { DEFAULT_RESERVED_KEYS, ProjectConfig } from "../config";
+import { writesEnvironment } from "../config/environmentSettings";
 import { getMutationPath, isMutationKey, validateMutationKey } from "./mutationNotation";
 import { compileVariableMutation } from "../builder/variableOverrideProgram";
 import { mutationEntries, mutationEntryPath } from "../builder/mutationEntries";
@@ -1998,8 +1999,8 @@ export function getFeatureZodSchema(
     .superRefine((value, ctx) => {
       refineRemovedConditionFields(value, ctx);
       if (value.archived !== true) {
-        for (const environment of projectConfig.requiredEnvironmentsInRules || []) {
-          if (!Object.prototype.hasOwnProperty.call(value.rules ?? {}, environment)) {
+        for (const environment of projectConfig.requireRulesIn || []) {
+          if (!writesEnvironment(value.rules, environment)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               message: `Missing rules for required environment "${environment}". Add them, or write "${environment}: []" to keep the feature off there.`,

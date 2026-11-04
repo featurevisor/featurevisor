@@ -8,8 +8,8 @@ module.exports = {
   },
 
   // Production is always a deliberate choice, even if only `production: []`
-  requiredEnvironmentsInRules: ["production"],
-  requiredEnvironmentsInOverrides: ["production"],
+  requireRulesIn: ["production"],
+  requireOverridesIn: ["production"],
 
   tags: ["all"],
   prettyState: true,

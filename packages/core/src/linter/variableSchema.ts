@@ -11,6 +11,7 @@ import type {
 import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
+import { writesEnvironment } from "../config/environmentSettings";
 import { mutate } from "../builder/mutator";
 import { mutationEntries, mutationEntryPath } from "../builder/mutationEntries";
 import { getMutationSchema } from "./mutationSchema";
@@ -410,8 +411,8 @@ export function getVariableZodSchema(
     ctx: z.RefinementCtx,
   ) => {
     if (variable.archived === true) return;
-    for (const environment of projectConfig.requiredEnvironmentsInOverrides || []) {
-      if (!Object.prototype.hasOwnProperty.call(variable.overrides ?? {}, environment)) {
+    for (const environment of projectConfig.requireOverridesIn || []) {
+      if (!writesEnvironment(variable.overrides, environment)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: `Missing overrides for required environment "${environment}". Add them, or write "${environment}: []" for none there.`,

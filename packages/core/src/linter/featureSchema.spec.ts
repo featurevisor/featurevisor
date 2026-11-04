@@ -207,10 +207,10 @@ describe("variation weights and rule fields", () => {
     expect(getFeatureSchema().safeParse(withoutRules).success).toBe(true);
   });
 
-  describe("requiredEnvironmentsInRules", () => {
+  describe("requireRulesIn", () => {
     const rule = [{ key: "r1", conditions: "*", percentage: 100 }];
     const required = (feature: Record<string, unknown>) =>
-      getFeatureSchema({ requiredEnvironmentsInRules: ["production"] }).safeParse(feature);
+      getFeatureSchema({ requireRulesIn: ["production"] }).safeParse(feature);
 
     it("accepts rules or an empty list for the environment", () => {
       expect(required(baseFeature({ rules: { production: rule } })).success).toBe(true);

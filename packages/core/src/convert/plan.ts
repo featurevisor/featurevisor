@@ -6,6 +6,11 @@ import type { Document, Node } from "yaml";
 import type { EntityType, ExistingState } from "@featurevisor/types";
 
 import { CONFIG_MODULE_NAME, getProjectConfigForSet } from "../config";
+import {
+  ENVIRONMENT_KEYS,
+  ENVIRONMENT_SETTINGS,
+  writesEnvironment,
+} from "../config/environmentSettings";
 import { getExistingStateFilePath } from "../datasource/filesystemAdapter";
 import type { Kind } from "../rewrite/files";
 import { BUILT_IN_PARSERS, lineEndings, same } from "../rewrite/lines";
@@ -82,19 +87,9 @@ const DIRECTORY_OPTIONS = [
 ];
 
 /** The keys grouped by lane in each kind of definition */
-const LANE_KEYS: Partial<Record<Kind, string[]>> = {
-  feature: ["rules", "force", "expose"],
-  variable: ["overrides"],
-};
+const LANE_KEYS: Partial<Record<Kind, readonly string[]>> = ENVIRONMENT_KEYS;
 
 const SHARED: Kind[] = ["attribute", "schema", "segment", "target"];
-
-/** Settings that mean nothing without environments, which go when they do */
-const ENVIRONMENT_SETTINGS = [
-  "inheritEnvironments",
-  "requiredEnvironmentsInRules",
-  "requiredEnvironmentsInOverrides",
-] as const;
 
 /** featurevisor.config.js in a plan */
 export interface ConfigPlan {
@@ -131,6 +126,12 @@ export function leaveConfigByHand(config: ConfigPlan, reason: string) {
 const DEFAULT_LANES = ["staging", "production"];
 
 const files = (count: number) => `${count} ${count === 1 ? "file" : "files"}`;
+
+/** Names as a sentence says them, such as `a, b and c` */
+const inWords = (names: string[]) =>
+  names.length < 2
+    ? names.join("")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
 class Builder {
   plan: Plan;
@@ -238,7 +239,7 @@ class Builder {
     for (const [lane, written] of this.inherited) {
       const { from } = this.project.config.inheritEnvironments![lane];
       this.plan.differences.push(
-        `Writes what ${lane} inherits from ${from} into ${files(written.size)}, which then stop following ${from}.`,
+        `Writes what ${lane} inherits from ${from} into ${files(written.size)}, so ${lane} stops inheriting it.`,
       );
     }
   }
@@ -258,12 +259,10 @@ class Builder {
       fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, "utf8")) : { features: {} };
     const inherited = read(this.state(from, "environments"));
     const state = read(stateFile);
-    const has = (value: unknown, key: string) =>
-      Object.prototype.hasOwnProperty.call(value ?? {}, key);
     for (const file of this.project.files) {
       if (file.kind !== "feature") continue;
       const { rules } = file.value as { rules?: unknown };
-      if (has(rules, lane) || !has(rules, from)) continue;
+      if (writesEnvironment(rules, lane) || !writesEnvironment(rules, from)) continue;
       const key = file.relative
         .slice(0, -(parser.extension.length + 1))
         .split(path.sep)
@@ -328,7 +327,7 @@ class Builder {
       leaveConfigByHand(
         this.plan.config,
         result
-          ? `it sets ${missing.join(" and ")} where convert cannot edit it, such as in an object spread into its settings`
+          ? `it sets ${inWords(missing)} where convert cannot edit it, such as in an object spread into its settings`
           : "it does not set module.exports to an object convert can edit",
       );
       return;
@@ -338,7 +337,7 @@ class Builder {
       (name) => result.removed.includes(name),
     );
     this.plan.config.edits.push(
-      ...(removed.length > 0 ? [`removes ${removed.join(" and ")}`] : []),
+      ...(removed.length > 0 ? [`removes ${inWords(removed)}`] : []),
       ...add.map(([, , says]) => says),
       ...tidy
         .filter(([name, why]) => why && result.removed.includes(name))

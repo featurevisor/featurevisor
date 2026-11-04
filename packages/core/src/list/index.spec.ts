@@ -809,10 +809,10 @@ describe("core: list", function () {
     });
 
     test("reads what is written for who has adopted an environment", async () => {
-      expect(await list("feature", { withEnvironment: "dev" })).toEqual(["own", "off"]);
-      expect(await list("feature", { withoutEnvironment: "dev" })).toEqual(["following", "none"]);
-      expect(await list("variable", { withEnvironment: "dev" })).toEqual(["ownVariable"]);
-      expect(await list("variable", { withoutEnvironment: "dev" })).toEqual([
+      expect(await list("feature", { definedIn: "dev" })).toEqual(["own", "off"]);
+      expect(await list("feature", { notDefinedIn: "dev" })).toEqual(["following", "none"]);
+      expect(await list("variable", { definedIn: "dev" })).toEqual(["ownVariable"]);
+      expect(await list("variable", { notDefinedIn: "dev" })).toEqual([
         "followingVariable",
         "noOverrides",
       ]);
@@ -826,18 +826,18 @@ describe("core: list", function () {
     });
 
     test("validates the environment, and which definitions the flags apply to", async () => {
-      await expect(
-        listProject(deps({ features: true, withEnvironment: "dev" }, {})),
-      ).rejects.toThrow("This project does not configure environments. Omit --with-environment.");
-      await expect(
-        listProject(deps({ variables: true, withoutEnvironment: "qa" }, { environments: ["dev"] })),
-      ).rejects.toThrow(
-        'Unknown environment "qa" for --without-environment. Available environments: dev.',
+      await expect(listProject(deps({ features: true, definedIn: "dev" }, {}))).rejects.toThrow(
+        "This project does not configure environments. Omit --defined-in.",
       );
       await expect(
-        listProject(deps({ segments: true, withEnvironment: "dev" }, { environments: ["dev"] })),
+        listProject(deps({ variables: true, notDefinedIn: "qa" }, { environments: ["dev"] })),
       ).rejects.toThrow(
-        "Options --with-environment and --without-environment can only be used with --features or --variables.",
+        'Unknown environment "qa" for --not-defined-in. Available environments: dev.',
+      );
+      await expect(
+        listProject(deps({ segments: true, definedIn: "dev" }, { environments: ["dev"] })),
+      ).rejects.toThrow(
+        "Options --defined-in and --not-defined-in can only be used with --features or --variables.",
       );
     });
   });

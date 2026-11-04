@@ -40,10 +40,10 @@ function parse(value: unknown) {
   ).safeParse(value);
 }
 
-describe("requiredEnvironmentsInOverrides", () => {
+describe("requireOverridesIn", () => {
   const required = (variable: Record<string, unknown>, settings: Partial<ProjectConfig> = {}) =>
     getVariableZodSchema(
-      { ...config, requiredEnvironmentsInOverrides: ["production"], ...settings },
+      { ...config, requireOverridesIn: ["production"], ...settings },
       attributes,
       ["europe"],
       features,
@@ -78,7 +78,7 @@ describe("requiredEnvironmentsInOverrides", () => {
   });
 
   it("asks for nothing without the setting", () => {
-    expect(required(ordinary, { requiredEnvironmentsInOverrides: undefined }).success).toBe(true);
+    expect(required(ordinary, { requireOverridesIn: undefined }).success).toBe(true);
   });
 });
 

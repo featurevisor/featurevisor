@@ -52,7 +52,7 @@ export interface EntitySummary {
   /** It depends on a deprecated feature, directly or through other entities. */
   dependsOnDeprecated?: boolean;
   environments?: string[];
-  /** Environments whose rules or overrides come from another, for `inherits:` */
+  /** Environments whose rules or overrides come from another, for `inherited:` */
   inheritedEnvironments?: string[];
   variationValues?: string[];
   variableKeys?: string[];

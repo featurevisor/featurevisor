@@ -37,6 +37,7 @@ import {
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
 import { getTargetFeatureKeys, getTargetVariableKeys, resolveTargets } from "../targeting";
 import { resolveForEnvironment } from "../builder/environments";
+import { writesEnvironment } from "../config/environmentSettings";
 import {
   CLI_COLOR_CYAN,
   CLI_COLOR_GREEN,
@@ -235,11 +236,6 @@ function getRulesIn(
   );
 }
 
-/** Whether a definition writes `rules` or `overrides` for an environment itself */
-function writesEnvironment(byEnvironment: unknown, environment: string) {
-  return Object.prototype.hasOwnProperty.call(byEnvironment ?? {}, environment);
-}
-
 export async function listEntities<T>(deps: Dependencies, entityType): Promise<T[]> {
   const { datasource, options, projectConfig } = deps;
   if (
@@ -399,12 +395,10 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         }
       }
 
-      // --with-environment=<environment>, --without-environment=<environment>
+      // --defined-in=<environment>, --not-defined-in=<environment>
       if (
-        (options.withEnvironment &&
-          !writesEnvironment(parsedFeature.rules, options.withEnvironment)) ||
-        (options.withoutEnvironment &&
-          writesEnvironment(parsedFeature.rules, options.withoutEnvironment))
+        (options.definedIn && !writesEnvironment(parsedFeature.rules, options.definedIn)) ||
+        (options.notDefinedIn && writesEnvironment(parsedFeature.rules, options.notDefinedIn))
       ) {
         continue;
       }
@@ -524,11 +518,11 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         }
       }
 
-      // --with-environment=<environment>, --without-environment=<environment>
+      // --defined-in=<environment>, --not-defined-in=<environment>
       const { overrides } = entity as ParsedVariable;
       if (
-        (options.withEnvironment && !writesEnvironment(overrides, options.withEnvironment)) ||
-        (options.withoutEnvironment && writesEnvironment(overrides, options.withoutEnvironment))
+        (options.definedIn && !writesEnvironment(overrides, options.definedIn)) ||
+        (options.notDefinedIn && writesEnvironment(overrides, options.notDefinedIn))
       ) {
         continue;
       }
@@ -1081,16 +1075,16 @@ function assertListOptions(options: Record<string, any>, projectConfig?: Project
     }
   }
 
-  const writtenEnvironments = ["withEnvironment", "withoutEnvironment"];
+  const definedOptions = ["definedIn", "notDefinedIn"];
   if (selector === "features") {
     assertListEnvironmentOptions(options, projectConfig?.environments, [
       "enabledIn",
       "disabledIn",
-      ...writtenEnvironments,
+      ...definedOptions,
     ]);
   }
   if (selector === "variables") {
-    assertListEnvironmentOptions(options, projectConfig?.environments, writtenEnvironments);
+    assertListEnvironmentOptions(options, projectConfig?.environments, definedOptions);
   }
 
   if (selector !== "features") {
@@ -1118,10 +1112,10 @@ function assertListOptions(options: Record<string, any>, projectConfig?: Project
 
   if (
     !["features", "variables"].includes(selector) &&
-    (options.withEnvironment || options.withoutEnvironment)
+    (options.definedIn || options.notDefinedIn)
   ) {
     throw new FeaturevisorCLIError(
-      "Options --with-environment and --without-environment can only be used with --features or --variables.",
+      "Options --defined-in and --not-defined-in can only be used with --features or --variables.",
       { code: "incompatible_cli_options", details: { selector } },
     );
   }

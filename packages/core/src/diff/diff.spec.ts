@@ -417,6 +417,26 @@ describe("core: definition diff", () => {
       );
     });
 
+    it("says a new definition reaches what inherits it, unless it has its own list", () => {
+      write("features/added.yml", feature({ staging: rule(100) }));
+      write("features/own.yml", feature({ dev: [], staging: rule(100) }));
+      const report = diff({ from: "HEAD", to: "working-tree" });
+      const of = (key: string) => report.changes.find((change) => change.key === key)?.inheritance;
+
+      expect(of("added")).toEqual([
+        { environment: "dev", from: "staging", key: "rules", change: "reaches" },
+      ]);
+      expect(of("own")).toBeUndefined();
+      expect(formatDefinitionDiff(report)).toContain(
+        "Also reaches dev, which inherits rules from staging.",
+      );
+    });
+
+    it("says nothing when a definition is removed", () => {
+      fs.rmSync(path.join(root, "features/checkout.yml"));
+      expect(inheritance()).toBeUndefined();
+    });
+
     it("says nothing once an environment has its own list", () => {
       write("features/checkout.yml", feature({ dev: rule(100), staging: rule(50) }));
       commit();

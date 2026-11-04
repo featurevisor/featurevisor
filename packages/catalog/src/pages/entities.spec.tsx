@@ -180,16 +180,16 @@ describe("environments that inherit", () => {
 
   it("finds who has not adopted an environment", () => {
     const feature = { inheritedEnvironments: ["dev"] } as EntitySummary;
-    expect(matchesQuery(feature, "inherits:dev")).toBe(true);
-    expect(matchesQuery(feature, "inherits:staging")).toBe(false);
-    expect(getUnknownQualifiers("inherits:dev")).toEqual([]);
+    expect(matchesQuery(feature, "inherited:dev")).toBe(true);
+    expect(matchesQuery(feature, "inherited:staging")).toBe(false);
+    expect(getUnknownQualifiers("inherited:dev")).toEqual([]);
 
     const index = {
       entities: { feature: [{ key: "checkout", ...feature }], variable: [] },
     } as unknown as CatalogIndex;
     expect(getFilterChips(index, "features")).toContainEqual({
-      label: "Inherits in dev",
-      token: "inherits:dev",
+      label: "Inherited in dev",
+      token: "inherited:dev",
       group: "Environment",
     });
   });

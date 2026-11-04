@@ -1,0 +1,23 @@
+feature: legacyExport
+
+assertions:
+  - description: Left out of staging's datafiles
+    environment: staging
+    at: 50
+    context:
+      userId: user-1
+    expectedToBeEnabled: false
+
+  - description: Left out of dev's too, which inherits that
+    environment: dev
+    at: 50
+    context:
+      userId: user-1
+    expectedToBeEnabled: false
+
+  - description: Production has it
+    environment: production
+    at: 50
+    context:
+      userId: user-1
+    expectedToBeEnabled: true

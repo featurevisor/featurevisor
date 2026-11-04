@@ -37,6 +37,6 @@ Building writes `datafiles/dev`, `datafiles/staging` and `datafiles/production`.
 See who has written their own rules for `dev`, and who still inherits:
 
 ```sh
-npx featurevisor list --features --with-environment=dev
-npx featurevisor list --features --without-environment=dev
+npx featurevisor list --features --defined-in=dev
+npx featurevisor list --features --not-defined-in=dev
 ```

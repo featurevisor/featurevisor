@@ -634,7 +634,9 @@ export function printExplanation(
   }
 
   const inherited = detail("Inherited from another environment");
-  if (inherited) line(`Inherited from ${inherited.from}:`, (inherited.keys as string[]).join(", "));
+  // Once per definition, as for the notice below. Every section's JSON still has it.
+  if (inherited && showNotice)
+    line(`Inherited from ${inherited.from}:`, (inherited.keys as string[]).join(", "));
 
   const rule = detail("Matched rule");
   if (rule)

@@ -280,6 +280,12 @@ export async function buildDatafile(
   const inheritedState = inheritedEnvironment
     ? await datasource.readState(inheritedEnvironment)
     : undefined;
+  const inEnvironment = <T>(byEnvironment: unknown) =>
+    resolveForEnvironment(
+      byEnvironment as Record<string, T> | undefined,
+      options.environment as string,
+      projectConfig,
+    );
   const disallowedOperators = projectConfig.disallowOperators || [];
   const segmentKeysUsedByTag = new Set<SegmentKey>();
   const attributeKeysUsedByTag = new Set<AttributeKey>();
@@ -476,11 +482,7 @@ export async function buildDatafile(
         if (options.features && options.features.indexOf(featureKey) === -1) continue;
 
         const expose = options.environment
-          ? resolveForEnvironment(
-              parsedFeature.expose as Record<string, Expose> | undefined,
-              options.environment,
-              projectConfig,
-            ).value
+          ? inEnvironment<Expose>(parsedFeature.expose).value
           : (parsedFeature.expose as Expose | undefined);
         if (expose === false) continue;
         if (Array.isArray(expose)) {
@@ -555,23 +557,11 @@ export async function buildDatafile(
       let rulesInheritedFrom: string | undefined;
 
       if (options.environment) {
-        expose = resolveForEnvironment(
-          parsedFeature.expose as Record<string, Expose> | undefined,
-          options.environment,
-          projectConfig,
-        ).value;
-        const resolvedRules = resolveForEnvironment(
-          parsedFeature.rules as Record<string, Rule[]> | undefined,
-          options.environment,
-          projectConfig,
-        );
+        expose = inEnvironment<Expose>(parsedFeature.expose).value;
+        const resolvedRules = inEnvironment<Rule[]>(parsedFeature.rules);
         rules = resolvedRules.value || [];
         rulesInheritedFrom = resolvedRules.inheritedFrom;
-        force = resolveForEnvironment(
-          parsedFeature.force as Record<string, Force[]> | undefined,
-          options.environment,
-          projectConfig,
-        ).value;
+        force = inEnvironment<Force[]>(parsedFeature.force).value;
       } else {
         expose = parsedFeature.expose as Expose | undefined;
         rules = parsedFeature.rules as Rule[];
@@ -840,11 +830,7 @@ export async function buildDatafile(
   };
   for (const { key, value: parsedVariable } of parsedVariables) {
     const sourceOverrides = options.environment
-      ? resolveForEnvironment(
-          parsedVariable.overrides as Record<string, ParsedVariableOverride[]> | undefined,
-          options.environment,
-          projectConfig,
-        ).value
+      ? inEnvironment<ParsedVariableOverride[]>(parsedVariable.overrides).value
       : (parsedVariable.overrides as ParsedVariableOverride[] | undefined);
     // A composition has no static starting value, even without continuation.
     const useProgram =

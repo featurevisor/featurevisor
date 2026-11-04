@@ -294,6 +294,54 @@ describe("editConfig", () => {
     });
   });
 
+  describe("the comment written for a removed setting", () => {
+    const edited = (...lines: string[]) =>
+      editConfig(["module.exports = {", ...lines, "};", ""].join("\n"), {
+        remove: ["environments", "inheritEnvironments"],
+        add: [],
+      })!.text;
+
+    it("goes with it, and so does the blank line that set it apart", () => {
+      expect(
+        edited(
+          "  tags: ['all'],",
+          "",
+          "  // Which environments there are,",
+          "  // in order",
+          "  environments: ['dev'],",
+          "",
+          "  /**",
+          "   * dev follows staging",
+          "   */",
+          "  inheritEnvironments: { dev: { from: 'staging' } },",
+          "",
+          "  prettyState: true,",
+        ),
+      ).toBe("module.exports = {\n  tags: ['all'],\n\n  prettyState: true,\n};\n");
+    });
+
+    it("leaves no blank line at either end of the object", () => {
+      expect(edited("  // first", "  environments: ['dev'],", "", "  tags: ['all'],")).toBe(
+        "module.exports = {\n  tags: ['all'],\n};\n",
+      );
+      expect(edited("  tags: ['all'],", "", "  // last", "  environments: ['dev'],")).toBe(
+        "module.exports = {\n  tags: ['all'],\n};\n",
+      );
+    });
+
+    it("stays when a blank line separates them, or it is a commented out setting", () => {
+      expect(edited("  // About the project", "", "  environments: ['dev'],")).toBe(
+        "module.exports = {\n  // About the project\n};\n",
+      );
+      expect(edited("  // prettyState: true,", "  environments: ['dev'],")).toBe(
+        "module.exports = {\n  // prettyState: true,\n};\n",
+      );
+      expect(edited("  // first", "  // tags: ['all'],", "  environments: ['dev'],")).toBe(
+        "module.exports = {\n  // first\n  // tags: ['all'],\n};\n",
+      );
+    });
+  });
+
   it("cannot edit a configuration that does not export an object", () => {
     expect(editConfig("module.exports = base;\n", { remove: [], add: [["sets", "true"]] })).toBe(
       undefined,
@@ -706,7 +754,7 @@ describe("convert", () => {
       "module.exports = {",
       '  environments: ["dev", "staging", "production"],',
       '  inheritEnvironments: { dev: { from: "staging" } },',
-      '  requiredEnvironmentsInRules: ["production"],',
+      '  requireRulesIn: ["production"],',
       '  tags: ["all"],',
       "};",
       "",
@@ -825,9 +873,12 @@ describe("convert", () => {
       const written = read("featurevisor.config.js");
       expect(written).not.toContain("environments");
       expect(written).not.toContain("inheritEnvironments");
-      expect(written).not.toContain("requiredEnvironmentsInRules");
+      expect(written).not.toContain("requireRulesIn");
       expect(printed).toContain(
-        "Writes what dev inherits from staging into 2 files, which then stop following staging.",
+        "featurevisor.config.js: removes environments, inheritEnvironments and requireRulesIn,",
+      );
+      expect(printed).toContain(
+        "Writes what dev inherits from staging into 2 files, so dev stops inheriting it.",
       );
     });
 

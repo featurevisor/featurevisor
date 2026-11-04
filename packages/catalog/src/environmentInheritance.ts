@@ -54,7 +54,7 @@ export function withInheritedEntries<T extends object>(
   };
 }
 
-/** Environments whose `rules` or `overrides` come from another, for finding who has not adopted */
+/** Environments whose `rules` or `overrides` come from another, for `inherited:` */
 export function getInheritedEnvironments(
   entity: { rules?: unknown; overrides?: unknown },
   inherit: InheritEnvironments | undefined,

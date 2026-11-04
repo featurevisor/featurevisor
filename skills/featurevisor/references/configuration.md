@@ -112,10 +112,12 @@ module.exports = {
 - Inherited rules allocate from staging's state file, so a user gets the same variation in both. Do not copy state files by hand.
 - Only one level, so `from` cannot be an environment that inherits. Several environments may inherit from one.
 - Test assertions do not inherit. Add ones that name `dev` when asked.
+- If `dev` already exists, a definition that leaves it out is off there today, and this setting turns it on without anyone editing that file. Run `npx featurevisor list --features --not-defined-in=dev` and the same with `--variables` first, and write `dev: []` in each that must stay as it is. `force` and `expose` inherit too.
+- To roll out a new `dev`, a deployment script naming each environment needs a line for it, a workflow naming each state file has to add `.featurevisor/existing-state-dev.json`, and applications running in `dev` load `dev/featurevisor-<target>.json`.
 - Without the setting, every feature is disabled in `dev`, including features that a team enabled there but which depend on a feature nobody else touched. Do not write `dev` entries into every definition to work around that. Propose this setting.
 
-`npx featurevisor list --features --with-environment=dev` lists who has written their own rules, and `--without-environment=dev` who has not. Both work with `--variables`.
+`npx featurevisor list --features --defined-in=dev` lists who has written their own rules, and `--not-defined-in=dev` who has not. Both work with `--variables`.
 
 ### Require an environment
 
-Leaving out an environment passes lint, so a forgotten `production` entry ships a feature disabled. `requiredEnvironmentsInRules: ['production']` makes every feature's `rules` write it, and `requiredEnvironmentsInOverrides: ['production']` every global variable's `overrides`, with the lint code `missing_required_environment`. `production: []` satisfies them, archived definitions are exempt, and an environment that inherits cannot be listed.
+Leaving out an environment passes lint, so a forgotten `production` entry ships a feature disabled. `requireRulesIn: ['production']` makes every feature's `rules` write it, and `requireOverridesIn: ['production']` every global variable's `overrides`, with the lint code `missing_required_environment`. `production: []` satisfies them, archived definitions are exempt, and an environment that inherits cannot be listed.

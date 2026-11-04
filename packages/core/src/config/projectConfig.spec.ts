@@ -444,18 +444,18 @@ describe("core: projectConfig", () => {
       const settings = {
         environments,
         inheritEnvironments: { dev: { from: "staging" }, preview: undefined },
-        requiredEnvironmentsInRules: ["production"],
-        requiredEnvironmentsInOverrides: ["production", "staging"],
+        requireRulesIn: ["production"],
+        requireOverridesIn: ["production", "staging"],
       };
       expect(load(settings)).toMatchObject({
         inheritEnvironments: { dev: { from: "staging" } },
-        requiredEnvironmentsInRules: ["production"],
-        requiredEnvironmentsInOverrides: ["production", "staging"],
+        requireRulesIn: ["production"],
+        requireOverridesIn: ["production", "staging"],
       });
       const defaults = load({ environments });
       expect(defaults.inheritEnvironments).toBeUndefined();
-      expect(defaults.requiredEnvironmentsInRules).toBeUndefined();
-      expect(defaults.requiredEnvironmentsInOverrides).toBeUndefined();
+      expect(defaults.requireRulesIn).toBeUndefined();
+      expect(defaults.requireOverridesIn).toBeUndefined();
     });
 
     it("lets several environments inherit from one", () => {
@@ -510,48 +510,45 @@ describe("core: projectConfig", () => {
       expect(() => load(settings)).toThrow(message);
     });
 
-    describe.each(["requiredEnvironmentsInRules", "requiredEnvironmentsInOverrides"])(
-      "%s",
-      (name) => {
-        it.each([
-          [{ [name]: ["production"] }, "this project does not configure environments."],
-          [
-            { environments, [name]: [] },
-            "expected a list of environments. Omit it when none is required.",
-          ],
-          [
-            { environments, [name]: "production" },
-            "expected a list of environments. Omit it when none is required.",
-          ],
-          [
-            { environments, [name]: [1] },
-            "expected a list of environments. Omit it when none is required.",
-          ],
-          [{ environments, [name]: ["prod"] }, '"prod" is not in environments.'],
-          [{ environments, [name]: ["production", "production"] }, 'duplicate name "production".'],
-          [
-            {
-              environments,
-              inheritEnvironments: { dev: { from: "staging" } },
-              [name]: ["dev"],
-            },
-            '"dev" inherits from "staging", so it cannot be required.',
-          ],
-        ])("rejects %j", (settings, message) => {
-          expect(() => load(settings)).toThrow(`Invalid ${name}: ${message}`);
-        });
+    describe.each(["requireRulesIn", "requireOverridesIn"])("%s", (name) => {
+      it.each([
+        [{ [name]: ["production"] }, "this project does not configure environments."],
+        [
+          { environments, [name]: [] },
+          "expected a list of environments. Omit it when none is required.",
+        ],
+        [
+          { environments, [name]: "production" },
+          "expected a list of environments. Omit it when none is required.",
+        ],
+        [
+          { environments, [name]: [1] },
+          "expected a list of environments. Omit it when none is required.",
+        ],
+        [{ environments, [name]: ["prod"] }, '"prod" is not in environments.'],
+        [{ environments, [name]: ["production", "production"] }, 'duplicate name "production".'],
+        [
+          {
+            environments,
+            inheritEnvironments: { dev: { from: "staging" } },
+            [name]: ["dev"],
+          },
+          '"dev" inherits from "staging", so it cannot be required.',
+        ],
+      ])("rejects %j", (settings, message) => {
+        expect(() => load(settings)).toThrow(`Invalid ${name}: ${message}`);
+      });
 
-        it("allows requiring the environment another inherits from", () => {
-          expect(
-            load({
-              environments,
-              inheritEnvironments: { dev: { from: "staging" } },
-              [name]: ["staging"],
-            })[name],
-          ).toEqual(["staging"]);
-        });
-      },
-    );
+      it("allows requiring the environment another inherits from", () => {
+        expect(
+          load({
+            environments,
+            inheritEnvironments: { dev: { from: "staging" } },
+            [name]: ["staging"],
+          })[name],
+        ).toEqual(["staging"]);
+      });
+    });
   });
 
   it("preserves configured environments when remapping project config for a set", () => {

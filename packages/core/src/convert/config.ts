@@ -90,6 +90,29 @@ function depthOf(text: string): number {
   return depth;
 }
 
+/**
+ * Where the comment directly above a line starts, or the line itself without one. A commented out
+ * setting is about itself, so it stays, along with anything above it.
+ */
+function startOfCommentAbove(source: string, lineStart: number): number {
+  let start = lineStart;
+  while (start > 0) {
+    const previous = source.lastIndexOf("\n", start - 2) + 1;
+    const line = source.slice(previous, start - 1).trim();
+    if (line.startsWith("//") && !/^\/\/\s*["']?[\w$]+["']?\s*:/.test(line)) {
+      start = previous;
+    } else if (line.endsWith("*/")) {
+      const open = source.lastIndexOf("/*", start);
+      const openLine = source.lastIndexOf("\n", open) + 1;
+      if (open === -1 || source.slice(openLine, open).trim()) break;
+      start = openLine;
+    } else {
+      break;
+    }
+  }
+  return start;
+}
+
 /** A setting as written in the exported object, a list of values one per line */
 export function writeSetting(name: string, value: string | string[], indent = "  "): string {
   const written =
@@ -120,8 +143,16 @@ export function editConfig(
       !result.slice(lineStart, start).trim() &&
       !result.slice(end, lineEnd === -1 ? undefined : lineEnd).trim()
     ) {
-      start = lineStart;
+      start = startOfCommentAbove(result, lineStart);
       end = lineEnd === -1 ? result.length : lineEnd + 1;
+      // the blank line that set it apart goes too, so its neighbours keep one between them
+      const blankBefore = /(?:^|\n)[ \t]*\n$/.test(result.slice(0, start));
+      const opensObject = /\{[ \t]*\n$/.test(result.slice(0, start));
+      const blankAfter = /^[ \t]*\n/.exec(result.slice(end));
+      if ((blankBefore || opensObject) && blankAfter) end += blankAfter[0].length;
+      else if (blankBefore && /^\s*\}/.test(result.slice(end))) {
+        start = result.lastIndexOf("\n", start - 2) + 1;
+      }
     }
     result = result.slice(0, start) + result.slice(end);
   }

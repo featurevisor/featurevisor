@@ -1,10 +1,21 @@
 /** Environments that use another environment's lists wherever a definition leaves theirs out. */
 export type InheritEnvironments = Record<string, { from: string }>;
 
-const REQUIRED_SETTINGS = [
-  "requiredEnvironmentsInRules",
-  "requiredEnvironmentsInOverrides",
-] as const;
+/** The keys grouped by environment in each kind of definition */
+export const ENVIRONMENT_KEYS = {
+  feature: ["rules", "force", "expose"],
+  variable: ["overrides"],
+} as const;
+
+const REQUIRED_SETTINGS = ["requireRulesIn", "requireOverridesIn"] as const;
+
+/** Settings that mean nothing without `environments` */
+export const ENVIRONMENT_SETTINGS = ["inheritEnvironments", ...REQUIRED_SETTINGS] as const;
+
+/** Whether a map by environment has its own entry for an environment, whatever that holds */
+export function writesEnvironment(byEnvironment: unknown, environment: string): boolean {
+  return Object.prototype.hasOwnProperty.call(byEnvironment ?? {}, environment);
+}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return (
@@ -45,7 +56,7 @@ function assertInheritEnvironments(value: unknown, environments: unknown) {
         `Invalid ${name}.${environment}.from: an environment cannot inherit from itself.`,
       );
     }
-    if (Object.prototype.hasOwnProperty.call(value, from)) {
+    if (writesEnvironment(value, from)) {
       const parent = (value[from] as { from: string }).from;
       throw new Error(
         `Invalid ${name}.${environment}.from: "${from}" inherits from "${parent}", and an environment can only inherit one level.`,
@@ -81,10 +92,7 @@ function assertRequiredEnvironments(
       throw new Error(`Invalid ${name}: duplicate name "${environment}".`);
     }
     seen.add(environment);
-    if (
-      inheritEnvironments &&
-      Object.prototype.hasOwnProperty.call(inheritEnvironments, environment)
-    ) {
+    if (writesEnvironment(inheritEnvironments, environment)) {
       const { from } = (inheritEnvironments as InheritEnvironments)[environment];
       throw new Error(
         `Invalid ${name}: "${environment}" inherits from "${from}", so it cannot be required.`,
@@ -97,8 +105,8 @@ function assertRequiredEnvironments(
 export function assertEnvironmentSettings(config: {
   environments?: unknown;
   inheritEnvironments?: unknown;
-  requiredEnvironmentsInRules?: unknown;
-  requiredEnvironmentsInOverrides?: unknown;
+  requireRulesIn?: unknown;
+  requireOverridesIn?: unknown;
 }) {
   if (typeof config.inheritEnvironments !== "undefined") {
     assertInheritEnvironments(config.inheritEnvironments, config.environments);
