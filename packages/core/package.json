@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/core",
-  "version": "4.6.0",
+  "version": "4.7.0",
   "description": "Project configuration, validation and datafile building for Featurevisor tooling",
   "engines": {
     "node": ">=24"
@@ -47,7 +47,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/catalog": "4.5.0",
+    "@featurevisor/catalog": "4.7.0",
     "@featurevisor/expressions": "4.5.0",
     "@featurevisor/parsers": "4.5.0",
     "@featurevisor/sdk": "4.3.0",

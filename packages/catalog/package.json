@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/catalog",
-  "version": "4.5.0",
+  "version": "4.7.0",
   "description": "Static catalog UI for Featurevisor projects",
   "keywords": [
     "featurevisor",
