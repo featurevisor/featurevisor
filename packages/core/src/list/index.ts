@@ -54,8 +54,8 @@ import {
   DEADLINE_STATUS_FILTERS,
   getDeadlineClock,
   getDeadlineStatuses,
+  getInvalidNowMessage,
   getOwners,
-  isCalendarDate,
   isDeadlineStatusFilter,
   matchesDeadline,
   matchesDeadlineFilters,
@@ -84,7 +84,7 @@ function getMetadataFilters(options: Dependencies["options"]) {
   const owners = listValues(options.owner);
   const deadlines = listValues(options.deadline);
   const clock: DeadlineClock | undefined = deadlines.length
-    ? getDeadlineClock(options.today)
+    ? getDeadlineClock(options.now)
     : undefined;
   return { owners, deadlines, clock };
 }
@@ -1248,18 +1248,19 @@ function assertMetadataListOptions(
     }
   }
 
-  if (typeof options.today !== "undefined") {
+  if (typeof options.now !== "undefined") {
     if (typeof options.deadline === "undefined") {
-      throw new FeaturevisorCLIError("Option --today needs --deadline, whose statuses it fixes.", {
+      throw new FeaturevisorCLIError("Option --now needs --deadline, whose statuses it fixes.", {
         code: "missing_cli_option",
         details: { selector, option: "deadline" },
       });
     }
-    if (!isCalendarDate(options.today)) {
-      throw new FeaturevisorCLIError(
-        `Invalid --today: ${JSON.stringify(options.today)}. Expected a date such as 2027-01-15.`,
-        { code: "invalid_cli_arguments", details: { option: "today" } },
-      );
+    const invalidNow = getInvalidNowMessage(options.now);
+    if (invalidNow) {
+      throw new FeaturevisorCLIError(invalidNow, {
+        code: "invalid_cli_arguments",
+        details: { option: "now" },
+      });
     }
   }
 

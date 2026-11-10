@@ -848,17 +848,22 @@ describe("core: list", function () {
         metadata: {
           owner: ["checkout-team", "payments-team"],
           deadlines: {
-            review: { by: "2027-01-01", done: "2026-12-30" },
-            remove: { by: "2027-01-20", ticket: "X-1" },
+            review: { by: "2027-01-01T12:00:00Z", done: "2026-12-30T16:00:00Z" },
+            remove: { by: "2027-01-20T12:00:00Z", ticket: "X-1" },
           },
         },
       }),
       redesign: createFeatureFixture({
-        metadata: { owner: "growth-team", deadlines: { deprecate: { by: "2027-01-01" } } },
+        metadata: {
+          owner: "growth-team",
+          deadlines: { deprecate: { by: "2027-01-01T12:00:00Z" } },
+        },
       }),
-      // A TOML date reads in its JSON form
+      // A TOML date and time reads in its JSON form
       banner: createFeatureFixture({
-        metadata: { deadlines: { review: { by: { toJSON: () => "2027-03-01" } as any } } },
+        metadata: {
+          deadlines: { review: { by: { toJSON: () => "2027-03-01T12:00:00.000Z" } as any } },
+        },
       }),
       plain: createFeatureFixture(),
     };
@@ -882,7 +887,7 @@ describe("core: list", function () {
         "feature",
       );
     const keys = async (options: Record<string, unknown>) =>
-      (await run({ today: "2027-01-15", ...options })).map(({ key }) => key);
+      (await run({ now: "2027-01-15T12:00:00Z", ...options })).map(({ key }) => key);
 
     test("filters by owners, every one named", async () => {
       expect(await keys({ owner: ["checkout-team"] })).toEqual(["checkout"]);
@@ -906,10 +911,10 @@ describe("core: list", function () {
     });
 
     test("adds each deadline's status to JSON entries when filtering by deadline", async () => {
-      const [checkout] = await run({ deadline: ["remove"], today: "2027-01-15" });
+      const [checkout] = await run({ deadline: ["remove"], now: "2027-01-15T12:00:00Z" });
       expect(checkout.deadlineStatuses).toEqual([
-        { type: "review", by: "2027-01-01", status: "done" },
-        { type: "remove", by: "2027-01-20", status: "upcoming" },
+        { type: "review", by: "2027-01-01T12:00:00Z", status: "done" },
+        { type: "remove", by: "2027-01-20T12:00:00Z", status: "upcoming" },
       ]);
       const [plain] = await run({ keyPattern: "plain" });
       expect(plain).not.toHaveProperty("deadlineStatuses");
@@ -926,12 +931,14 @@ describe("core: list", function () {
       await expect(listProject(deps({ tests: true, owner: ["a"] }))).rejects.toThrow(
         "Option --owner can only be used with --features, --variables, --segments, --attributes, --targets, --schemas.",
       );
-      await expect(listProject(deps({ features: true, today: "2027-01-15" }))).rejects.toThrow(
-        "Option --today needs --deadline, whose statuses it fixes.",
-      );
       await expect(
-        listProject(deps({ features: true, deadline: ["open"], today: "2027-02-30" })),
-      ).rejects.toThrow('Invalid --today: "2027-02-30". Expected a date such as 2027-01-15.');
+        listProject(deps({ features: true, now: "2027-01-15T12:00:00Z" })),
+      ).rejects.toThrow("Option --now needs --deadline, whose statuses it fixes.");
+      await expect(
+        listProject(deps({ features: true, deadline: ["open"], now: "2027-01-15" })),
+      ).rejects.toThrow(
+        'Invalid --now: "2027-01-15". Expected a timestamp with a timezone, such as 2027-01-15T09:00:00Z. A date alone has no time or timezone.',
+      );
       // declared types close the list, so an undeclared one could never match
       await expect(listProject(deps({ features: true, deadline: ["reveiw"] }))).rejects.toThrow(
         'Invalid --deadline: "reveiw" is neither a status (overdue, today, upcoming, later, open, done) nor a deadline type of this project (review, remove, deprecate). Did you mean "review"?',

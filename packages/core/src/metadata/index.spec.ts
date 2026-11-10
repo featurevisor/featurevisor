@@ -4,45 +4,91 @@ import {
   getDeadlineStatus,
   getDeadlineStatuses,
   getDaysUntilDeadline,
+  getInvalidNowMessage,
   getOwners,
   isCalendarDate,
+  isDeadlineTimestamp,
   isDeadlineType,
   matchesDeadlineFilters,
 } from ".";
 
-const today = getDeadlineClock("2027-01-15");
+// Midday in UTC is 15 January in every usual timezone, so these read the same wherever they run
+const today = getDeadlineClock("2027-01-15T12:00:00Z");
+const at = (date: string, time = "12:00:00") => `${date}T${time}Z`;
 
 describe("deadline statuses", () => {
   it.each([
-    [{ by: "2027-01-14" }, "overdue"],
-    [{ by: "2027-01-15" }, "today"],
-    [{ by: "2027-01-16" }, "upcoming"],
-    [{ by: "2027-02-14" }, "upcoming"],
-    [{ by: "2027-02-15" }, "later"],
-    [{ by: "2026-01-01", done: true }, "done"],
-    [{ by: "2026-01-01", done: "2026-02-01" }, "done"],
-    [{ by: "2026-01-01", done: false }, "overdue"],
+    [{ by: at("2027-01-14") }, "overdue"],
+    [{ by: at("2027-01-15", "11:00:00") }, "overdue"],
+    [{ by: at("2027-01-15", "12:30:00") }, "today"],
+    [{ by: at("2027-01-16") }, "upcoming"],
+    [{ by: at("2027-02-14") }, "upcoming"],
+    [{ by: at("2027-02-15") }, "later"],
+    [{ by: at("2026-01-01"), done: true }, "done"],
+    [{ by: at("2026-01-01"), done: at("2026-02-01") }, "done"],
+    [{ by: at("2026-01-01"), done: false }, "overdue"],
+    [{ by: "2027-01-20" }, undefined],
+    [{ by: "2027-01-20T12:00:00" }, undefined],
     [{ by: "soon" }, undefined],
-  ])("%j is %s on 15 January", (deadline, status) => {
+  ])("%j is %s at midday on 15 January", (deadline, status) => {
     expect(getDeadlineStatus(deadline, today)).toBe(status);
   });
 
-  it("counts a timestamp on its local date, and as overdue from its moment", () => {
+  it("is overdue from its moment, and due today until then on its local date", () => {
     const noon = new Date(2027, 0, 15, 12).getTime();
     const clock = getDeadlineClock(undefined, noon);
-    expect(clock.today).toBe("2027-01-15");
-    const at = (hour: number) => new Date(2027, 0, 15, hour).toISOString();
-    expect(getDeadlineStatus({ by: at(11) }, clock)).toBe("overdue");
-    expect(getDeadlineStatus({ by: at(13) }, clock)).toBe("today");
-    // a fixed date compares dates alone, so a report reads the same all day
-    expect(getDeadlineStatus({ by: at(11) }, today)).toBe("today");
+    expect(clock).toEqual({ now: noon, today: "2027-01-15" });
+    const local = (hour: number) => new Date(2027, 0, 15, hour).toISOString();
+    expect(getDeadlineStatus({ by: local(11) }, clock)).toBe("overdue");
+    expect(getDeadlineStatus({ by: local(12) }, clock)).toBe("overdue");
+    expect(getDeadlineStatus({ by: local(13) }, clock)).toBe("today");
   });
 
-  it("counts days to the date a deadline is due", () => {
-    expect(getDaysUntilDeadline("2027-01-25", today)).toBe(10);
-    expect(getDaysUntilDeadline("2027-01-05", today)).toBe(-10);
-    expect(getDaysUntilDeadline("2028-01-15", today)).toBe(365);
+  it("reads a fixed clock from a timestamp with any offset", () => {
+    const clock = getDeadlineClock("2027-01-15T13:00:00+01:00");
+    expect(clock.now).toBe(Date.parse("2027-01-15T12:00:00Z"));
+    expect(clock.today).toBe("2027-01-15");
+  });
+
+  it("counts days to the local date a deadline is due", () => {
+    expect(getDaysUntilDeadline(at("2027-01-25"), today)).toBe(10);
+    expect(getDaysUntilDeadline(at("2027-01-05"), today)).toBe(-10);
+    expect(getDaysUntilDeadline(at("2028-01-15"), today)).toBe(365);
+    expect(getDaysUntilDeadline("2027-01-25", today)).toBeUndefined();
     expect(getDaysUntilDeadline("never", today)).toBeUndefined();
+  });
+});
+
+describe("deadline timestamps", () => {
+  it("accepts ISO 8601 timestamps with a timezone, as conditions do", () => {
+    for (const value of [
+      "2027-03-01T09:00:00Z",
+      "2027-03-01T09:00:00+01:00",
+      "2027-03-01T09:00:00.123Z",
+      "2028-02-29T23:59:59-05:30",
+    ]) {
+      expect(isDeadlineTimestamp(value)).toBe(true);
+    }
+    for (const value of [
+      "2027-03-01",
+      "2027-03-01T09:00:00",
+      "2027-03-01T09:00Z",
+      "2027-02-29T09:00:00Z",
+      "2027-03-01 09:00:00Z",
+      1767225600000,
+    ]) {
+      expect(isDeadlineTimestamp(value)).toBe(false);
+    }
+  });
+
+  it("says what a --now value needs", () => {
+    expect(getInvalidNowMessage("2027-03-01T09:00:00Z")).toBeUndefined();
+    expect(getInvalidNowMessage("2027-03-02")).toBe(
+      'Invalid --now: "2027-03-02". Expected a timestamp with a timezone, such as 2027-03-02T09:00:00Z. A date alone has no time or timezone.',
+    );
+    expect(getInvalidNowMessage("tomorrow")).toBe(
+      'Invalid --now: "tomorrow". Expected a timestamp with a timezone, such as 2027-01-15T09:00:00Z. Use YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm.',
+    );
   });
 });
 
@@ -77,9 +123,9 @@ describe("metadata filters", () => {
   const metadata = {
     owner: ["checkout-team", "payments-team"],
     deadlines: {
-      review: { by: "2027-01-01", done: "2026-12-30" },
-      remove: { by: "2027-01-20", ticket: "X-1" },
-      notify: { by: "2026-12-01" },
+      review: { by: "2027-01-01T12:00:00Z", done: "2026-12-30T16:00:00Z" },
+      remove: { by: "2027-01-20T12:00:00Z", ticket: "X-1" },
+      notify: { by: "2026-12-01T12:00:00Z" },
     },
   };
 
@@ -111,9 +157,9 @@ describe("metadata filters", () => {
 
   it("lists each deadline with its status", () => {
     expect(getDeadlineStatuses(metadata, today)).toEqual([
-      { type: "review", by: "2027-01-01", status: "done" },
-      { type: "remove", by: "2027-01-20", status: "upcoming" },
-      { type: "notify", by: "2026-12-01", status: "overdue" },
+      { type: "review", by: "2027-01-01T12:00:00Z", status: "done" },
+      { type: "remove", by: "2027-01-20T12:00:00Z", status: "upcoming" },
+      { type: "notify", by: "2026-12-01T12:00:00Z", status: "overdue" },
     ]);
   });
 });

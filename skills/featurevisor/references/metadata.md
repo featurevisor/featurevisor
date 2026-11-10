@@ -15,11 +15,11 @@ metadata:
 
   deadlines:
     review:
-      by: "2027-01-15"
-      done: "2027-01-10"
+      by: "2027-01-15T09:00:00Z"
+      done: "2027-01-10T16:30:00Z"
 
     remove:
-      by: "2027-03-01"
+      by: "2027-03-01T09:00:00Z"
       description: Once every market is on the new checkout
       ticket: CHECKOUT-456
 
@@ -38,27 +38,29 @@ Everything in `metadata` is free form JSON values, except two keys:
 - `owner`: a name, or a list of different names. Catalog shows it and filters by it, and `list --owner` selects by it.
 - `deadlines`: a map from a deadline type, such as `review`, to a deadline with `by`, optional `done` and optional `description`.
 
-| Field         | Value                                                                |
-| ------------- | -------------------------------------------------------------------- |
-| `by`          | Required. A date `"YYYY-MM-DD"`, or a timestamp with a timezone      |
-| `done`        | `true`, or the date or timestamp it was done. `false` means not done |
-| `description` | Text                                                                 |
+| Field         | Value                                                        |
+| ------------- | ------------------------------------------------------------ |
+| `by`          | Required. An ISO 8601 timestamp with a timezone              |
+| `done`        | `true`, or the timestamp it was done. `false` means not done |
+| `description` | Text                                                         |
 
-A type key starts with a letter and has only letters, digits, `_` and `-`. The statuses `overdue`, `today`, `upcoming`, `later`, `open` and `done` cannot be type names. Quote dates, as `fmt` writes them.
+A type key starts with a letter and has only letters, digits, `_` and `-`. The statuses `overdue`, `today`, `upcoming`, `later`, `open` and `done` cannot be type names. Quote timestamps, as `fmt` writes them.
+
+Timestamps are exactly what conditions' `before` and `after` accept, read by the same function: `YYYY-MM-DDTHH:mm:ss`, optional fractional seconds, then `Z` or `±HH:mm`. A date alone, such as `"2027-03-01"`, or a time without a timezone fails lint with `invalid_metadata`, since it names a different moment in every timezone. Suggest the date at a sensible hour in UTC, such as `"2027-03-01T09:00:00Z"`, and ask the user when the hour matters. A TOML date and time with an offset reads as its ISO text, and a TOML local date fails the same way.
 
 ## Statuses
 
 Worked out when someone looks, never at build time:
 
-- **done**: `done` is `true` or a date.
-- **overdue**: not done and its date has passed. A date is due until the end of that day where the reader is. A timestamp is due at that moment.
-- **today**, **upcoming** (within 30 days), **later**.
+- **done**: `done` is `true` or a timestamp.
+- **overdue**: not done, from the moment in `by`, the same everywhere.
+- **today** (later that day), **upcoming** (within 30 days), **later**. These count calendar days where the reader is: the browser's timezone in Catalog, the machine's in the CLI.
 
-Nothing happens when a deadline passes. Lint never fails because of the date. Marking `remove` done does not archive anything, and `deprecated: true` does not mark a `deprecate` deadline done. Change the definition itself for that.
+Nothing changes for users when a deadline passes. Lint warns about each open deadline that is overdue (`deadline_overdue`) or due today (`deadline_due_today`), and never fails because of a date unless asked. Done deadlines and archived definitions never warn. `lint --now=2027-03-02T12:00:00Z` checks deadlines as they stand at that moment, which also makes the warnings repeatable. `lint --fail-on=deadline_overdue` makes overdue deadlines errors that fail lint. Recommend it for a scheduled job or a release gate, not for pull requests, which would fail the day a date passes. Marking `remove` done does not archive anything, and `deprecated: true` does not mark a `deprecate` deadline done. Change the definition itself for that.
 
 ## The project's schema
 
-`metadataSchema` in `featurevisor.config.js` validates metadata with the keywords of reusable schemas, minus `schema`, plus `format: date`. Its root is `type: 'object'`. Declared `properties` close an object, so an undeclared key fails lint, unless `additionalProperties: {}` allows any other key.
+`metadataSchema` in `featurevisor.config.js` validates metadata with the keywords and formats of reusable schemas, minus `schema`, so a moment is `format: date-time`. `format: date` is refused at load, as everywhere in Featurevisor. Its root is `type: 'object'`. Declared `properties` close an object, so an undeclared key fails lint, unless `additionalProperties: {}` allows any other key.
 
 ```js
 module.exports = {
@@ -104,10 +106,10 @@ Read the project's `metadataSchema` before writing metadata, and use its owner n
 ```bash
 npx featurevisor list --features --owner=checkout-team
 npx featurevisor list --features --deadline=overdue --json
-npx featurevisor list --features --deadline=remove --deadline=upcoming --today=2027-02-15
+npx featurevisor list --features --deadline=remove --deadline=upcoming --now=2027-02-15T12:00:00Z
 ```
 
-`--owner` repeated means every owner. `--deadline` takes a status or a type, and repeated values must all describe the same deadline. `--today` fixes the date statuses use, for stable reports. JSON entries keep `metadata` as written and, with `--deadline`, add `deadlineStatuses`.
+`--owner` repeated means every owner. `--deadline` takes a status or a type, and repeated values must all describe the same deadline. `--now` takes a timestamp and fixes the moment statuses use, for stable reports. JSON entries keep `metadata` as written and, with `--deadline`, add `deadlineStatuses`.
 
 In Catalog, lists filter by `owner:`, `deadline:` and `metadata:key=value`, search finds owners and metadata values, and the home page and the Deadlines page show what is overdue and coming up.
 

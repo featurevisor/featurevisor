@@ -5,7 +5,7 @@ function check(metadataSchema: unknown) {
 }
 
 describe("metadataSchema", () => {
-  it("accepts the keywords of reusable schemas, format: date, and deadline types", () => {
+  it("accepts the keywords and formats of reusable schemas, and deadline types", () => {
     expect(
       check({
         type: "object",
@@ -13,7 +13,7 @@ describe("metadataSchema", () => {
         properties: {
           owner: { type: "string", enum: ["checkout-team"] },
           jira: { type: "string", pattern: "^[A-Z]+-[0-9]+$", minLength: 3, maxLength: 20 },
-          launchedOn: { type: "string", format: "date" },
+          launchedOn: { type: "string", format: "date-time" },
           budget: { type: "integer", minimum: 0, maximum: 10 },
           reviewers: { type: "array", items: { type: "string" }, minItems: 1, uniqueItems: true },
           idOrName: { oneOf: [{ type: "integer" }, { type: "string" }] },
@@ -24,7 +24,7 @@ describe("metadataSchema", () => {
               review: { description: "Check the flag still earns its place" },
               remove: {
                 type: "object",
-                properties: { ticket: { type: "string", format: "date" } },
+                properties: { ticket: { type: "string", format: "date-time" } },
                 required: ["ticket", "description"],
               },
             },
@@ -54,12 +54,16 @@ describe("metadataSchema", () => {
       'Invalid metadataSchema.properties.a.type: expected one of "boolean", "string"',
     ],
     [
-      { type: "object", properties: { a: { type: "integer", format: "date" } } },
+      { type: "object", properties: { a: { type: "integer", format: "semver" } } },
       'Invalid metadataSchema.properties.a.format: format is only supported with type "string".',
     ],
     [
       { type: "object", properties: { a: { type: "string", format: "email" } } },
-      'Invalid metadataSchema.properties.a.format: expected one of "date", "date-time", "semver".',
+      'Invalid metadataSchema.properties.a.format: expected one of "date-time", "semver".',
+    ],
+    [
+      { type: "object", properties: { a: { type: "string", format: "date" } } },
+      'Invalid metadataSchema.properties.a.format: unsupported format "date". Use `format: date-time`, a timestamp with a timezone.',
     ],
     [
       { type: "object", properties: { a: { type: "string", enum: ["x", 1] } } },

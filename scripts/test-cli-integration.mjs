@@ -262,8 +262,56 @@ function testDefinitionDiff(projectDirectoryPath, sets = false) {
   });
 }
 
+function testDeadlineWarnings(projectDirectoryPath) {
+  // Example 1 plans removing discount by 2026-11-30T17:00:00Z, and deprecating redesign by 1 November
+  runJson(projectDirectoryPath, ["lint", "--json", "--now=2026-11-30T12:00:00Z"], (report) => {
+    assert.deepEqual(report.errors, []);
+    assert.deepEqual(
+      report.warnings
+        .filter((warning) => warning.code.startsWith("deadline_"))
+        .map(
+          ({ code, entityType, key, path }) => `${entityType} ${key} ${path.join(".")}: ${code}`,
+        ),
+      [
+        "feature discount metadata.deadlines.remove: deadline_due_today",
+        "feature redesign metadata.deadlines.deprecate: deadline_overdue",
+      ],
+    );
+  });
+  const dayAfter = ["lint", "--now=2026-12-01T12:00:00Z", "--entity-type=feature"];
+  run(projectDirectoryPath, dayAfter, (result) => {
+    assert.match(
+      result.stdout,
+      /=> Warning: The "remove" deadline was due by 2026-11-30T17:00:00Z and is not done\. Set `done` once the work is done, or move `by` later\. \(feature discount: metadata\.deadlines\.remove\)/,
+    );
+    assert.match(result.stdout, /No lint errors found/);
+  });
+  // --fail-on makes the overdue deadlines errors, which fail lint
+  fail(
+    projectDirectoryPath,
+    [...dayAfter, "--fail-on=deadline_overdue"],
+    /=> Error: The "remove" deadline was due by 2026-11-30T17:00:00Z and is not done\.[^]*Path: metadata\.deadlines\.remove/,
+  );
+  runJson(
+    projectDirectoryPath,
+    ["lint", "--json", "--now=2026-10-01T12:00:00Z", "--fail-on=deadline_overdue"],
+    (report) => assert.deepEqual(report.errors, []),
+  );
+  fail(
+    projectDirectoryPath,
+    ["lint", "--fail-on=deadline_overdu"],
+    /Invalid --fail-on: "deadline_overdu" is not a lint warning code\. Did you mean "deadline_overdue"\?/,
+  );
+  fail(
+    projectDirectoryPath,
+    ["lint", "--now=2026-11-30"],
+    /Invalid --now: "2026-11-30"\. Expected a timestamp with a timezone, such as 2026-11-30T09:00:00Z\. A date alone has no time or timezone\./,
+  );
+}
+
 function testMutationOrderMigration(projectDirectoryPath) {
-  runJson(projectDirectoryPath, ["lint", "--json"], (report) => {
+  // Every one of Example 1's deadlines is still ahead at this moment, so none of them warns
+  runJson(projectDirectoryPath, ["lint", "--json", "--now=2026-10-01T12:00:00Z"], (report) => {
     assert.deepEqual(report.errors, []);
     assert.deepEqual(
       (report.warnings || []).filter((warning) => warning.code !== "context_value_mismatch"),
@@ -2276,6 +2324,7 @@ try {
   testDateContexts(standardProject);
   testVariableDiagnostics(standardProject);
   testMutationOrderMigration(standardProject);
+  testDeadlineWarnings(standardProject);
   testScenarioChecks(standardProject);
   testMutationPrecomputation(standardProject);
   testOrderedMutationCodeGeneration(standardProject);

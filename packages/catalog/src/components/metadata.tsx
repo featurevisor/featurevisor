@@ -1,13 +1,14 @@
 import * as React from "react";
 
 import { entityLabels, entityTypeToPath, getBasePath, getEntityRoute } from "../entityTypes";
-import { formatDeadlineDate, formatFullDeadlineDate } from "../dates";
+import { formatDate, formatDateTime, formatFullTimestamp } from "../dates";
 import {
   compareDeadlines,
   getDaysUntilDeadline,
-  getDeadlineDate,
+  getDeadlineClock,
   getDeadlineLabel,
   getDeadlineStatus,
+  getDeadlineTimestamp,
   getSafeUrl,
   type Deadline,
   type DeadlineClock,
@@ -57,14 +58,15 @@ export function describeDeadline(deadline: Deadline, clock: DeadlineClock): Dead
   const days = getDaysUntilDeadline(deadline.by, clock);
   const tone = status ? DEADLINE_TONES[status] : "neutral";
   if (status === "done") {
-    const doneOn = typeof deadline.done === "string" ? getDeadlineDate(deadline.done) : undefined;
+    const doneAt = typeof deadline.done === "string" ? getDeadlineTimestamp(deadline.done) : null;
     const late =
-      doneOn && getDeadlineDate(deadline.by)
-        ? (getDaysUntilDeadline(deadline.by, { today: doneOn }) ?? 0) * -1
+      doneAt !== null
+        ? (getDaysUntilDeadline(deadline.by, getDeadlineClock(deadline.done as string)) ?? 0) * -1
         : 0;
-    const long = doneOn
-      ? `Done on ${formatDeadlineDate(doneOn)}${late > 0 ? `, ${plural(late, "day")} after its deadline` : ""}`
-      : "Done";
+    const long =
+      doneAt !== null
+        ? `Done on ${formatDate(deadline.done as string)}${late > 0 ? `, ${plural(late, "day")} after its deadline` : ""}`
+        : "Done";
     return { status, days, tone, short: "done", long };
   }
   if (status === "overdue" && days !== undefined) {
@@ -86,7 +88,7 @@ export function DeadlineRowBadge(props: { deadline: Deadline; clock: DeadlineClo
   if (view.status !== "overdue" && view.status !== "today" && view.status !== "upcoming") {
     return null;
   }
-  const title = `${getDeadlineLabel(props.deadline.type)}, due ${formatFullDeadlineDate(props.deadline.by)}`;
+  const title = `${getDeadlineLabel(props.deadline.type)}, due ${formatFullTimestamp(props.deadline.by)}`;
   const badge = (
     <Badge tone={view.tone} title={title}>
       {view.short}
@@ -354,11 +356,11 @@ export function DeadlineItem(props: {
         <Badge tone={view.tone}>{view.long}</Badge>
         <time
           dateTime={deadline.by}
-          title={formatFullDeadlineDate(deadline.by)}
+          title={formatFullTimestamp(deadline.by)}
           className="text-xs tabular-nums text-muted"
         >
           {done ? "Due " : ""}
-          {formatDeadlineDate(deadline.by)}
+          {formatDateTime(deadline.by)}
         </time>
       </div>
     </li>

@@ -20,7 +20,6 @@ export const DEADLINE_STATUS_FILTERS = [
 
 export const UPCOMING_DAYS = 30;
 
-const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIMESTAMP_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))$/;
 const DAY = 24 * 60 * 60 * 1000;
@@ -35,15 +34,7 @@ function daysInMonth(year: number, month: number) {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-export function isCalendarDate(value: unknown): value is string {
-  if (typeof value !== "string") return false;
-  const parts = DATE_PATTERN.exec(value);
-  if (!parts) return false;
-  const [year, month, day] = [+parts[1], +parts[2], +parts[3]];
-  return year >= 1 && month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month);
-}
-
-/** Milliseconds for a timestamp with a timezone, as `format: date-time` reads it */
+/** Milliseconds for an ISO 8601 timestamp with a timezone, as conditions and Core read it */
 export function getDeadlineTimestamp(value: unknown): number | null {
   if (typeof value !== "string") return null;
   const parts = TIMESTAMP_PATTERN.exec(value);
@@ -91,18 +82,19 @@ function dayNumber(date: string): number {
   return Math.round(utc.getTime() / DAY);
 }
 
+/** The moment statuses are worked out at, and its local date */
 export interface DeadlineClock {
+  now: number;
   today: string;
-  now?: number;
 }
 
-export function getDeadlineClock(today?: string, now = Date.now()): DeadlineClock {
-  return today ? { today } : { today: getLocalDate(now), now };
+export function getDeadlineClock(at?: string, now = Date.now()): DeadlineClock {
+  const moment = at === undefined ? now : (getDeadlineTimestamp(at) ?? now);
+  return { now: moment, today: getLocalDate(moment) };
 }
 
 /** The local date a deadline is due on */
 export function getDeadlineDate(by: unknown): string | undefined {
-  if (isCalendarDate(by)) return by;
   const timestamp = getDeadlineTimestamp(by);
   return timestamp === null ? undefined : getLocalDate(timestamp);
 }
@@ -121,12 +113,11 @@ export function getDeadlineStatus(
   clock: DeadlineClock,
 ): DeadlineStatus | undefined {
   if (isDeadlineDone(deadline)) return "done";
-  const days = getDaysUntilDeadline(deadline.by, clock);
-  if (days === undefined) return undefined;
   const timestamp = getDeadlineTimestamp(deadline.by);
-  if (timestamp !== null && clock.now !== undefined && clock.now >= timestamp) return "overdue";
-  if (days < 0) return "overdue";
-  if (days === 0) return "today";
+  if (timestamp === null) return undefined;
+  if (clock.now >= timestamp) return "overdue";
+  const days = dayNumber(getLocalDate(timestamp)) - dayNumber(clock.today);
+  if (days <= 0) return "today";
   return days <= UPCOMING_DAYS ? "upcoming" : "later";
 }
 

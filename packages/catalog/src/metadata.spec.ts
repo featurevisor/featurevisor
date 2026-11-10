@@ -17,44 +17,60 @@ import {
 } from "./metadata";
 import type { CatalogIndex } from "./types";
 
-const clock = getDeadlineClock("2027-01-15");
+const clock = getDeadlineClock("2027-01-15T12:00:00Z");
 
 describe("Catalog metadata", () => {
   it("reads owners and deadlines as Core does", () => {
     const metadata = {
       owner: ["checkout-team", "", 1],
       deadlines: {
-        review: { by: "2027-01-01", done: "2026-12-30", description: "Quarterly" },
-        remove: { by: "2027-01-20", ticket: "X-1" },
+        review: {
+          by: "2027-01-01T12:00:00Z",
+          done: "2026-12-30T12:00:00Z",
+          description: "Quarterly",
+        },
+        remove: { by: "2027-01-20T12:00:00Z", ticket: "X-1" },
         broken: { done: true },
       },
     };
     expect(getOwners(metadata)).toEqual(["checkout-team"]);
     expect(getDeadlines(metadata)).toEqual([
-      { type: "review", by: "2027-01-01", done: "2026-12-30", description: "Quarterly" },
-      { type: "remove", by: "2027-01-20" },
+      {
+        type: "review",
+        by: "2027-01-01T12:00:00Z",
+        done: "2026-12-30T12:00:00Z",
+        description: "Quarterly",
+      },
+      { type: "remove", by: "2027-01-20T12:00:00Z" },
     ]);
-    expect(getDeadlineStatus({ by: "2027-01-20" }, clock)).toBe("upcoming");
+    expect(getDeadlineStatus({ by: "2027-01-20T12:00:00Z" }, clock)).toBe("upcoming");
   });
 
   it("keeps each deadline in the index as one string, and reads it back", () => {
     for (const deadline of [
-      { type: "review", by: "2027-01-01", done: "2026-12-30", description: "Quarterly | 日本語" },
+      {
+        type: "review",
+        by: "2027-01-01T12:00:00Z",
+        done: "2026-12-30T12:00:00Z",
+        description: "Quarterly | 日本語",
+      },
       { type: "remove", by: "2027-01-20T09:00:00+01:00", done: true as const },
-      { type: "notify", by: "2027-01-20" },
+      { type: "notify", by: "2027-01-20T12:00:00Z" },
     ]) {
       expect(decodeDeadline(encodeDeadline(deadline))).toEqual(deadline);
     }
-    expect(encodeDeadline({ type: "notify", by: "2027-01-20" })).toBe("notify\u001f2027-01-20");
+    expect(encodeDeadline({ type: "notify", by: "2027-01-20T12:00:00Z" })).toBe(
+      "notify\u001f2027-01-20T12:00:00Z",
+    );
   });
 
   it("finds the deadline that matters most", () => {
     const deadlines = [
-      { type: "later", by: "2027-06-01" },
-      { type: "soon", by: "2027-01-20" },
-      { type: "late", by: "2027-01-10" },
-      { type: "older", by: "2026-12-01" },
-      { type: "done", by: "2026-01-01", done: true as const },
+      { type: "later", by: "2027-06-01T12:00:00Z" },
+      { type: "soon", by: "2027-01-20T12:00:00Z" },
+      { type: "late", by: "2027-01-10T12:00:00Z" },
+      { type: "older", by: "2026-12-01T12:00:00Z" },
+      { type: "done", by: "2026-01-01T12:00:00Z", done: true as const },
     ];
     expect(getMostPressingDeadline(deadlines, clock)?.deadline.type).toBe("older");
     expect(getMostPressingDeadline(deadlines.slice(0, 2), clock)?.deadline.type).toBe("soon");
@@ -70,8 +86,8 @@ describe("Catalog metadata", () => {
 
   it("matches one deadline against every filter value", () => {
     const deadlines = [
-      { type: "remove", by: "2027-01-20" },
-      { type: "review", by: "2027-01-01", done: true as const },
+      { type: "remove", by: "2027-01-20T12:00:00Z" },
+      { type: "review", by: "2027-01-01T12:00:00Z", done: true as const },
     ];
     expect(matchesDeadlineFilters(deadlines, ["remove", "upcoming"], clock)).toBe(true);
     expect(matchesDeadlineFilters(deadlines, ["Remove"], clock)).toBe(true);
@@ -83,7 +99,7 @@ describe("Catalog metadata", () => {
   it("turns the rest of metadata into terms lists and search can read", () => {
     const terms = getMetadataTerms({
       owner: "x",
-      deadlines: { review: { by: "2027-01-01" } },
+      deadlines: { review: { by: "2027-01-01T12:00:00Z" } },
       jira: "CHECKOUT-1",
       priority: 2,
       flag: false,
@@ -142,11 +158,11 @@ describe("Catalog metadata", () => {
       counts: {},
       entities: {
         feature: [
-          { key: "a", href: "", deadlines: ["remove\u001f2027-02-01"] },
-          { key: "b", href: "", archived: true, deadlines: ["remove\u001f2026-01-01"] },
+          { key: "a", href: "", deadlines: ["remove\u001f2027-02-01T12:00:00Z"] },
+          { key: "b", href: "", archived: true, deadlines: ["remove\u001f2026-01-01T12:00:00Z"] },
         ],
-        variable: [{ key: "c", href: "", deadlines: ["review\u001f2027-01-01"] }],
-        test: [{ key: "t", href: "", deadlines: ["review\u001f2027-01-01"] }],
+        variable: [{ key: "c", href: "", deadlines: ["review\u001f2027-01-01T12:00:00Z"] }],
+        test: [{ key: "t", href: "", deadlines: ["review\u001f2027-01-01T12:00:00Z"] }],
       },
     } as unknown as CatalogIndex;
     expect(

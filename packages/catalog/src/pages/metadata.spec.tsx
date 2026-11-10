@@ -14,7 +14,7 @@ import { getListEntities, getMetadataChips, ListPage } from "./ListPage";
 import { OverviewPage } from "./HomePage";
 import { DeadlinesPage } from "./DeadlinesPage";
 import { OverviewTab } from "./EntityDetailPage";
-import { encodeDeadline, getDeadlineClock, getLocalDate } from "../metadata";
+import { encodeDeadline, getDeadlineClock } from "../metadata";
 import { scoreEntity } from "../searchModel";
 import type { CatalogIndex, CatalogManifest, EntitySummary } from "../types";
 
@@ -31,8 +31,8 @@ const manifest: CatalogManifest = {
   counts: {},
 };
 
-/** A date some days from today, as the browser sees it */
-const inDays = (days: number) => getLocalDate(Date.now() + days * 24 * 60 * 60 * 1000);
+/** A timestamp some days from now */
+const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 const deadline = (type: string, by: string, done?: string) =>
   encodeDeadline({ type, by, ...(done ? { done } : {}) });
 

@@ -16,11 +16,11 @@ metadata:
 
   deadlines:
     review:
-      by: "2026-10-15"
-      done: "2026-10-12"
+      by: "2026-10-15T09:00:00Z"
+      done: "2026-10-12T14:30:00Z"
 
     remove:
-      by: "2026-11-30"
+      by: "2026-11-30T17:00:00Z"
       description: Once every market has the new pricing
       ticket: CHECKOUT-456
 

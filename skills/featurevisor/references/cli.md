@@ -41,6 +41,8 @@ npx featurevisor lint
 npx featurevisor lint --json --pretty
 npx featurevisor lint --entity-type=feature
 npx featurevisor lint --key-pattern="checkout"
+npx featurevisor lint --now=2027-03-02T12:00:00Z
+npx featurevisor lint --fail-on=deadline_overdue
 ```
 
 Validates every definition and spec: schemas, references, types, operators, formats, cycles, weights, mutations and test expectations. Entity types: `feature`, `segment`, `attribute`, `schema`, `target`, `variable`, `test`, `scenario`. `--key-pattern` is a case sensitive regular expression and is not anchored, in `lint`, `test` and `list` alike. Match the key's case exactly, which also works with CLI 4.0.0, where `test` and `list` ignored case.
@@ -60,7 +62,7 @@ With `--json`, the report is `{ "errors": [...], "warnings": [...] }`, and each 
 
 Messages usually state the fix, for example `Replace segments with conditions` or `"checkout" is a feature: use { feature: checkout }`. After fixing, run lint again: some errors only surface once earlier ones in the same file are fixed.
 
-Warnings do not fail lint. The common ones: `context_value_mismatch` (a test context does not fit an attribute), `dependency_depth` (a long dependency chain), `deprecated_reference` (an active definition uses a deprecated one), and the [composition warnings](global-variables.md#composition-warnings).
+Warnings do not fail lint, unless `--fail-on=<code>` names their code, which repeats for more codes and refuses a code that is not a warning's. The common ones: `context_value_mismatch` (a test context does not fit an attribute), `dependency_depth` (a long dependency chain), `deprecated_reference` (an active definition uses a deprecated one), `deadline_overdue` and `deadline_due_today` (an open deadline in [metadata](metadata.md) needs acting on, checked at `--now=<timestamp>` or now), and the [composition warnings](global-variables.md#composition-warnings).
 
 `--v3-mutation-order` shows values that change because v4 applies mutations in authored order. It is for upgrades from v3.
 
@@ -214,22 +216,22 @@ npx featurevisor list --datafiles --json
 
 Feature filters combine with AND:
 
-| Flag                                             | Keeps features                                                                                                 |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `--tag=<tag>`                                    | with the tag. Repeat for several                                                                               |
-| `--target=<target>`                              | selected by the target. Repeat for a union                                                                     |
-| `--variable=<key>`                               | declaring the feature variable                                                                                 |
-| `--variation=<value>`                            | with the variation value                                                                                       |
-| `--with-variations`, `--without-variations`      | with or without variations                                                                                     |
-| `--with-variables`, `--without-variables`        | with or without feature variables                                                                              |
-| `--with-tests`, `--without-tests`                | referenced by any spec, or by none                                                                             |
-| `--enabled-in=<env>`, `--disabled-in=<env>`      | with a rule above 0%, or only 0% rules, in that environment, including inherited rules                         |
-| `--defined-in=<env>`, `--not-defined-in=<env>`   | writes `rules` for that environment itself, or does not. Also for `--variables`, reading `overrides`           |
-| `--enabled`, `--disabled`                        | the same, in a project without environments                                                                    |
-| `--key-pattern=<regex>`, `--description=<regex>` | matching key or description                                                                                    |
-| `--archived=true`                                | archived ones, which are excluded by default                                                                   |
-| `--owner=<owner>`                                | owned by that team in [metadata](metadata.md). Repeat for every one named                                      |
-| `--deadline=<status or type>`                    | with a deadline of that status or type. Repeated values describe one deadline. `--today=<date>` fixes the date |
+| Flag                                             | Keeps features                                                                                                      |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `--tag=<tag>`                                    | with the tag. Repeat for several                                                                                    |
+| `--target=<target>`                              | selected by the target. Repeat for a union                                                                          |
+| `--variable=<key>`                               | declaring the feature variable                                                                                      |
+| `--variation=<value>`                            | with the variation value                                                                                            |
+| `--with-variations`, `--without-variations`      | with or without variations                                                                                          |
+| `--with-variables`, `--without-variables`        | with or without feature variables                                                                                   |
+| `--with-tests`, `--without-tests`                | referenced by any spec, or by none                                                                                  |
+| `--enabled-in=<env>`, `--disabled-in=<env>`      | with a rule above 0%, or only 0% rules, in that environment, including inherited rules                              |
+| `--defined-in=<env>`, `--not-defined-in=<env>`   | writes `rules` for that environment itself, or does not. Also for `--variables`, reading `overrides`                |
+| `--enabled`, `--disabled`                        | the same, in a project without environments                                                                         |
+| `--key-pattern=<regex>`, `--description=<regex>` | matching key or description                                                                                         |
+| `--archived=true`                                | archived ones, which are excluded by default                                                                        |
+| `--owner=<owner>`                                | owned by that team in [metadata](metadata.md). Repeat for every one named                                           |
+| `--deadline=<status or type>`                    | with a deadline of that status or type. Repeated values describe one deadline. `--now=<timestamp>` fixes the moment |
 
 Use `--enabled-in` and `--disabled-in` in projects with environments, and `--enabled` and `--disabled` in projects without them. The CLI rejects the wrong pair, and unknown environment names, with `invalid_environment`. Force entries and root conditions are not considered, only rule percentages.
 

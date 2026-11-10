@@ -13,7 +13,7 @@ const schema: MetadataSchema = {
   properties: {
     owner: { type: "string", enum: ["checkout-team", "growth-team"] },
     jira: { type: "string", pattern: "^[A-Z]+-[0-9]+$" },
-    launchedOn: { type: "string", format: "date" },
+    launchedOn: { type: "string", format: "date-time" },
     priority: { type: "string", enum: ["low", "medium", "high"] },
     links: { type: "object", additionalProperties: { type: "string" } },
     deadlines: {
@@ -72,11 +72,14 @@ describe("lintMetadata without a schema", () => {
   });
 
   it("reads a date object, as TOML gives, in its JSON form", () => {
-    const tomlDate = Object.assign(Object.create(Date.prototype), {
-      toJSON: () => "2027-01-15",
-    });
-    expect(issues({ deadlines: { review: { by: tomlDate } } })).toEqual([]);
+    const toml = (json: string) =>
+      Object.assign(Object.create(Date.prototype), { toJSON: () => json });
+    expect(issues({ deadlines: { review: { by: toml("2027-01-15T09:00:00.000Z") } } })).toEqual([]);
     expect(issues({ deadlines: { review: { by: new Date("2027-01-15T09:00:00Z") } } })).toEqual([]);
+    // a TOML local date has no time or timezone, as in YAML
+    expect(issues({ deadlines: { review: { by: toml("2027-01-15") } } })).toEqual([
+      expect.objectContaining({ at: "deadlines.review.by" }),
+    ]);
   });
 
   it("takes an owner as a name or a list of different names", () => {
@@ -96,13 +99,13 @@ describe("lintMetadata without a schema", () => {
     ]);
   });
 
-  it("checks every deadline's fields, dates and type", () => {
+  it("checks every deadline's fields, timestamps and type", () => {
     expect(
       issues({
         deadlines: {
-          review: { by: "2027-01-15", done: "2027-01-10", description: "Quarterly" },
+          review: { by: "2027-01-15T09:00:00Z", done: "2027-01-10T16:30:00Z", description: "Q1" },
           notifyCustomers: { by: "2027-03-01T09:00:00+01:00", done: false },
-          "security-review": { by: "2027-03-01", done: true },
+          "security-review": { by: "2027-03-01T00:00:00.000-05:00", done: true },
         },
       }),
     ).toEqual([]);
@@ -110,14 +113,16 @@ describe("lintMetadata without a schema", () => {
     expect(
       issues({
         deadlines: {
-          a: { by: "2027-02-30" },
+          a: { by: "2027-02-30T09:00:00Z" },
           b: { by: "2027-01-15T09:00:00" },
           c: {},
-          d: { by: "2027-01-15", done: "soon", description: "" },
-          e: { by: "2027-01-15", ticket: "X-1" },
-          f: "2027-01-15",
-          done: { by: "2027-01-15" },
-          "1st": { by: "2027-01-15" },
+          d: { by: "2027-01-15T09:00:00Z", done: "soon", description: "" },
+          e: { by: "2027-01-15T09:00:00Z", ticket: "X-1" },
+          f: "2027-01-15T09:00:00Z",
+          g: { by: "2027-03-01" },
+          h: { by: "2027-03-01T09:00:00Z", done: "2027-02-27" },
+          done: { by: "2027-01-15T09:00:00Z" },
+          "1st": { by: "2027-01-15T09:00:00Z" },
         },
       }),
     ).toEqual([
@@ -125,18 +130,19 @@ describe("lintMetadata without a schema", () => {
         code: "invalid_metadata",
         at: "deadlines.a.by",
         message:
-          "Expected a date such as 2027-01-15, or a timestamp with a timezone such as 2027-01-15T09:00:00Z.",
+          "Expected a timestamp with a timezone, such as 2027-01-15T09:00:00Z. Use YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm.",
       },
       expect.objectContaining({ at: "deadlines.b.by" }),
       {
         code: "invalid_metadata",
         at: "deadlines.c.by",
-        message: "Missing `by`, the date the deadline is due, such as 2027-01-15.",
+        message: "Missing `by`, the moment the deadline is due, such as 2027-01-15T09:00:00Z.",
       },
       {
         code: "invalid_metadata",
         at: "deadlines.d.done",
-        message: "Expected true or false, or the date it was done, such as 2027-01-15.",
+        message:
+          "Expected true or false, or the timestamp it was done, such as 2027-01-15T09:00:00Z. Use YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm.",
       },
       {
         code: "invalid_metadata",
@@ -152,7 +158,19 @@ describe("lintMetadata without a schema", () => {
       {
         code: "invalid_metadata",
         at: "deadlines.f",
-        message: "Expected a deadline, such as { by: 2027-01-15 }.",
+        message: "Expected a deadline, such as { by: 2027-01-15T09:00:00Z }.",
+      },
+      {
+        code: "invalid_metadata",
+        at: "deadlines.g.by",
+        message:
+          "Expected a timestamp with a timezone, such as 2027-03-01T09:00:00Z. A date alone has no time or timezone.",
+      },
+      {
+        code: "invalid_metadata",
+        at: "deadlines.h.done",
+        message:
+          "Expected true or false, or the timestamp it was done, such as 2027-02-27T09:00:00Z. A date alone has no time or timezone.",
       },
       {
         code: "invalid_metadata",
@@ -168,7 +186,7 @@ describe("lintMetadata without a schema", () => {
   });
 
   it("needs at least one deadline", () => {
-    for (const deadlines of [{}, [], "2027-01-15"]) {
+    for (const deadlines of [{}, [], "2027-01-15T09:00:00Z"]) {
       expect(issues({ deadlines })).toEqual([
         expect.objectContaining({ code: "invalid_metadata", at: "deadlines" }),
       ]);
@@ -180,9 +198,9 @@ describe("lintMetadata with a project schema", () => {
   const valid = {
     owner: "checkout-team",
     jira: "CHECKOUT-1",
-    launchedOn: "2026-09-01",
+    launchedOn: "2026-09-01T10:00:00Z",
     links: { design: "https://example.com" },
-    deadlines: { remove: { by: "2027-01-15", ticket: "CHECKOUT-2" } },
+    deadlines: { remove: { by: "2027-01-15T09:00:00Z", ticket: "CHECKOUT-2" } },
   };
 
   it("accepts what the schema declares", () => {
@@ -197,7 +215,7 @@ describe("lintMetadata with a project schema", () => {
           ...valid,
           owner: ["checkout-tem"],
           jira: "checkout 1",
-          launchedOn: "2026-02-30",
+          launchedOn: "2026-09-01",
           priority: 1,
           links: { design: 1 },
           ownr: "someone",
@@ -215,7 +233,12 @@ describe("lintMetadata with a project schema", () => {
         at: "jira",
         message: "Expected a value matching /^[A-Z]+-[0-9]+$/.",
       },
-      { code: "metadata_schema", at: "launchedOn", message: "Expected a date such as 2027-01-15." },
+      {
+        code: "metadata_schema",
+        at: "launchedOn",
+        message:
+          "Expected a timestamp with a timezone, such as 2026-09-01T09:00:00Z. A date alone has no time or timezone.",
+      },
       {
         code: "metadata_schema",
         at: "links.design",
@@ -256,9 +279,9 @@ describe("lintMetadata with a project schema", () => {
         {
           owner: "checkout-team",
           deadlines: {
-            review: { by: "2027-01-15", ticket: "X" },
-            cleanup: { by: "2027-01-15" },
-            remove: { by: "2027-01-15", tiket: "X" },
+            review: { by: "2027-01-15T09:00:00Z", ticket: "X" },
+            cleanup: { by: "2027-01-15T09:00:00Z" },
+            remove: { by: "2027-01-15T09:00:00Z", tiket: "X" },
           },
         },
         schema,
@@ -292,7 +315,10 @@ describe("lintMetadata with a project schema", () => {
   it("requires deadline types only where deadlines are written", () => {
     expect(issues({ owner: "checkout-team" }, schema)).toEqual([]);
     expect(
-      issues({ owner: "checkout-team", deadlines: { review: { by: "2027-01-15" } } }, schema),
+      issues(
+        { owner: "checkout-team", deadlines: { review: { by: "2027-01-15T09:00:00Z" } } },
+        schema,
+      ),
     ).toEqual([
       {
         code: "metadata_schema",
@@ -311,7 +337,10 @@ describe("lintMetadata with a project schema", () => {
       additionalProperties: {},
     };
     expect(
-      issues({ anything: { at: [1] }, deadlines: { cleanup: { by: "2027-01-15" } } }, open),
+      issues(
+        { anything: { at: [1] }, deadlines: { cleanup: { by: "2027-01-15T09:00:00Z" } } },
+        open,
+      ),
     ).toEqual([]);
   });
 
@@ -358,7 +387,7 @@ describe("lintMetadata with a project schema", () => {
       'contact.phone: Unknown key "phone".',
       "idOrName: Expected a value matching exactly one of the schemas in `oneOf`.",
       "version: Expected a version such as 5.5.0.",
-      "at: Expected a timestamp with a timezone, such as 2027-01-15T09:00:00Z.",
+      "at: Expected a timestamp with a timezone, such as 2027-01-15T09:00:00Z. A date alone has no time or timezone.",
     ]);
   });
 });

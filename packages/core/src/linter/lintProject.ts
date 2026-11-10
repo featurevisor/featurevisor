@@ -53,6 +53,11 @@ import {
 } from "./dependencyDepth";
 import { getMutationOrderChanges } from "./mutationOrder";
 import { getTestContextWarnings } from "./contextWarnings";
+import { getDeadlineWarnings } from "./deadlineWarnings";
+import { LINT_WARNING_CODES, isLintWarningCode } from "./warningCodes";
+import { suggestKey } from "./diagnostics";
+import { FeaturevisorCLIError } from "../error";
+import { getDeadlineClock, getInvalidNowMessage } from "../metadata";
 import { createCompositionWarningInspector } from "./compositionWarnings";
 import { diagnosticParseOptions } from "./diagnostics";
 import { EntityParseError } from "../datasource/parseError";
@@ -89,6 +94,10 @@ export interface LintProjectOptions {
   pretty?: boolean;
   v3MutationOrder?: boolean;
   verbose?: boolean;
+  /** The moment deadlines are checked at, as an ISO 8601 timestamp. Now, when left out */
+  now?: string;
+  /** Warning codes reported as errors, so they fail lint */
+  failOn?: string[];
 }
 
 export interface LintErrorItem {
@@ -210,6 +219,8 @@ export async function lintProject(
   const isJsonMode = options.json === true;
   const errors: LintErrorItem[] = [];
   const warnings: LintErrorItem[] = [];
+  const deadlineClock = getDeadlineClock(options.now);
+  const failOn = new Set(options.failOn || []);
   const reportedParseErrors = new Set<string>();
 
   function log(...args: unknown[]) {
@@ -464,6 +475,19 @@ export async function lintProject(
   function reportWarning(warning: LintErrorItem) {
     const item = withExpressionLocation(warning);
     if (isRepeatedExpressionLocation(item)) return;
+    if (item.code && failOn.has(item.code)) {
+      // `--fail-on` makes this warning an error, printed and counted as one
+      errors.push(item);
+      if (!isJsonMode) {
+        console.log(CLI_FORMAT_BOLD_UNDERLINE, path.resolve(process.cwd(), item.filePath));
+        console.log(CLI_FORMAT_RED, `  => Error: ${item.message}`);
+        printExpressionDetails(item);
+        if (item.line === undefined || !expressionFrames.has(item))
+          console.log("     Path:", item.path.join(".") || "(root)");
+        console.log("");
+      }
+      return;
+    }
     warnings.push(item);
     if (!isJsonMode) {
       console.log(
@@ -875,6 +899,7 @@ export async function lintProject(
         if (!result.success && "error" in result) {
           await reportZodValidationError("attribute", key, fullPath, result.error);
         }
+        reportDeadlines("attribute", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("attribute", key, fullPath, error);
       }
@@ -957,6 +982,25 @@ export async function lintProject(
         message: issue.message,
         pathParts: issue.path,
         code: "archived_reference",
+      });
+    }
+  }
+
+  /** Open deadlines that are overdue or due today warn, and never fail lint */
+  function reportDeadlines(
+    entityType: LintEntityType,
+    key: string,
+    fullPath: string,
+    definition: unknown,
+  ) {
+    for (const warning of getDeadlineWarnings(definition, deadlineClock)) {
+      reportWarning({
+        filePath: path.relative(process.cwd(), fullPath),
+        entityType,
+        key,
+        path: warning.path,
+        code: warning.code,
+        message: warning.message,
       });
     }
   }
@@ -1072,6 +1116,7 @@ export async function lintProject(
         await reportArchivedReferences("segment", key, fullPath, parsed);
         await reportConditionKinds("segment", key, fullPath, parsed);
         reportDeprecatedReferences("segment", key, fullPath, parsed);
+        reportDeadlines("segment", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("segment", key, fullPath, error);
       } finally {
@@ -1180,6 +1225,7 @@ export async function lintProject(
         await reportArchivedReferences("feature", key, fullPath, parsed);
         await reportConditionKinds("feature", key, fullPath, parsed);
         reportDeprecatedReferences("feature", key, fullPath, parsed);
+        reportDeadlines("feature", key, fullPath, parsed);
         if (options.v3MutationOrder) {
           for (const change of getMutationOrderChanges(parsed)) {
             reportWarning({
@@ -1290,6 +1336,7 @@ export async function lintProject(
         await reportArchivedReferences("variable", key, fullPath, parsed);
         await reportConditionKinds("variable", key, fullPath, parsed);
         reportDeprecatedReferences("variable", key, fullPath, parsed);
+        reportDeadlines("variable", key, fullPath, parsed);
 
         if (!result.success && "error" in result) {
           await reportZodValidationError("variable", key, fullPath, result.error, {
@@ -1347,6 +1394,7 @@ export async function lintProject(
         if (!result.success && "error" in result) {
           await reportZodValidationError("schema", key, fullPath, result.error);
         }
+        reportDeadlines("schema", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("schema", key, fullPath, error);
       }
@@ -1393,6 +1441,7 @@ export async function lintProject(
         } else {
           parsedTargets.set(key, parsed);
         }
+        reportDeadlines("target", key, fullPath, parsed);
         await reportArchivedReferences("target", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("target", key, fullPath, error);
@@ -1728,6 +1777,26 @@ export const lintPlugin: Plugin = {
     const { rootDirectoryPath, projectConfig, datasource, parsed } = options;
 
     assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
+    const invalidNow =
+      typeof parsed.now === "undefined" ? undefined : getInvalidNowMessage(parsed.now);
+    if (invalidNow) {
+      throw new FeaturevisorCLIError(invalidNow, {
+        code: "invalid_cli_arguments",
+        details: { option: "now" },
+      });
+    }
+    const failOn: string[] = ([] as unknown[]).concat(parsed.failOn ?? []).map(String);
+    for (const code of failOn) {
+      if (!isLintWarningCode(code)) {
+        throw new FeaturevisorCLIError(
+          `Invalid --fail-on: ${JSON.stringify(code)} is not a lint warning code.${
+            suggestKey(code, [...LINT_WARNING_CODES]) ||
+            ` The warning codes are ${LINT_WARNING_CODES.join(", ")}.`
+          }`,
+          { code: "invalid_cli_arguments", details: { option: "failOn", value: code } },
+        );
+      }
+    }
 
     const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
     let hasError = false;
@@ -1750,6 +1819,8 @@ export const lintPlugin: Plugin = {
           pretty: parsed.pretty,
           v3MutationOrder: parsed.v3MutationOrder,
           verbose: parsed.verbose,
+          now: parsed.now,
+          failOn,
         },
       );
 
@@ -1804,6 +1875,14 @@ export const lintPlugin: Plugin = {
     {
       command: 'lint --key-pattern="abc"',
       description: `Lint only entities with keys containing "abc"`,
+    },
+    {
+      command: "lint --now=2027-03-01T09:00:00Z",
+      description: "Warn about deadlines as they stand at a moment",
+    },
+    {
+      command: "lint --fail-on=deadline_overdue",
+      description: "Fail on overdue deadlines, as well as on errors",
     },
     {
       command: "lint --json",

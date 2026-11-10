@@ -6,9 +6,8 @@ import type { ProjectConfig } from "../config";
 import { DEADLINE_FIELDS } from "../config/metadataSettings";
 import type { MetadataSchema } from "../config/metadataSettings";
 import {
-  getDeadlineTimestamp,
   isCalendarDate,
-  isDeadlineDate,
+  isDeadlineTimestamp,
   isDeadlineType,
   isPlainObject,
   toMetadataJson,
@@ -25,7 +24,18 @@ export interface MetadataIssue {
 
 type Path = (string | number)[];
 
-const DATE_EXAMPLE = "2027-01-15";
+const TIMESTAMP_EXAMPLE = "2027-01-15T09:00:00Z";
+
+/**
+ * What a value that is not a timestamp needs, worded as conditions word it. A date alone is the
+ * likely slip, so it gets the timestamp it could become.
+ */
+function timestampMessage(value: unknown, expected = "a timestamp with a timezone") {
+  if (isCalendarDate(value)) {
+    return `Expected ${expected}, such as ${value}T09:00:00Z. A date alone has no time or timezone.`;
+  }
+  return `Expected ${expected}, such as ${TIMESTAMP_EXAMPLE}. Use YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm.`;
+}
 
 function quote(value: unknown) {
   return JSON.stringify(value);
@@ -110,17 +120,14 @@ function sameKeysEqual(a: unknown, b: unknown): boolean {
 }
 
 function matchesFormat(format: string, value: string) {
-  if (format === "date") return isCalendarDate(value);
-  if (format === "date-time") return getDeadlineTimestamp(value) !== null;
+  if (format === "date-time") return isDeadlineTimestamp(value);
   if (format === "semver") return isValidVersion(value);
   return true;
 }
 
-const FORMAT_MESSAGES: Record<string, string> = {
-  date: `Expected a date such as ${DATE_EXAMPLE}.`,
-  "date-time": `Expected a timestamp with a timezone, such as ${DATE_EXAMPLE}T09:00:00Z.`,
-  semver: "Expected a version such as 5.5.0.",
-};
+function formatMessage(format: string, value: string) {
+  return format === "date-time" ? timestampMessage(value) : "Expected a version such as 5.5.0.";
+}
 
 /** Checks one value against a schema in `metadataSchema`. A schema without a type takes any value. */
 function checkValue(
@@ -183,7 +190,7 @@ function checkValue(
       report(`Expected a value matching /${schema.pattern}/.`);
     }
     if (schema.format && !matchesFormat(schema.format, value)) {
-      report(FORMAT_MESSAGES[schema.format]);
+      report(formatMessage(schema.format, value));
     }
     return;
   }
@@ -301,28 +308,25 @@ function checkDeadline(
     issues.push({ code: "invalid_metadata", message, path: at });
 
   if (!isPlainObject(deadline)) {
-    invalid(`Expected a deadline, such as { by: ${DATE_EXAMPLE} }.`);
+    invalid(`Expected a deadline, such as { by: ${TIMESTAMP_EXAMPLE} }.`);
     return;
   }
 
   if (deadline.by === undefined) {
-    invalid(`Missing \`by\`, the date the deadline is due, such as ${DATE_EXAMPLE}.`, [
+    invalid(`Missing \`by\`, the moment the deadline is due, such as ${TIMESTAMP_EXAMPLE}.`, [
       ...path,
       "by",
     ]);
-  } else if (!isDeadlineDate(deadline.by)) {
-    invalid(
-      `Expected a date such as ${DATE_EXAMPLE}, or a timestamp with a timezone such as ${DATE_EXAMPLE}T09:00:00Z.`,
-      [...path, "by"],
-    );
+  } else if (!isDeadlineTimestamp(deadline.by)) {
+    invalid(timestampMessage(deadline.by), [...path, "by"]);
   }
 
   if (
     deadline.done !== undefined &&
     typeof deadline.done !== "boolean" &&
-    !isDeadlineDate(deadline.done)
+    !isDeadlineTimestamp(deadline.done)
   ) {
-    invalid(`Expected true or false, or the date it was done, such as ${DATE_EXAMPLE}.`, [
+    invalid(timestampMessage(deadline.done, "true or false, or the timestamp it was done"), [
       ...path,
       "done",
     ]);
@@ -370,7 +374,7 @@ function checkDeadlines(
   if (!isPlainObject(deadlines) || Object.keys(deadlines).length === 0) {
     issues.push({
       code: "invalid_metadata",
-      message: `Expected \`deadlines\` to map each deadline type to its deadline, such as review: { by: ${DATE_EXAMPLE} }.`,
+      message: `Expected \`deadlines\` to map each deadline type to its deadline, such as review: { by: ${TIMESTAMP_EXAMPLE} }.`,
       path: ["deadlines"],
     });
     return;

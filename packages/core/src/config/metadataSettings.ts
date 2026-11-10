@@ -4,7 +4,7 @@ import { isDeadlineType, isPlainObject, METADATA_KINDS } from "../metadata";
 
 /**
  * A schema in `metadataSchema`. It has the keywords of reusable schemas, without `schema`
- * references, and accepts `format: date`, since metadata is never evaluated.
+ * references. Its formats are those of reusable schemas, so a date is a `date-time` timestamp.
  */
 export interface MetadataSchema {
   description?: string;
@@ -17,7 +17,7 @@ export interface MetadataSchema {
   minLength?: number;
   maxLength?: number;
   pattern?: string;
-  format?: "date" | "date-time" | "semver";
+  format?: "date-time" | "semver";
   items?: MetadataSchema;
   minItems?: number;
   maxItems?: number;
@@ -27,7 +27,7 @@ export interface MetadataSchema {
   additionalProperties?: MetadataSchema;
 }
 
-export const METADATA_SCHEMA_FORMATS = ["date", "date-time", "semver"] as const;
+export const METADATA_SCHEMA_FORMATS = ["date-time", "semver"] as const;
 
 const TYPES = ["boolean", "string", "integer", "number", "object", "array"];
 
@@ -201,6 +201,12 @@ function assertValueSchema(schema: unknown, path: string, root = false): void {
   }
 
   if (schema.format !== undefined) {
+    if (schema.format === "date") {
+      fail(
+        `${path}.format`,
+        'unsupported format "date". Use `format: date-time`, a timestamp with a timezone.',
+      );
+    }
     if (!(METADATA_SCHEMA_FORMATS as readonly string[]).includes(schema.format as string)) {
       fail(`${path}.format`, `expected one of ${quoteList([...METADATA_SCHEMA_FORMATS])}.`);
     }

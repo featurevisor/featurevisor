@@ -9,7 +9,7 @@ metadata:
 
   deadlines:
     deprecate:
-      by: "2026-11-01"
+      by: "2026-11-01T09:00:00Z"
       description: The new design has been at 100% in production since October
 
 bucketBy: userId

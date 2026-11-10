@@ -19,7 +19,7 @@ module.exports = {
       },
       launchedOn: {
         type: "string",
-        format: "date",
+        format: "date-time",
       },
       links: {
         type: "object",

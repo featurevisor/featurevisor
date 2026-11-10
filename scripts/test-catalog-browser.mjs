@@ -186,11 +186,9 @@ async function reload() {
   await waitFor("performance.timeOrigin !== " + previous, "New document after reload");
 }
 
-/** A date some days from today, as YYYY-MM-DD in the browser's time zone, which is this machine's */
+/** A timestamp some days from now, which deadlines need */
 function inDays(days) {
-  const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-  const pad = (value) => String(value).padStart(2, "0");
-  return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 }
 
 function fixture(
@@ -284,13 +282,13 @@ function fixture(
                       jira: "CHECKOUT-1",
                       links: { design: "https://example.com/design" },
                       deadlines: {
-                        review: { by: "2000-01-01" },
+                        review: { by: "2000-01-01T09:00:00Z" },
                         remove: { by: inDays(10), ticket: "CHECKOUT-2" },
                       },
                     }
                   : {
                       owner: "growth-team",
-                      deadlines: { review: { by: "2000-01-01", done: true } },
+                      deadlines: { review: { by: "2000-01-01T09:00:00Z", done: true } },
                     },
             }
           : {}),

@@ -56,7 +56,9 @@ describe("test input fingerprint contract", () => {
     const fingerprint = () => getTestInputFingerprint(source.config, source.datasource);
     const before = await fingerprint();
     source.definitions.Feature.flag.metadata = { owner: "checkout-team" };
-    source.definitions.Variable.limit.metadata = { deadlines: { review: { by: "2027-01-15" } } };
+    source.definitions.Variable.limit.metadata = {
+      deadlines: { review: { by: "2027-01-15T09:00:00Z" } },
+    };
     source.config.metadataSchema = { type: "object" };
     source.config.requireMetadataIn = ["features"];
     expect(await fingerprint()).toBe(before);

@@ -12,7 +12,10 @@ describe("core: Featurevisor diff details", () => {
       metadata: {
         owner: "checkout-team",
         jira: "CHECKOUT-1",
-        deadlines: { review: { by: "2027-01-15" }, deprecate: { by: "2027-02-01" } },
+        deadlines: {
+          review: { by: "2027-01-15T09:00:00Z" },
+          deprecate: { by: "2027-02-01T09:00:00Z" },
+        },
       },
     };
     const after = {
@@ -20,8 +23,8 @@ describe("core: Featurevisor diff details", () => {
         owner: ["checkout-team", "payments-team"],
         jira: "CHECKOUT-2",
         deadlines: {
-          review: { by: "2027-01-15", done: "2027-01-10" },
-          remove: { by: "2027-03-01", ticket: "CHECKOUT-3" },
+          review: { by: "2027-01-15T09:00:00Z", done: "2027-01-10T16:00:00Z" },
+          remove: { by: "2027-03-01T09:00:00Z", ticket: "CHECKOUT-3" },
         },
       },
     };

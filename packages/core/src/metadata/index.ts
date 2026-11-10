@@ -73,7 +73,7 @@ function daysInMonth(year: number, month: number) {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-/** A calendar date written as YYYY-MM-DD that exists */
+/** A calendar date written as YYYY-MM-DD that exists. Deadlines need a time too, and lint says so */
 export function isCalendarDate(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const parts = DATE_PATTERN.exec(value);
@@ -82,14 +82,29 @@ export function isCalendarDate(value: unknown): value is string {
   return year >= 1 && month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month);
 }
 
-/** Milliseconds for a timestamp with a timezone, as `format: date-time` reads it */
+/**
+ * Milliseconds for an ISO 8601 timestamp with a timezone, such as 2027-03-01T09:00:00Z. Conditions
+ * read `before` and `after` with the same function, so both accept exactly the same timestamps.
+ */
 export function getDeadlineTimestamp(value: unknown): number | null {
   return typeof value === "string" ? getPortableTimestamp(value) : null;
 }
 
-/** A date or a timestamp with a timezone, as `by` and `done` accept */
-export function isDeadlineDate(value: unknown): value is string {
-  return isCalendarDate(value) || getDeadlineTimestamp(value) !== null;
+/** A timestamp with a timezone, as `by`, `done` and `--now` accept */
+export function isDeadlineTimestamp(value: unknown): value is string {
+  return getDeadlineTimestamp(value) !== null;
+}
+
+/**
+ * Why a `--now` value is not a timestamp, worded as lint words a deadline's, or undefined when
+ * it is one. `list` and `lint` both check the option with it.
+ */
+export function getInvalidNowMessage(value: unknown): string | undefined {
+  if (isDeadlineTimestamp(value)) return undefined;
+  const reason = isCalendarDate(value)
+    ? `such as ${value}T09:00:00Z. A date alone has no time or timezone.`
+    : "such as 2027-01-15T09:00:00Z. Use YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm.";
+  return `Invalid --now: ${JSON.stringify(value)}. Expected a timestamp with a timezone, ${reason}`;
 }
 
 function pad(value: number, length = 2) {
@@ -111,21 +126,22 @@ function dayNumber(date: string): number {
 }
 
 /**
- * What statuses are worked out against. `now` is left out when a date is fixed, such as with
- * `list --today`, so a report reads the same on every run.
+ * The moment statuses are worked out at, and its local date. `--now` fixes the moment, so a
+ * report reads the same on every run.
  */
 export interface DeadlineClock {
+  now: number;
   today: string;
-  now?: number;
 }
 
-export function getDeadlineClock(today?: string, now = Date.now()): DeadlineClock {
-  return today ? { today } : { today: getLocalDate(now), now };
+/** The clock at a timestamp, such as `--now` gives, or at the current moment */
+export function getDeadlineClock(at?: string, now = Date.now()): DeadlineClock {
+  const moment = at === undefined ? now : (getDeadlineTimestamp(at) ?? now);
+  return { now: moment, today: getLocalDate(moment) };
 }
 
-/** The local date a deadline is due on, or undefined when `by` is not a date */
+/** The local date a deadline is due on, or undefined when `by` is not a timestamp */
 export function getDeadlineDate(by: unknown): string | undefined {
-  if (isCalendarDate(by)) return by;
   const timestamp = getDeadlineTimestamp(by);
   return timestamp === null ? undefined : getLocalDate(timestamp);
 }
@@ -141,20 +157,19 @@ export function getDaysUntilDeadline(by: unknown, clock: DeadlineClock): number 
 }
 
 /**
- * A date is due until the end of that day, where whoever looks is. A timestamp is due at that
- * moment, and otherwise counts on its local date.
+ * A deadline is overdue from the moment in `by`. Before that it is due today on the same local
+ * day, upcoming within 30 days, and later after that.
  */
 export function getDeadlineStatus(
   deadline: { by?: unknown; done?: unknown },
   clock: DeadlineClock,
 ): DeadlineStatus | undefined {
   if (isDeadlineDone(deadline)) return "done";
-  const days = getDaysUntilDeadline(deadline.by, clock);
-  if (days === undefined) return undefined;
   const timestamp = getDeadlineTimestamp(deadline.by);
-  if (timestamp !== null && clock.now !== undefined && clock.now >= timestamp) return "overdue";
-  if (days < 0) return "overdue";
-  if (days === 0) return "today";
+  if (timestamp === null) return undefined;
+  if (clock.now >= timestamp) return "overdue";
+  const days = dayNumber(getLocalDate(timestamp)) - dayNumber(clock.today);
+  if (days <= 0) return "today";
   return days <= UPCOMING_DAYS ? "upcoming" : "later";
 }
 

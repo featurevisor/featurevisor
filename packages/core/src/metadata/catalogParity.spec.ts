@@ -7,14 +7,15 @@ import * as core from ".";
 const catalog = require("../../../catalog/src/metadata");
 
 const dates = [
+  "2027-01-15T12:30:00Z",
+  "2027-01-14T12:00:00Z",
+  "2027-01-16T12:00:00Z",
+  "2027-02-14T12:00:00Z",
+  "2027-02-15T12:00:00Z",
+  "2028-02-29T12:00:00Z",
+  "2027-02-29T12:00:00Z",
+  "0050-01-01T12:00:00Z",
   "2027-01-15",
-  "2027-01-14",
-  "2027-01-16",
-  "2027-02-14",
-  "2027-02-15",
-  "2028-02-29",
-  "2027-02-29",
-  "0050-01-01",
   "2027-1-5",
   "2027-01-15T00:00:00Z",
   "2027-01-15T23:59:59+14:00",
@@ -27,18 +28,22 @@ const dates = [
 ];
 
 const clocks = [
-  { today: "2027-01-15" },
-  { today: "2027-01-15", now: Date.parse("2027-01-15T12:00:00Z") },
-  { today: "2026-12-31", now: Date.parse("2026-12-31T23:59:59Z") },
+  core.getDeadlineClock("2027-01-15T12:00:00Z"),
+  core.getDeadlineClock("2026-12-31T23:59:59Z"),
+  core.getDeadlineClock("2027-01-15T09:00:00-03:30"),
 ];
 
 describe("Catalog reads metadata as Core does", () => {
   it.each(dates)("reads %j the same", (value) => {
-    expect(catalog.isCalendarDate(value)).toBe(core.isCalendarDate(value));
     expect(catalog.getDeadlineTimestamp(value)).toBe(core.getDeadlineTimestamp(value));
+    // A fixed fallback moment, since two reads of the current one can differ
+    const fallback = Date.parse("2027-01-15T12:00:00Z");
+    expect(catalog.getDeadlineClock(value, fallback)).toEqual(
+      core.getDeadlineClock(value, fallback),
+    );
     expect(catalog.getDeadlineDate(value)).toBe(core.getDeadlineDate(value));
     for (const clock of clocks) {
-      for (const done of [undefined, true, false, "2027-01-10", ""]) {
+      for (const done of [undefined, true, false, "2027-01-10T16:00:00Z", ""]) {
         const deadline = { by: value, done };
         expect(catalog.getDeadlineStatus(deadline, clock)).toBe(
           core.getDeadlineStatus(deadline, clock),
@@ -70,9 +75,10 @@ describe("Catalog reads metadata as Core does", () => {
     const metadata = {
       owner: ["checkout-team", "", 1, "payments-team"],
       deadlines: {
-        review: { by: "2027-01-01", done: "2026-12-30" },
-        remove: { by: "2027-01-20" },
-        notify: { by: "2026-12-01" },
+        review: { by: "2027-01-01T12:00:00Z", done: "2026-12-30T16:00:00Z" },
+        remove: { by: "2027-01-20T12:00:00Z" },
+        notify: { by: "2026-12-01T12:00:00Z" },
+        undated: { by: "2027-01-20" },
         broken: { done: true },
       },
     };

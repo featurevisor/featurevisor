@@ -47,8 +47,8 @@ const complete: Required<EntitySummary> = {
   searchTerms: ["rule:shared", "value:shared", "assertion:日本語"],
   owners: ["shared", "checkout-team"],
   deadlines: [
-    "review\u001f2027-01-15\u001f2027-01-10\u001fQuarterly 日本語",
-    "remove\u001f2027-03-01",
+    "review\u001f2027-01-15T09:00:00Z\u001f2027-01-10T16:00:00Z\u001fQuarterly 日本語",
+    "remove\u001f2027-03-01T09:00:00+01:00",
   ],
   metadataTerms: ["jira=CHECKOUT-1", "links.design=https://example.com"],
   lastModified: { commit: "abc", author: "shared", timestamp: "2026-09-30T10:00:00Z" },
