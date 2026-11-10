@@ -86,7 +86,7 @@ module.exports = {
 
 - `properties.owner` narrows owners. With a list of owners, each must match.
 - `properties.deadlines.properties` declares deadline types. Once declared, only those are allowed, unless `additionalProperties` gives a type for the rest. Its `required` lists types every definition with deadlines must have.
-- A type may declare its own fields with `properties`, and `required` them, but never `by`, `done` or `description`.
+- A type may declare its own fields with `properties`, and `required` them, but never `by`, `done` or `description`. A deadline takes only the fields its type declares by name, so a type has no `additionalProperties`, and an undeclared field such as `ticket` fails lint until the type declares it.
 - `required` at the root applies only to definitions that have metadata. `requireMetadataIn: ['features', 'variables']` requires metadata itself, archived definitions apart. One schema covers every kind.
 
 Read the project's `metadataSchema` before writing metadata, and use its owner names and deadline types.

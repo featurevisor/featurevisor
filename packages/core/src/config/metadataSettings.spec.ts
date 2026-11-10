@@ -26,7 +26,6 @@ describe("metadataSchema", () => {
                 type: "object",
                 properties: { ticket: { type: "string", format: "date" } },
                 required: ["ticket", "description"],
-                additionalProperties: { type: "string" },
               },
             },
             required: ["remove"],
@@ -106,6 +105,22 @@ describe("metadataSchema", () => {
         },
       },
       'Invalid metadataSchema.properties.deadlines.properties.review.properties.by: "by" is a field of every deadline, and its shape cannot change.',
+    ],
+    [
+      {
+        type: "object",
+        properties: {
+          deadlines: { properties: { remove: { additionalProperties: { type: "string" } } } },
+        },
+      },
+      "Invalid metadataSchema.properties.deadlines.properties.remove.additionalProperties: a deadline type declares each of its own fields in properties.",
+    ],
+    [
+      {
+        type: "object",
+        properties: { deadlines: { additionalProperties: { additionalProperties: {} } } },
+      },
+      "Invalid metadataSchema.properties.deadlines.additionalProperties.additionalProperties: a deadline type declares each of its own fields in properties.",
     ],
     [
       {

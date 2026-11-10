@@ -55,7 +55,7 @@ const KEYWORDS = [
 /** Featurevisor's own fields of every deadline */
 export const DEADLINE_FIELDS = ["by", "done", "description"];
 
-/** What `properties.deadlines` and each deadline type may say */
+/** What `properties.deadlines` may say */
 const DEADLINES_KEYWORDS = [
   "type",
   "description",
@@ -63,6 +63,9 @@ const DEADLINES_KEYWORDS = [
   "required",
   "additionalProperties",
 ];
+
+/** What each deadline type may say. Its own fields are each declared, so it has no additionalProperties */
+const DEADLINE_TYPE_KEYWORDS = ["type", "description", "properties", "required"];
 
 class MetadataSchemaError extends Error {}
 
@@ -231,7 +234,13 @@ function assertValueSchema(schema: unknown, path: string, root = false): void {
 /** One deadline type: a description, and fields of its own on top of Featurevisor's */
 function assertDeadlineTypeSchema(schema: unknown, path: string) {
   if (!isPlainObject(schema)) fail(path, 'expected a deadline type, such as { description: "…" }.');
-  assertKeywords(schema, DEADLINES_KEYWORDS, path);
+  if (schema.additionalProperties !== undefined) {
+    fail(
+      `${path}.additionalProperties`,
+      "a deadline type declares each of its own fields in properties.",
+    );
+  }
+  assertKeywords(schema, DEADLINE_TYPE_KEYWORDS, path);
   if (schema.type !== undefined && schema.type !== "object")
     fail(`${path}.type`, 'expected "object".');
   if (schema.description !== undefined && typeof schema.description !== "string") {
@@ -248,9 +257,6 @@ function assertDeadlineTypeSchema(schema: unknown, path: string) {
       }
       assertValueSchema(property, `${path}.properties.${field}`);
     }
-  }
-  if (schema.additionalProperties !== undefined) {
-    assertValueSchema(schema.additionalProperties, `${path}.additionalProperties`);
   }
   const own = Object.keys(isPlainObject(schema.properties) ? schema.properties : {});
   if (Array.isArray(schema.required)) {

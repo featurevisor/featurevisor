@@ -338,14 +338,15 @@ function checkDeadline(
   const own = Object.keys(typeSchema?.properties || {});
   for (const [field, value] of Object.entries(deadline)) {
     if (DEADLINE_FIELDS.includes(field)) continue;
-    const fieldSchema = typeSchema?.properties?.[field] ?? typeSchema?.additionalProperties;
+    const fieldSchema = typeSchema?.properties?.[field];
     if (fieldSchema) {
       checkValue(fieldSchema, value, [...path, field], issues);
       continue;
     }
     const also = own.length ? `, and ${quote(type)} deadlines also have ${all(own)}` : "";
+    const suggestion = suggestKey(field, [...DEADLINE_FIELDS, ...own]);
     invalid(
-      `Unknown field ${quote(field)}. A deadline has \`by\`, \`done\` and \`description\`${also}.${suggestKey(field, [...DEADLINE_FIELDS, ...own])}`,
+      `Unknown field ${quote(field)}. A deadline has \`by\`, \`done\` and \`description\`${also}.${suggestion || " Declare any other field for its type in metadataSchema."}`,
       [...path, field],
     );
   }

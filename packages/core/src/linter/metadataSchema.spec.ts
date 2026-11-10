@@ -146,7 +146,8 @@ describe("lintMetadata without a schema", () => {
       {
         code: "invalid_metadata",
         at: "deadlines.e.ticket",
-        message: 'Unknown field "ticket". A deadline has `by`, `done` and `description`.',
+        message:
+          'Unknown field "ticket". A deadline has `by`, `done` and `description`. Declare any other field for its type in metadataSchema.',
       },
       {
         code: "invalid_metadata",
@@ -266,7 +267,8 @@ describe("lintMetadata with a project schema", () => {
       {
         code: "invalid_metadata",
         at: "deadlines.review.ticket",
-        message: 'Unknown field "ticket". A deadline has `by`, `done` and `description`.',
+        message:
+          'Unknown field "ticket". A deadline has `by`, `done` and `description`. Declare any other field for its type in metadataSchema.',
       },
       {
         code: "metadata_schema",
