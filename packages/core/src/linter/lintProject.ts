@@ -813,7 +813,7 @@ export async function lintProject(
       });
     }
   }
-  const attributeZodSchema = getAttributeZodSchema();
+  const attributeZodSchema = getAttributeZodSchema(projectConfig);
   const attributesByKey: Record<string, Attribute> = {};
 
   for (const key of attributes) {
@@ -1314,7 +1314,7 @@ export async function lintProject(
   }
 
   // lint schemas (schemas and schemasByKey already loaded above for feature linting)
-  const schemaZodSchema = getSchemaZodSchema(schemas, schemasByKey);
+  const schemaZodSchema = getSchemaZodSchema(schemas, schemasByKey, projectConfig);
 
   if (!options.entityType || options.entityType === "schema") {
     await lintReservedNamespaceCharacterInEntityPaths("schema");

@@ -39,6 +39,9 @@ const fields: Record<keyof EntitySummary, Kind> = {
   attributeFormat: "string",
   environmentsDiffer: "boolean",
   searchTerms: "strings",
+  owners: "strings",
+  deadlines: "strings",
+  metadataTerms: "strings",
   lastModified: "modified",
 };
 

@@ -842,6 +842,103 @@ describe("core: list", function () {
     });
   });
 
+  describe("metadata", () => {
+    const features: Record<string, ParsedFeature> = {
+      checkout: createFeatureFixture({
+        metadata: {
+          owner: ["checkout-team", "payments-team"],
+          deadlines: {
+            review: { by: "2027-01-01", done: "2026-12-30" },
+            remove: { by: "2027-01-20", ticket: "X-1" },
+          },
+        },
+      }),
+      redesign: createFeatureFixture({
+        metadata: { owner: "growth-team", deadlines: { deprecate: { by: "2027-01-01" } } },
+      }),
+      // A TOML date reads in its JSON form
+      banner: createFeatureFixture({
+        metadata: { deadlines: { review: { by: { toJSON: () => "2027-03-01" } as any } } },
+      }),
+      plain: createFeatureFixture(),
+    };
+    const projectConfig = {
+      metadataSchema: {
+        type: "object",
+        properties: { deadlines: { properties: { review: {}, remove: {}, deprecate: {} } } },
+      },
+    };
+    const run = async (options: Record<string, unknown>) =>
+      listEntities<ParsedFeature & { key: string; deadlineStatuses?: unknown }>(
+        {
+          rootDirectoryPath: "",
+          projectConfig: projectConfig as any,
+          datasource: {
+            listFeatures: async () => Object.keys(features),
+            readFeature: async (key: string) => features[key],
+          } as any,
+          options,
+        },
+        "feature",
+      );
+    const keys = async (options: Record<string, unknown>) =>
+      (await run({ today: "2027-01-15", ...options })).map(({ key }) => key);
+
+    test("filters by owners, every one named", async () => {
+      expect(await keys({ owner: ["checkout-team"] })).toEqual(["checkout"]);
+      expect(await keys({ owner: ["checkout-team", "payments-team"] })).toEqual(["checkout"]);
+      expect(await keys({ owner: ["checkout-team", "growth-team"] })).toEqual([]);
+      expect(await keys({ owner: "growth-team" })).toEqual(["redesign"]);
+    });
+
+    test("filters by deadline status and type, every value on one deadline", async () => {
+      expect(await keys({ deadline: ["overdue"] })).toEqual(["redesign"]);
+      expect(await keys({ deadline: ["upcoming"] })).toEqual(["checkout"]);
+      expect(await keys({ deadline: ["later"] })).toEqual(["banner"]);
+      expect(await keys({ deadline: ["done"] })).toEqual(["checkout"]);
+      expect(await keys({ deadline: ["open"] })).toEqual(["checkout", "redesign", "banner"]);
+      expect(await keys({ deadline: ["review"] })).toEqual(["checkout", "banner"]);
+      expect(await keys({ deadline: ["review", "later"] })).toEqual(["banner"]);
+      expect(await keys({ deadline: ["remove", "overdue"] })).toEqual([]);
+      expect(await keys({ deadline: ["upcoming"], owner: ["payments-team"] })).toEqual([
+        "checkout",
+      ]);
+    });
+
+    test("adds each deadline's status to JSON entries when filtering by deadline", async () => {
+      const [checkout] = await run({ deadline: ["remove"], today: "2027-01-15" });
+      expect(checkout.deadlineStatuses).toEqual([
+        { type: "review", by: "2027-01-01", status: "done" },
+        { type: "remove", by: "2027-01-20", status: "upcoming" },
+      ]);
+      const [plain] = await run({ keyPattern: "plain" });
+      expect(plain).not.toHaveProperty("deadlineStatuses");
+    });
+
+    const deps = (options: Record<string, unknown>) => ({
+      rootDirectoryPath: "",
+      projectConfig: projectConfig as any,
+      datasource: {} as any,
+      options,
+    });
+
+    test("validates the flags", async () => {
+      await expect(listProject(deps({ tests: true, owner: ["a"] }))).rejects.toThrow(
+        "Option --owner can only be used with --features, --variables, --segments, --attributes, --targets, --schemas.",
+      );
+      await expect(listProject(deps({ features: true, today: "2027-01-15" }))).rejects.toThrow(
+        "Option --today needs --deadline, whose statuses it fixes.",
+      );
+      await expect(
+        listProject(deps({ features: true, deadline: ["open"], today: "2027-02-30" })),
+      ).rejects.toThrow('Invalid --today: "2027-02-30". Expected a date such as 2027-01-15.');
+      // declared types close the list, so an undeclared one could never match
+      await expect(listProject(deps({ features: true, deadline: ["reveiw"] }))).rejects.toThrow(
+        'Invalid --deadline: "reveiw" is neither a status (overdue, today, upcoming, later, open, done) nor a deadline type of this project (review, remove, deprecate). Did you mean "review"?',
+      );
+    });
+  });
+
   test("validates environment filters against the project configuration", async function () {
     const deps = {
       rootDirectoryPath: "",

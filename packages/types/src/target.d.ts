@@ -1,3 +1,4 @@
+import type { Metadata } from "./metadata";
 import type { Context } from "./context";
 import type { FeatureKey, Tag, VariableKey } from "./feature";
 
@@ -19,6 +20,7 @@ export interface Target {
   key?: TargetKey;
   promotable?: boolean;
   description: string;
+  metadata?: Metadata;
   tag?: Tag;
   tags?: TargetTags;
   includeFeatures?: TargetFeatures;

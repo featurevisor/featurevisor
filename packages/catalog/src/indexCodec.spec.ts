@@ -45,6 +45,12 @@ const complete: Required<EntitySummary> = {
   environmentsDiffer: true,
   inheritedEnvironments: ["dev"],
   searchTerms: ["rule:shared", "value:shared", "assertion:日本語"],
+  owners: ["shared", "checkout-team"],
+  deadlines: [
+    "review\u001f2027-01-15\u001f2027-01-10\u001fQuarterly 日本語",
+    "remove\u001f2027-03-01",
+  ],
+  metadataTerms: ["jira=CHECKOUT-1", "links.design=https://example.com"],
   lastModified: { commit: "abc", author: "shared", timestamp: "2026-09-30T10:00:00Z" },
 };
 

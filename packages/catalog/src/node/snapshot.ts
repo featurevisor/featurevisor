@@ -95,8 +95,23 @@ interface Copied<T> {
   value: T;
 }
 
+/**
+ * A definition's metadata as JSON writes it, which is how everything reads metadata. Cloning
+ * would turn a TOML date into a timestamp, so `2027-01-15` would lose its date-only form.
+ */
+function withMetadataJson<T>(value: T): T {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const metadata = (value as { metadata?: unknown }).metadata;
+  if (metadata === undefined || metadata === null || typeof metadata !== "object") return value;
+  try {
+    return { ...value, metadata: JSON.parse(JSON.stringify(metadata)) };
+  } catch {
+    return value;
+  }
+}
+
 function own<T>(value: T, share: boolean): Shared<T> | Copied<T> {
-  const copy = structuredClone(value);
+  const copy = structuredClone(withMetadataJson(value));
   return share && isPlainData(copy)
     ? { shared: true, value: deepFreeze(copy) }
     : { shared: false, value: copy };

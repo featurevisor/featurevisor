@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { ProjectConfig } from "../config";
 import { removedConditionFields, refineRequiredConditions } from "./removedConditionFields";
+import { ALWAYS, getMetadataZodSchema, refineRequiredMetadata } from "./metadataSchema";
 
 export function getSegmentZodSchema(projectConfig: ProjectConfig, conditionsZodSchema) {
   const segmentZodSchema = z
@@ -11,11 +12,13 @@ export function getSegmentZodSchema(projectConfig: ProjectConfig, conditionsZodS
       description: z.string({
         error: (issue) => (issue.input === undefined ? "Required" : undefined),
       }),
+      metadata: getMetadataZodSchema(projectConfig).optional(),
       conditions: conditionsZodSchema.optional(),
       ...removedConditionFields,
     })
     .strict()
-    .superRefine(refineRequiredConditions);
+    .superRefine(refineRequiredConditions)
+    .superRefine(refineRequiredMetadata(projectConfig, "segments"), ALWAYS);
 
   const editorSchema = z
     .object({

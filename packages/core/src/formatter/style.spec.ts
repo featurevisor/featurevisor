@@ -6,6 +6,62 @@ import { formatDefinition } from "./formatDefinition";
 // style.ts. Every other test holds whatever the style is.
 
 describe("the house style", () => {
+  it("places metadata after a definition's description and tags, and orders each deadline", () => {
+    const source = [
+      "bucketBy: userId",
+      "metadata:",
+      "  jira: CHECKOUT-1",
+      "  owner: checkout-team",
+      "  deadlines:",
+      "    remove:",
+      "      ticket: CHECKOUT-2",
+      "      description: Later",
+      "      by: 2027-03-01",
+      "    review:",
+      "      done: true",
+      "      by: 2027-01-15",
+      "description: Checkout",
+      "tags: [web]",
+      "",
+    ].join("\n");
+
+    expect(formatDefinition("feature", source, parsers.yml).output).toBe(
+      [
+        "description: Checkout",
+        "",
+        "tags:",
+        "  - web",
+        "",
+        "metadata:",
+        // the rest of metadata keeps the order it was written in
+        "  jira: CHECKOUT-1",
+        "  owner: checkout-team",
+        "  deadlines:",
+        "    remove:",
+        '      by: "2027-03-01"',
+        "      description: Later",
+        "      ticket: CHECKOUT-2",
+        "",
+        "    review:",
+        '      by: "2027-01-15"',
+        "      done: true",
+        "",
+        "bucketBy: userId",
+        "",
+      ].join("\n"),
+    );
+
+    for (const [entityType, before] of [
+      ["segment", 'conditions: "*"\nmetadata:\n  owner: a\ndescription: x\n'],
+      ["attribute", "type: string\nmetadata:\n  owner: a\ndescription: x\n"],
+      ["schema", "type: string\nmetadata:\n  owner: a\ndescription: x\n"],
+      ["target", "tags:\n  - all\nmetadata:\n  owner: a\ndescription: x\n"],
+    ] as const) {
+      const output = formatDefinition(entityType, before, parsers.yml).output;
+      expect(output.startsWith("description: x\n\nmetadata:\n  owner: a\n\n")).toBe(true);
+    }
+  });
+
   it("lays out a YAML feature", () => {
     const source = [
       "bucketBy: userId",

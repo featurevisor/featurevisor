@@ -7,6 +7,38 @@ const report = (before: unknown, after: unknown, entity = "feature") =>
   formatDetails(describeDefinitionChanges(entity, before, after)).join("\n");
 
 describe("core: Featurevisor diff details", () => {
+  it("reports metadata by owner, each deadline by its type, then the project's keys", () => {
+    const before = {
+      metadata: {
+        owner: "checkout-team",
+        jira: "CHECKOUT-1",
+        deadlines: { review: { by: "2027-01-15" }, deprecate: { by: "2027-02-01" } },
+      },
+    };
+    const after = {
+      metadata: {
+        owner: ["checkout-team", "payments-team"],
+        jira: "CHECKOUT-2",
+        deadlines: {
+          review: { by: "2027-01-15", done: "2027-01-10" },
+          remove: { by: "2027-03-01", ticket: "CHECKOUT-3" },
+        },
+      },
+    };
+    for (const entity of ["feature", "variable", "segment", "attribute", "target", "schema"]) {
+      const output = report(before, after, entity);
+      expect(output).toContain("Metadata");
+      expect(output).toContain("Owner");
+      expect(output).toContain('Deadline "review"');
+      expect(output).toContain("Done");
+      expect(output).toContain('Deadline "deprecate"');
+      expect(output).toContain('Deadline "remove"');
+      expect(output).toContain('"jira"');
+    }
+    expect(report({}, before)).toContain("Metadata");
+    expect(report(before, before)).toBe("");
+  });
+
   it("reports exact alias source changes and switches between alias and member forms", () => {
     const before = { compose: "policy/eu.current" };
     const after = { compose: "policy/us.current" };

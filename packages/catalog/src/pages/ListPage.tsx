@@ -23,6 +23,18 @@ import { useDocumentTitle } from "../useDocumentTitle";
 import { rememberListSearch } from "../listMemory";
 import { formatDateTime, formatFullTimestamp } from "../dates";
 import { DECODED_JSON_DESCRIPTION, formatVariableType } from "../components/valueFormat";
+import {
+  getDeadlineClock,
+  getDeadlineLabel,
+  getDeadlineStatus,
+  getMostPressingDeadline,
+  getSummaryDeadlines,
+  matchesDeadlineFilters,
+  matchesMetadataFilter,
+  splitMetadataTerm,
+  type DeadlineClock,
+} from "../metadata";
+import { DeadlineRowBadge, qualifierToken } from "../components/metadata";
 
 const LIST_INITIAL_LIMIT = 1000;
 // Rows off screen skip layout and paint until scrolled near, which keeps long lists cheap.
@@ -108,6 +120,8 @@ interface FilterChip {
   token: string;
   /** Chips sharing a group sit together under its label. */
   group: string;
+  /** Keeps its group label even where other chips sit in one row, since its label alone is unclear */
+  labelled?: boolean;
 }
 
 function sortValuesOf(values: Array<string | undefined>) {
@@ -207,6 +221,51 @@ export function getFilterChips(index: CatalogIndex, entityPath: EntityPath): Fil
     );
   }
 
+  if (entityPath !== "tests") chips.push(...getMetadataChips(entities));
+
+  return chips;
+}
+
+/** More than this many owners or deadline types read better through search than as chips */
+const METADATA_CHIP_LIMIT = 12;
+
+/** Owners and deadlines, only for lists where some definition has them */
+export function getMetadataChips(
+  entities: EntitySummary[],
+  clock: DeadlineClock = getDeadlineClock(),
+): FilterChip[] {
+  const chips: FilterChip[] = [];
+  // A chip toggles one whitespace separated token, so names with spaces are left to search
+  const owners = sortValuesOf(entities.flatMap((entity) => entity.owners || [])).filter(
+    (owner) => !/\s/.test(owner),
+  );
+  if (owners.length > 0 && owners.length <= METADATA_CHIP_LIMIT) {
+    owners.forEach((owner) =>
+      chips.push({
+        label: owner,
+        token: qualifierToken("owner", owner),
+        group: "Owner",
+        labelled: true,
+      }),
+    );
+  }
+  if (owners.length > 0 && entities.some((entity) => !entity.owners?.length && !entity.archived)) {
+    chips.push({ label: "None", token: "without:owner", group: "Owner", labelled: true });
+  }
+
+  const deadlines = entities.flatMap((entity) => getSummaryDeadlines(entity));
+  if (deadlines.length === 0) return chips;
+  const statuses = new Set(deadlines.map((deadline) => getDeadlineStatus(deadline, clock)));
+  const deadline = (label: string, token: string) =>
+    chips.push({ label, token, group: "Deadlines", labelled: true });
+  if (statuses.has("overdue")) deadline("Overdue", "deadline:overdue");
+  if (statuses.has("today") || statuses.has("upcoming")) {
+    deadline("Due in 30 days", "deadline:upcoming");
+  }
+  const types = sortValuesOf(deadlines.map((item) => item.type));
+  if (types.length <= METADATA_CHIP_LIMIT) {
+    types.forEach((type) => deadline(getDeadlineLabel(type), `deadline:${type}`));
+  }
   return chips;
 }
 
@@ -235,6 +294,9 @@ const KNOWN_QUALIFIERS = new Set([
   "without",
   "uses",
   "usedby",
+  "owner",
+  "deadline",
+  "metadata",
 ]);
 
 export function getUnknownQualifiers(query: string) {
@@ -310,8 +372,8 @@ function UnknownFilterNotice(props: {
           </>
         )}
         <code className="font-mono">usedby:</code> lists what an entity depends on. Other filters
-        are tag, in, type, kind, status, variation, variable, with, without, deprecated and
-        archived.
+        are tag, in, type, kind, status, variation, variable, owner, deadline, metadata, with,
+        without, deprecated and archived.
       </p>
     </div>
   );
@@ -327,6 +389,8 @@ function matchesReference(node: string, value: string) {
 interface QueryContext {
   index?: CatalogIndex;
   type?: CatalogEntityType;
+  /** The day deadline statuses are worked out on, today unless a test fixes it */
+  clock?: DeadlineClock;
 }
 
 function matchesQualifier(
@@ -356,6 +420,10 @@ function matchesQualifier(
   }
   if (key === "variation") return listIncludes(entity.variationValues, value);
   if (key === "variable") return listIncludes(entity.variableKeys, value);
+  if (key === "owner") return (entity.owners || []).some((owner) => owner.toLowerCase() === value);
+  // Every deadline: value is checked together, against one deadline, in createQueryMatcher
+  if (key === "deadline") return true;
+  if (key === "metadata") return matchesMetadataFilter(entity.metadataTerms, value);
 
   if (key === "with") {
     if (value === "composition") return Boolean(entity.isComposed);
@@ -367,6 +435,9 @@ function matchesQualifier(
     if (value === "dependents") return hasDependents(entity);
     if (value === "dependencies") return Boolean(entity.references?.length);
     if (value === "deprecated-dependency") return Boolean(entity.dependsOnDeprecated);
+    if (value === "owner") return Boolean(entity.owners?.length);
+    if (value === "deadlines") return Boolean(entity.deadlines?.length);
+    if (value === "metadata") return hasMetadata(entity);
   }
 
   if (key === "without") {
@@ -379,9 +450,16 @@ function matchesQualifier(
     if (value === "dependents") return !hasDependents(entity);
     if (value === "dependencies") return !entity.references?.length;
     if (value === "deprecated-dependency") return !entity.dependsOnDeprecated;
+    if (value === "owner") return !entity.owners?.length;
+    if (value === "deadlines") return !entity.deadlines?.length;
+    if (value === "metadata") return !hasMetadata(entity);
   }
 
   return true;
+}
+
+function hasMetadata(entity: EntitySummary) {
+  return Boolean(entity.owners?.length || entity.deadlines?.length || entity.metadataTerms?.length);
 }
 
 // Index summaries are immutable once loaded, so each one's search text is built once.
@@ -397,6 +475,8 @@ function getHaystack(entity: EntitySummary) {
       ...(entity.tags || []),
       ...(entity.targets || []),
       ...(entity.environments || []),
+      ...(entity.owners || []),
+      ...(entity.metadataTerms || []).map((term) => splitMetadataTerm(term).value),
     ]
       .join(" ")
       .toLowerCase();
@@ -444,10 +524,18 @@ export function createQueryMatcher(
 
   const parsedQuery = parseSearchQuery(normalizedQuery);
   const related = getRelatedLookup(parsedQuery.qualifiers, context.index);
+  // `deadline:remove deadline:upcoming` means one deadline that is both, such as a coming removal
+  const deadlineValues = parsedQuery.qualifiers
+    .filter((qualifier) => qualifier.key === "deadline")
+    .map((qualifier) => qualifier.value);
+  const clock = context.clock || getDeadlineClock();
   return (entity) =>
     parsedQuery.qualifiers.every((qualifier) =>
       matchesQualifier(entity, qualifier.key, qualifier.value, related, context),
-    ) && parsedQuery.terms.every((term) => getHaystack(entity).includes(term));
+    ) &&
+    (deadlineValues.length === 0 ||
+      matchesDeadlineFilters(getSummaryDeadlines(entity), deadlineValues, clock)) &&
+    parsedQuery.terms.every((term) => getHaystack(entity).includes(term));
 }
 
 export function matchesQuery(entity: EntitySummary, query: string, context?: QueryContext) {
@@ -507,9 +595,26 @@ function RowTrailingMeta(props: { entity: EntitySummary; type: CatalogEntityType
         ? "Required by"
         : undefined;
 
+  const pressing = props.entity.deadlines?.length
+    ? getMostPressingDeadline(getSummaryDeadlines(props.entity), getDeadlineClock())
+    : undefined;
+  const owners = props.entity.owners || [];
+
   return (
     <>
       {getStatusBadges(props.entity)}
+      {pressing && !props.entity.archived && (
+        <DeadlineRowBadge deadline={pressing.deadline} clock={getDeadlineClock()} />
+      )}
+      {owners.length > 0 && (
+        <span className="hidden sm:inline-flex" title={owners.join(", ")}>
+          <LabelValueBadge
+            compact
+            label={owners.length === 1 ? "owner" : "owners"}
+            value={owners.length === 1 ? owners[0] : `${owners[0]} +${owners.length - 1}`}
+          />
+        </span>
+      )}
       {/* Phones keep the key readable. The filters still find these there. */}
       {props.entity.dependsOnDeprecated && (
         <span className="hidden sm:inline-flex">
@@ -849,7 +954,7 @@ function FilterChips(props: {
   const tokens = props.query.trim().toLowerCase().split(/\s+/);
   const groups = new Map<string, FilterChip[]>();
   for (const chip of props.chips) {
-    const name = props.flat ? "Filters" : chip.group;
+    const name = props.flat && !chip.labelled ? "Filters" : chip.group;
     const group = groups.get(name);
     if (group) group.push(chip);
     else groups.set(name, [chip]);
@@ -876,36 +981,46 @@ function FilterChips(props: {
       </button>
     );
   };
-  // Flat chips are direct children, so they wrap across the whole row.
+  const renderGroup = ([group, chips]: [string, FilterChip[]], labelled: boolean) => (
+    <div
+      key={group}
+      role="group"
+      aria-label={group}
+      className="flex flex-wrap items-center gap-1.5"
+    >
+      {labelled && (
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-faint">
+          {group}
+        </span>
+      )}
+      {chips.map(renderChip)}
+    </div>
+  );
+
+  // Flat chips are direct children, so they wrap across the whole row. Groups whose chips need
+  // their label, such as owners and deadlines, follow with it.
   if (props.flat) {
+    const flat = props.chips.filter((chip) => !chip.labelled);
+    const labelledGroups = [...groups].filter(([group]) => group !== "Filters");
     return (
-      <div
-        role="group"
-        aria-label="Filters"
-        className={`flex flex-wrap items-center gap-1.5 ${props.className || ""}`}
-      >
-        {props.chips.map(renderChip)}
+      <div className={`space-y-2 ${props.className || ""}`}>
+        {flat.length > 0 && (
+          <div role="group" aria-label="Filters" className="flex flex-wrap items-center gap-1.5">
+            {flat.map(renderChip)}
+          </div>
+        )}
+        {labelledGroups.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {labelledGroups.map((entry) => renderGroup(entry, true))}
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${props.className || ""}`}>
-      {[...groups].map(([group, chips]) => (
-        <div
-          key={group}
-          role="group"
-          aria-label={group}
-          className="flex flex-wrap items-center gap-1.5"
-        >
-          {labelled && (
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-faint">
-              {group}
-            </span>
-          )}
-          {chips.map(renderChip)}
-        </div>
-      ))}
+      {[...groups].map((entry) => renderGroup(entry, labelled))}
     </div>
   );
 }

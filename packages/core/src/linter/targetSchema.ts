@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
 import { refineWithMessage } from "./zodHelpers";
+import { ALWAYS, getMetadataZodSchema, refineRequiredMetadata } from "./metadataSchema";
 
 const targetTagSchema = (projectConfig: ProjectConfig) =>
   refineWithMessage(
@@ -26,6 +27,7 @@ export function getTargetZodSchema(projectConfig: ProjectConfig) {
       description: z.string({
         error: (issue) => (issue.input === undefined ? "Required" : undefined),
       }),
+      metadata: getMetadataZodSchema(projectConfig).optional(),
       tag: tagSchema.optional(),
       tags: z
         .union([
@@ -46,6 +48,7 @@ export function getTargetZodSchema(projectConfig: ProjectConfig) {
         .optional(),
     })
     .strict()
+    .superRefine(refineRequiredMetadata(projectConfig, "targets"), ALWAYS)
     .refine((target) => !(target.tag && target.tags), {
       message: 'Only one of "tag" or "tags" can be defined',
       path: ["tags"],

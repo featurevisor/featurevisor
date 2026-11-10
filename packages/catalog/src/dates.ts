@@ -10,7 +10,12 @@ const formatters = {
   timeWithSeconds: new Intl.DateTimeFormat(undefined, { timeStyle: "medium" }),
   dateTime: new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }),
   full: new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "long" }),
+  // A calendar date names a day, not a moment, so it never shifts with the viewer's time zone
+  calendar: new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" }),
+  calendarFull: new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeZone: "UTC" }),
 };
+
+const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function toDate(value: string) {
   const date = new Date(value);
@@ -42,4 +47,22 @@ export function formatDateTime(value: string) {
 export function formatFullTimestamp(value: string) {
   const date = toDate(value);
   return date ? formatters.full.format(date) : value;
+}
+
+/** A date such as a deadline's: "1 Nov 2026" for a day, with a short time for a timestamp */
+export function formatDeadlineDate(value: string) {
+  if (CALENDAR_DATE.test(value)) {
+    const date = toDate(`${value}T00:00:00Z`);
+    return date ? formatters.calendar.format(date) : value;
+  }
+  return formatDateTime(value);
+}
+
+/** The same date in full, for hover text */
+export function formatFullDeadlineDate(value: string) {
+  if (CALENDAR_DATE.test(value)) {
+    const date = toDate(`${value}T00:00:00Z`);
+    return date ? formatters.calendarFull.format(date) : value;
+  }
+  return formatFullTimestamp(value);
 }

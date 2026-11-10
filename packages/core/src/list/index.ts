@@ -50,6 +50,44 @@ import {
 import { getCheckReferences } from "../tester/checks";
 import { compileConditions, walkConditionLeaves } from "../datasource/conditions";
 import { listTestSpecs } from "./scenarios";
+import {
+  DEADLINE_STATUS_FILTERS,
+  getDeadlineClock,
+  getDeadlineStatuses,
+  getOwners,
+  isCalendarDate,
+  isDeadlineStatusFilter,
+  matchesDeadline,
+  matchesDeadlineFilters,
+  toMetadataJson,
+} from "../metadata";
+import type { DeadlineClock } from "../metadata";
+import { suggestKey } from "../linter/diagnostics";
+
+/** Selectors whose definitions can have metadata */
+const METADATA_SELECTORS = [
+  "features",
+  "variables",
+  "segments",
+  "attributes",
+  "targets",
+  "schemas",
+];
+
+function listValues(value: unknown): string[] {
+  if (value === undefined) return [];
+  return (Array.isArray(value) ? value : [value]).map(String);
+}
+
+/** The deadline filters of `list`, with a clock fixed once for the whole run */
+function getMetadataFilters(options: Dependencies["options"]) {
+  const owners = listValues(options.owner);
+  const deadlines = listValues(options.deadline);
+  const clock: DeadlineClock | undefined = deadlines.length
+    ? getDeadlineClock(options.today)
+    : undefined;
+  return { owners, deadlines, clock };
+}
 
 async function getEntitiesWithTests(
   deps: Dependencies,
@@ -305,6 +343,8 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     targetVariableKeys = await getTargetVariableKeys(datasource, targets);
   }
 
+  const metadataFilters = getMetadataFilters(options);
+
   async function initializeEntitiesWithTests() {
     if (entitiesWithTestsInitialized) {
       return;
@@ -365,6 +405,23 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       if (keyRegex) {
         if (!keyRegex.test(key)) {
           continue;
+        }
+      }
+
+      // --owner=<owner>, every one of them
+      // --deadline=<status or type>, every one of them on the same deadline
+      const { owners, deadlines, clock } = metadataFilters;
+      if (owners.length || clock) {
+        const metadata = toMetadataJson((entity as { metadata?: unknown }).metadata);
+        const entityOwners = getOwners(metadata);
+        if (!owners.every((owner) => entityOwners.includes(owner))) {
+          continue;
+        }
+        if (clock) {
+          if (!matchesDeadlineFilters(metadata, deadlines, clock)) {
+            continue;
+          }
+          entity = { ...entity, deadlineStatuses: getDeadlineStatuses(metadata, clock) };
         }
       }
     }
@@ -828,7 +885,17 @@ function printResult({ result, entityType, options }) {
 
   for (const item of result) {
     const composition = entityType === "variable" && item.compose ? " (composed)" : "";
-    console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${item.key}${composition}`);
+    // Only the deadlines the filter matched. JSON keeps every one.
+    const values = listValues(options.deadline);
+    const deadlines = Array.isArray(item.deadlineStatuses)
+      ? item.deadlineStatuses
+          .filter(({ type, status }) => matchesDeadline(type, status, values))
+          .map(({ type, by, status }) => `${type} by ${by}, ${status}`)
+          .join(" · ")
+      : "";
+    console.log(
+      `  ${colorize("•", CLI_COLOR_CYAN)} ${item.key}${composition}${deadlines ? `  ${colorize(deadlines, CLI_COLOR_YELLOW)}` : ""}`,
+    );
   }
 
   console.log("");
@@ -1154,6 +1221,8 @@ function assertListOptions(options: Record<string, any>, projectConfig?: Project
     }
   }
 
+  assertMetadataListOptions(options, selector, projectConfig);
+
   if (selector === "tests" && typeof options.description !== "undefined") {
     throw new FeaturevisorCLIError(
       "Option --description cannot be used with --tests. Use --assertion-pattern instead.",
@@ -1162,6 +1231,50 @@ function assertListOptions(options: Record<string, any>, projectConfig?: Project
         details: { selector, option: "description" },
       },
     );
+  }
+}
+
+function assertMetadataListOptions(
+  options: Dependencies["options"],
+  selector: string,
+  projectConfig?: ProjectConfig,
+) {
+  for (const option of ["owner", "deadline"]) {
+    if (typeof options[option] !== "undefined" && !METADATA_SELECTORS.includes(selector)) {
+      throw new FeaturevisorCLIError(
+        `Option ${toFlag(option)} can only be used with ${METADATA_SELECTORS.map((name) => `--${name}`).join(", ")}.`,
+        { code: "incompatible_cli_options", details: { selector, option } },
+      );
+    }
+  }
+
+  if (typeof options.today !== "undefined") {
+    if (typeof options.deadline === "undefined") {
+      throw new FeaturevisorCLIError("Option --today needs --deadline, whose statuses it fixes.", {
+        code: "missing_cli_option",
+        details: { selector, option: "deadline" },
+      });
+    }
+    if (!isCalendarDate(options.today)) {
+      throw new FeaturevisorCLIError(
+        `Invalid --today: ${JSON.stringify(options.today)}. Expected a date such as 2027-01-15.`,
+        { code: "invalid_cli_arguments", details: { option: "today" } },
+      );
+    }
+  }
+
+  // A type the project's schema cannot have would never match
+  const typesSchema = projectConfig?.metadataSchema?.properties?.deadlines;
+  const declared = Object.keys(typesSchema?.properties || {});
+  if (declared.length > 0 && !typesSchema?.additionalProperties) {
+    for (const value of listValues(options.deadline)) {
+      if (!isDeadlineStatusFilter(value) && !declared.includes(value)) {
+        throw new FeaturevisorCLIError(
+          `Invalid --deadline: ${JSON.stringify(value)} is neither a status (${DEADLINE_STATUS_FILTERS.join(", ")}) nor a deadline type of this project (${declared.join(", ")}).${suggestKey(value, [...DEADLINE_STATUS_FILTERS, ...declared])}`,
+          { code: "invalid_cli_arguments", details: { option: "deadline", value } },
+        );
+      }
+    }
   }
 }
 

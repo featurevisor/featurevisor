@@ -46,6 +46,7 @@ import {
   type AuthoredReference,
 } from "../dependencyReferences";
 import { encodeCatalogIndex } from "../indexCodec";
+import { encodeDeadline, getDeadlines, getMetadataTerms, getOwners } from "../metadata";
 import { getInheritedEnvironments, withInheritedEntries } from "../environmentInheritance";
 import { rewriteCatalogHtml } from "./html";
 
@@ -733,6 +734,38 @@ function getLastModified(
   return historyIndex.lastModifiedByEntity[getHistoryEntityKey(type, key, set)];
 }
 
+/** Deadline types the project declares, for their descriptions in the browser */
+function getDeadlineTypes(projectConfig: any) {
+  const declared = projectConfig.metadataSchema?.properties?.deadlines?.properties;
+  if (!declared || typeof declared !== "object") return undefined;
+  return Object.fromEntries(
+    Object.entries(declared as Record<string, { description?: unknown }>).map(([type, schema]) => [
+      type,
+      typeof schema?.description === "string" ? { description: schema.description } : {},
+    ]),
+  );
+}
+
+/** Owners, deadlines and the rest of a definition's metadata, for lists, filters and search */
+function getMetadataSummary(entity: Record<string, any>): Partial<EntitySummary> {
+  if (entity.metadata === undefined) return {};
+  let metadata: unknown;
+  try {
+    // A TOML or JavaScript date reads as JSON writes it, as everywhere metadata is read
+    metadata = JSON.parse(JSON.stringify(entity.metadata));
+  } catch {
+    return {};
+  }
+  const owners = getOwners(metadata);
+  const deadlines = getDeadlines(metadata).map(encodeDeadline);
+  const metadataTerms = getMetadataTerms(metadata);
+  return {
+    owners: owners.length ? owners : undefined,
+    deadlines: deadlines.length ? deadlines : undefined,
+    metadataTerms: metadataTerms.length ? metadataTerms : undefined,
+  };
+}
+
 function getEntitySummary(
   entity: Record<string, any>,
   type: CatalogEntityType,
@@ -748,6 +781,7 @@ function getEntitySummary(
     deprecated: entity.deprecated,
     promotable: entity.promotable,
     searchTerms: getSearchTerms(type, entity),
+    ...(type === "test" ? {} : getMetadataSummary(entity)),
     ...extra,
     lastModified: getLastModified(historyIndex, type, key, set),
     href: `entities/${type}/${encodeKeyUrlPath(key)}.json`,
@@ -2752,6 +2786,7 @@ export async function exportCatalog(
       inheritEnvironments: projectConfig.inheritEnvironments,
       namespaceCharacter: projectConfig.namespaceCharacter,
       conditionExpressions: projectConfig.conditionExpressions,
+      deadlineTypes: getDeadlineTypes(projectConfig),
     });
     let canReuse =
       options.compactStorage &&
@@ -2843,6 +2878,7 @@ export async function exportCatalog(
         inheritEnvironments: projectConfig.inheritEnvironments,
         conditionExpressions: projectConfig.conditionExpressions === true || undefined,
         namespaceCharacter: projectConfig.namespaceCharacter,
+        deadlineTypes: getDeadlineTypes(projectConfig),
       },
       dev: options.dev ? { editors: devEditors } : undefined,
       testReport: testReport && {

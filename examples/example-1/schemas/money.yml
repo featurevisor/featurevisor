@@ -1,5 +1,9 @@
 description: Money amount with currency (reusable for prices, totals, etc.)
 
+metadata:
+  owner: checkout-team
+  jira: CHECKOUT-7
+
 type: object
 
 properties:

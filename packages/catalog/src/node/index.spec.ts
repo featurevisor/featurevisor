@@ -2013,6 +2013,74 @@ describe("catalog export", () => {
     expect(Object.keys(detail.entity.rules)).toEqual(["staging", "production"]);
   });
 
+  it("exports owners, deadlines and metadata for lists, and the project's deadline types", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
+    const base = createDatasource();
+    // A TOML parser returns dates as objects whose JSON form is the date
+    const tomlDate = { toJSON: () => "2027-01-15" };
+    const datasource = {
+      ...base,
+      readFeature: async () => ({
+        ...(await base.readFeature()),
+        metadata: {
+          owner: ["checkout-team", "payments-team"],
+          jira: "CHECKOUT-1",
+          links: { design: "https://example.com" },
+          deadlines: {
+            review: { by: tomlDate, done: true },
+            remove: { by: "2027-03-01", description: "Once every market moves", ticket: "X-1" },
+          },
+        },
+      }),
+      readSegment: async () => ({
+        ...(await base.readSegment()),
+        metadata: { owner: "platform-team" },
+      }),
+    };
+    await exportCatalog(
+      createRuntime(),
+      root,
+      {
+        ...createProjectConfig(root),
+        metadataSchema: {
+          type: "object",
+          properties: {
+            deadlines: {
+              properties: {
+                review: { description: "Check the flag still earns its place" },
+                remove: { properties: { ticket: { type: "string" } } },
+              },
+            },
+          },
+        },
+      },
+      datasource,
+      { copyAssets: false, compactStorage: false },
+    );
+
+    const read = (...parts: string[]) =>
+      JSON.parse(fs.readFileSync(path.join(root, "catalog", "data", ...parts), "utf8"));
+    expect(read("manifest.json").projectConfig.deadlineTypes).toEqual({
+      review: { description: "Check the flag still earns its place" },
+      remove: {},
+    });
+
+    const index = read("root", "index.json");
+    const [feature] = index.entities.feature;
+    expect(feature.owners).toEqual(["checkout-team", "payments-team"]);
+    expect(feature.deadlines).toEqual([
+      "review\u001f2027-01-15\u001ftrue",
+      "remove\u001f2027-03-01\u001f\u001fOnce every market moves",
+    ]);
+    expect(feature.metadataTerms).toEqual(["jira=CHECKOUT-1", "links.design=https://example.com"]);
+    expect(index.entities.segment[0].owners).toEqual(["platform-team"]);
+    expect(index.entities.attribute[0].owners).toBeUndefined();
+
+    const detail = read("root", "entities", "feature", "checkout.json");
+    expect(detail.entity.metadata.deadlines.review.by).toBe("2027-01-15");
+    expect(detail.entity.metadata.deadlines.remove.ticket).toBe("X-1");
+  });
+
   it("exports compact storage unless the plain layout is requested", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
     await exportCatalog(createRuntime(), root, createProjectConfig(root), createDatasource(), {

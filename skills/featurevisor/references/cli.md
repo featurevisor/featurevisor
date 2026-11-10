@@ -214,24 +214,26 @@ npx featurevisor list --datafiles --json
 
 Feature filters combine with AND:
 
-| Flag                                             | Keeps features                                                                                       |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `--tag=<tag>`                                    | with the tag. Repeat for several                                                                     |
-| `--target=<target>`                              | selected by the target. Repeat for a union                                                           |
-| `--variable=<key>`                               | declaring the feature variable                                                                       |
-| `--variation=<value>`                            | with the variation value                                                                             |
-| `--with-variations`, `--without-variations`      | with or without variations                                                                           |
-| `--with-variables`, `--without-variables`        | with or without feature variables                                                                    |
-| `--with-tests`, `--without-tests`                | referenced by any spec, or by none                                                                   |
-| `--enabled-in=<env>`, `--disabled-in=<env>`      | with a rule above 0%, or only 0% rules, in that environment, including inherited rules               |
-| `--defined-in=<env>`, `--not-defined-in=<env>`   | writes `rules` for that environment itself, or does not. Also for `--variables`, reading `overrides` |
-| `--enabled`, `--disabled`                        | the same, in a project without environments                                                          |
-| `--key-pattern=<regex>`, `--description=<regex>` | matching key or description                                                                          |
-| `--archived=true`                                | archived ones, which are excluded by default                                                         |
+| Flag                                             | Keeps features                                                                                                 |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `--tag=<tag>`                                    | with the tag. Repeat for several                                                                               |
+| `--target=<target>`                              | selected by the target. Repeat for a union                                                                     |
+| `--variable=<key>`                               | declaring the feature variable                                                                                 |
+| `--variation=<value>`                            | with the variation value                                                                                       |
+| `--with-variations`, `--without-variations`      | with or without variations                                                                                     |
+| `--with-variables`, `--without-variables`        | with or without feature variables                                                                              |
+| `--with-tests`, `--without-tests`                | referenced by any spec, or by none                                                                             |
+| `--enabled-in=<env>`, `--disabled-in=<env>`      | with a rule above 0%, or only 0% rules, in that environment, including inherited rules                         |
+| `--defined-in=<env>`, `--not-defined-in=<env>`   | writes `rules` for that environment itself, or does not. Also for `--variables`, reading `overrides`           |
+| `--enabled`, `--disabled`                        | the same, in a project without environments                                                                    |
+| `--key-pattern=<regex>`, `--description=<regex>` | matching key or description                                                                                    |
+| `--archived=true`                                | archived ones, which are excluded by default                                                                   |
+| `--owner=<owner>`                                | owned by that team in [metadata](metadata.md). Repeat for every one named                                      |
+| `--deadline=<status or type>`                    | with a deadline of that status or type. Repeated values describe one deadline. `--today=<date>` fixes the date |
 
 Use `--enabled-in` and `--disabled-in` in projects with environments, and `--enabled` and `--disabled` in projects without them. The CLI rejects the wrong pair, and unknown environment names, with `invalid_environment`. Force entries and root conditions are not considered, only rule percentages.
 
-Segments, attributes, variables, schemas and targets take `--key-pattern`, `--description`, `--archived` and `--promotable`. Variables also take `--tag`, `--target` and `--with-tests` or `--without-tests`. `list --tests --apply-matrix --json` expands matrices into individual assertions. `list --datafiles` shows built datafiles with their sizes, so run `build` first.
+Segments, attributes, variables, schemas and targets take `--key-pattern`, `--description`, `--archived`, `--promotable`, `--owner` and `--deadline`. Variables also take `--tag`, `--target` and `--with-tests` or `--without-tests`. `list --tests --apply-matrix --json` expands matrices into individual assertions. `list --datafiles` shows built datafiles with their sizes, so run `build` first.
 
 ## find-usage
 

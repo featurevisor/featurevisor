@@ -13,7 +13,8 @@ import { HOUSE_STYLE } from "./style";
  * everything in test specs, which datafiles never hold. Values stay as written: variable
  * values, context, condition leaves, compose references, and maps keyed by the author, such
  * as variablesSchema or properties. Lists are never reordered, since rules, overrides,
- * variations, conditions and mutations depend on their order.
+ * variations, conditions and mutations depend on their order. Metadata never reaches a datafile,
+ * and only its deadlines are given an order.
  */
 
 /** Every kind of definition fmt formats, in the order it formats them */
@@ -99,11 +100,17 @@ function assertionChildren(): Record<string, Shape> {
 
 const assertion: Shape = map(keyOrder.assertion, false, assertionChildren);
 
+/** A definition's metadata keeps its written order, apart from the fields of each deadline */
+const metadata: Shape = map([], false, () => ({
+  deadlines: dict(map(keyOrder.deadline), blankLines.deadlines),
+}));
+
 const SHAPES: Record<EntityType, Shape> = {
-  attribute: file(keyOrder.attribute, schemaChildren),
-  schema: file(keyOrder.schema, schemaChildren),
-  segment: file(keyOrder.segment),
+  attribute: file(keyOrder.attribute, () => ({ ...schemaChildren(), metadata })),
+  schema: file(keyOrder.schema, () => ({ ...schemaChildren(), metadata })),
+  segment: file(keyOrder.segment, () => ({ metadata })),
   feature: file(keyOrder.feature, () => ({
+    metadata,
     variablesSchema: dict(
       map(keyOrder.variableSchema, false, schemaChildren),
       blankLines.variablesSchema,
@@ -123,13 +130,14 @@ const SHAPES: Record<EntityType, Shape> = {
   })),
   variable: file(keyOrder.variable, () => ({
     ...schemaChildren(),
+    metadata,
     overrides: byEnvironment(
       variableOverride,
       blankLines.variableOverrides,
       blankLines.variableOverrideEnvironments,
     ),
   })),
-  target: file(keyOrder.target),
+  target: file(keyOrder.target, () => ({ metadata })),
   test: file(keyOrder.test, () => ({ assertions: list(assertion, blankLines.assertions) })),
   // a scenario spec is one assertion at the top level of its file
   scenario: file(keyOrder.assertion, assertionChildren),

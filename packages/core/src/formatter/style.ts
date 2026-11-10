@@ -79,6 +79,7 @@ export const HOUSE_STYLE = {
       ...LIFECYCLE,
       "description",
       "tags",
+      "metadata",
       "bucketBy",
       "conditions",
       "disabledVariationValue",
@@ -118,6 +119,7 @@ export const HOUSE_STYLE = {
       ...LIFECYCLE,
       "description",
       "tags",
+      "metadata",
       "compose",
       ...SCHEMA_KEYS,
       "defaultValue",
@@ -137,13 +139,14 @@ export const HOUSE_STYLE = {
       "mutate",
       "overrides",
     ],
-    segment: [...LIFECYCLE, "description", "conditions"],
-    attribute: [...LIFECYCLE, "description", ...SCHEMA_KEYS],
+    segment: [...LIFECYCLE, "description", "metadata", "conditions"],
+    attribute: [...LIFECYCLE, "description", "metadata", ...SCHEMA_KEYS],
     /** A schema file, and every schema nested in a schema, attribute or variable */
-    schema: [...LIFECYCLE, "description", ...SCHEMA_KEYS],
+    schema: [...LIFECYCLE, "description", "metadata", ...SCHEMA_KEYS],
     target: [
       "promotable",
       "description",
+      "metadata",
       "tag",
       "tags",
       "includeFeatures",
@@ -153,6 +156,11 @@ export const HOUSE_STYLE = {
       "context",
       "schemaVersion",
     ],
+    /**
+     * A deadline in a definition's metadata. The rest of metadata keeps its written order, and
+     * so do a deadline type's own fields, after these.
+     */
+    deadline: ["by", "done", "description"],
     /** A feature, segment or variable test spec */
     test: ["feature", "segment", "variable", "promotable", "assertions"],
     /** An assertion, its children, and a scenario spec, which is one assertion */
@@ -227,6 +235,8 @@ export const HOUSE_STYLE = {
     variableOverrideEnvironments: true,
     /** Between the properties of a schema */
     schemaProperties: false,
+    /** Between the deadlines in a definition's metadata */
+    deadlines: true,
     /** Between a spec's assertions */
     assertions: true,
     /** Between the children of an assertion or a scenario */

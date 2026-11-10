@@ -289,6 +289,13 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     disabled: { type: "boolean", description: "filter disabled features, without environments" },
     enabled: { type: "boolean", description: "filter enabled features, without environments" },
     tag: { type: "array", description: "filter features or variables by one or more tags" },
+    owner: { type: "array", description: "filter definitions by one or more owners in metadata" },
+    deadline: {
+      type: "array",
+      description:
+        "filter definitions by a deadline status or type: overdue, today, upcoming, later, open, done, or a type",
+    },
+    today: { type: "string", description: "fix the date deadline statuses use, as YYYY-MM-DD" },
     variable: { type: "array", description: "filter features by variable keys" },
     variation: { type: "array", description: "filter features by variation values" },
     withTests: { type: "boolean" },

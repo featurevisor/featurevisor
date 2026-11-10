@@ -24,11 +24,13 @@ const loadHome = () => import("./pages/HomePage");
 const loadList = () => import("./pages/ListPage");
 const loadDetail = () => import("./pages/EntityDetailPage");
 const loadHistory = () => import("./pages/HistoryPage");
+const loadDeadlines = () => import("./pages/DeadlinesPage");
 
 const HomePage = lazyPage(loadHome, "HomePage");
 const OverviewPage = lazyPage(loadHome, "OverviewPage");
 const ListPage = lazyPage(loadList, "ListPage");
 const HistoryPage = lazyPage(loadHistory, "HistoryPage");
+const DeadlinesPage = lazyPage(loadDeadlines, "DeadlinesPage");
 const EntityDetailPage = lazyPage(loadDetail, "EntityDetailPage");
 const OverviewTab = lazyPage(loadDetail, "OverviewTab");
 const FeatureVariationsTab = lazyPage(loadDetail, "FeatureVariationsTab");
@@ -78,8 +80,10 @@ export function App(props: { manifest: CatalogManifest; live?: boolean }) {
               <Route path="sets/:setKey/:entityPath" element={<ListPage />} />
               {EntityRoutes({ prefix: "sets/:setKey/" })}
               <Route path="sets/:setKey/history" element={<HistoryPage />} />
+              <Route path="sets/:setKey/deadlines" element={<DeadlinesPage />} />
 
               <Route path="history" element={<HistoryPage />} />
+              <Route path="deadlines" element={<DeadlinesPage />} />
               <Route path=":entityPath" element={<ListPage />} />
               {EntityRoutes()}
 

@@ -75,7 +75,7 @@ Four values change the **shape of everything you write**:
 - `parser`: author JSON for `"json"`, YAML for `"yml"` (default), or the configured custom format ([custom-parsers.md](references/custom-parsers.md)).
 - `namespaceCharacter`: separator for keys from subdirectories. Default `.`, so `features/checkout/promo.yml` is `checkout.promo`. Some projects use `/`. Every reference must use the project's separator. Confirm against real keys with `npx featurevisor list --segments --json`.
 
-Also note `tags` (every tag you use must be declared), `disallowOperators`, `allowedConditions`, `conditionExpressions` (whether conditions may be written as text, [expressions.md](references/expressions.md)), `simplifyConditions` (whether `fmt` writes each condition in its simplest form), and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
+Also note `metadataSchema` and `requireMetadataIn` (the owner names and deadline types the project allows, [metadata.md](references/metadata.md)), `tags` (every tag you use must be declared), `disallowOperators`, `allowedConditions`, `conditionExpressions` (whether conditions may be written as text, [expressions.md](references/expressions.md)), `simplifyConditions` (whether `fmt` writes each condition in its simplest form), and directory overrides such as `featuresDirectoryPath`. Then read one or two existing definitions to match local style before adding new ones.
 
 ## How Featurevisor fits together
 
@@ -206,6 +206,7 @@ Read the matching file in full **before** authoring or debugging in that area. D
 | Mutually exclusive experiments and priority exclusion                                                       | [mutual-exclusion.md](references/mutual-exclusion.md)                                                         |
 | Bucketing, `bucketBy`, state files, sticky values                                                           | [bucketing.md](references/bucketing.md)                                                                       |
 | Tags, targets and namespaces                                                                                | [tags.md](references/tags.md), [targets.md](references/targets.md), [namespaces.md](references/namespaces.md) |
+| Owners, deadlines and notes in `metadata`, `metadataSchema`, `requireMetadataIn`                            | [metadata.md](references/metadata.md)                                                                         |
 | `featurevisor.config.js`, environments, project options                                                     | [configuration.md](references/configuration.md)                                                               |
 | Sets and promotions                                                                                         | [sets-promotions.md](references/sets-promotions.md)                                                           |
 | Change a project between environments, sets and neither                                                     | [cli.md](references/cli.md#convert)                                                                           |

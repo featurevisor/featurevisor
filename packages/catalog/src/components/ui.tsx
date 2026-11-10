@@ -29,6 +29,7 @@ import { getThemePreference, setThemePreference, type ThemePreference } from "..
 import { useCatalogIndex } from "../useCatalogIndex";
 import { recallListSearch } from "../listMemory";
 import { formatDate, formatFullTimestamp, formatTime, formatTimeWithSeconds } from "../dates";
+import { getDeadlineClock, getProjectDeadlines } from "../metadata";
 
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger" | "accent";
 
@@ -519,6 +520,20 @@ function Sidebar(props: { setKey?: string }) {
         end: false,
       };
     }),
+    // Only projects that plan deadlines get the page, counting those still open
+    ...(index && hasDeadlines(index)
+      ? [
+          {
+            to: `${basePath}/deadlines`,
+            label: "Deadlines",
+            end: false,
+            counted: true,
+            count: getProjectDeadlines(index, getDeadlineClock()).filter(
+              (item) => item.status !== "done",
+            ).length,
+          },
+        ]
+      : []),
     { to: `${basePath}/history`, label: "History", end: false },
   ];
 
@@ -575,6 +590,12 @@ function Sidebar(props: { setKey?: string }) {
   );
 }
 
+function hasDeadlines(index: CatalogIndex) {
+  return Object.values(index.entities).some((rows) =>
+    rows.some((entity) => !entity.archived && entity.deadlines?.length),
+  );
+}
+
 function isEntityPath(value: string): value is EntityPath {
   return entityPaths.indexOf(value as EntityPath) !== -1;
 }
@@ -596,6 +617,10 @@ export async function getSetSwitchPath(pathname: string, nextSetKey: string) {
 
   if (pathname.match(/^\/sets\/[^/]+\/history$/)) {
     return `/sets/${encodedSetKey}/history`;
+  }
+
+  if (pathname.match(/^\/sets\/[^/]+\/deadlines$/)) {
+    return `/sets/${encodedSetKey}/deadlines`;
   }
 
   const detailMatch = pathname.match(/^\/sets\/[^/]+\/([^/]+)\/([^/]+)(\/.*)?$/);

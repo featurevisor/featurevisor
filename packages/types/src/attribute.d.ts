@@ -1,3 +1,4 @@
+import type { Metadata } from "./metadata";
 import type { SchemaFormat, SchemaKey, Value } from "./schema";
 
 export type AttributeKey = string;
@@ -46,6 +47,7 @@ export type Attribute = AttributeSchema & {
   promotable?: boolean; // only available in YAML files
   key?: AttributeKey; // needed for supporting v1 datafile generation
   type?: AttributeType; // required when not using oneOf
+  metadata?: Metadata;
 };
 
 export type AttributeProperty = AttributeSchema & {

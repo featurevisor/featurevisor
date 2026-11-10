@@ -4,6 +4,26 @@ tags:
   - all
   - checkout
 
+metadata:
+  owner: checkout-team
+  jira: CHECKOUT-123
+  stakeholders:
+    - product
+    - payments
+  links:
+    design: https://example.com/designs/checkout-discount
+    runbook: https://example.com/runbooks/discounts
+
+  deadlines:
+    review:
+      by: "2026-10-15"
+      done: "2026-10-12"
+
+    remove:
+      by: "2026-11-30"
+      description: Once every market has the new pricing
+      ticket: CHECKOUT-456
+
 bucketBy: userId
 
 conditions:

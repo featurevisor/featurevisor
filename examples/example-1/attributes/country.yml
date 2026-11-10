@@ -2,4 +2,7 @@ archived: false
 
 description: country code in lower case (two lettered)
 
+metadata:
+  owner: platform-team
+
 type: string

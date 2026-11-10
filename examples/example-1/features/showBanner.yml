@@ -4,6 +4,16 @@ tags:
   - all
   - checkout
 
+metadata:
+  owner:
+    - growth-team
+    - platform-team
+  launchedOn: "2026-09-01"
+
+  deadlines:
+    review:
+      by: "2027-02-01"
+
 bucketBy: userId
 
 force:

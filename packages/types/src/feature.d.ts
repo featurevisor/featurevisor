@@ -1,3 +1,4 @@
+import type { Metadata } from "./metadata";
 import type { BucketBy } from "./bucket";
 import type { Conditions } from "./condition";
 import type { GroupSegment } from "./segment";
@@ -206,6 +207,7 @@ export interface ParsedFeature {
 
   description: string;
   tags?: Tag[];
+  metadata?: Metadata;
 
   conditions?: Conditions;
 

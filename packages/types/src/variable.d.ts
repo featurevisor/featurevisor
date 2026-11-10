@@ -1,3 +1,4 @@
+import type { Metadata } from "./metadata";
 import type { Conditions } from "./condition";
 import type {
   EnvironmentKey,
@@ -46,6 +47,7 @@ export type OrdinaryParsedVariable = Omit<Schema, "type" | "schema"> & {
   archived?: boolean;
   promotable?: boolean;
   tags?: Tag[];
+  metadata?: Metadata;
   conditions?: Conditions;
   overrides?: ParsedVariableOverrides;
 };
@@ -65,6 +67,7 @@ export type ComposedParsedVariable = {
   overrides?: ParsedVariableOverrides;
   description?: string;
   tags?: Tag[];
+  metadata?: Metadata;
   deprecated?: boolean;
   archived?: boolean;
   promotable?: boolean;
@@ -78,6 +81,7 @@ export type ComposedParsedVariable = {
       | "overrides"
       | "description"
       | "tags"
+      | "metadata"
       | "deprecated"
       | "archived"
       | "promotable"

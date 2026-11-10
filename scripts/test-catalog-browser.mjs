@@ -186,12 +186,37 @@ async function reload() {
   await waitFor("performance.timeOrigin !== " + previous, "New document after reload");
 }
 
-function fixture(directory, { sets, environments, inherit, base, plans = ["free", "premium"] }) {
+/** A date some days from today, as YYYY-MM-DD in the browser's time zone, which is this machine's */
+function inDays(days) {
+  const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  const pad = (value) => String(value).padStart(2, "0");
+  return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+}
+
+function fixture(
+  directory,
+  { sets, environments, inherit, metadata, base, plans = ["free", "premium"] },
+) {
   const configuration = {
     sets,
     tags: ["web", "mobile"],
     namespaceCharacter: "/",
     catalogBasePath: base,
+    ...(metadata
+      ? {
+          metadataSchema: {
+            type: "object",
+            properties: {
+              deadlines: {
+                properties: {
+                  review: { description: "Check the flag still earns its place" },
+                  remove: { description: "Remove the flag and its code" },
+                },
+              },
+            },
+          },
+        }
+      : {}),
     ...(environments ? { environments: ["staging", "production"] } : {}),
     ...(inherit
       ? {
@@ -250,6 +275,25 @@ function fixture(directory, { sets, environments, inherit, base, plans = ["free"
         bucketBy: "userId",
         variablesSchema: { "button.label": { type: "string", defaultValue: "Continue" } },
         ...(key === featureKey ? { conditions: "audience/eligible" } : {}),
+        ...(metadata
+          ? {
+              metadata:
+                key === featureKey
+                  ? {
+                      owner: "checkout-team",
+                      jira: "CHECKOUT-1",
+                      links: { design: "https://example.com/design" },
+                      deadlines: {
+                        review: { by: "2000-01-01" },
+                        remove: { by: inDays(10), ticket: "CHECKOUT-2" },
+                      },
+                    }
+                  : {
+                      owner: "growth-team",
+                      deadlines: { review: { by: "2000-01-01", done: true } },
+                    },
+            }
+          : {}),
         ...(key === featureKey
           ? {
               variations: [
@@ -1103,6 +1147,94 @@ async function runInheritance(sets) {
   }
 }
 
+async function runMetadata(sets) {
+  const directory = join(temporary, "metadata-" + sets);
+  const data = fixture(directory, { base: "/", sets, environments: true, metadata: true });
+  await exportQuietly(data, directory, { browserRouter: true });
+  server = await startServer(data, directory, false);
+  const errors = [];
+  const unlisten = cdp.listen(({ method, params }) => {
+    if (method === "Runtime.exceptionThrown") errors.push(params.exceptionDetails);
+  });
+  const scope = sets ? "/sets/" + encode(setKeys[0]) : "";
+  const has = (text) => "document.body.innerText.includes(" + json(text) + ")";
+  // section titles are uppercased by CSS, which innerText reads
+  const hasText = (text) => "document.body.textContent.includes(" + json(text) + ")";
+  const listed = (key) =>
+    "[...document.querySelectorAll('main a')].some(link => link.textContent.includes(" +
+    json(key) +
+    "))";
+  try {
+    // the Overview says who owns it, what it plans and what else the team recorded
+    await cdp.send("Page.navigate", {
+      url: server.origin + scope + "/features/" + encode(featureKey),
+    });
+    await waitFor(has("Overdue by"), "The overdue deadline shows");
+    await waitFor(has("Due in 10 days"), "The upcoming deadline shows");
+    await waitFor(has("Remove the flag and its code"), "The type's description shows");
+    await waitFor(has("CHECKOUT-2"), "The type's own field shows");
+    await waitFor(has("CHECKOUT-1"), "The rest of the metadata shows");
+    assert.equal(
+      await evaluate("document.querySelector('a[href=\"https://example.com/design\"]')?.target"),
+      "_blank",
+    );
+
+    // the owner links to everything that owner owns
+    await click('a[title="Everything checkout-team owns"]');
+    await waitFor("location.search.includes('owner')", "The owner filter opens");
+    await waitFor(listed(featureKey), "The owner's feature is listed");
+    assert.equal(await evaluate(listed("mobileOnly")), false);
+
+    // deadline chips describe one deadline together
+    await cdp.send("Page.navigate", { url: server.origin + scope + "/features" });
+    await waitFor(
+      "Boolean(document.querySelector('[role=group][aria-label=Deadlines]'))",
+      "Chips show",
+    );
+    await clickText("button", "Overdue");
+    await waitFor("document.querySelector('button[aria-pressed=true]')?.textContent === 'Overdue'");
+    await waitFor(listed(featureKey));
+    await clickText("button", "Remove");
+    await waitFor(has("No results found"), "No removal is overdue");
+    await clickText("button", "Overdue");
+    await waitFor(listed(featureKey), "Its removal is coming up");
+
+    // the home page sends overdue deadlines to the Deadlines page
+    await cdp.send("Page.navigate", { url: server.origin + (scope || "/") });
+    await waitFor(has("Overdue deadlines"), "The home row shows");
+    await waitFor(hasText("Coming up"), "What is coming up shows");
+    await clickText("a", "Overdue deadlines");
+    await waitFor(
+      "location.pathname.endsWith('/deadlines') && location.search.includes('overdue')",
+    );
+    await waitFor(hasText("Overdue · 1"));
+    await click('a[href*="status=done"]');
+    await waitFor("location.search.includes('done')");
+    await waitFor(listed("mobileOnly"), "The done review shows");
+    assert.equal(await evaluate(hasText("Overdue ·")), false);
+
+    if (sets) {
+      // switching Sets keeps the page
+      await evaluate(
+        "(() => { const select = document.querySelector('select[aria-label=\"Switch catalog set\"]'); select.value = " +
+          json(setKeys[1]) +
+          "; select.dispatchEvent(new Event('change', { bubbles: true })); })()",
+      );
+      await waitFor(
+        "location.pathname === " + json("/sets/" + encode(setKeys[1]) + "/deadlines"),
+        "The Set switches on the Deadlines page",
+      );
+    }
+
+    assert.deepEqual(errors, []);
+    console.log("✓ metadata " + (sets ? "with sets" : "without sets"));
+  } finally {
+    unlisten();
+    await server.close();
+    server = undefined;
+  }
+}
+
 async function runLiveReload(hash) {
   const directory = join(temporary, "live-" + hash);
   const base = "/before/catalog/";
@@ -1382,6 +1514,8 @@ async function main() {
     }
     await runInheritance(false);
     await runInheritance(true);
+    await runMetadata(false);
+    await runMetadata(true);
     await runLiveReload(false);
     await runLiveReload(true);
     await runInteractions();

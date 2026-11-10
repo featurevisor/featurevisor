@@ -3,6 +3,14 @@ description: Support email address shown to users
 tags:
   - all
 
+metadata:
+  owner: platform-team
+
+  deadlines:
+    review:
+      by: "2027-01-15T09:00:00+01:00"
+      description: Confirm the support inbox with the support team
+
 type: string
 
 defaultValue: support@example.com

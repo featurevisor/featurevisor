@@ -16,7 +16,9 @@ Many "weird behaviour" reports come from mismatched vocabulary. Ground the user 
 | **Composition**     | A global variable built with `compose` from other evaluated values: an alias, or an object of flags, variations and variables. |
 | **Schema**          | A reusable variable shape. `schemas/<key>.yml`.                                                                                |
 | **Target**          | A datafile definition: which features and global variables it includes, and optional known context. `targets/<key>.yml`.       |
-| **Tag**             | Metadata on features and global variables that targets select.                                                                 |
+| **Tag**             | A label on features and global variables that targets select.                                                                  |
+| **Metadata**        | What a team records about a definition for people, such as `owner` and `deadlines`. Never in datafiles.                        |
+| **Deadline**        | A date in metadata by which something should happen, such as a review or removal. Nothing happens when it passes.              |
 | **Namespace**       | A key prefix from a subdirectory, such as `checkout.promo`. Organization only.                                                 |
 | **Spec**            | A `.spec.yml` file of assertions for a feature, segment or global variable.                                                    |
 | **Scenario**        | A spec with root `checks` and no owner, checking several definitions together.                                                 |

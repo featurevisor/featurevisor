@@ -6,6 +6,7 @@ export * from "./datafile";
 export * from "./feature";
 export * from "./segment";
 export * from "./history";
+export * from "./metadata";
 export * from "./state";
 export * from "./target";
 export * from "./test";

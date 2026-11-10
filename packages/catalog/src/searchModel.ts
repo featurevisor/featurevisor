@@ -1,5 +1,6 @@
 import { entityPaths, entityPathToType } from "./entityTypes";
 import type { CatalogEntityType, CatalogIndex, EntitySummary } from "./types";
+import { splitMetadataTerm } from "./metadata";
 
 export const SEARCH_RESULT_LIMIT = 30;
 
@@ -25,9 +26,14 @@ const termKindLabels: Record<string, string> = {
   feature: "Feature",
   attribute: "Attribute",
   path: "Path",
+  owner: "Owner",
 };
 
+/** Metadata matches name their own key, such as "jira" */
+const METADATA_KIND = "metadata ";
+
 export function getSearchMatchLabel(kind: string) {
+  if (kind.startsWith(METADATA_KIND)) return kind.slice(METADATA_KIND.length);
   return termKindLabels[kind] || kind;
 }
 
@@ -97,7 +103,13 @@ function splitTerm(term: string) {
 
 type SearchableEntity = Pick<
   EntitySummary,
-  "key" | "description" | "searchTerms" | "variationValues" | "variableKeys"
+  | "key"
+  | "description"
+  | "searchTerms"
+  | "variationValues"
+  | "variableKeys"
+  | "owners"
+  | "metadataTerms"
 >;
 
 interface PreparedEntity {
@@ -117,6 +129,11 @@ function prepareEntity(entity: SearchableEntity): PreparedEntity {
       ...(entity.searchTerms || []).map(splitTerm),
       ...(entity.variationValues || []).map((value) => ({ kind: "variation", value })),
       ...(entity.variableKeys || []).map((value) => ({ kind: "variable", value })),
+      ...(entity.owners || []).map((value) => ({ kind: "owner", value })),
+      ...(entity.metadataTerms || []).map((term) => {
+        const { path, value } = splitMetadataTerm(term);
+        return { kind: `${METADATA_KIND}${path}`, value };
+      }),
     ];
     prepared = {
       key: prepare(entity.key),
