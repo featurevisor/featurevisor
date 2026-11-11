@@ -386,10 +386,24 @@ export function OverviewChipLink(props: { to: string; title?: string; children: 
   );
 }
 
-export function OverviewMetaPanel(props: { children: React.ReactNode }) {
+/** Facts as labelled rows, and an optional footer below a rule, alone when no row shows */
+export function OverviewMetaPanel(props: {
+  children?: React.ReactNode;
+  footer?: React.ReactNode;
+  footerLabel?: string;
+}) {
   return (
     <div className="rounded-xl bg-elevated px-5 py-4">
-      <dl className="space-y-3.5">{props.children}</dl>
+      <dl className="peer space-y-3.5 empty:hidden">{props.children}</dl>
+      {props.footer && (
+        <div
+          role="group"
+          aria-label={props.footerLabel}
+          className="mt-4 border-t border-border pt-4 peer-empty:mt-0 peer-empty:border-t-0 peer-empty:pt-0"
+        >
+          {props.footer}
+        </div>
+      )}
     </div>
   );
 }

@@ -248,7 +248,11 @@ describe("metadata on a definition's Overview", () => {
     expect(html).toContain(`href="/features?q=${encodeURIComponent("owner:checkout-team")}"`);
     expect(html).toContain(`href="/features?q=${encodeURIComponent('owner:"payments team"')}"`);
 
-    expect(plain).toContain("Deadlines");
+    // the rest of the metadata closes the facts panel, and deadlines come before the description
+    expect(html).toContain('role="group" aria-label="Metadata"');
+    expect(plain.indexOf("Bucket by")).toBeLessThan(plain.indexOf("jira"));
+    expect(plain.indexOf("jira")).toBeLessThan(plain.indexOf("Deadlines"));
+    expect(plain.indexOf("Deadlines")).toBeLessThan(plain.indexOf("Description"));
     // open deadlines first, then those done
     expect(plain.indexOf("Remove")).toBeLessThan(plain.indexOf("Review"));
     expect(plain).toContain("Remove the flag and its code");
@@ -258,7 +262,6 @@ describe("metadata on a definition's Overview", () => {
     expect(plain).toContain("Done on");
     expect(plain).toContain("2 days after its deadline");
 
-    expect(plain).toContain("Metadata");
     expect(plain).toContain("jira CHECKOUT-1");
     expect(html).toContain('href="https://example.com/design"');
     expect(plain).toContain("javascript:alert(1)");
@@ -268,15 +271,17 @@ describe("metadata on a definition's Overview", () => {
 
   it("shows nothing for metadata a definition does not have", () => {
     withIndex({ feature: [] });
-    const plain = text(renderOverview({ description: "Plain", bucketBy: "userId" }));
-    expect(plain).not.toContain("Owner");
-    expect(plain).not.toContain("Deadlines");
-    expect(plain).not.toContain("Metadata");
-    const ownerOnly = text(
-      renderOverview({ description: "Owned", bucketBy: "userId", metadata: { owner: "a" } }),
-    );
-    expect(ownerOnly).toContain("Owner a");
-    expect(ownerOnly).not.toContain("Metadata");
+    const html = renderOverview({ description: "Plain", bucketBy: "userId" });
+    expect(text(html)).not.toContain("Owner");
+    expect(text(html)).not.toContain("Deadlines");
+    expect(html).not.toContain('aria-label="Metadata"');
+    const ownerOnly = renderOverview({
+      description: "Owned",
+      bucketBy: "userId",
+      metadata: { owner: "a" },
+    });
+    expect(text(ownerOnly)).toContain("Owner a");
+    expect(ownerOnly).not.toContain('aria-label="Metadata"');
   });
 });
 

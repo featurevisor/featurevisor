@@ -235,7 +235,12 @@ function MetadataValue(props: { value: unknown; depth: number }) {
 
 function MetadataRow(props: { name: string; value: unknown; depth: number }) {
   return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
+    <div
+      className={[
+        "flex flex-col gap-1 sm:flex-row sm:items-baseline",
+        props.depth === 0 ? "sm:gap-5" : "sm:gap-4",
+      ].join(" ")}
+    >
       <dt
         className={[
           "shrink-0 font-mono text-xs text-muted [overflow-wrap:anywhere]",
@@ -251,20 +256,20 @@ function MetadataRow(props: { name: string; value: unknown; depth: number }) {
   );
 }
 
-/** Every key a project wrote in metadata, apart from owner and deadlines, as written */
-export function MetadataFields(props: { metadata: Record<string, unknown> }) {
-  const entries = Object.entries(props.metadata).filter(
-    ([key]) => key !== "owner" && key !== "deadlines",
-  );
-  if (entries.length === 0) return null;
+/** Every key a project wrote in metadata, apart from owner and deadlines */
+export function getMetadataEntries(metadata: unknown): Array<[string, unknown]> {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return [];
+  return Object.entries(metadata).filter(([key]) => key !== "owner" && key !== "deadlines");
+}
+
+/** Those keys as written, one row each */
+export function MetadataFields(props: { entries: Array<[string, unknown]> }) {
   return (
-    <div className="rounded-xl border border-border bg-surface px-5 py-4">
-      <dl className="space-y-3">
-        {entries.map(([key, value]) => (
-          <MetadataRow key={key} name={key} value={value} depth={0} />
-        ))}
-      </dl>
-    </div>
+    <dl className="space-y-3">
+      {props.entries.map(([key, value]) => (
+        <MetadataRow key={key} name={key} value={value} depth={0} />
+      ))}
+    </dl>
   );
 }
 

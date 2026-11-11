@@ -48,6 +48,7 @@ import {
   MetadataFields,
   OwnerChips,
   getDeadlineEntries,
+  getMetadataEntries,
 } from "../../components/metadata";
 import { getDeadlineClock, getOwners } from "../../metadata";
 
@@ -67,9 +68,9 @@ export function OverviewTab() {
     <div className="space-y-6">
       <EntityOverviewMeta detail={detail} entity={entity} setKey={setKey} />
 
-      <DescriptionField value={entity.description} showTopDivider={false} />
+      <DeadlinesSection metadata={entity.metadata} />
 
-      <MetadataSections metadata={entity.metadata} />
+      <DescriptionField value={entity.description} showTopDivider={false} />
 
       {(detail.type === "feature" || detail.type === "variable") &&
         entity.conditions !== undefined && (
@@ -169,33 +170,22 @@ export function OverviewTab() {
   );
 }
 
-/** What a definition's metadata plans, then everything else a team recorded about it */
-function MetadataSections(props: { metadata: unknown }) {
+/** What a definition's metadata plans, open deadlines first */
+function DeadlinesSection(props: { metadata: unknown }) {
   const { manifest } = useCatalog();
   // Worked out when the page is viewed, so an export never shows a stale status
   const clock = React.useMemo(() => getDeadlineClock(), []);
-  if (!props.metadata || typeof props.metadata !== "object" || Array.isArray(props.metadata)) {
-    return null;
-  }
   const deadlines = getDeadlineEntries(props.metadata);
+  if (deadlines.length === 0) return null;
 
   return (
-    <>
-      {deadlines.length > 0 && (
-        <OverviewSection title="Deadlines">
-          <DeadlineList
-            deadlines={deadlines}
-            clock={clock}
-            types={manifest.projectConfig.deadlineTypes}
-          />
-        </OverviewSection>
-      )}
-      {Object.keys(props.metadata).some((key) => key !== "owner" && key !== "deadlines") && (
-        <OverviewSection title="Metadata">
-          <MetadataFields metadata={props.metadata as Record<string, unknown>} />
-        </OverviewSection>
-      )}
-    </>
+    <OverviewSection title="Deadlines">
+      <DeadlineList
+        deadlines={deadlines}
+        clock={clock}
+        types={manifest.projectConfig.deadlineTypes}
+      />
+    </OverviewSection>
   );
 }
 
@@ -830,6 +820,9 @@ function EntityOverviewMeta(props: {
       <OwnerChips owners={owners} type={detail.type} setKey={setKey} />
     </OverviewMetaRow>
   ) : null;
+  // The rest of the metadata closes the panel, below a rule
+  const metadataEntries = getMetadataEntries(entity.metadata);
+  const metadata = metadataEntries.length ? <MetadataFields entries={metadataEntries} /> : null;
 
   if (detail.type === "feature") {
     const showBucketBy = hasBucketBy(entity.bucketBy);
@@ -837,12 +830,12 @@ function EntityOverviewMeta(props: {
     const hasRelations =
       Boolean(tags?.length) || Boolean(targets?.length) || hasDependencies(detail, dependencies);
 
-    if (!hasStatus && !ownerRow && !hasFacts && !hasRelations) {
+    if (!hasStatus && !ownerRow && !hasFacts && !hasRelations && !metadata) {
       return null;
     }
 
     return (
-      <OverviewMetaPanel>
+      <OverviewMetaPanel footer={metadata} footerLabel="Metadata">
         {hasStatus && (
           <OverviewMetaRow label="Status">
             <EntityStatusBadges entity={entity} />
@@ -891,12 +884,12 @@ function EntityOverviewMeta(props: {
     const hasRelations =
       Boolean(tags?.length) || Boolean(targets?.length) || hasDependencies(detail, dependencies);
 
-    if (!hasStatus && !ownerRow && !hasFacts && !hasRelations) {
+    if (!hasStatus && !ownerRow && !hasFacts && !hasRelations && !metadata) {
       return null;
     }
 
     return (
-      <OverviewMetaPanel>
+      <OverviewMetaPanel footer={metadata} footerLabel="Metadata">
         {hasStatus && (
           <OverviewMetaRow label="Status">
             <EntityStatusBadges entity={entity} />
@@ -946,12 +939,12 @@ function EntityOverviewMeta(props: {
     detail.type === "segment" || detail.type === "attribute" || detail.type === "schema";
   const segmentTargets = detail.type === "segment" ? targets : undefined;
 
-  if (!hasStatus && !ownerRow && !showType && !hasUsage) {
+  if (!hasStatus && !ownerRow && !showType && !hasUsage && !metadata) {
     return null;
   }
 
   return (
-    <OverviewMetaPanel>
+    <OverviewMetaPanel footer={metadata} footerLabel="Metadata">
       {hasStatus && (
         <OverviewMetaRow label="Status">
           <EntityStatusBadges entity={entity} />
