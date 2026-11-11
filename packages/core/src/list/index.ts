@@ -54,25 +54,15 @@ import {
   DEADLINE_STATUS_FILTERS,
   getDeadlineClock,
   getDeadlineStatuses,
-  getInvalidNowMessage,
+  assertNowOption,
   getOwners,
   isDeadlineStatusFilter,
   matchesDeadline,
-  matchesDeadlineFilters,
+  METADATA_KINDS,
   toMetadataJson,
 } from "../metadata";
 import type { DeadlineClock } from "../metadata";
 import { suggestKey } from "../linter/diagnostics";
-
-/** Selectors whose definitions can have metadata */
-const METADATA_SELECTORS = [
-  "features",
-  "variables",
-  "segments",
-  "attributes",
-  "targets",
-  "schemas",
-];
 
 function listValues(value: unknown): string[] {
   if (value === undefined) return [];
@@ -418,10 +408,13 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
           continue;
         }
         if (clock) {
-          if (!matchesDeadlineFilters(metadata, deadlines, clock)) {
+          const deadlineStatuses = getDeadlineStatuses(metadata, clock);
+          if (
+            !deadlineStatuses.some(({ type, status }) => matchesDeadline(type, status, deadlines))
+          ) {
             continue;
           }
-          entity = { ...entity, deadlineStatuses: getDeadlineStatuses(metadata, clock) };
+          entity = { ...entity, deadlineStatuses };
         }
       }
     }
@@ -1240,9 +1233,9 @@ function assertMetadataListOptions(
   projectConfig?: ProjectConfig,
 ) {
   for (const option of ["owner", "deadline"]) {
-    if (typeof options[option] !== "undefined" && !METADATA_SELECTORS.includes(selector)) {
+    if (typeof options[option] !== "undefined" && !METADATA_KINDS.includes(selector as never)) {
       throw new FeaturevisorCLIError(
-        `Option ${toFlag(option)} can only be used with ${METADATA_SELECTORS.map((name) => `--${name}`).join(", ")}.`,
+        `Option ${toFlag(option)} can only be used with ${METADATA_KINDS.map((name) => `--${name}`).join(", ")}.`,
         { code: "incompatible_cli_options", details: { selector, option } },
       );
     }
@@ -1255,13 +1248,7 @@ function assertMetadataListOptions(
         details: { selector, option: "deadline" },
       });
     }
-    const invalidNow = getInvalidNowMessage(options.now);
-    if (invalidNow) {
-      throw new FeaturevisorCLIError(invalidNow, {
-        code: "invalid_cli_arguments",
-        details: { option: "now" },
-      });
-    }
+    assertNowOption(options.now);
   }
 
   // A type the project's schema cannot have would never match

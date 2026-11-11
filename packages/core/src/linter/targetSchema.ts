@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
 import { refineWithMessage } from "./zodHelpers";
-import { ALWAYS, getMetadataZodSchema, refineRequiredMetadata } from "./metadataSchema";
+import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 
 const targetTagSchema = (projectConfig: ProjectConfig) =>
   refineWithMessage(
@@ -48,7 +48,7 @@ export function getTargetZodSchema(projectConfig: ProjectConfig) {
         .optional(),
     })
     .strict()
-    .superRefine(refineRequiredMetadata(projectConfig, "targets"), ALWAYS)
+    .check(...requiredMetadataChecks(projectConfig, "targets"))
     .refine((target) => !(target.tag && target.tags), {
       message: 'Only one of "tag" or "tags" can be defined',
       path: ["tags"],

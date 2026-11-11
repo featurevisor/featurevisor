@@ -1,6 +1,8 @@
 import { getPortableTimestamp } from "@featurevisor/sdk";
 import type { Deadline, Metadata, MetadataKind } from "@featurevisor/types";
 
+import { FeaturevisorCLIError } from "../error";
+
 /**
  * Metadata is for people and never reaches a datafile. Featurevisor understands two of its keys,
  * `owner` and `deadlines`, and this module reads them for lint and `list`. Catalog cannot import
@@ -33,9 +35,12 @@ export const DEADLINE_STATUS_FILTERS = [
 /** How many days ahead a deadline is upcoming rather than later */
 export const UPCOMING_DAYS = 30;
 
+/** Featurevisor's own fields of every deadline. A type's own fields come after them. */
+export const DEADLINE_FIELDS = ["by", "done", "description"];
+
 const DEADLINE_TYPE_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/;
-const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DAY = 24 * 60 * 60 * 1000;
+export const TIMESTAMP_EXAMPLE = "2027-01-15T09:00:00Z";
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return (
@@ -65,21 +70,25 @@ export function isDeadlineType(key: string): boolean {
   );
 }
 
+/** Why a key cannot name a deadline type, as a sentence, or undefined when it can */
+export function getDeadlineTypeError(key: string): string | undefined {
+  if (isDeadlineType(key)) return undefined;
+  return DEADLINE_TYPE_PATTERN.test(key)
+    ? `${JSON.stringify(key)} is a deadline status, so it cannot name a deadline type.`
+    : "A deadline type starts with a letter, and has only letters, digits, _ and -.";
+}
+
 export function isDeadlineStatusFilter(value: string): boolean {
   return (DEADLINE_STATUS_FILTERS as readonly string[]).includes(value);
 }
 
-function daysInMonth(year: number, month: number) {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
-}
-
 /** A calendar date written as YYYY-MM-DD that exists. Deadlines need a time too, and lint says so */
 export function isCalendarDate(value: unknown): value is string {
-  if (typeof value !== "string") return false;
-  const parts = DATE_PATTERN.exec(value);
-  if (!parts) return false;
-  const [year, month, day] = [+parts[1], +parts[2], +parts[3]];
-  return year >= 1 && month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month);
+  return (
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    getPortableTimestamp(`${value}T00:00:00Z`) !== null
+  );
 }
 
 /**
@@ -96,15 +105,22 @@ export function isDeadlineTimestamp(value: unknown): value is string {
 }
 
 /**
- * Why a `--now` value is not a timestamp, worded as lint words a deadline's, or undefined when
- * it is one. `list` and `lint` both check the option with it.
+ * What a value that is not a timestamp needs, worded as conditions word it. A date alone is the
+ * likely slip, so it gets the timestamp it could become.
  */
-export function getInvalidNowMessage(value: unknown): string | undefined {
-  if (isDeadlineTimestamp(value)) return undefined;
-  const reason = isCalendarDate(value)
-    ? `such as ${value}T09:00:00Z. A date alone has no time or timezone.`
-    : "such as 2027-01-15T09:00:00Z. Use YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm.";
-  return `Invalid --now: ${JSON.stringify(value)}. Expected a timestamp with a timezone, ${reason}`;
+export function getTimestampMessage(value: unknown, expected = "a timestamp with a timezone") {
+  return isCalendarDate(value)
+    ? `Expected ${expected}, such as ${value}T09:00:00Z. A date alone has no time or timezone.`
+    : `Expected ${expected}, such as ${TIMESTAMP_EXAMPLE}. Use YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm.`;
+}
+
+/** Refuses a `--now` that is not a timestamp, for `list` and `lint` alike */
+export function assertNowOption(value: unknown) {
+  if (value === undefined || isDeadlineTimestamp(value)) return;
+  throw new FeaturevisorCLIError(
+    `Invalid --now: ${JSON.stringify(value)}. ${getTimestampMessage(value)}`,
+    { code: "invalid_cli_arguments", details: { option: "now" } },
+  );
 }
 
 function pad(value: number, length = 2) {
@@ -112,7 +128,7 @@ function pad(value: number, length = 2) {
 }
 
 /** The local calendar date of a moment, as YYYY-MM-DD */
-export function getLocalDate(time: number): string {
+function getLocalDate(time: number): string {
   const date = new Date(time);
   return `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
@@ -123,6 +139,11 @@ function dayNumber(date: string): number {
   const utc = new Date(0);
   utc.setUTCFullYear(year, month - 1, day);
   return Math.round(utc.getTime() / DAY);
+}
+
+/** Calendar days from the clock's date to a moment's local date */
+function daysUntil(timestamp: number, clock: DeadlineClock): number {
+  return dayNumber(getLocalDate(timestamp)) - dayNumber(clock.today);
 }
 
 /**
@@ -140,20 +161,14 @@ export function getDeadlineClock(at?: string, now = Date.now()): DeadlineClock {
   return { now: moment, today: getLocalDate(moment) };
 }
 
-/** The local date a deadline is due on, or undefined when `by` is not a timestamp */
-export function getDeadlineDate(by: unknown): string | undefined {
-  const timestamp = getDeadlineTimestamp(by);
-  return timestamp === null ? undefined : getLocalDate(timestamp);
-}
-
 export function isDeadlineDone(deadline: { done?: unknown }): boolean {
   return deadline.done === true || (typeof deadline.done === "string" && deadline.done !== "");
 }
 
 /** Days from today to the day a deadline is due: 0 today, negative once it has passed */
 export function getDaysUntilDeadline(by: unknown, clock: DeadlineClock): number | undefined {
-  const date = getDeadlineDate(by);
-  return date === undefined ? undefined : dayNumber(date) - dayNumber(clock.today);
+  const timestamp = getDeadlineTimestamp(by);
+  return timestamp === null ? undefined : daysUntil(timestamp, clock);
 }
 
 /**
@@ -168,7 +183,7 @@ export function getDeadlineStatus(
   const timestamp = getDeadlineTimestamp(deadline.by);
   if (timestamp === null) return undefined;
   if (clock.now >= timestamp) return "overdue";
-  const days = dayNumber(getLocalDate(timestamp)) - dayNumber(clock.today);
+  const days = daysUntil(timestamp, clock);
   if (days <= 0) return "today";
   return days <= UPCOMING_DAYS ? "upcoming" : "later";
 }
@@ -188,16 +203,9 @@ export function getDeadlineLabel(type: string): string {
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
     .split(/[\s_-]+/)
     .filter(Boolean)
-    .map((word) => (word.length > 1 && word === word.toUpperCase() ? word : word.toLowerCase()));
-  if (words.length === 0) return type;
-  return (
-    words[0].charAt(0).toUpperCase() +
-    words[0].slice(1) +
-    words
-      .slice(1)
-      .map((w) => ` ${w}`)
-      .join("")
-  );
+    .map((word) => (word.length > 1 && word === word.toUpperCase() ? word : word.toLowerCase()))
+    .join(" ");
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : type;
 }
 
 export function getOwners(metadata: unknown): string[] {
@@ -243,8 +251,8 @@ export function matchesDeadlineFilters(
   clock: DeadlineClock,
 ): boolean {
   if (values.length === 0) return true;
-  return getDeadlines(metadata).some(({ type, deadline }) =>
-    matchesDeadline(type, getDeadlineStatus(deadline, clock), values),
+  return getDeadlineStatuses(metadata, clock).some(({ type, status }) =>
+    matchesDeadline(type, status, values),
   );
 }
 

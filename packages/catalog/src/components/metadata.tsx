@@ -4,8 +4,10 @@ import { entityLabels, entityTypeToPath, getBasePath, getEntityRoute } from "../
 import { formatDate, formatDateTime, formatFullTimestamp } from "../dates";
 import {
   compareDeadlines,
+  DEADLINE_FIELDS,
   getDaysUntilDeadline,
   getDeadlineClock,
+  getDeadlines,
   getDeadlineLabel,
   getDeadlineStatus,
   getDeadlineTimestamp,
@@ -273,31 +275,14 @@ export interface DeadlineEntry extends Deadline {
 
 /** Each deadline of one definition's metadata, with its type's own fields */
 export function getDeadlineEntries(metadata: unknown): DeadlineEntry[] {
-  if (!metadata || typeof metadata !== "object") return [];
-  const deadlines = (metadata as { deadlines?: unknown }).deadlines;
-  if (!deadlines || typeof deadlines !== "object" || Array.isArray(deadlines)) return [];
-  return Object.entries(deadlines as Record<string, Record<string, unknown>>).flatMap(
-    ([type, deadline]) => {
-      if (!deadline || typeof deadline !== "object" || typeof deadline.by !== "string") return [];
-      const done =
-        deadline.done === true || (typeof deadline.done === "string" && deadline.done)
-          ? (deadline.done as true | string)
-          : undefined;
-      return [
-        {
-          type,
-          by: deadline.by,
-          ...(done ? { done } : {}),
-          ...(typeof deadline.description === "string"
-            ? { description: deadline.description }
-            : {}),
-          fields: Object.entries(deadline).filter(
-            ([field]) => !["by", "done", "description"].includes(field),
-          ),
-        },
-      ];
-    },
-  );
+  const written = (metadata as { deadlines?: Record<string, Record<string, unknown>> } | undefined)
+    ?.deadlines;
+  return getDeadlines(metadata).map((deadline) => ({
+    ...deadline,
+    fields: Object.entries(written![deadline.type]).filter(
+      ([field]) => !DEADLINE_FIELDS.includes(field),
+    ),
+  }));
 }
 
 /** One deadline: what, when and how it stands */

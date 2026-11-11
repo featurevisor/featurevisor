@@ -46,7 +46,13 @@ import {
   type AuthoredReference,
 } from "../dependencyReferences";
 import { encodeCatalogIndex } from "../indexCodec";
-import { encodeDeadline, getDeadlines, getMetadataTerms, getOwners } from "../metadata";
+import {
+  encodeDeadline,
+  getDeadlines,
+  getMetadataTerms,
+  getOwners,
+  toMetadataJson,
+} from "../metadata";
 import { getInheritedEnvironments, withInheritedEntries } from "../environmentInheritance";
 import { rewriteCatalogHtml } from "./html";
 
@@ -748,14 +754,9 @@ function getDeadlineTypes(projectConfig: any) {
 
 /** Owners, deadlines and the rest of a definition's metadata, for lists, filters and search */
 function getMetadataSummary(entity: Record<string, any>): Partial<EntitySummary> {
-  if (entity.metadata === undefined) return {};
-  let metadata: unknown;
-  try {
-    // A TOML or JavaScript date reads as JSON writes it, as everywhere metadata is read
-    metadata = JSON.parse(JSON.stringify(entity.metadata));
-  } catch {
-    return {};
-  }
+  // A TOML or JavaScript date reads as JSON writes it, as everywhere metadata is read
+  const metadata = toMetadataJson(entity.metadata);
+  if (metadata === undefined) return {};
   const owners = getOwners(metadata);
   const deadlines = getDeadlines(metadata).map(encodeDeadline);
   const metadataTerms = getMetadataTerms(metadata);

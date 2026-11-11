@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 
 import { ENVIRONMENT_KEYS, writesEnvironment } from "../config/environmentSettings";
+import { DEADLINE_FIELDS } from "../metadata";
 import { describeConditions, sameConditions, type ConditionsView } from "./conditions";
 
 /** Authored identities for readable reports, separate from positional JSON field changes. */
@@ -277,8 +278,6 @@ function fields(
     return changed(label(key), oldValue, newValue);
   });
 }
-
-const DEADLINE_FIELDS = ["by", "done", "description"];
 
 /** Metadata reads by its own keys: the owner, each deadline by its type, then the project's keys */
 function metadata(before: unknown, after: unknown, view: ConditionsView): DiffDetail[] {

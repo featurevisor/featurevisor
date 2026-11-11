@@ -57,7 +57,7 @@ import { getDeadlineWarnings } from "./deadlineWarnings";
 import { LINT_WARNING_CODES, isLintWarningCode } from "./warningCodes";
 import { suggestKey } from "./diagnostics";
 import { FeaturevisorCLIError } from "../error";
-import { getDeadlineClock, getInvalidNowMessage } from "../metadata";
+import { assertNowOption, getDeadlineClock } from "../metadata";
 import { createCompositionWarningInspector } from "./compositionWarnings";
 import { diagnosticParseOptions } from "./diagnostics";
 import { EntityParseError } from "../datasource/parseError";
@@ -1777,14 +1777,7 @@ export const lintPlugin: Plugin = {
     const { rootDirectoryPath, projectConfig, datasource, parsed } = options;
 
     assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
-    const invalidNow =
-      typeof parsed.now === "undefined" ? undefined : getInvalidNowMessage(parsed.now);
-    if (invalidNow) {
-      throw new FeaturevisorCLIError(invalidNow, {
-        code: "invalid_cli_arguments",
-        details: { option: "now" },
-      });
-    }
+    assertNowOption(parsed.now);
     const failOn: string[] = ([] as unknown[]).concat(parsed.failOn ?? []).map(String);
     for (const code of failOn) {
       if (!isLintWarningCode(code)) {

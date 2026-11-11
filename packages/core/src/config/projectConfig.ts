@@ -1,6 +1,6 @@
 import * as path from "path";
 
-import type { BucketBy } from "@featurevisor/types";
+import type { BucketBy, MetadataKind } from "@featurevisor/types";
 import { Parser, parsers } from "@featurevisor/parsers";
 
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
@@ -13,7 +13,7 @@ import type { AllowedConditions } from "./allowedConditions";
 import { assertEnvironmentSettings } from "./environmentSettings";
 import type { InheritEnvironments } from "./environmentSettings";
 import { assertMetadataSettings } from "./metadataSettings";
-import type { MetadataKind, MetadataSchema } from "./metadataSettings";
+import type { MetadataSchema } from "./metadataSettings";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";

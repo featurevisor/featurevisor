@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { ProjectConfig } from "../config";
 import { removedConditionFields, refineRequiredConditions } from "./removedConditionFields";
-import { ALWAYS, getMetadataZodSchema, refineRequiredMetadata } from "./metadataSchema";
+import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 
 export function getSegmentZodSchema(projectConfig: ProjectConfig, conditionsZodSchema) {
   const segmentZodSchema = z
@@ -18,7 +18,7 @@ export function getSegmentZodSchema(projectConfig: ProjectConfig, conditionsZodS
     })
     .strict()
     .superRefine(refineRequiredConditions)
-    .superRefine(refineRequiredMetadata(projectConfig, "segments"), ALWAYS);
+    .check(...requiredMetadataChecks(projectConfig, "segments"));
 
   const editorSchema = z
     .object({

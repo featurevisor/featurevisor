@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
 import { refineWithMessage } from "./zodHelpers";
-import { ALWAYS, getMetadataZodSchema, refineRequiredMetadata } from "./metadataSchema";
+import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 import {
   formatValueMessage,
   refineRemovedSchemaType,
@@ -601,9 +601,8 @@ export function getSchemaZodSchema(
       .superRefine((data, ctx) => refineStringLengthPattern(data, [], ctx))
       .superRefine((data, ctx) => refineSchemaFormat(data, [], ctx, schemasByKey))
       .superRefine((data, ctx) => refineArrayItems(data, [], ctx))
-      .superRefine(
-        root && projectConfig ? refineRequiredMetadata(projectConfig, "schemas") : () => undefined,
-        ALWAYS,
+      .check(
+        ...requiredMetadataChecks(root ? projectConfig : undefined, "schemas"),
       ) as unknown as z.ZodType<Schema>;
 
   const schemaZodSchema: z.ZodType<Schema> = z.lazy(() => node(false));

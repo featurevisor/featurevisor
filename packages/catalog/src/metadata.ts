@@ -26,8 +26,25 @@ const DAY = 24 * 60 * 60 * 1000;
 /** Separates the parts of a deadline in the index. Authored text never holds it. */
 const SEPARATOR = "\u001f";
 
+/** Featurevisor's own fields of every deadline. A type's own fields come after them. */
+export const DEADLINE_FIELDS = ["by", "done", "description"];
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * Metadata as JSON writes it, which is how everything reads metadata. A TOML date and time is an
+ * object whose JSON form keeps its offset, and a TOML date alone stays a date, as lint sees it.
+ */
+export function toMetadataJson(value: unknown): unknown {
+  if (value === undefined) return undefined;
+  try {
+    const json = JSON.stringify(value);
+    return json === undefined ? undefined : JSON.parse(json);
+  } catch {
+    return undefined;
+  }
 }
 
 function daysInMonth(year: number, month: number) {
@@ -70,7 +87,7 @@ function pad(value: number, length = 2) {
   return String(value).padStart(length, "0");
 }
 
-export function getLocalDate(time: number): string {
+function getLocalDate(time: number): string {
   const date = new Date(time);
   return `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
@@ -80,6 +97,11 @@ function dayNumber(date: string): number {
   const utc = new Date(0);
   utc.setUTCFullYear(year, month - 1, day);
   return Math.round(utc.getTime() / DAY);
+}
+
+/** Calendar days from the clock's date to a moment's local date */
+function daysUntil(timestamp: number, clock: DeadlineClock): number {
+  return dayNumber(getLocalDate(timestamp)) - dayNumber(clock.today);
 }
 
 /** The moment statuses are worked out at, and its local date */
@@ -93,19 +115,13 @@ export function getDeadlineClock(at?: string, now = Date.now()): DeadlineClock {
   return { now: moment, today: getLocalDate(moment) };
 }
 
-/** The local date a deadline is due on */
-export function getDeadlineDate(by: unknown): string | undefined {
-  const timestamp = getDeadlineTimestamp(by);
-  return timestamp === null ? undefined : getLocalDate(timestamp);
-}
-
 export function isDeadlineDone(deadline: { done?: unknown }): boolean {
   return deadline.done === true || (typeof deadline.done === "string" && deadline.done !== "");
 }
 
 export function getDaysUntilDeadline(by: unknown, clock: DeadlineClock): number | undefined {
-  const date = getDeadlineDate(by);
-  return date === undefined ? undefined : dayNumber(date) - dayNumber(clock.today);
+  const timestamp = getDeadlineTimestamp(by);
+  return timestamp === null ? undefined : daysUntil(timestamp, clock);
 }
 
 export function getDeadlineStatus(
@@ -116,7 +132,7 @@ export function getDeadlineStatus(
   const timestamp = getDeadlineTimestamp(deadline.by);
   if (timestamp === null) return undefined;
   if (clock.now >= timestamp) return "overdue";
-  const days = dayNumber(getLocalDate(timestamp)) - dayNumber(clock.today);
+  const days = daysUntil(timestamp, clock);
   if (days <= 0) return "today";
   return days <= UPCOMING_DAYS ? "upcoming" : "later";
 }
@@ -139,16 +155,9 @@ export function getDeadlineLabel(type: string): string {
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
     .split(/[\s_-]+/)
     .filter(Boolean)
-    .map((word) => (word.length > 1 && word === word.toUpperCase() ? word : word.toLowerCase()));
-  if (words.length === 0) return type;
-  return (
-    words[0].charAt(0).toUpperCase() +
-    words[0].slice(1) +
-    words
-      .slice(1)
-      .map((word) => ` ${word}`)
-      .join("")
-  );
+    .map((word) => (word.length > 1 && word === word.toUpperCase() ? word : word.toLowerCase()))
+    .join(" ");
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : type;
 }
 
 export function getOwners(metadata: unknown): string[] {
@@ -370,7 +379,8 @@ export function getProjectDeadlines(index: CatalogIndex, clock: DeadlineClock): 
     byDay = new Map();
     cache.set(index, byDay);
   }
-  const cacheKey = `${clock.today}|${clock.now === undefined ? "" : Math.floor(clock.now / 60000)}`;
+  // Statuses change at most by the minute, so a page shares one list while the minute lasts
+  const cacheKey = `${clock.today}|${Math.floor(clock.now / 60000)}`;
   const cached = byDay.get(cacheKey);
   if (cached) return cached;
 

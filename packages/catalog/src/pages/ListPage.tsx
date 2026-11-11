@@ -595,8 +595,9 @@ function RowTrailingMeta(props: { entity: EntitySummary; type: CatalogEntityType
         ? "Required by"
         : undefined;
 
+  const clock = getDeadlineClock();
   const pressing = props.entity.deadlines?.length
-    ? getMostPressingDeadline(getSummaryDeadlines(props.entity), getDeadlineClock())
+    ? getMostPressingDeadline(getSummaryDeadlines(props.entity), clock)
     : undefined;
   const owners = props.entity.owners || [];
 
@@ -604,7 +605,7 @@ function RowTrailingMeta(props: { entity: EntitySummary; type: CatalogEntityType
     <>
       {getStatusBadges(props.entity)}
       {pressing && !props.entity.archived && (
-        <DeadlineRowBadge deadline={pressing.deadline} clock={getDeadlineClock()} />
+        <DeadlineRowBadge deadline={pressing.deadline} clock={clock} />
       )}
       {owners.length > 0 && (
         <span className="hidden sm:inline-flex" title={owners.join(", ")}>

@@ -1,6 +1,4 @@
-import type { MetadataKind } from "@featurevisor/types";
-
-import { isDeadlineType, isPlainObject, METADATA_KINDS } from "../metadata";
+import { DEADLINE_FIELDS, getDeadlineTypeError, isPlainObject, METADATA_KINDS } from "../metadata";
 
 /**
  * A schema in `metadataSchema`. It has the keywords of reusable schemas, without `schema`
@@ -51,9 +49,6 @@ const KEYWORDS = [
   "properties",
   "additionalProperties",
 ];
-
-/** Featurevisor's own fields of every deadline */
-export const DEADLINE_FIELDS = ["by", "done", "description"];
 
 /** What `properties.deadlines` may say */
 const DEADLINES_KEYWORDS = [
@@ -237,34 +232,45 @@ function assertValueSchema(schema: unknown, path: string, root = false): void {
   assertRequired(schema, path, root ? [...new Set([...declared, "owner", "deadlines"])] : declared);
 }
 
-/** One deadline type: a description, and fields of its own on top of Featurevisor's */
-function assertDeadlineTypeSchema(schema: unknown, path: string) {
-  if (!isPlainObject(schema)) fail(path, 'expected a deadline type, such as { description: "…" }.');
-  if (schema.additionalProperties !== undefined) {
-    fail(
-      `${path}.additionalProperties`,
-      "a deadline type declares each of its own fields in properties.",
-    );
-  }
-  assertKeywords(schema, DEADLINE_TYPE_KEYWORDS, path);
+/** What `properties.deadlines` and each deadline type share: an object with a description */
+function assertObjectSchema(schema: unknown, path: string, keywords: string[], expected: string) {
+  if (!isPlainObject(schema)) fail(path, expected);
+  assertKeywords(schema, keywords, path);
   if (schema.type !== undefined && schema.type !== "object")
     fail(`${path}.type`, 'expected "object".');
   if (schema.description !== undefined && typeof schema.description !== "string") {
     fail(`${path}.description`, "expected a string.");
   }
-  if (schema.properties !== undefined) {
-    if (!isPlainObject(schema.properties)) fail(`${path}.properties`, "expected an object.");
-    for (const [field, property] of Object.entries(schema.properties)) {
-      if (DEADLINE_FIELDS.includes(field)) {
-        fail(
-          `${path}.properties.${field}`,
-          `"${field}" is a field of every deadline, and its shape cannot change.`,
-        );
-      }
-      assertValueSchema(property, `${path}.properties.${field}`);
-    }
+  if (schema.properties !== undefined && !isPlainObject(schema.properties)) {
+    fail(`${path}.properties`, "expected an object.");
   }
-  const own = Object.keys(isPlainObject(schema.properties) ? schema.properties : {});
+  return { schema, properties: (schema.properties ?? {}) as Record<string, unknown> };
+}
+
+/** One deadline type: a description, and fields of its own on top of Featurevisor's */
+function assertDeadlineTypeSchema(value: unknown, path: string) {
+  if (isPlainObject(value) && value.additionalProperties !== undefined) {
+    fail(
+      `${path}.additionalProperties`,
+      "a deadline type declares each of its own fields in properties.",
+    );
+  }
+  const { schema, properties } = assertObjectSchema(
+    value,
+    path,
+    DEADLINE_TYPE_KEYWORDS,
+    'expected a deadline type, such as { description: "…" }.',
+  );
+  for (const [field, property] of Object.entries(properties)) {
+    if (DEADLINE_FIELDS.includes(field)) {
+      fail(
+        `${path}.properties.${field}`,
+        `"${field}" is a field of every deadline, and its shape cannot change.`,
+      );
+    }
+    assertValueSchema(property, `${path}.properties.${field}`);
+  }
+  const own = Object.keys(properties);
   if (Array.isArray(schema.required)) {
     for (const name of schema.required) {
       if (name === "by") fail(`${path}.required`, '"by" is always required.');
@@ -281,37 +287,23 @@ function assertDeadlineTypeSchema(schema: unknown, path: string) {
 }
 
 /** `properties.deadlines`: the project's deadline types */
-function assertDeadlinesSchema(schema: unknown, path: string) {
-  if (!isPlainObject(schema)) fail(path, "expected the project's deadline types.");
-  assertKeywords(schema, DEADLINES_KEYWORDS, path);
-  if (schema.type !== undefined && schema.type !== "object")
-    fail(`${path}.type`, 'expected "object".');
-  if (schema.description !== undefined && typeof schema.description !== "string") {
-    fail(`${path}.description`, "expected a string.");
-  }
-  if (schema.properties !== undefined) {
-    if (!isPlainObject(schema.properties)) fail(`${path}.properties`, "expected an object.");
-    for (const [type, typeSchema] of Object.entries(schema.properties)) {
-      if (!isDeadlineType(type)) {
-        fail(
-          `${path}.properties.${type}`,
-          /^[A-Za-z][A-Za-z0-9_-]*$/.test(type)
-            ? `"${type}" is a deadline status, so it cannot name a deadline type.`
-            : "a deadline type starts with a letter, and has only letters, digits, _ and -.",
-        );
-      }
-      assertDeadlineTypeSchema(typeSchema, `${path}.properties.${type}`);
-    }
+function assertDeadlinesSchema(value: unknown, path: string) {
+  const { schema, properties } = assertObjectSchema(
+    value,
+    path,
+    DEADLINES_KEYWORDS,
+    "expected the project's deadline types.",
+  );
+  for (const [type, typeSchema] of Object.entries(properties)) {
+    const error = getDeadlineTypeError(type);
+    // Settings errors continue "Invalid <path>: ", so the sentence starts in lower case
+    if (error) fail(`${path}.properties.${type}`, error.charAt(0).toLowerCase() + error.slice(1));
+    assertDeadlineTypeSchema(typeSchema, `${path}.properties.${type}`);
   }
   if (schema.additionalProperties !== undefined) {
     assertDeadlineTypeSchema(schema.additionalProperties, `${path}.additionalProperties`);
   }
-  assertRequired(
-    schema,
-    path,
-    Object.keys(isPlainObject(schema.properties) ? schema.properties : {}),
-    "a deadline type declared in properties",
-  );
+  assertRequired(schema, path, Object.keys(properties), "a deadline type declared in properties");
 }
 
 function assertRequireMetadataIn(value: unknown) {
@@ -342,5 +334,3 @@ export function assertMetadataSettings(config: {
   }
   if (config.requireMetadataIn !== undefined) assertRequireMetadataIn(config.requireMetadataIn);
 }
-
-export type { MetadataKind };

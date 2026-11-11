@@ -3,13 +3,14 @@ import { isValidVersion } from "@featurevisor/sdk";
 import type { MetadataKind } from "@featurevisor/types";
 
 import type { ProjectConfig } from "../config";
-import { DEADLINE_FIELDS } from "../config/metadataSettings";
 import type { MetadataSchema } from "../config/metadataSettings";
 import {
-  isCalendarDate,
+  DEADLINE_FIELDS,
+  getDeadlineTypeError,
+  getTimestampMessage,
   isDeadlineTimestamp,
-  isDeadlineType,
   isPlainObject,
+  TIMESTAMP_EXAMPLE,
   toMetadataJson,
 } from "../metadata";
 import { suggestKey } from "./diagnostics";
@@ -24,36 +25,15 @@ export interface MetadataIssue {
 
 type Path = (string | number)[];
 
-const TIMESTAMP_EXAMPLE = "2027-01-15T09:00:00Z";
-
-/**
- * What a value that is not a timestamp needs, worded as conditions word it. A date alone is the
- * likely slip, so it gets the timestamp it could become.
- */
-function timestampMessage(value: unknown, expected = "a timestamp with a timezone") {
-  if (isCalendarDate(value)) {
-    return `Expected ${expected}, such as ${value}T09:00:00Z. A date alone has no time or timezone.`;
-  }
-  return `Expected ${expected}, such as ${TIMESTAMP_EXAMPLE}. Use YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm.`;
-}
-
 function quote(value: unknown) {
   return JSON.stringify(value);
 }
 
-/** "a", "b" or "c" */
-function choices(values: unknown[]) {
+/** "a", "b" or "c", or with "and" */
+function quoteList(values: unknown[], conjunction: "or" | "and") {
   const quoted = values.map(quote);
   return quoted.length > 1
-    ? `${quoted.slice(0, -1).join(", ")} or ${quoted[quoted.length - 1]}`
-    : (quoted[0] ?? "");
-}
-
-/** "a", "b" and "c" */
-function all(values: unknown[]) {
-  const quoted = values.map(quote);
-  return quoted.length > 1
-    ? `${quoted.slice(0, -1).join(", ")} and ${quoted[quoted.length - 1]}`
+    ? `${quoted.slice(0, -1).join(", ")} ${conjunction} ${quoted[quoted.length - 1]}`
     : (quoted[0] ?? "");
 }
 
@@ -99,10 +79,6 @@ function findValuesWithoutJson(value: unknown, path: Path, found: Path[]) {
   }
 }
 
-function deepEqual(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
 function sameKeysEqual(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     return a.length === b.length && a.every((item, index) => sameKeysEqual(item, b[index]));
@@ -116,7 +92,7 @@ function sameKeysEqual(a: unknown, b: unknown): boolean {
       )
     );
   }
-  return deepEqual(a, b);
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 function matchesFormat(format: string, value: string) {
@@ -126,7 +102,7 @@ function matchesFormat(format: string, value: string) {
 }
 
 function formatMessage(format: string, value: string) {
-  return format === "date-time" ? timestampMessage(value) : "Expected a version such as 5.5.0.";
+  return format === "date-time" ? getTimestampMessage(value) : "Expected a version such as 5.5.0.";
 }
 
 /** Checks one value against a schema in `metadataSchema`. A schema without a type takes any value. */
@@ -155,7 +131,7 @@ function checkValue(
   if (schema.enum && !schema.enum.some((option) => sameKeysEqual(value, option))) {
     const names = schema.enum.filter((option): option is string => typeof option === "string");
     const suggestion = typeof value === "string" ? suggestKey(value, names) : "";
-    report(`Expected ${choices(schema.enum)}.${suggestion}`);
+    report(`Expected ${quoteList(schema.enum, "or")}.${suggestion}`);
     return;
   }
 
@@ -318,7 +294,7 @@ function checkDeadline(
       "by",
     ]);
   } else if (!isDeadlineTimestamp(deadline.by)) {
-    invalid(timestampMessage(deadline.by), [...path, "by"]);
+    invalid(getTimestampMessage(deadline.by), [...path, "by"]);
   }
 
   if (
@@ -326,7 +302,7 @@ function checkDeadline(
     typeof deadline.done !== "boolean" &&
     !isDeadlineTimestamp(deadline.done)
   ) {
-    invalid(timestampMessage(deadline.done, "true or false, or the timestamp it was done"), [
+    invalid(getTimestampMessage(deadline.done, "true or false, or the timestamp it was done"), [
       ...path,
       "done",
     ]);
@@ -347,7 +323,9 @@ function checkDeadline(
       checkValue(fieldSchema, value, [...path, field], issues);
       continue;
     }
-    const also = own.length ? `, and ${quote(type)} deadlines also have ${all(own)}` : "";
+    const also = own.length
+      ? `, and ${quote(type)} deadlines also have ${quoteList(own, "and")}`
+      : "";
     const suggestion = suggestKey(field, [...DEADLINE_FIELDS, ...own]);
     invalid(
       `Unknown field ${quote(field)}. A deadline has \`by\`, \`done\` and \`description\`${also}.${suggestion || " Declare any other field for its type in metadataSchema."}`,
@@ -384,21 +362,16 @@ function checkDeadlines(
   const declared = Object.keys(typesSchema?.properties || {});
 
   for (const [type, deadline] of Object.entries(deadlines)) {
-    if (!isDeadlineType(type)) {
-      issues.push({
-        code: "invalid_metadata",
-        message: /^[A-Za-z][A-Za-z0-9_-]*$/.test(type)
-          ? `${quote(type)} is a deadline status, so it cannot name a deadline type.`
-          : "A deadline type starts with a letter, and has only letters, digits, _ and -.",
-        path: ["deadlines", type],
-      });
+    const typeError = getDeadlineTypeError(type);
+    if (typeError) {
+      issues.push({ code: "invalid_metadata", message: typeError, path: ["deadlines", type] });
       continue;
     }
     const typeSchema = typesSchema?.properties?.[type] ?? typesSchema?.additionalProperties;
     if (typesSchema && !typeSchema && declared.length > 0) {
       issues.push({
         code: "metadata_schema",
-        message: `Unknown deadline type ${quote(type)}. This project allows ${all(declared)}.${suggestKey(type, declared)}`,
+        message: `Unknown deadline type ${quote(type)}. This project allows ${quoteList(declared, "and")}.${suggestKey(type, declared)}`,
         path: ["deadlines", type],
       });
       continue;
@@ -472,23 +445,30 @@ export function getMetadataZodSchema(projectConfig: ProjectConfig) {
   });
 }
 
-/** Lets the check below run even when other fields of the definition fail, so each one is reported */
-export const ALWAYS = { when: () => true };
-
 /**
- * Reports a definition without `metadata` when `requireMetadataIn` lists its kind. Pass ALWAYS
- * with it to `superRefine`.
+ * The check that reports a definition without `metadata`, for `.check(...)`. Only a kind that
+ * `requireMetadataIn` lists gets it, so other projects pay nothing for it. It runs even when other
+ * fields fail, so each problem is reported.
  */
-export function refineRequiredMetadata(projectConfig: ProjectConfig, kind: MetadataKind) {
-  const required = (projectConfig.requireMetadataIn || []).includes(kind);
-  return (value: unknown, ctx: z.RefinementCtx) => {
-    if (!required || !isPlainObject(value) || value.archived === true) return;
-    if (value.metadata !== undefined) return;
-    ctx.addIssue({
-      code: "custom",
-      message: `Missing metadata, which this project requires on ${kind}.`,
-      path: ["metadata"],
-      params: { code: "missing_metadata" },
-    });
-  };
+export function requiredMetadataChecks(
+  projectConfig: ProjectConfig | undefined,
+  kind: MetadataKind,
+) {
+  if (!(projectConfig?.requireMetadataIn || []).includes(kind)) return [];
+  return [
+    z.superRefine(
+      (value: unknown, ctx) => {
+        if (!isPlainObject(value) || value.archived === true || value.metadata !== undefined) {
+          return;
+        }
+        ctx.addIssue({
+          code: "custom",
+          message: `Missing metadata, which this project requires on ${kind}.`,
+          path: ["metadata"],
+          params: { code: "missing_metadata" },
+        });
+      },
+      { when: () => true },
+    ),
+  ];
 }

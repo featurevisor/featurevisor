@@ -41,7 +41,6 @@ describe("Catalog reads metadata as Core does", () => {
     expect(catalog.getDeadlineClock(value, fallback)).toEqual(
       core.getDeadlineClock(value, fallback),
     );
-    expect(catalog.getDeadlineDate(value)).toBe(core.getDeadlineDate(value));
     for (const clock of clocks) {
       for (const done of [undefined, true, false, "2027-01-10T16:00:00Z", ""]) {
         const deadline = { by: value, done };

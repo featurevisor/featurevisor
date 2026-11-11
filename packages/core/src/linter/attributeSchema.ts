@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
 import { countZodSchema, valueZodSchema, refineArrayItems, refineMinimumMaximum } from "./schema";
-import { ALWAYS, getMetadataZodSchema, refineRequiredMetadata } from "./metadataSchema";
+import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 import {
   refineRemovedSchemaType,
   schemaFormatZodSchema,
@@ -624,10 +624,7 @@ export function getAttributeZodSchema(projectConfig?: ProjectConfig) {
     .superRefine((data, ctx) => refineRequiredKeysInAttributeSchema(data, [], ctx))
     .superRefine((data, ctx) => refineNoNestedObjectProperties(data, [], ctx))
     .superRefine((data, ctx) => refineArrayAttributesAreStringArrays(data, [], ctx))
-    .superRefine(
-      projectConfig ? refineRequiredMetadata(projectConfig, "attributes") : () => undefined,
-      ALWAYS,
-    );
+    .check(...requiredMetadataChecks(projectConfig, "attributes"));
 
   return attributeZodSchema;
 }

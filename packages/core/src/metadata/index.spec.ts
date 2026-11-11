@@ -4,7 +4,7 @@ import {
   getDeadlineStatus,
   getDeadlineStatuses,
   getDaysUntilDeadline,
-  getInvalidNowMessage,
+  assertNowOption,
   getOwners,
   isCalendarDate,
   isDeadlineTimestamp,
@@ -82,11 +82,12 @@ describe("deadline timestamps", () => {
   });
 
   it("says what a --now value needs", () => {
-    expect(getInvalidNowMessage("2027-03-01T09:00:00Z")).toBeUndefined();
-    expect(getInvalidNowMessage("2027-03-02")).toBe(
+    expect(() => assertNowOption("2027-03-01T09:00:00Z")).not.toThrow();
+    expect(() => assertNowOption(undefined)).not.toThrow();
+    expect(() => assertNowOption("2027-03-02")).toThrow(
       'Invalid --now: "2027-03-02". Expected a timestamp with a timezone, such as 2027-03-02T09:00:00Z. A date alone has no time or timezone.',
     );
-    expect(getInvalidNowMessage("tomorrow")).toBe(
+    expect(() => assertNowOption("tomorrow")).toThrow(
       'Invalid --now: "tomorrow". Expected a timestamp with a timezone, such as 2027-01-15T09:00:00Z. Use YYYY-MM-DDTHH:mm:ss with Z or ±HH:mm.',
     );
   });

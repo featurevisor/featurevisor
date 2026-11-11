@@ -49,7 +49,7 @@ import {
   refineRequiredConditions,
 } from "./removedConditionFields";
 import { refineComposedOverrides } from "./composedOverrideSchema";
-import { ALWAYS, getMetadataZodSchema, refineRequiredMetadata } from "./metadataSchema";
+import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 import { getCompositionEntries } from "../datasource/composition";
 
 // Evaluated composition members can be null at any depth, including inside a
@@ -425,7 +425,7 @@ export function getVariableZodSchema(
   };
 
   const metadataSchema = getMetadataZodSchema(projectConfig).optional();
-  const requireMetadata = refineRequiredMetadata(projectConfig, "variables");
+  const requireMetadata = requiredMetadataChecks(projectConfig, "variables");
 
   const variableSchema = z
     .object({
@@ -473,7 +473,7 @@ export function getVariableZodSchema(
       overrides: overridesSchema.optional(),
     })
     .strict()
-    .superRefine(requireMetadata, ALWAYS)
+    .check(...requireMetadata)
     .superRefine((variable, ctx) => {
       refineRemovedConditionFields(variable, ctx);
       refineRequiredEnvironments(variable, ctx);
@@ -824,7 +824,7 @@ export function getVariableZodSchema(
         }),
       }),
     )
-    .superRefine(requireMetadata, ALWAYS)
+    .check(...requireMetadata)
     .superRefine((variable, ctx) => {
       refineRemovedConditionFields(variable, ctx);
       refineRequiredEnvironments(variable, ctx);
