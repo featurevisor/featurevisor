@@ -659,6 +659,47 @@ describe("convert", () => {
     expect(snapshot()).toEqual(before);
   });
 
+  it("shares metadata between sets, and refuses sets whose metadata differs", async () => {
+    environmentsProject();
+    write(
+      "features/checkout.yml",
+      read("features/checkout.yml").replace(
+        "  - all\n",
+        '  - all\n\nmetadata:\n  owner: checkout-team\n  deadlines:\n    remove:\n      by: "2027-03-01T09:00:00Z"\n',
+      ),
+    );
+    const before = snapshot();
+
+    // metadata sits outside the lanes, so every set gets it as written
+    expect(await run({ to: "sets", apply: true })).toBe(0);
+    for (const set of ["staging", "production"]) {
+      expect(read(`sets/${set}/features/checkout.yml`)).toContain(
+        'metadata:\n  owner: checkout-team\n  deadlines:\n    remove:\n      by: "2027-03-01T09:00:00Z"\n',
+      );
+    }
+
+    // a deadline done in one set only is a difference to resolve before it has environments
+    const production = "sets/production/features/checkout.yml";
+    write(
+      production,
+      read(production).replace(
+        'by: "2027-03-01T09:00:00Z"\n',
+        'by: "2027-03-01T09:00:00Z"\n      done: true\n',
+      ),
+    );
+    const differing = snapshot();
+    expect(planConversion(readProject(root, config()), { to: "environments" }).conflicts).toEqual([
+      "The feature checkout.yml differs between sets staging, production outside its lanes: metadata.",
+    ]);
+    expect(await run({ to: "environments", apply: true })).toBe(2);
+    expect(snapshot()).toEqual(differing);
+
+    // once both agree, it converts back to the files it came from
+    write(production, read(production).replace("      done: true\n", ""));
+    expect(await run({ to: "environments", apply: true })).toBe(0);
+    expect(snapshot()).toEqual(before);
+  });
+
   it("says only what it changed in the configuration", async () => {
     flatProject();
     write(

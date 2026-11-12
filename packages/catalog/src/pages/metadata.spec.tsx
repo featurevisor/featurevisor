@@ -31,8 +31,16 @@ const manifest: CatalogManifest = {
   counts: {},
 };
 
-/** A timestamp some days from now */
-const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+/**
+ * Midday, local time, some days from today. Midday keeps every count of days the same whatever
+ * the hour the tests run at, and across a change to or from summer time.
+ */
+const inDays = (days: number) => {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + days);
+  return date.toISOString();
+};
 const deadline = (type: string, by: string, done?: string) =>
   encodeDeadline({ type, by, ...(done ? { done } : {}) });
 
@@ -88,11 +96,14 @@ describe("metadata in lists", () => {
   });
 
   it("filters by deadline status and type, matching one deadline with every value", () => {
-    expect(keys("deadline:overdue")).toEqual(["old", "redesign"]);
+    // an archived definition's deadlines need no attention, unless asked for
+    expect(keys("deadline:overdue")).toEqual(["redesign"]);
+    expect(keys("archived:true deadline:overdue")).toEqual(["old"]);
     expect(keys("deadline:upcoming")).toEqual(["checkout"]);
     expect(keys("deadline:later")).toEqual(["banner"]);
     expect(keys("deadline:done")).toEqual(["checkout"]);
-    expect(keys("deadline:open")).toEqual(["banner", "checkout", "old", "redesign"]);
+    expect(keys("deadline:open")).toEqual(["banner", "checkout", "redesign"]);
+    expect(keys("deadline:Overdue")).toEqual(["redesign"]);
     expect(keys("deadline:remove")).toEqual(["checkout", "old"]);
     expect(keys("deadline:remove deadline:upcoming")).toEqual(["checkout"]);
     expect(keys("deadline:review deadline:done")).toEqual(["checkout"]);
@@ -128,6 +139,10 @@ describe("metadata in lists", () => {
       ["Deadlines", "Review", "deadline:review"],
     ]);
     expect(getMetadataChips([{ key: "plain", href: "" }], clock)).toEqual([]);
+    // an archived definition's overdue deadline offers its type, never a status
+    expect(getMetadataChips([summaries[4]], clock).map(({ token }) => token)).toEqual([
+      "deadline:remove",
+    ]);
 
     withIndex({ feature: summaries });
     const html = render("/features");
@@ -169,6 +184,15 @@ describe("metadata on the home page", () => {
     expect(comingUp.indexOf("Remove")).toBeLessThan(comingUp.indexOf("Review"));
     expect(comingUp).toContain("Due in 10 days");
     expect(comingUp).toContain("View all deadlines");
+    // the link counts every open deadline, overdue ones too, as the Deadlines page does
+    withIndex({
+      feature: Array.from({ length: 7 }, (_, index) => ({
+        key: `feature${index}`,
+        href: "",
+        deadlines: [deadline("review", inDays(index < 2 ? -5 : 5 + index))],
+      })),
+    });
+    expect(text(render("/"))).toContain("View all 7 open deadlines");
     // a project naming no owners and planning nothing sees none of it
     withIndex({ feature: [{ key: "plain", href: "" }] });
     const plain = render("/");
@@ -267,6 +291,26 @@ describe("metadata on a definition's Overview", () => {
     expect(plain).toContain("javascript:alert(1)");
     expect(html).not.toContain('href="javascript:');
     expect(html).toContain("<code");
+  });
+
+  it("shows an archived definition's open deadlines as not done, never overdue", () => {
+    withIndex({ feature: [] });
+    const plain = text(
+      renderOverview({
+        archived: true,
+        description: "Old checkout",
+        bucketBy: "userId",
+        metadata: {
+          deadlines: {
+            remove: { by: inDays(-9) },
+            review: { by: inDays(-20), done: inDays(-18) },
+          },
+        },
+      }),
+    );
+    expect(plain).toContain("Not done");
+    expect(plain).not.toContain("Overdue");
+    expect(plain).toContain("Done on");
   });
 
   it("shows nothing for metadata a definition does not have", () => {

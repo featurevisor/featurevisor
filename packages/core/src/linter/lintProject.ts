@@ -221,10 +221,13 @@ export async function lintProject(
   const warnings: LintErrorItem[] = [];
   const deadlineClock = getDeadlineClock(options.now);
   const failOn = new Set(options.failOn || []);
+  /** The file whose header was printed last, while only its errors have followed it */
+  let lastHeaderPath: string | undefined;
   const reportedParseErrors = new Set<string>();
 
   function log(...args: unknown[]) {
     if (!isJsonMode) {
+      lastHeaderPath = undefined;
       console.log(...args);
     }
   }
@@ -337,6 +340,7 @@ export async function lintProject(
       return;
     }
 
+    lastHeaderPath = fullPath;
     console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
 
     if (options.authors) {
@@ -472,14 +476,17 @@ export async function lintProject(
     return item;
   }
 
-  function reportWarning(warning: LintErrorItem) {
+  async function reportWarning(warning: LintErrorItem) {
     const item = withExpressionLocation(warning);
     if (isRepeatedExpressionLocation(item)) return;
     if (item.code && failOn.has(item.code)) {
-      // `--fail-on` makes this warning an error, printed and counted as one
+      // `--fail-on` makes this warning an error, printed and counted as one, under the file's
+      // header unless that header is what was printed last
       errors.push(item);
       if (!isJsonMode) {
-        console.log(CLI_FORMAT_BOLD_UNDERLINE, path.resolve(process.cwd(), item.filePath));
+        const fullPath = path.resolve(process.cwd(), item.filePath);
+        if (lastHeaderPath !== fullPath)
+          await printEntityHeader(item.entityType, item.key, fullPath);
         console.log(CLI_FORMAT_RED, `  => Error: ${item.message}`);
         printExpressionDetails(item);
         if (item.line === undefined || !expressionFrames.has(item))
@@ -490,6 +497,7 @@ export async function lintProject(
     }
     warnings.push(item);
     if (!isJsonMode) {
+      lastHeaderPath = undefined;
       console.log(
         `  => Warning: ${item.message} (${item.entityType} ${item.key}: ${item.path.join(".")})`,
       );
@@ -568,14 +576,15 @@ export async function lintProject(
           record.path,
           warning,
         );
-        reportWarning(item);
+        await reportWarning(item);
       }
     }
-    if (definition) reportExpressionSemverText(entityType, key, fullPath, records, definition);
+    if (definition)
+      await reportExpressionSemverText(entityType, key, fullPath, records, definition);
   }
 
   /** `appVersion == '5.5.0'` compares text, which is rarely meant for a version attribute. */
-  function reportExpressionSemverText(
+  async function reportExpressionSemverText(
     entityType: LintEntityType,
     key: string,
     fullPath: string,
@@ -597,7 +606,7 @@ export async function lintProject(
         if (!attribute || (attribute as { format?: unknown }).format !== "semver") continue;
         if (typeof condition.value !== "string") continue;
         const symbol = condition.operator === "equals" ? "==" : "!=";
-        reportWarning(
+        await reportWarning(
           locateExpressionItem(
             {
               filePath: path.relative(process.cwd(), fullPath),
@@ -756,7 +765,7 @@ export async function lintProject(
     );
     // checks stricter than earlier versions had warn until the next major version
     for (const issue of issues.filter((issue) => issue.warning)) {
-      reportWarning({
+      await reportWarning({
         filePath: path.relative(process.cwd(), fullPath),
         entityType,
         key,
@@ -899,7 +908,7 @@ export async function lintProject(
         if (!result.success && "error" in result) {
           await reportZodValidationError("attribute", key, fullPath, result.error);
         }
-        reportDeadlines("attribute", key, fullPath, parsed);
+        await reportDeadlines("attribute", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("attribute", key, fullPath, error);
       }
@@ -987,14 +996,14 @@ export async function lintProject(
   }
 
   /** Open deadlines that are overdue or due today warn, and never fail lint */
-  function reportDeadlines(
+  async function reportDeadlines(
     entityType: LintEntityType,
     key: string,
     fullPath: string,
     definition: unknown,
   ) {
     for (const warning of getDeadlineWarnings(definition, deadlineClock)) {
-      reportWarning({
+      await reportWarning({
         filePath: path.relative(process.cwd(), fullPath),
         entityType,
         key,
@@ -1005,14 +1014,14 @@ export async function lintProject(
     }
   }
 
-  function reportDeprecatedReferences(
+  async function reportDeprecatedReferences(
     entityType: "segment" | "feature" | "variable",
     key: string,
     fullPath: string,
     definition: unknown,
   ) {
     for (const warning of getDeprecatedReferenceWarnings(entityType, definition, referenceIndex)) {
-      reportWarning({
+      await reportWarning({
         filePath: path.relative(process.cwd(), fullPath),
         entityType,
         key,
@@ -1115,8 +1124,8 @@ export async function lintProject(
         }
         await reportArchivedReferences("segment", key, fullPath, parsed);
         await reportConditionKinds("segment", key, fullPath, parsed);
-        reportDeprecatedReferences("segment", key, fullPath, parsed);
-        reportDeadlines("segment", key, fullPath, parsed);
+        await reportDeprecatedReferences("segment", key, fullPath, parsed);
+        await reportDeadlines("segment", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("segment", key, fullPath, error);
       } finally {
@@ -1224,11 +1233,11 @@ export async function lintProject(
         }
         await reportArchivedReferences("feature", key, fullPath, parsed);
         await reportConditionKinds("feature", key, fullPath, parsed);
-        reportDeprecatedReferences("feature", key, fullPath, parsed);
-        reportDeadlines("feature", key, fullPath, parsed);
+        await reportDeprecatedReferences("feature", key, fullPath, parsed);
+        await reportDeadlines("feature", key, fullPath, parsed);
         if (options.v3MutationOrder) {
           for (const change of getMutationOrderChanges(parsed)) {
-            reportWarning({
+            await reportWarning({
               filePath: path.relative(process.cwd(), fullPath),
               entityType: "feature",
               key,
@@ -1335,8 +1344,8 @@ export async function lintProject(
         );
         await reportArchivedReferences("variable", key, fullPath, parsed);
         await reportConditionKinds("variable", key, fullPath, parsed);
-        reportDeprecatedReferences("variable", key, fullPath, parsed);
-        reportDeadlines("variable", key, fullPath, parsed);
+        await reportDeprecatedReferences("variable", key, fullPath, parsed);
+        await reportDeadlines("variable", key, fullPath, parsed);
 
         if (!result.success && "error" in result) {
           await reportZodValidationError("variable", key, fullPath, result.error, {
@@ -1344,7 +1353,7 @@ export async function lintProject(
           });
         } else if (result.success && !archived) {
           for (const warning of getCompositionWarnings(result.data)) {
-            reportWarning({
+            await reportWarning({
               ...warning,
               filePath: path.relative(process.cwd(), fullPath),
               entityType: "variable",
@@ -1394,7 +1403,7 @@ export async function lintProject(
         if (!result.success && "error" in result) {
           await reportZodValidationError("schema", key, fullPath, result.error);
         }
-        reportDeadlines("schema", key, fullPath, parsed);
+        await reportDeadlines("schema", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("schema", key, fullPath, error);
       }
@@ -1441,7 +1450,7 @@ export async function lintProject(
         } else {
           parsedTargets.set(key, parsed);
         }
-        reportDeadlines("target", key, fullPath, parsed);
+        await reportDeadlines("target", key, fullPath, parsed);
         await reportArchivedReferences("target", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("target", key, fullPath, error);
@@ -1574,7 +1583,7 @@ export async function lintProject(
         const parsed = await datasource.readTest(key);
 
         for (const warning of getTestContextWarnings(parsed, attributesByKey, schemasByKey)) {
-          reportWarning({
+          await reportWarning({
             filePath: path.relative(process.cwd(), fullPath),
             entityType: "test",
             key,
@@ -1640,7 +1649,7 @@ export async function lintProject(
       try {
         const parsed = await datasource.readScenario(key);
         for (const warning of getTestContextWarnings(parsed, attributesByKey, schemasByKey, true)) {
-          reportWarning({
+          await reportWarning({
             filePath: path.relative(process.cwd(), fullPath),
             entityType: "scenario",
             key,
@@ -1731,7 +1740,7 @@ export async function lintProject(
             code: "dependency_depth_exceeded",
           });
         } else {
-          reportWarning({
+          await reportWarning({
             filePath: path.relative(process.cwd(), getFullPathFromKey(entityType, key)),
             entityType,
             key,
@@ -1747,7 +1756,7 @@ export async function lintProject(
           node[0] === "variable" ? "variable" : node[0] === "segment" ? "segment" : "feature";
         const key = node[1];
         if (options.entityType && options.entityType !== entityType) continue;
-        reportWarning({
+        await reportWarning({
           filePath: path.relative(process.cwd(), getFullPathFromKey(entityType, key)),
           entityType,
           key,

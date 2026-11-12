@@ -192,6 +192,18 @@ describe("lintMetadata without a schema", () => {
       ]);
     }
   });
+
+  it("needs metadata to record something, with or without a schema", () => {
+    const empty = {
+      code: "invalid_metadata",
+      at: "",
+      message:
+        "Expected `metadata` to record something. Leave it out when there is nothing to record.",
+    };
+    expect(issues({})).toEqual([empty]);
+    // the empty object alone, not every key the schema requires
+    expect(issues({}, { type: "object", required: ["owner", "jira"] })).toEqual([empty]);
+  });
 });
 
 describe("lintMetadata with a project schema", () => {
@@ -501,6 +513,16 @@ describe("metadata in lint", () => {
     ).toEqual([
       expect.objectContaining({ entityType: "schema", key: "plain", at: "properties.url" }),
       expect.objectContaining({ entityType: "test", key: "features.owned", at: "" }),
+    ]);
+  });
+
+  it("never takes empty metadata for the metadata a project requires", async () => {
+    write(
+      "features/empty.yml",
+      'description: Empty\nmetadata: {}\nbucketBy: userId\nrules:\n  - key: everyone\n    conditions: "*"\n    percentage: 0\n',
+    );
+    expect((await lint()).filter(({ key }) => key === "empty")).toEqual([
+      { code: "invalid_metadata", entityType: "feature", key: "empty", at: "metadata" },
     ]);
   });
 });

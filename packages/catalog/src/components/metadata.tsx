@@ -55,9 +55,20 @@ export interface DeadlineView {
   long: string;
 }
 
-export function describeDeadline(deadline: Deadline, clock: DeadlineClock): DeadlineView {
+/**
+ * How a deadline stands, in words and a tone. An archived definition needs nothing more, so its
+ * open deadlines read only as not done, never as overdue, as lint and the home page treat them.
+ */
+export function describeDeadline(
+  deadline: Deadline,
+  clock: DeadlineClock,
+  archived = false,
+): DeadlineView {
   const status = getDeadlineStatus(deadline, clock);
   const days = getDaysUntilDeadline(deadline.by, clock);
+  if (archived && status && status !== "done") {
+    return { status, days, tone: "neutral", short: "not done", long: "Not done" };
+  }
   const tone = status ? DEADLINE_TONES[status] : "neutral";
   if (status === "done") {
     const doneAt = typeof deadline.done === "string" ? getDeadlineTimestamp(deadline.done) : null;
@@ -297,9 +308,11 @@ export function DeadlineItem(props: {
   typeDescription?: string;
   /** Who it belongs to, on pages listing deadlines of many definitions */
   subject?: React.ReactNode;
+  /** Whether its definition is archived, so that nothing about it needs attention */
+  archived?: boolean;
 }) {
   const { deadline, clock } = props;
-  const view = describeDeadline(deadline, clock);
+  const view = describeDeadline(deadline, clock, props.archived);
   const done = view.status === "done";
   const fields = "fields" in deadline ? deadline.fields : [];
 
@@ -362,13 +375,10 @@ export function DeadlineList(props: {
   deadlines: DeadlineEntry[];
   clock: DeadlineClock;
   types?: Record<string, { description?: string }>;
+  archived?: boolean;
 }) {
   const sorted = props.deadlines
-    .map((deadline) => ({
-      deadline,
-      status: getDeadlineStatus(deadline, props.clock),
-      days: getDaysUntilDeadline(deadline.by, props.clock),
-    }))
+    .map((deadline) => ({ deadline, status: getDeadlineStatus(deadline, props.clock) }))
     .sort(compareDeadlines);
 
   return (
@@ -379,6 +389,7 @@ export function DeadlineList(props: {
           deadline={deadline}
           clock={props.clock}
           typeDescription={props.types?.[deadline.type]?.description}
+          archived={props.archived}
         />
       ))}
     </ul>

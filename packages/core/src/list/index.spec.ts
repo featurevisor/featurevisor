@@ -910,6 +910,13 @@ describe("core: list", function () {
       ]);
     });
 
+    test("reads statuses and types in any case, as Catalog does", async () => {
+      expect(await keys({ deadline: ["Overdue"] })).toEqual(["redesign"]);
+      expect(await keys({ deadline: ["REVIEW", "Later"] })).toEqual(["banner"]);
+      expect(await keys({ deadline: ["Remove"] })).toEqual(["checkout"]);
+      await expect(list({ deadline: ["Deprecate", "OPEN"] })).resolves.not.toThrow();
+    });
+
     test("adds each deadline's status to JSON entries when filtering by deadline", async () => {
       const [checkout] = await run({ deadline: ["remove"], now: "2027-01-15T12:00:00Z" });
       expect(checkout.deadlineStatuses).toEqual([
@@ -927,6 +934,24 @@ describe("core: list", function () {
       options,
     });
 
+    /** Lists the features above as the CLI would, printing nothing */
+    const list = async (options: Record<string, unknown>, config: unknown = projectConfig) => {
+      const log = jest.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        return await listProject({
+          rootDirectoryPath: "",
+          projectConfig: config as any,
+          datasource: {
+            listFeatures: async () => Object.keys(features),
+            readFeature: async (key: string) => features[key],
+          } as any,
+          options: { features: true, json: true, ...options },
+        });
+      } finally {
+        log.mockRestore();
+      }
+    };
+
     test("validates the flags", async () => {
       await expect(listProject(deps({ tests: true, owner: ["a"] }))).rejects.toThrow(
         "Option --owner can only be used with --features, --variables, --segments, --attributes, --targets, --schemas.",
@@ -943,6 +968,34 @@ describe("core: list", function () {
       await expect(listProject(deps({ features: true, deadline: ["reveiw"] }))).rejects.toThrow(
         'Invalid --deadline: "reveiw" is neither a status (overdue, today, upcoming, later, open, done) nor a deadline type of this project (review, remove, deprecate). Did you mean "review"?',
       );
+    });
+
+    test("refuses a slip of a status, unless the project declares a type of that name", async () => {
+      const open = (deadline: string[], schema: unknown) => list({ deadline }, schema);
+      await expect(open(["overdu"], {})).rejects.toThrow(
+        'Invalid --deadline: "overdu" is not a status. Did you mean "overdue"? To filter by a deadline type of that name, declare it in metadataSchema.',
+      );
+      // other types of deadline are allowed, and the slip still never names one
+      await expect(
+        open(["Upcomin"], {
+          metadataSchema: {
+            type: "object",
+            properties: { deadlines: { properties: { review: {} }, additionalProperties: {} } },
+          },
+        }),
+      ).rejects.toThrow('Invalid --deadline: "Upcomin" is not a status. Did you mean "upcoming"?');
+      // a type of another name, in a project that allows any type
+      await expect(open(["cleanup"], {})).resolves.not.toThrow();
+      // a type that reads like a slip of "done" is refused, until the project declares it
+      await expect(open(["dome"], {})).rejects.toThrow('Did you mean "done"?');
+      await expect(
+        open(["Dome"], {
+          metadataSchema: {
+            type: "object",
+            properties: { deadlines: { properties: { dome: {} } } },
+          },
+        }),
+      ).resolves.not.toThrow();
     });
   });
 

@@ -77,6 +77,7 @@ describe("Catalog reads metadata as Core does", () => {
         review: { by: "2027-01-01T12:00:00Z", done: "2026-12-30T16:00:00Z" },
         remove: { by: "2027-01-20T12:00:00Z" },
         notify: { by: "2026-12-01T12:00:00Z" },
+        Audit: { by: "2027-01-20T12:00:00Z" },
         undated: { by: "2027-01-20" },
         broken: { done: true },
       },
@@ -98,6 +99,12 @@ describe("Catalog reads metadata as Core does", () => {
       ["remove", "overdue"],
       ["review", "done"],
       ["review", "remove"],
+      // statuses and types in any case
+      ["Overdue"],
+      ["DONE"],
+      ["REMOVE", "Upcoming"],
+      ["audit"],
+      ["AUDIT", "later"],
     ];
     for (const values of filters) {
       expect(

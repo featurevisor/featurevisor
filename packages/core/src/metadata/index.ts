@@ -78,8 +78,9 @@ export function getDeadlineTypeError(key: string): string | undefined {
     : "A deadline type starts with a letter, and has only letters, digits, _ and -.";
 }
 
+/** Whether a filter value is a status word, in any case, as Catalog's `deadline:` reads it */
 export function isDeadlineStatusFilter(value: string): boolean {
-  return (DEADLINE_STATUS_FILTERS as readonly string[]).includes(value);
+  return (DEADLINE_STATUS_FILTERS as readonly string[]).includes(value.toLowerCase());
 }
 
 /** A calendar date written as YYYY-MM-DD that exists. Deadlines need a time too, and lint says so */
@@ -191,9 +192,10 @@ export function getDeadlineStatus(
 /** Whether a status matches a filter word. `upcoming` includes today, `open` is anything not done. */
 export function matchesDeadlineStatus(status: DeadlineStatus | undefined, filter: string) {
   if (!status) return false;
-  if (filter === "open") return status !== "done";
-  if (filter === "upcoming") return status === "today" || status === "upcoming";
-  return status === filter;
+  const word = filter.toLowerCase();
+  if (word === "open") return status !== "done";
+  if (word === "upcoming") return status === "today" || status === "upcoming";
+  return status === word;
 }
 
 /** "notifyCustomers" reads "Notify customers", and "remove_code" "Remove code" */
@@ -230,14 +232,16 @@ export function getDeadlines(metadata: unknown): DeadlineEntry[] {
     .map(([type, deadline]) => ({ type, deadline: deadline as Deadline }));
 }
 
-/** Whether one deadline of a type, in a status, matches every value of a filter */
+/** Whether one deadline of a type, in a status, matches every value of a filter, in any case */
 export function matchesDeadline(
   type: string,
   status: DeadlineStatus | undefined,
   values: string[],
 ): boolean {
   return values.every((value) =>
-    isDeadlineStatusFilter(value) ? matchesDeadlineStatus(status, value) : type === value,
+    isDeadlineStatusFilter(value)
+      ? matchesDeadlineStatus(status, value)
+      : type.toLowerCase() === value.toLowerCase(),
   );
 }
 

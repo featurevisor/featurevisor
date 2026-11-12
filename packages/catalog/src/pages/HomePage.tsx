@@ -117,6 +117,8 @@ export function OverviewPage() {
   const comingUp = deadlines.filter(
     (item) => item.status === "today" || item.status === "upcoming" || item.status === "later",
   );
+  // As many as the Deadlines page lists as open, overdue ones too
+  const openCount = deadlines.filter((item) => item.status !== "done").length;
   // Only once a project names owners does a feature without one need attention
   const unownedFeatures = features.some((entity) => entity.owners?.length)
     ? features.filter((entity) => !entity.owners?.length && !entity.archived)
@@ -283,8 +285,8 @@ export function OverviewPage() {
               to={`${basePath}/deadlines`}
               className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
             >
-              {comingUp.length > COMING_UP_LIMIT
-                ? `View all ${comingUp.length} open deadlines`
+              {openCount > COMING_UP_LIMIT
+                ? `View all ${openCount} open deadlines`
                 : "View all deadlines"}
             </Link>
           </OverviewSection>

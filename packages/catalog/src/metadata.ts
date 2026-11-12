@@ -137,15 +137,17 @@ export function getDeadlineStatus(
   return days <= UPCOMING_DAYS ? "upcoming" : "later";
 }
 
+/** Whether a filter value is a status word, in any case, as `list --deadline` reads it */
 export function isDeadlineStatusFilter(value: string): boolean {
-  return (DEADLINE_STATUS_FILTERS as readonly string[]).includes(value);
+  return (DEADLINE_STATUS_FILTERS as readonly string[]).includes(value.toLowerCase());
 }
 
 export function matchesDeadlineStatus(status: DeadlineStatus | undefined, filter: string) {
   if (!status) return false;
-  if (filter === "open") return status !== "done";
-  if (filter === "upcoming") return status === "today" || status === "upcoming";
-  return status === filter;
+  const word = filter.toLowerCase();
+  if (word === "open") return status !== "done";
+  if (word === "upcoming") return status === "today" || status === "upcoming";
+  return status === word;
 }
 
 /** "notifyCustomers" reads "Notify customers", and "remove_code" "Remove code" */
@@ -214,9 +216,21 @@ export function matchesDeadlineFilters(
 
 const DESCRIPTION_LIMIT = 160;
 
+/** A description short enough for the index, ending on a whole word, with an ellipsis when cut */
+function shortenDescription(description: string): string {
+  if (description.length <= DESCRIPTION_LIMIT) return description;
+  // Room for the ellipsis, and the last word whole unless that would lose half the text
+  let cut = description.slice(0, DESCRIPTION_LIMIT - 1);
+  if (/\S/.test(description[DESCRIPTION_LIMIT - 1])) {
+    const words = cut.replace(/\s+\S*$/, "");
+    if (words.length >= DESCRIPTION_LIMIT / 2) cut = words;
+  }
+  return `${cut.trimEnd()}…`;
+}
+
 /** One deadline as an index string: type, by, done and description */
 export function encodeDeadline(deadline: Deadline): string {
-  const description = (deadline.description || "").slice(0, DESCRIPTION_LIMIT);
+  const description = shortenDescription(deadline.description || "");
   return [
     deadline.type,
     deadline.by,
@@ -250,41 +264,35 @@ export function getSummaryDeadlines(entity: EntitySummary): Deadline[] {
   return deadlines;
 }
 
-const STATUS_ORDER: Record<DeadlineStatus, number> = {
-  overdue: 0,
-  today: 1,
-  upcoming: 2,
-  later: 3,
-  done: 4,
-};
-
-/** The deadline that matters most: the earliest overdue, then the next one due */
+/**
+ * The deadline that matters most: the earliest open one, which is the earliest overdue when any
+ * is, since an open deadline's status follows its moment.
+ */
 export function getMostPressingDeadline(deadlines: Deadline[], clock: DeadlineClock) {
-  let best: { deadline: Deadline; status: DeadlineStatus; days: number } | undefined;
+  let best: { deadline: Deadline; status: DeadlineStatus; time: number } | undefined;
   for (const deadline of deadlines) {
     const status = getDeadlineStatus(deadline, clock);
-    const days = getDaysUntilDeadline(deadline.by, clock);
-    if (!status || status === "done" || days === undefined) continue;
-    if (
-      !best ||
-      STATUS_ORDER[status] < STATUS_ORDER[best.status] ||
-      (STATUS_ORDER[status] === STATUS_ORDER[best.status] && days < best.days)
-    ) {
-      best = { deadline, status, days };
-    }
+    const time = getDeadlineTimestamp(deadline.by);
+    if (!status || status === "done" || time === null) continue;
+    if (!best || time < best.time) best = { deadline, status, time };
   }
   return best;
 }
 
+/**
+ * Open deadlines first, by the moment they are due, then those done, the latest first. One that
+ * is not a date Featurevisor can read comes last.
+ */
 export function compareDeadlines(
-  left: { status?: DeadlineStatus; days?: number },
-  right: { status?: DeadlineStatus; days?: number },
+  left: { deadline: { by: string }; status?: DeadlineStatus },
+  right: { deadline: { by: string }; status?: DeadlineStatus },
 ) {
-  const rank = (status?: DeadlineStatus) => (status ? STATUS_ORDER[status] : 5);
-  if (left.status === "done" || right.status === "done") {
-    return rank(left.status) - rank(right.status) || (right.days ?? 0) - (left.days ?? 0);
-  }
-  return (left.days ?? Infinity) - (right.days ?? Infinity);
+  const rank = (status?: DeadlineStatus) => (!status ? 2 : status === "done" ? 1 : 0);
+  const byRank = rank(left.status) - rank(right.status);
+  if (byRank !== 0) return byRank;
+  const leftTime = getDeadlineTimestamp(left.deadline.by) ?? 0;
+  const rightTime = getDeadlineTimestamp(right.deadline.by) ?? 0;
+  return left.status === "done" ? rightTime - leftTime : leftTime - rightTime;
 }
 
 const METADATA_TERM_LIMIT = 24;
@@ -370,19 +378,15 @@ const METADATA_TYPES: CatalogEntityType[] = [
   "schema",
 ];
 
-const cache = new WeakMap<CatalogIndex, Map<string, ProjectDeadline[]>>();
+/** Each index's deadlines, for the latest minute they were worked out in */
+const cache = new WeakMap<CatalogIndex, { key: string; deadlines: ProjectDeadline[] }>();
 
 /** Every deadline in an index, archived definitions apart, nearest first */
 export function getProjectDeadlines(index: CatalogIndex, clock: DeadlineClock): ProjectDeadline[] {
-  let byDay = cache.get(index);
-  if (!byDay) {
-    byDay = new Map();
-    cache.set(index, byDay);
-  }
   // Statuses change at most by the minute, so a page shares one list while the minute lasts
   const cacheKey = `${clock.today}|${Math.floor(clock.now / 60000)}`;
-  const cached = byDay.get(cacheKey);
-  if (cached) return cached;
+  const cached = cache.get(index);
+  if (cached?.key === cacheKey) return cached.deadlines;
 
   const deadlines = METADATA_TYPES.flatMap((type) =>
     (index.entities[type] || [])
@@ -400,6 +404,6 @@ export function getProjectDeadlines(index: CatalogIndex, clock: DeadlineClock): 
     (left, right) =>
       compareDeadlines(left, right) || left.entity.key.localeCompare(right.entity.key),
   );
-  byDay.set(cacheKey, deadlines);
+  cache.set(index, { key: cacheKey, deadlines });
   return deadlines;
 }

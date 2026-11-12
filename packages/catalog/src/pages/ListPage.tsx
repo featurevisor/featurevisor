@@ -29,6 +29,7 @@ import {
   getDeadlineStatus,
   getMostPressingDeadline,
   getSummaryDeadlines,
+  isDeadlineStatusFilter,
   matchesDeadlineFilters,
   matchesMetadataFilter,
   splitMetadataTerm,
@@ -255,7 +256,13 @@ export function getMetadataChips(
 
   const deadlines = entities.flatMap((entity) => getSummaryDeadlines(entity));
   if (deadlines.length === 0) return chips;
-  const statuses = new Set(deadlines.map((deadline) => getDeadlineStatus(deadline, clock)));
+  // Status chips count only what needs attention, which leaves archived definitions out
+  const statuses = new Set(
+    entities
+      .filter((entity) => !entity.archived)
+      .flatMap((entity) => getSummaryDeadlines(entity))
+      .map((deadline) => getDeadlineStatus(deadline, clock)),
+  );
   const deadline = (label: string, token: string) =>
     chips.push({ label, token, group: "Deadlines", labelled: true });
   if (statuses.has("overdue")) deadline("Overdue", "deadline:overdue");
@@ -529,12 +536,19 @@ export function createQueryMatcher(
     .filter((qualifier) => qualifier.key === "deadline")
     .map((qualifier) => qualifier.value);
   const clock = context.clock || getDeadlineClock();
+  // An archived definition's deadlines need no attention, as on the home page and in lint, so a
+  // status finds them only beside `archived:true`, as `list --archived=true --deadline` does
+  const byStatus = deadlineValues.some(isDeadlineStatusFilter);
+  const askedForArchived = parsedQuery.qualifiers.some(
+    (qualifier) => qualifier.key === "archived" && qualifier.value === "true",
+  );
   return (entity) =>
     parsedQuery.qualifiers.every((qualifier) =>
       matchesQualifier(entity, qualifier.key, qualifier.value, related, context),
     ) &&
     (deadlineValues.length === 0 ||
-      matchesDeadlineFilters(getSummaryDeadlines(entity), deadlineValues, clock)) &&
+      ((!entity.archived || !byStatus || askedForArchived) &&
+        matchesDeadlineFilters(getSummaryDeadlines(entity), deadlineValues, clock))) &&
     parsedQuery.terms.every((term) => getHaystack(entity).includes(term));
 }
 

@@ -89,17 +89,17 @@ module.exports = {
 - `properties.owner` narrows owners. With a list of owners, each must match.
 - `properties.deadlines.properties` declares deadline types. Once declared, only those are allowed, unless `additionalProperties` gives a type for the rest. Its `required` lists types every definition with deadlines must have.
 - A type may declare its own fields with `properties`, and `required` them, but never `by`, `done` or `description`. A deadline takes only the fields its type declares by name, so a type has no `additionalProperties`, and an undeclared field such as `ticket` fails lint until the type declares it.
-- `required` at the root applies only to definitions that have metadata. `requireMetadataIn: ['features', 'variables']` requires metadata itself, archived definitions apart. One schema covers every kind.
+- `required` at the root applies only to definitions that have metadata. `requireMetadataIn: ['features', 'variables']` requires metadata itself, archived definitions apart. One schema covers every kind. An empty `metadata: {}` fails lint, so leave the key out when there is nothing to record.
 
 Read the project's `metadataSchema` before writing metadata, and use its owner names and deadline types.
 
 ## Lint codes
 
-| Code               | Cause                                                                          |
-| ------------------ | ------------------------------------------------------------------------------ |
-| `invalid_metadata` | Not an object, a value with no JSON form, or a wrong `owner` or deadline shape |
-| `metadata_schema`  | A value the project's `metadataSchema` refuses                                 |
-| `missing_metadata` | A kind listed in `requireMetadataIn` has no metadata                           |
+| Code               | Cause                                                                           |
+| ------------------ | ------------------------------------------------------------------------------- |
+| `invalid_metadata` | Not an object, empty, a value with no JSON form, or a wrong `owner` or deadline |
+| `metadata_schema`  | A value the project's `metadataSchema` refuses                                  |
+| `missing_metadata` | A kind listed in `requireMetadataIn` has no metadata                            |
 
 ## Find it
 
@@ -109,9 +109,9 @@ npx featurevisor list --features --deadline=overdue --json
 npx featurevisor list --features --deadline=remove --deadline=upcoming --now=2027-02-15T12:00:00Z
 ```
 
-`--owner` repeated means every owner. `--deadline` takes a status or a type, and repeated values must all describe the same deadline. `--now` takes a timestamp and fixes the moment statuses use, for stable reports. JSON entries keep `metadata` as written and, with `--deadline`, add `deadlineStatuses`.
+`--owner` repeated means every owner. `--deadline` takes a status or a type, in any case, and repeated values must all describe the same deadline. A near miss of a status, such as `overdu`, is refused with the status it is closest to. `--now` takes a timestamp and fixes the moment statuses use, for stable reports. JSON entries keep `metadata` as written and, with `--deadline`, add `deadlineStatuses`.
 
-In Catalog, lists filter by `owner:`, `deadline:` and `metadata:key=value`, search finds owners and metadata values, and the home page and the Deadlines page show what is overdue and coming up.
+In Catalog, lists filter by `owner:`, `deadline:` and `metadata:key=value`, search finds owners and metadata values, and the home page and the Deadlines page show what is overdue and coming up. Archived definitions are left out of deadline statuses everywhere, unless a list search adds `archived:true`.
 
 ## Elsewhere
 

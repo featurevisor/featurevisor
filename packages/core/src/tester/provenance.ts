@@ -67,12 +67,6 @@ export function createTestInputSnapshot(datasource: Datasource): Datasource {
   });
 }
 
-/**
- * Hash effective authored inputs once per Set, not once per target or case.
- * Paths, parsers and adapters are transport; their parsed results are hashed.
- * Object order inside definitions is retained because matrix order defines case IDs.
- * This is input equality, not a signature or proof of runner authenticity.
- */
 /** A definition as tests see it. Metadata can never change a result, so it never stales a report. */
 function withoutMetadata(definition: unknown) {
   if (!definition || typeof definition !== "object" || !("metadata" in definition)) {
@@ -83,6 +77,12 @@ function withoutMetadata(definition: unknown) {
   return rest;
 }
 
+/**
+ * Hash effective authored inputs once per Set, not once per target or case.
+ * Paths, parsers and adapters are transport; their parsed results are hashed.
+ * Object order inside definitions is retained because matrix order defines case IDs.
+ * This is input equality, not a signature or proof of runner authenticity.
+ */
 export async function getTestInputFingerprint(
   projectConfig: ProjectConfig,
   datasource: Datasource,

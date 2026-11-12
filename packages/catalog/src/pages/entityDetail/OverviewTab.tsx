@@ -68,7 +68,7 @@ export function OverviewTab() {
     <div className="space-y-6">
       <EntityOverviewMeta detail={detail} entity={entity} setKey={setKey} />
 
-      <DeadlinesSection metadata={entity.metadata} />
+      <DeadlinesSection metadata={entity.metadata} archived={entity.archived === true} />
 
       <DescriptionField value={entity.description} showTopDivider={false} />
 
@@ -171,7 +171,7 @@ export function OverviewTab() {
 }
 
 /** What a definition's metadata plans, open deadlines first */
-function DeadlinesSection(props: { metadata: unknown }) {
+function DeadlinesSection(props: { metadata: unknown; archived: boolean }) {
   const { manifest } = useCatalog();
   // Worked out when the page is viewed, so an export never shows a stale status
   const clock = React.useMemo(() => getDeadlineClock(), []);
@@ -184,6 +184,7 @@ function DeadlinesSection(props: { metadata: unknown }) {
         deadlines={deadlines}
         clock={clock}
         types={manifest.projectConfig.deadlineTypes}
+        archived={props.archived}
       />
     </OverviewSection>
   );

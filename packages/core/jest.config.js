@@ -1,5 +1,6 @@
 module.exports = {
   bail: true,
+  globalSetup: "<rootDir>/jest.timezone.setup.js",
   transform: {
     "^.+\\.[tj]sx?$": [
       "@swc/jest",

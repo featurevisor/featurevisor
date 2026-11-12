@@ -414,6 +414,16 @@ export function lintMetadata(value: unknown, schema?: MetadataSchema): MetadataI
     });
     return issues;
   }
+  // As with `deadlines`, an empty object records nothing, and would pass for metadata a project requires
+  if (Object.keys(json).length === 0) {
+    issues.push({
+      code: "invalid_metadata",
+      message:
+        "Expected `metadata` to record something. Leave it out when there is nothing to record.",
+      path: [],
+    });
+    return issues;
+  }
 
   if (json.owner !== undefined) checkOwner(json.owner, schema, issues);
   if (json.deadlines !== undefined) checkDeadlines(json.deadlines, schema, issues);

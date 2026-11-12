@@ -152,6 +152,10 @@ describe("metadata filters", () => {
     [["remove", "overdue"], false],
     [["review", "done"], true],
     [["review", "remove"], false],
+    // in any case, as in Catalog
+    [["Overdue"], true],
+    [["REMOVE", "Upcoming"], true],
+    [["Remove", "OVERDUE"], false],
   ])("%j matches: %s", (values, matches) => {
     expect(matchesDeadlineFilters(metadata, values, today)).toBe(matches);
   });

@@ -57,6 +57,8 @@ function execute(projectDirectoryPath, args, options = {}) {
       ...process.env,
       FORCE_COLOR: "0",
       NO_COLOR: "1",
+      // Deadlines count days in the reader's timezone, so every run reads them as CI does
+      TZ: options.timeZone || "UTC",
     },
     timeout: 120_000,
   });
@@ -278,6 +280,17 @@ function testDeadlineWarnings(projectDirectoryPath) {
       ],
     );
   });
+  // In Tokyo, 17:00 UTC is already the next morning, so the same moment finds the removal a day away
+  const tokyo = execute(projectDirectoryPath, ["lint", "--json", "--now=2026-11-30T12:00:00Z"], {
+    timeZone: "Asia/Tokyo",
+  });
+  assert.equal(tokyo.status, 0, tokyo.stderr);
+  assert.deepEqual(
+    JSON.parse(tokyo.stdout)
+      .warnings.filter((warning) => warning.code.startsWith("deadline_"))
+      .map(({ key, code }) => `${key}: ${code}`),
+    ["redesign: deadline_overdue"],
+  );
   const dayAfter = ["lint", "--now=2026-12-01T12:00:00Z", "--entity-type=feature"];
   run(projectDirectoryPath, dayAfter, (result) => {
     assert.match(

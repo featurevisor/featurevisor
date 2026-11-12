@@ -9,7 +9,7 @@ import { getDeadlineWarnings } from "./deadlineWarnings";
 import { lintPlugin, lintProject } from "./lintProject";
 import { LINT_WARNING_CODES } from "./warningCodes";
 
-// Midday in UTC is 1 March in every usual timezone, so these read the same wherever they run
+// Tests run in UTC (jest.timezone.setup.js), where midday on 1 March is still 1 March
 const clock = getDeadlineClock("2027-03-01T12:00:00Z");
 
 describe("getDeadlineWarnings", () => {
@@ -217,6 +217,41 @@ describe("deadline warnings in lint", () => {
     }
   });
 
+  it("prints a file's header once above its errors and the warnings --fail-on makes errors", async () => {
+    write(
+      "features/checkout.yml",
+      [
+        "description: Checkout",
+        "colour: red",
+        "metadata:",
+        "  deadlines:",
+        "    review:",
+        `      by: "${overdue}"`,
+        "    remove:",
+        `      by: "${overdue}"`,
+        "bucketBy: userId",
+        rules,
+      ].join("\n"),
+    );
+    const log = jest.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      await lintProject({ ...getDependencies(), options: {} } as any, {
+        entityType: "feature",
+        now: "2027-03-01T12:00:00Z",
+        failOn: ["deadline_overdue"],
+      });
+      const printed = log.mock.calls.map((call) => call.join(" "));
+      const header = path.join("features", "checkout.yml");
+      expect(printed.filter((line) => line.includes(header))).toHaveLength(1);
+      const errors = printed.filter((line) => line.includes("=> Error:"));
+      expect(errors).toHaveLength(3);
+      expect(errors[0]).toContain("colour");
+      expect(printed.indexOf(errors[1])).toBeGreaterThan(printed.indexOf(errors[0]));
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it("passes the CLI's --now and --fail-on to lint, and fails when they find something", async () => {
     const log = jest.spyOn(console, "log").mockImplementation(() => {});
     try {
@@ -261,23 +296,5 @@ describe("deadline warnings in lint", () => {
     await expect(lintPlugin.handler({ ...getDependencies(), parsed } as any)).rejects.toMatchObject(
       { message, code: "invalid_cli_arguments" },
     );
-  });
-});
-
-describe("lint warning codes", () => {
-  it("lists only codes lint reports", () => {
-    const sources = [
-      ...fs
-        .readdirSync(__dirname)
-        .filter((file) => file.endsWith(".ts") && !file.includes(".spec.")),
-    ]
-      .map((file) => fs.readFileSync(path.join(__dirname, file), "utf8"))
-      // Expressions warn from their own package, which sits beside this one
-      .concat(fs.readFileSync(path.join(__dirname, "../../../expressions/src/parser.ts"), "utf8"))
-      .join("\n")
-      .replace(/export const LINT_WARNING_CODES = \[[^\]]*\]/, "");
-    for (const code of LINT_WARNING_CODES) {
-      expect(`${code}: ${sources.includes(`"${code}"`)}`).toBe(`${code}: true`);
-    }
   });
 });

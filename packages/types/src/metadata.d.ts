@@ -3,9 +3,9 @@ export type DeadlineType = string;
 
 /** When something should happen to a definition. It never changes evaluation. */
 export interface Deadline {
-  /** A date, `YYYY-MM-DD`, or a timestamp with a timezone */
+  /** The moment it is due, as an ISO 8601 timestamp with a timezone, such as `2027-03-01T09:00:00Z` */
   by: string;
-  /** `true`, or the date or timestamp it was done */
+  /** `true`, or the timestamp it was done. `false` means not done. */
   done?: boolean | string;
   description?: string;
   /** Fields of the deadline's type, declared in `metadataSchema` */

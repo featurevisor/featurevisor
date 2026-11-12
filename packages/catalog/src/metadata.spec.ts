@@ -64,6 +64,23 @@ describe("Catalog metadata", () => {
     );
   });
 
+  it("shortens a long description at a word, with an ellipsis", () => {
+    const description = (text: string) =>
+      decodeDeadline(
+        encodeDeadline({ type: "remove", by: "2027-01-20T12:00:00Z", description: text }),
+      ).description!;
+    const words = Array.from({ length: 40 }, (_, index) => `word${index}`).join(" ");
+    const short = description(words);
+    expect(short.length).toBeLessThanOrEqual(160);
+    expect(short.endsWith("…")).toBe(true);
+    expect(words.startsWith(short.slice(0, -1))).toBe(true);
+    // the last word is whole
+    expect(words.split(" ")).toContain(short.slice(0, -1).split(" ").pop());
+    // a text without spaces is cut where it must be
+    expect(description("x".repeat(200))).toBe(`${"x".repeat(159)}…`);
+    expect(description("Short")).toBe("Short");
+  });
+
   it("finds the deadline that matters most", () => {
     const deadlines = [
       { type: "later", by: "2027-06-01T12:00:00Z" },
@@ -76,12 +93,35 @@ describe("Catalog metadata", () => {
     expect(getMostPressingDeadline(deadlines.slice(0, 2), clock)?.deadline.type).toBe("soon");
     expect(getMostPressingDeadline([deadlines[4]], clock)).toBeUndefined();
     // open ones come first, and done ones after, most recent first
+    const item = (by: string, done?: true) => ({
+      deadline: { by },
+      status: getDeadlineStatus({ by, done }, clock),
+    });
     expect(
-      compareDeadlines({ status: "done", days: -3 }, { status: "overdue", days: -9 }),
+      compareDeadlines(item("2027-01-12T12:00:00Z", true), item("2027-01-06T12:00:00Z")),
     ).toBeGreaterThan(0);
     expect(
-      compareDeadlines({ status: "done", days: -3 }, { status: "done", days: -9 }),
+      compareDeadlines(item("2027-01-12T12:00:00Z", true), item("2027-01-06T12:00:00Z", true)),
     ).toBeLessThan(0);
+  });
+
+  it("orders deadlines on one day by their moment", () => {
+    const sameDay = [
+      { type: "evening", by: "2027-01-15T20:00:00Z" },
+      { type: "morning", by: "2027-01-15T08:00:00Z" },
+      { type: "afternoon", by: "2027-01-15T15:00:00Z" },
+    ];
+    const sorted = sameDay
+      .map((deadline) => ({ deadline, status: getDeadlineStatus(deadline, clock) }))
+      .sort(compareDeadlines);
+    // the morning one is overdue at midday, before the ones still due today
+    expect(sorted.map(({ deadline, status }) => `${deadline.type} ${status}`)).toEqual([
+      "morning overdue",
+      "afternoon today",
+      "evening today",
+    ]);
+    expect(getMostPressingDeadline(sameDay, clock)?.deadline.type).toBe("morning");
+    expect(getMostPressingDeadline(sameDay.slice(0, 1), clock)?.deadline.type).toBe("evening");
   });
 
   it("matches one deadline against every filter value", () => {
@@ -171,5 +211,10 @@ describe("Catalog metadata", () => {
       ["variable", "c", "overdue"],
       ["feature", "a", "upcoming"],
     ]);
+    // one list while the minute lasts, and a new one after it
+    expect(getProjectDeadlines(index, clock)).toBe(getProjectDeadlines(index, clock));
+    const later = getDeadlineClock("2027-01-15T12:01:00Z");
+    expect(getProjectDeadlines(index, later)).not.toBe(getProjectDeadlines(index, clock));
+    expect(getProjectDeadlines(index, later)).toEqual(getProjectDeadlines(index, clock));
   });
 });

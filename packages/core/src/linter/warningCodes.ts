@@ -1,6 +1,7 @@
 /**
  * Every code lint reports as a warning. `lint --fail-on` takes these, and makes the warnings with
- * them errors. A new warning code joins this list, which `warningCodes.spec.ts` checks.
+ * them errors. A new warning code joins this list. `warningCodes.spec.ts` checks the list against
+ * the places lint warns from, both ways.
  */
 export const LINT_WARNING_CODES = [
   "composition_experiment_override",

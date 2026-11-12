@@ -1251,17 +1251,33 @@ function assertMetadataListOptions(
     assertNowOption(options.now);
   }
 
-  // A type the project's schema cannot have would never match
+  // Statuses and types match in any case, as in Catalog
   const typesSchema = projectConfig?.metadataSchema?.properties?.deadlines;
   const declared = Object.keys(typesSchema?.properties || {});
-  if (declared.length > 0 && !typesSchema?.additionalProperties) {
-    for (const value of listValues(options.deadline)) {
-      if (!isDeadlineStatusFilter(value) && !declared.includes(value)) {
-        throw new FeaturevisorCLIError(
-          `Invalid --deadline: ${JSON.stringify(value)} is neither a status (${DEADLINE_STATUS_FILTERS.join(", ")}) nor a deadline type of this project (${declared.join(", ")}).${suggestKey(value, [...DEADLINE_STATUS_FILTERS, ...declared])}`,
-          { code: "invalid_cli_arguments", details: { option: "deadline", value } },
-        );
-      }
+  const isDeclared = (value: string) =>
+    declared.some((type) => type.toLowerCase() === value.toLowerCase());
+  for (const value of listValues(options.deadline)) {
+    if (isDeadlineStatusFilter(value) || isDeclared(value)) continue;
+    const refuse = (message: string) => {
+      throw new FeaturevisorCLIError(`Invalid --deadline: ${JSON.stringify(value)} ${message}`, {
+        code: "invalid_cli_arguments",
+        details: { option: "deadline", value },
+      });
+    };
+
+    // A type the project's schema cannot have would never match
+    if (declared.length > 0 && !typesSchema?.additionalProperties) {
+      refuse(
+        `is neither a status (${DEADLINE_STATUS_FILTERS.join(", ")}) nor a deadline type of this project (${declared.join(", ")}).${suggestKey(value, [...DEADLINE_STATUS_FILTERS, ...declared])}`,
+      );
+    }
+
+    // A slip of a status would match nothing, as a type no definition has
+    const status = suggestKey(value.toLowerCase(), [...DEADLINE_STATUS_FILTERS]);
+    if (status) {
+      refuse(
+        `is not a status.${status} To filter by a deadline type of that name, declare it in metadataSchema.`,
+      );
     }
   }
 }
