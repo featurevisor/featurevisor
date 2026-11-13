@@ -70,8 +70,6 @@ export function OverviewTab() {
 
       <DeadlinesSection metadata={entity.metadata} archived={entity.archived === true} />
 
-      <DescriptionField value={entity.description} showTopDivider={false} />
-
       {(detail.type === "feature" || detail.type === "variable") &&
         entity.conditions !== undefined && (
           <OverviewSection title="Root conditions">
@@ -91,6 +89,8 @@ export function OverviewTab() {
             )}
           </OverviewSection>
         )}
+
+      <DescriptionField value={entity.description} showTopDivider={false} />
 
       {detail.type === "feature" && <FeatureSummary entity={entity} />}
 
