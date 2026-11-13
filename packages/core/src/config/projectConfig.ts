@@ -1,6 +1,6 @@
 import * as path from "path";
 
-import type { BucketBy } from "@featurevisor/types";
+import type { BucketBy, MetadataKind } from "@featurevisor/types";
 import { Parser, parsers } from "@featurevisor/parsers";
 
 import { FilesystemAdapter } from "../datasource/filesystemAdapter";
@@ -12,6 +12,8 @@ import { assertAllowedConditions } from "./allowedConditions";
 import type { AllowedConditions } from "./allowedConditions";
 import { assertEnvironmentSettings } from "./environmentSettings";
 import type { InheritEnvironments } from "./environmentSettings";
+import { assertMetadataSettings } from "./metadataSettings";
+import type { MetadataSchema } from "./metadataSettings";
 
 export const FEATURES_DIRECTORY_NAME = "features";
 export const SEGMENTS_DIRECTORY_NAME = "segments";
@@ -72,6 +74,10 @@ export interface ProjectConfig {
   requireRulesIn?: string[];
   /** Environments every global variable's `overrides` must write out, if only as an empty list. */
   requireOverridesIn?: string[];
+  /** Validates the `metadata` of every definition, and declares the project's deadline types. */
+  metadataSchema?: MetadataSchema;
+  /** Kinds of definition that must have `metadata`, archived ones apart. */
+  requireMetadataIn?: MetadataKind[];
   sets: boolean;
   tags: string[];
   reservedKeys?: string[];
@@ -118,6 +124,8 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
     inheritEnvironments: undefined,
     requireRulesIn: undefined,
     requireOverridesIn: undefined,
+    metadataSchema: undefined,
+    requireMetadataIn: undefined,
     sets: DEFAULT_SETS,
     promotionFlows: undefined,
     namespaceCharacter: DEFAULT_NAMESPACE_CHARACTER,
@@ -339,6 +347,7 @@ export function getProjectConfig(rootDirectoryPath: string): ProjectConfig {
   }
 
   assertEnvironmentSettings(finalConfig);
+  assertMetadataSettings(finalConfig);
 
   if (
     typeof finalConfig.namespaceCharacter !== "string" ||

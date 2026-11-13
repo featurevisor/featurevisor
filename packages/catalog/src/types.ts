@@ -76,6 +76,12 @@ export interface EntitySummary {
   environmentsDiffer?: boolean;
   /** Authored names and values for search, as "kind:value" strings. */
   searchTerms?: string[];
+  /** Owners from the definition's metadata. */
+  owners?: string[];
+  /** Deadlines from its metadata, each read with `decodeDeadline` in metadata.ts. */
+  deadlines?: string[];
+  /** The rest of its metadata, as "path=value" strings for filters and search. */
+  metadataTerms?: string[];
   lastModified?: LastModified;
   href: string;
 }
@@ -100,6 +106,8 @@ export interface CatalogManifest {
     inheritEnvironments?: Record<string, { from: string }>;
     /** Whether the project writes conditions as expressions, which offers that view of them */
     conditionExpressions?: boolean;
+    /** Deadline types the project's metadataSchema declares, with what each one means */
+    deadlineTypes?: Record<string, { description?: string }>;
     namespaceCharacter?: string;
   };
   dev?: {

@@ -67,6 +67,16 @@ export function createTestInputSnapshot(datasource: Datasource): Datasource {
   });
 }
 
+/** A definition as tests see it. Metadata can never change a result, so it never stales a report. */
+function withoutMetadata(definition: unknown) {
+  if (!definition || typeof definition !== "object" || !("metadata" in definition)) {
+    return definition;
+  }
+  const rest = { ...(definition as Record<string, unknown>) };
+  delete rest.metadata;
+  return rest;
+}
+
 /**
  * Hash effective authored inputs once per Set, not once per target or case.
  * Paths, parsers and adapters are transport; their parsed results are hashed.
@@ -88,6 +98,9 @@ export async function getTestInputFingerprint(
     "prettyDatafile",
     "datafileNamePattern",
     "revisionFileName",
+    // Metadata is for people, and can never change what a test evaluates
+    "metadataSchema",
+    "requireMetadataIn",
   ]);
   add(
     Object.fromEntries(
@@ -101,7 +114,7 @@ export async function getTestInputFingerprint(
     add([plural, [...keys].sort()]);
     for (const key of [...keys].sort()) {
       try {
-        add([key, await (datasource as any)[`read${singular}`](key)]);
+        add([key, withoutMetadata(await (datasource as any)[`read${singular}`](key))]);
       } catch (error) {
         throw new Error(
           `Could not read ${singular.toLowerCase()} "${key}" for test report provenance: ${error instanceof Error ? error.message : String(error)}`,

@@ -40,6 +40,7 @@ import {
 } from "./schema";
 import { refineWithMessage, UNKNOWN_REFERENCE } from "./zodHelpers";
 import { suggestKey } from "./diagnostics";
+import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 import {
   removedConditionFields,
   refineRemovedConditionFields,
@@ -1781,6 +1782,8 @@ export function getFeatureZodSchema(
       promotable: z.boolean().optional(),
       description: z.string(),
 
+      metadata: getMetadataZodSchema(projectConfig).optional(),
+
       tags: z
         .array(
           refineWithMessage(
@@ -1996,6 +1999,7 @@ export function getFeatureZodSchema(
         : z.partialRecord(z.enum(environmentKeys as [string, ...string[]]), rulesSchema).optional(),
     })
     .strict()
+    .check(...requiredMetadataChecks(projectConfig, "features"))
     .superRefine((value, ctx) => {
       refineRemovedConditionFields(value, ctx);
       if (value.archived !== true) {

@@ -23,6 +23,7 @@ const common = {
 
 module.exports = {
   bail: true,
+  globalSetup: "<rootDir>/jest.timezone.setup.js",
   projects: [
     {
       ...common,

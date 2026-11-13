@@ -1,3 +1,5 @@
+import { toMetadataJson } from "../metadata";
+
 const cachedMethods = new Set([
   "listSets",
   "listFeatures",
@@ -95,8 +97,20 @@ interface Copied<T> {
   value: T;
 }
 
+/**
+ * A definition with its metadata as JSON writes it. Cloning would turn a TOML date and time into a
+ * Date, losing its offset, and a TOML date alone into a timestamp lint would never accept.
+ */
+function withMetadataJson<T>(value: T): T {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const metadata = (value as { metadata?: unknown }).metadata;
+  if (metadata === undefined || metadata === null || typeof metadata !== "object") return value;
+  const json = toMetadataJson(metadata);
+  return json === undefined ? value : { ...value, metadata: json };
+}
+
 function own<T>(value: T, share: boolean): Shared<T> | Copied<T> {
-  const copy = structuredClone(value);
+  const copy = structuredClone(withMetadataJson(value));
   return share && isPlainData(copy)
     ? { shared: true, value: deepFreeze(copy) }
     : { shared: false, value: copy };

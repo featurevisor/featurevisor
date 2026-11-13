@@ -53,6 +53,11 @@ import {
 } from "./dependencyDepth";
 import { getMutationOrderChanges } from "./mutationOrder";
 import { getTestContextWarnings } from "./contextWarnings";
+import { getDeadlineWarnings } from "./deadlineWarnings";
+import { LINT_WARNING_CODES, isLintWarningCode } from "./warningCodes";
+import { suggestKey } from "./diagnostics";
+import { FeaturevisorCLIError } from "../error";
+import { assertNowOption, getDeadlineClock } from "../metadata";
 import { createCompositionWarningInspector } from "./compositionWarnings";
 import { diagnosticParseOptions } from "./diagnostics";
 import { EntityParseError } from "../datasource/parseError";
@@ -89,6 +94,10 @@ export interface LintProjectOptions {
   pretty?: boolean;
   v3MutationOrder?: boolean;
   verbose?: boolean;
+  /** The moment deadlines are checked at, as an ISO 8601 timestamp. Now, when left out */
+  now?: string;
+  /** Warning codes reported as errors, so they fail lint */
+  failOn?: string[];
 }
 
 export interface LintErrorItem {
@@ -210,10 +219,15 @@ export async function lintProject(
   const isJsonMode = options.json === true;
   const errors: LintErrorItem[] = [];
   const warnings: LintErrorItem[] = [];
+  const deadlineClock = getDeadlineClock(options.now);
+  const failOn = new Set(options.failOn || []);
+  /** The file whose header was printed last, while only its errors have followed it */
+  let lastHeaderPath: string | undefined;
   const reportedParseErrors = new Set<string>();
 
   function log(...args: unknown[]) {
     if (!isJsonMode) {
+      lastHeaderPath = undefined;
       console.log(...args);
     }
   }
@@ -326,6 +340,7 @@ export async function lintProject(
       return;
     }
 
+    lastHeaderPath = fullPath;
     console.log(CLI_FORMAT_BOLD_UNDERLINE, fullPath);
 
     if (options.authors) {
@@ -461,11 +476,28 @@ export async function lintProject(
     return item;
   }
 
-  function reportWarning(warning: LintErrorItem) {
+  async function reportWarning(warning: LintErrorItem) {
     const item = withExpressionLocation(warning);
     if (isRepeatedExpressionLocation(item)) return;
+    if (item.code && failOn.has(item.code)) {
+      // `--fail-on` makes this warning an error, printed and counted as one, under the file's
+      // header unless that header is what was printed last
+      errors.push(item);
+      if (!isJsonMode) {
+        const fullPath = path.resolve(process.cwd(), item.filePath);
+        if (lastHeaderPath !== fullPath)
+          await printEntityHeader(item.entityType, item.key, fullPath);
+        console.log(CLI_FORMAT_RED, `  => Error: ${item.message}`);
+        printExpressionDetails(item);
+        if (item.line === undefined || !expressionFrames.has(item))
+          console.log("     Path:", item.path.join(".") || "(root)");
+        console.log("");
+      }
+      return;
+    }
     warnings.push(item);
     if (!isJsonMode) {
+      lastHeaderPath = undefined;
       console.log(
         `  => Warning: ${item.message} (${item.entityType} ${item.key}: ${item.path.join(".")})`,
       );
@@ -544,14 +576,15 @@ export async function lintProject(
           record.path,
           warning,
         );
-        reportWarning(item);
+        await reportWarning(item);
       }
     }
-    if (definition) reportExpressionSemverText(entityType, key, fullPath, records, definition);
+    if (definition)
+      await reportExpressionSemverText(entityType, key, fullPath, records, definition);
   }
 
   /** `appVersion == '5.5.0'` compares text, which is rarely meant for a version attribute. */
-  function reportExpressionSemverText(
+  async function reportExpressionSemverText(
     entityType: LintEntityType,
     key: string,
     fullPath: string,
@@ -573,7 +606,7 @@ export async function lintProject(
         if (!attribute || (attribute as { format?: unknown }).format !== "semver") continue;
         if (typeof condition.value !== "string") continue;
         const symbol = condition.operator === "equals" ? "==" : "!=";
-        reportWarning(
+        await reportWarning(
           locateExpressionItem(
             {
               filePath: path.relative(process.cwd(), fullPath),
@@ -732,7 +765,7 @@ export async function lintProject(
     );
     // checks stricter than earlier versions had warn until the next major version
     for (const issue of issues.filter((issue) => issue.warning)) {
-      reportWarning({
+      await reportWarning({
         filePath: path.relative(process.cwd(), fullPath),
         entityType,
         key,
@@ -813,7 +846,7 @@ export async function lintProject(
       });
     }
   }
-  const attributeZodSchema = getAttributeZodSchema();
+  const attributeZodSchema = getAttributeZodSchema(projectConfig);
   const attributesByKey: Record<string, Attribute> = {};
 
   for (const key of attributes) {
@@ -875,6 +908,7 @@ export async function lintProject(
         if (!result.success && "error" in result) {
           await reportZodValidationError("attribute", key, fullPath, result.error);
         }
+        await reportDeadlines("attribute", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("attribute", key, fullPath, error);
       }
@@ -961,14 +995,33 @@ export async function lintProject(
     }
   }
 
-  function reportDeprecatedReferences(
+  /** Open deadlines that are overdue or due today warn, and never fail lint */
+  async function reportDeadlines(
+    entityType: LintEntityType,
+    key: string,
+    fullPath: string,
+    definition: unknown,
+  ) {
+    for (const warning of getDeadlineWarnings(definition, deadlineClock)) {
+      await reportWarning({
+        filePath: path.relative(process.cwd(), fullPath),
+        entityType,
+        key,
+        path: warning.path,
+        code: warning.code,
+        message: warning.message,
+      });
+    }
+  }
+
+  async function reportDeprecatedReferences(
     entityType: "segment" | "feature" | "variable",
     key: string,
     fullPath: string,
     definition: unknown,
   ) {
     for (const warning of getDeprecatedReferenceWarnings(entityType, definition, referenceIndex)) {
-      reportWarning({
+      await reportWarning({
         filePath: path.relative(process.cwd(), fullPath),
         entityType,
         key,
@@ -1071,7 +1124,8 @@ export async function lintProject(
         }
         await reportArchivedReferences("segment", key, fullPath, parsed);
         await reportConditionKinds("segment", key, fullPath, parsed);
-        reportDeprecatedReferences("segment", key, fullPath, parsed);
+        await reportDeprecatedReferences("segment", key, fullPath, parsed);
+        await reportDeadlines("segment", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("segment", key, fullPath, error);
       } finally {
@@ -1179,10 +1233,11 @@ export async function lintProject(
         }
         await reportArchivedReferences("feature", key, fullPath, parsed);
         await reportConditionKinds("feature", key, fullPath, parsed);
-        reportDeprecatedReferences("feature", key, fullPath, parsed);
+        await reportDeprecatedReferences("feature", key, fullPath, parsed);
+        await reportDeadlines("feature", key, fullPath, parsed);
         if (options.v3MutationOrder) {
           for (const change of getMutationOrderChanges(parsed)) {
-            reportWarning({
+            await reportWarning({
               filePath: path.relative(process.cwd(), fullPath),
               entityType: "feature",
               key,
@@ -1289,7 +1344,8 @@ export async function lintProject(
         );
         await reportArchivedReferences("variable", key, fullPath, parsed);
         await reportConditionKinds("variable", key, fullPath, parsed);
-        reportDeprecatedReferences("variable", key, fullPath, parsed);
+        await reportDeprecatedReferences("variable", key, fullPath, parsed);
+        await reportDeadlines("variable", key, fullPath, parsed);
 
         if (!result.success && "error" in result) {
           await reportZodValidationError("variable", key, fullPath, result.error, {
@@ -1297,7 +1353,7 @@ export async function lintProject(
           });
         } else if (result.success && !archived) {
           for (const warning of getCompositionWarnings(result.data)) {
-            reportWarning({
+            await reportWarning({
               ...warning,
               filePath: path.relative(process.cwd(), fullPath),
               entityType: "variable",
@@ -1314,7 +1370,7 @@ export async function lintProject(
   }
 
   // lint schemas (schemas and schemasByKey already loaded above for feature linting)
-  const schemaZodSchema = getSchemaZodSchema(schemas, schemasByKey);
+  const schemaZodSchema = getSchemaZodSchema(schemas, schemasByKey, projectConfig);
 
   if (!options.entityType || options.entityType === "schema") {
     await lintReservedNamespaceCharacterInEntityPaths("schema");
@@ -1347,6 +1403,7 @@ export async function lintProject(
         if (!result.success && "error" in result) {
           await reportZodValidationError("schema", key, fullPath, result.error);
         }
+        await reportDeadlines("schema", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("schema", key, fullPath, error);
       }
@@ -1393,6 +1450,7 @@ export async function lintProject(
         } else {
           parsedTargets.set(key, parsed);
         }
+        await reportDeadlines("target", key, fullPath, parsed);
         await reportArchivedReferences("target", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("target", key, fullPath, error);
@@ -1525,7 +1583,7 @@ export async function lintProject(
         const parsed = await datasource.readTest(key);
 
         for (const warning of getTestContextWarnings(parsed, attributesByKey, schemasByKey)) {
-          reportWarning({
+          await reportWarning({
             filePath: path.relative(process.cwd(), fullPath),
             entityType: "test",
             key,
@@ -1591,7 +1649,7 @@ export async function lintProject(
       try {
         const parsed = await datasource.readScenario(key);
         for (const warning of getTestContextWarnings(parsed, attributesByKey, schemasByKey, true)) {
-          reportWarning({
+          await reportWarning({
             filePath: path.relative(process.cwd(), fullPath),
             entityType: "scenario",
             key,
@@ -1682,7 +1740,7 @@ export async function lintProject(
             code: "dependency_depth_exceeded",
           });
         } else {
-          reportWarning({
+          await reportWarning({
             filePath: path.relative(process.cwd(), getFullPathFromKey(entityType, key)),
             entityType,
             key,
@@ -1698,7 +1756,7 @@ export async function lintProject(
           node[0] === "variable" ? "variable" : node[0] === "segment" ? "segment" : "feature";
         const key = node[1];
         if (options.entityType && options.entityType !== entityType) continue;
-        reportWarning({
+        await reportWarning({
           filePath: path.relative(process.cwd(), getFullPathFromKey(entityType, key)),
           entityType,
           key,
@@ -1728,6 +1786,19 @@ export const lintPlugin: Plugin = {
     const { rootDirectoryPath, projectConfig, datasource, parsed } = options;
 
     assertProjectSetJsonSelection(projectConfig, parsed.set, parsed.json);
+    assertNowOption(parsed.now);
+    const failOn: string[] = ([] as unknown[]).concat(parsed.failOn ?? []).map(String);
+    for (const code of failOn) {
+      if (!isLintWarningCode(code)) {
+        throw new FeaturevisorCLIError(
+          `Invalid --fail-on: ${JSON.stringify(code)} is not a lint warning code.${
+            suggestKey(code, [...LINT_WARNING_CODES]) ||
+            ` The warning codes are ${LINT_WARNING_CODES.join(", ")}.`
+          }`,
+          { code: "invalid_cli_arguments", details: { option: "failOn", value: code } },
+        );
+      }
+    }
 
     const executions = await getProjectSetExecutions(projectConfig, datasource, parsed.set);
     let hasError = false;
@@ -1750,6 +1821,8 @@ export const lintPlugin: Plugin = {
           pretty: parsed.pretty,
           v3MutationOrder: parsed.v3MutationOrder,
           verbose: parsed.verbose,
+          now: parsed.now,
+          failOn,
         },
       );
 
@@ -1804,6 +1877,14 @@ export const lintPlugin: Plugin = {
     {
       command: 'lint --key-pattern="abc"',
       description: `Lint only entities with keys containing "abc"`,
+    },
+    {
+      command: "lint --now=2027-03-01T09:00:00Z",
+      description: "Warn about deadlines as they stand at a moment",
+    },
+    {
+      command: "lint --fail-on=deadline_overdue",
+      description: "Fail on overdue deadlines, as well as on errors",
     },
     {
       command: "lint --json",

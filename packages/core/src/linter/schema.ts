@@ -1,7 +1,9 @@
 import type { Schema, SchemaKey, Value } from "@featurevisor/types";
 import { z } from "zod";
 
+import type { ProjectConfig } from "../config";
 import { refineWithMessage } from "./zodHelpers";
+import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 import {
   formatValueMessage,
   refineRemovedSchemaType,
@@ -546,12 +548,17 @@ export const propertyTypeEnum = schemaTypeZodSchema();
 export function getSchemaZodSchema(
   schemaKeys: SchemaKey[] = [],
   schemasByKey: Record<string, Schema> = {},
+  /** Given when parsing a schema definition, whose root alone can have `metadata` */
+  projectConfig?: ProjectConfig,
 ) {
-  const schemaZodSchema: z.ZodType<Schema> = z.lazy(() =>
+  const node = (root: boolean): z.ZodType<Schema> =>
     z
       .object({
         description: z.string().optional(),
         promotable: z.boolean().optional(),
+        ...(root && projectConfig
+          ? { metadata: getMetadataZodSchema(projectConfig).optional() }
+          : {}),
         type: propertyTypeEnum.optional(),
         enum: z.array(valueZodSchema).optional(),
         const: valueZodSchema.optional(),
@@ -593,8 +600,12 @@ export function getSchemaZodSchema(
       .superRefine((data, ctx) => refineMinimumMaximum(data, [], ctx))
       .superRefine((data, ctx) => refineStringLengthPattern(data, [], ctx))
       .superRefine((data, ctx) => refineSchemaFormat(data, [], ctx, schemasByKey))
-      .superRefine((data, ctx) => refineArrayItems(data, [], ctx)),
-  );
+      .superRefine((data, ctx) => refineArrayItems(data, [], ctx))
+      .check(
+        ...requiredMetadataChecks(root ? projectConfig : undefined, "schemas"),
+      ) as unknown as z.ZodType<Schema>;
 
-  return schemaZodSchema;
+  const schemaZodSchema: z.ZodType<Schema> = z.lazy(() => node(false));
+
+  return projectConfig ? z.lazy(() => node(true)) : schemaZodSchema;
 }

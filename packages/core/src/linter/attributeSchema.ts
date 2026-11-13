@@ -1,7 +1,9 @@
 import type { AttributeProperty, AttributeType } from "@featurevisor/types";
 import { z } from "zod";
 
+import type { ProjectConfig } from "../config";
 import { countZodSchema, valueZodSchema, refineArrayItems, refineMinimumMaximum } from "./schema";
+import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 import {
   refineRemovedSchemaType,
   schemaFormatZodSchema,
@@ -487,7 +489,7 @@ function refineArrayAttributesAreStringArrays(
   }
 }
 
-export function getAttributeZodSchema() {
+export function getAttributeZodSchema(projectConfig?: ProjectConfig) {
   const attributePropertySchema: z.ZodType<AttributeProperty> = z.lazy(() =>
     z
       .object({
@@ -552,6 +554,7 @@ export function getAttributeZodSchema() {
       promotable: z.boolean().optional(),
       type: attributeTypeEnum.optional(),
       description: z.string(),
+      ...(projectConfig ? { metadata: getMetadataZodSchema(projectConfig).optional() } : {}),
       enum: z.array(valueZodSchema).optional(),
       const: valueZodSchema.optional(),
       minimum: z.number().optional(),
@@ -620,7 +623,8 @@ export function getAttributeZodSchema() {
     )
     .superRefine((data, ctx) => refineRequiredKeysInAttributeSchema(data, [], ctx))
     .superRefine((data, ctx) => refineNoNestedObjectProperties(data, [], ctx))
-    .superRefine((data, ctx) => refineArrayAttributesAreStringArrays(data, [], ctx));
+    .superRefine((data, ctx) => refineArrayAttributesAreStringArrays(data, [], ctx))
+    .check(...requiredMetadataChecks(projectConfig, "attributes"));
 
   return attributeZodSchema;
 }

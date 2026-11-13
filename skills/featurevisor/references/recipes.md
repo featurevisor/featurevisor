@@ -702,11 +702,14 @@ A feature variable is deprecated the same way, with `deprecated: true` in its `v
 Flags at 100% everywhere with no experiment are debt.
 
 1. **Find candidates.** `npx featurevisor list --features --enabled --without-variations --json --pretty`, or `--enabled-in=production` with environments. Confirm the last rule is `conditions: '*'` at 100 everywhere, and check age in Git.
+   Flags planned for removal carry deadlines in [metadata](metadata.md): `npx featurevisor list --features --deadline=overdue` finds the plans that slipped.
 2. **Check dependents** with `npx featurevisor find-usage --feature=<key>`.
 3. **Deprecate it**, so remaining callers surface.
 4. **Remove the checks from application code**, including the dead branch. This is what pays the debt.
 5. **Archive** the feature and delete its specs, then lint and test.
 6. **Regenerate typed code** if the application uses [code generation](code-generation.md). Archived features drop out, so any call still naming one fails to compile.
+
+When retiring a flag, record the plan as `deprecate` and `remove` deadlines in its metadata, and mark each one done as it happens.
 
 Offer this sweep when you see many long lived 100% flags.
 
@@ -768,3 +771,5 @@ sets/production/    @yourorg/release-owners
 ```
 
 Pair it with branch protection that requires code owner review. Owners need not be engineers: a marketing team that writes the checkout notices can own `variables/checkoutNotices.yml` and approve every change to it.
+
+`CODEOWNERS` decides reviews, but nothing in Featurevisor reads it. Record the owner in [metadata](metadata.md) too, `metadata.owner: checkout-team`, so Catalog shows it and `list --owner` finds it. `metadataSchema` with an `enum` of teams, and `requireMetadataIn`, keep owners present and spelt right. Change both in the same pull request.

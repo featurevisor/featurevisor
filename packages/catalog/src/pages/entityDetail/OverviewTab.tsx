@@ -43,6 +43,14 @@ import {
 } from "../../components/dependencies";
 import type { EntityDependencies } from "../../dependencyIndex";
 import { FormattedValue, asStringArray, getEnvironmentMap, useEntityDetail } from "./shared";
+import {
+  DeadlineList,
+  MetadataFields,
+  OwnerChips,
+  getDeadlineEntries,
+  getMetadataEntries,
+} from "../../components/metadata";
+import { getDeadlineClock, getOwners } from "../../metadata";
 
 export function OverviewTab() {
   const { detail, setKey } = useEntityDetail();
@@ -60,7 +68,7 @@ export function OverviewTab() {
     <div className="space-y-6">
       <EntityOverviewMeta detail={detail} entity={entity} setKey={setKey} />
 
-      <DescriptionField value={entity.description} showTopDivider={false} />
+      <DeadlinesSection metadata={entity.metadata} archived={entity.archived === true} />
 
       {(detail.type === "feature" || detail.type === "variable") &&
         entity.conditions !== undefined && (
@@ -81,6 +89,8 @@ export function OverviewTab() {
             )}
           </OverviewSection>
         )}
+
+      <DescriptionField value={entity.description} showTopDivider={false} />
 
       {detail.type === "feature" && <FeatureSummary entity={entity} />}
 
@@ -157,6 +167,26 @@ export function OverviewTab() {
         </>
       )}
     </div>
+  );
+}
+
+/** What a definition's metadata plans, open deadlines first */
+function DeadlinesSection(props: { metadata: unknown; archived: boolean }) {
+  const { manifest } = useCatalog();
+  // Worked out when the page is viewed, so an export never shows a stale status
+  const clock = React.useMemo(() => getDeadlineClock(), []);
+  const deadlines = getDeadlineEntries(props.metadata);
+  if (deadlines.length === 0) return null;
+
+  return (
+    <OverviewSection title="Deadlines">
+      <DeadlineList
+        deadlines={deadlines}
+        clock={clock}
+        types={manifest.projectConfig.deadlineTypes}
+        archived={props.archived}
+      />
+    </OverviewSection>
   );
 }
 
@@ -785,6 +815,15 @@ function EntityOverviewMeta(props: {
   const targets = detail.relationships?.targets;
   const hasStatus =
     entity.archived === true || entity.deprecated === true || entity.promotable === false;
+  const owners = getOwners(entity.metadata);
+  const ownerRow = owners.length ? (
+    <OverviewMetaRow label={owners.length === 1 ? "Owner" : "Owners"}>
+      <OwnerChips owners={owners} type={detail.type} setKey={setKey} />
+    </OverviewMetaRow>
+  ) : null;
+  // The rest of the metadata closes the panel, below a rule
+  const metadataEntries = getMetadataEntries(entity.metadata);
+  const metadata = metadataEntries.length ? <MetadataFields entries={metadataEntries} /> : null;
 
   if (detail.type === "feature") {
     const showBucketBy = hasBucketBy(entity.bucketBy);
@@ -792,17 +831,18 @@ function EntityOverviewMeta(props: {
     const hasRelations =
       Boolean(tags?.length) || Boolean(targets?.length) || hasDependencies(detail, dependencies);
 
-    if (!hasStatus && !hasFacts && !hasRelations) {
+    if (!hasStatus && !ownerRow && !hasFacts && !hasRelations && !metadata) {
       return null;
     }
 
     return (
-      <OverviewMetaPanel>
+      <OverviewMetaPanel footer={metadata} footerLabel="Metadata">
         {hasStatus && (
           <OverviewMetaRow label="Status">
             <EntityStatusBadges entity={entity} />
           </OverviewMetaRow>
         )}
+        {ownerRow}
         {showBucketBy && (
           <OverviewMetaRow label="Bucket by">
             <BucketByDisplay value={entity.bucketBy} setKey={setKey} />
@@ -845,17 +885,18 @@ function EntityOverviewMeta(props: {
     const hasRelations =
       Boolean(tags?.length) || Boolean(targets?.length) || hasDependencies(detail, dependencies);
 
-    if (!hasStatus && !hasFacts && !hasRelations) {
+    if (!hasStatus && !ownerRow && !hasFacts && !hasRelations && !metadata) {
       return null;
     }
 
     return (
-      <OverviewMetaPanel>
+      <OverviewMetaPanel footer={metadata} footerLabel="Metadata">
         {hasStatus && (
           <OverviewMetaRow label="Status">
             <EntityStatusBadges entity={entity} />
           </OverviewMetaRow>
         )}
+        {ownerRow}
         {hasType ? (
           <OverviewMetaRow label="Type">
             <OverviewChip>{typeLabel}</OverviewChip>
@@ -899,17 +940,18 @@ function EntityOverviewMeta(props: {
     detail.type === "segment" || detail.type === "attribute" || detail.type === "schema";
   const segmentTargets = detail.type === "segment" ? targets : undefined;
 
-  if (!hasStatus && !showType && !hasUsage) {
+  if (!hasStatus && !ownerRow && !showType && !hasUsage && !metadata) {
     return null;
   }
 
   return (
-    <OverviewMetaPanel>
+    <OverviewMetaPanel footer={metadata} footerLabel="Metadata">
       {hasStatus && (
         <OverviewMetaRow label="Status">
           <EntityStatusBadges entity={entity} />
         </OverviewMetaRow>
       )}
+      {ownerRow}
       {showType && (
         <OverviewMetaRow label="Type">
           <OverviewChip>{entity.type ? String(entity.type) : "oneOf"}</OverviewChip>

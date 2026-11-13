@@ -59,6 +59,7 @@ test.each([
     };
     const html = renderDetail(detail);
     expect(html).toContain(">Root conditions</h2>");
+    expect(html.indexOf(">Root conditions</h2>")).toBeLessThan(html.indexOf(">Description</div>"));
     expect(html).toContain(
       "Checked before composition sources and overrides. When they are not met, neither runs.",
     );

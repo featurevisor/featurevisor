@@ -1,3 +1,4 @@
+import type { Metadata } from "./metadata";
 import type { Conditions } from "./condition";
 
 export type SegmentKey = string;
@@ -8,6 +9,7 @@ export interface Segment {
   key?: SegmentKey;
   conditions: Conditions;
   description?: string; // only available in YAML files
+  metadata?: Metadata;
 }
 
 export type PlainGroupSegment = SegmentKey;

@@ -1,3 +1,4 @@
+import type { Metadata } from "./metadata";
 export type SchemaKey = string;
 
 export type ObjectValue = { [key: string]: Value };
@@ -20,6 +21,8 @@ export interface Schema {
   // Basic metadata
   description?: string;
   promotable?: boolean;
+  /** Only at the root of a schema definition, never in a nested schema */
+  metadata?: Metadata;
 
   // General validation keywords
   type?: SchemaType;

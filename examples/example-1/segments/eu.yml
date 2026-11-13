@@ -1,5 +1,8 @@
 description: EU
 
+metadata:
+  owner: platform-team
+
 conditions:
   - attribute: continent
     operator: equals

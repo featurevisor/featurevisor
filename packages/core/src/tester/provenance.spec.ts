@@ -51,6 +51,22 @@ describe("test input fingerprint contract", () => {
     };
   }
 
+  it("ignores metadata and its settings, which can never change a result", async () => {
+    const source = fixture();
+    const fingerprint = () => getTestInputFingerprint(source.config, source.datasource);
+    const before = await fingerprint();
+    source.definitions.Feature.flag.metadata = { owner: "checkout-team" };
+    source.definitions.Variable.limit.metadata = {
+      deadlines: { review: { by: "2027-01-15T09:00:00Z" } },
+    };
+    source.config.metadataSchema = { type: "object" };
+    source.config.requireMetadataIn = ["features"];
+    expect(await fingerprint()).toBe(before);
+    // anything else in the same definition still counts
+    source.definitions.Feature.flag.description = "Changed";
+    expect(await fingerprint()).not.toBe(before);
+  });
+
   it.each(["Feature", "Segment", "Attribute", "Schema", "Variable", "Target", "Test", "Scenario"])(
     "covers dirty %s input additions, edits and removals",
     async (kind) => {

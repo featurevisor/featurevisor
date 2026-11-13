@@ -1,5 +1,8 @@
 description: Checkout features
 
+metadata:
+  owner: checkout-team
+
 tag: checkout
 
 includeVariables:

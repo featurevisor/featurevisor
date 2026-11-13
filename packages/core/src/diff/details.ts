@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from "node:util";
 
 import { ENVIRONMENT_KEYS, writesEnvironment } from "../config/environmentSettings";
+import { DEADLINE_FIELDS } from "../metadata";
 import { describeConditions, sameConditions, type ConditionsView } from "./conditions";
 
 /** Authored identities for readable reports, separate from positional JSON field changes. */
@@ -15,7 +16,16 @@ export interface DiffDetail {
   text?: { before?: string; after?: string };
 }
 
-type Context = "feature" | "variable" | "segment" | "rule" | "override" | "variation" | "plain";
+type Context =
+  | "feature"
+  | "variable"
+  | "segment"
+  | "rule"
+  | "override"
+  | "variation"
+  /** The root of an attribute, target or schema, whose keys read as written */
+  | "definition"
+  | "plain";
 type RecordValue = Record<string, unknown>;
 const record = (value: unknown): value is RecordValue =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -238,12 +248,15 @@ function fields(
   if (!record(before) || !record(after)) return changed("Value", before, after);
   // keys of arbitrary values, and of segments, read as written
   const label = (key: string) =>
-    context === "plain" || context === "segment" ? quote(key) : title(key);
+    context === "plain" || context === "segment" || context === "definition"
+      ? quote(key)
+      : title(key);
   return keys(before, after).flatMap((key) => {
     const oldValue = own(before, key) ? before[key] : undefined;
     const newValue = own(after, key) ? after[key] : undefined;
     if (isDeepStrictEqual(oldValue, newValue)) return [];
-    if (key === "conditions" && context !== "plain") return conditions(oldValue, newValue, view);
+    if (key === "conditions" && context !== "plain" && context !== "definition")
+      return conditions(oldValue, newValue, view);
     if (context === "feature" && key === "rules")
       return environments("Rules", oldValue, newValue, "rule", view);
     if (context === "variable" && key === "overrides")
@@ -257,12 +270,50 @@ function fields(
     if ((context === "rule" || context === "variation") && key === "variableOverrides")
       return variables(oldValue, newValue, true, view);
     if (context === "override" && key === "mutate") return mutations(oldValue, newValue, view);
+    if (key === "metadata" && context !== "plain") return metadata(oldValue, newValue, view);
     if (record(oldValue) && record(newValue)) {
       // Arbitrary variable values never acquire rule or override semantics just from their field names.
       return group(label(key), fields(oldValue, newValue, "plain", view));
     }
     return changed(label(key), oldValue, newValue);
   });
+}
+
+/** Metadata reads by its own keys: the owner, each deadline by its type, then the project's keys */
+function metadata(before: unknown, after: unknown, view: ConditionsView): DiffDetail[] {
+  if (!record(before) || !record(after)) return changed("Metadata", before, after);
+  const children = keys(before, after).flatMap((key) => {
+    const oldValue = own(before, key) ? before[key] : undefined;
+    const newValue = own(after, key) ? after[key] : undefined;
+    if (isDeepStrictEqual(oldValue, newValue)) return [];
+    if (key === "owner") return changed("Owner", oldValue, newValue);
+    if (key === "deadlines" && record(oldValue) && record(newValue)) {
+      return keys(oldValue, newValue).flatMap((type) => {
+        const label = `Deadline ${quote(type)}`;
+        const oldDeadline = own(oldValue, type) ? oldValue[type] : undefined;
+        const newDeadline = own(newValue, type) ? newValue[type] : undefined;
+        if (!record(oldDeadline) || !record(newDeadline)) {
+          return changed(label, oldDeadline, newDeadline);
+        }
+        return group(
+          label,
+          keys(oldDeadline, newDeadline).flatMap((field) =>
+            changed(
+              DEADLINE_FIELDS.includes(field) ? title(field) : quote(field),
+              own(oldDeadline, field) ? oldDeadline[field] : undefined,
+              own(newDeadline, field) ? newDeadline[field] : undefined,
+            ),
+          ),
+        );
+      });
+    }
+    if (key === "deadlines") return changed("Deadlines", oldValue, newValue);
+    if (record(oldValue) && record(newValue)) {
+      return group(quote(key), fields(oldValue, newValue, "plain", view));
+    }
+    return changed(quote(key), oldValue, newValue);
+  });
+  return group("Metadata", children);
 }
 
 /** Conditions read as every command reads them, shown as trees */
@@ -325,7 +376,7 @@ export function describeDefinitionChanges(
 ): DiffDetail[] {
   if (before === undefined || after === undefined) return changed("Definition", before, after);
   const context =
-    entity === "feature" || entity === "variable" || entity === "segment" ? entity : "plain";
+    entity === "feature" || entity === "variable" || entity === "segment" ? entity : "definition";
   return fields(before, after, context, view);
 }
 

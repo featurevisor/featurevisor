@@ -50,6 +50,34 @@ import {
 import { getCheckReferences } from "../tester/checks";
 import { compileConditions, walkConditionLeaves } from "../datasource/conditions";
 import { listTestSpecs } from "./scenarios";
+import {
+  DEADLINE_STATUS_FILTERS,
+  getDeadlineClock,
+  getDeadlineStatuses,
+  assertNowOption,
+  getOwners,
+  isDeadlineStatusFilter,
+  matchesDeadline,
+  METADATA_KINDS,
+  toMetadataJson,
+} from "../metadata";
+import type { DeadlineClock } from "../metadata";
+import { suggestKey } from "../linter/diagnostics";
+
+function listValues(value: unknown): string[] {
+  if (value === undefined) return [];
+  return (Array.isArray(value) ? value : [value]).map(String);
+}
+
+/** The deadline filters of `list`, with a clock fixed once for the whole run */
+function getMetadataFilters(options: Dependencies["options"]) {
+  const owners = listValues(options.owner);
+  const deadlines = listValues(options.deadline);
+  const clock: DeadlineClock | undefined = deadlines.length
+    ? getDeadlineClock(options.now)
+    : undefined;
+  return { owners, deadlines, clock };
+}
 
 async function getEntitiesWithTests(
   deps: Dependencies,
@@ -305,6 +333,8 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     targetVariableKeys = await getTargetVariableKeys(datasource, targets);
   }
 
+  const metadataFilters = getMetadataFilters(options);
+
   async function initializeEntitiesWithTests() {
     if (entitiesWithTestsInitialized) {
       return;
@@ -365,6 +395,26 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
       if (keyRegex) {
         if (!keyRegex.test(key)) {
           continue;
+        }
+      }
+
+      // --owner=<owner>, every one of them
+      // --deadline=<status or type>, every one of them on the same deadline
+      const { owners, deadlines, clock } = metadataFilters;
+      if (owners.length || clock) {
+        const metadata = toMetadataJson((entity as { metadata?: unknown }).metadata);
+        const entityOwners = getOwners(metadata);
+        if (!owners.every((owner) => entityOwners.includes(owner))) {
+          continue;
+        }
+        if (clock) {
+          const deadlineStatuses = getDeadlineStatuses(metadata, clock);
+          if (
+            !deadlineStatuses.some(({ type, status }) => matchesDeadline(type, status, deadlines))
+          ) {
+            continue;
+          }
+          entity = { ...entity, deadlineStatuses };
         }
       }
     }
@@ -828,7 +878,17 @@ function printResult({ result, entityType, options }) {
 
   for (const item of result) {
     const composition = entityType === "variable" && item.compose ? " (composed)" : "";
-    console.log(`  ${colorize("•", CLI_COLOR_CYAN)} ${item.key}${composition}`);
+    // Only the deadlines the filter matched. JSON keeps every one.
+    const values = listValues(options.deadline);
+    const deadlines = Array.isArray(item.deadlineStatuses)
+      ? item.deadlineStatuses
+          .filter(({ type, status }) => matchesDeadline(type, status, values))
+          .map(({ type, by, status }) => `${type} by ${by}, ${status}`)
+          .join(" · ")
+      : "";
+    console.log(
+      `  ${colorize("•", CLI_COLOR_CYAN)} ${item.key}${composition}${deadlines ? `  ${colorize(deadlines, CLI_COLOR_YELLOW)}` : ""}`,
+    );
   }
 
   console.log("");
@@ -1154,6 +1214,8 @@ function assertListOptions(options: Record<string, any>, projectConfig?: Project
     }
   }
 
+  assertMetadataListOptions(options, selector, projectConfig);
+
   if (selector === "tests" && typeof options.description !== "undefined") {
     throw new FeaturevisorCLIError(
       "Option --description cannot be used with --tests. Use --assertion-pattern instead.",
@@ -1162,6 +1224,61 @@ function assertListOptions(options: Record<string, any>, projectConfig?: Project
         details: { selector, option: "description" },
       },
     );
+  }
+}
+
+function assertMetadataListOptions(
+  options: Dependencies["options"],
+  selector: string,
+  projectConfig?: ProjectConfig,
+) {
+  for (const option of ["owner", "deadline"]) {
+    if (typeof options[option] !== "undefined" && !METADATA_KINDS.includes(selector as never)) {
+      throw new FeaturevisorCLIError(
+        `Option ${toFlag(option)} can only be used with ${METADATA_KINDS.map((name) => `--${name}`).join(", ")}.`,
+        { code: "incompatible_cli_options", details: { selector, option } },
+      );
+    }
+  }
+
+  if (typeof options.now !== "undefined") {
+    if (typeof options.deadline === "undefined") {
+      throw new FeaturevisorCLIError("Option --now needs --deadline, whose statuses it fixes.", {
+        code: "missing_cli_option",
+        details: { selector, option: "deadline" },
+      });
+    }
+    assertNowOption(options.now);
+  }
+
+  // Statuses and types match in any case, as in Catalog
+  const typesSchema = projectConfig?.metadataSchema?.properties?.deadlines;
+  const declared = Object.keys(typesSchema?.properties || {});
+  const isDeclared = (value: string) =>
+    declared.some((type) => type.toLowerCase() === value.toLowerCase());
+  for (const value of listValues(options.deadline)) {
+    if (isDeadlineStatusFilter(value) || isDeclared(value)) continue;
+    const refuse = (message: string) => {
+      throw new FeaturevisorCLIError(`Invalid --deadline: ${JSON.stringify(value)} ${message}`, {
+        code: "invalid_cli_arguments",
+        details: { option: "deadline", value },
+      });
+    };
+
+    // A type the project's schema cannot have would never match
+    if (declared.length > 0 && !typesSchema?.additionalProperties) {
+      refuse(
+        `is neither a status (${DEADLINE_STATUS_FILTERS.join(", ")}) nor a deadline type of this project (${declared.join(", ")}).${suggestKey(value, [...DEADLINE_STATUS_FILTERS, ...declared])}`,
+      );
+    }
+
+    // A slip of a status would match nothing, as a type no definition has
+    const status = suggestKey(value.toLowerCase(), [...DEADLINE_STATUS_FILTERS]);
+    if (status) {
+      refuse(
+        `is not a status.${status} To filter by a deadline type of that name, declare it in metadataSchema.`,
+      );
+    }
   }
 }
 

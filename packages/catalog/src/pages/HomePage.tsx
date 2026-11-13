@@ -24,6 +24,11 @@ import { HistoryTimeline } from "./HistoryPage";
 import { TestReportSummary } from "../components/testReport";
 import { useCatalogIndex } from "../useCatalogIndex";
 import { useDocumentTitle } from "../useDocumentTitle";
+import { getDeadlineClock, getProjectDeadlines } from "../metadata";
+import { ProjectDeadlineList } from "../components/metadata";
+
+/** How many deadlines the home page shows before linking to the rest */
+const COMING_UP_LIMIT = 5;
 
 function AttentionRow(props: {
   label: string;
@@ -102,13 +107,31 @@ export function OverviewPage() {
   const unusedAttributes = unused("attribute");
   const unusedSchemas = unused("schema");
   const failingSpecs = (index.entities.test || []).filter((entity) => entity.testPassed === false);
+  // Statuses are worked out now, in the browser, so an export never shows a stale one
+  const clock = getDeadlineClock();
+  const deadlines = getProjectDeadlines(index, clock);
+  const overdue = deadlines.filter((item) => item.status === "overdue");
+  const overdueEntities = [
+    ...new Map(overdue.map((item) => [`${item.type}:${item.entity.key}`, item])).values(),
+  ];
+  const comingUp = deadlines.filter(
+    (item) => item.status === "today" || item.status === "upcoming" || item.status === "later",
+  );
+  // As many as the Deadlines page lists as open, overdue ones too
+  const openCount = deadlines.filter((item) => item.status !== "done").length;
+  // Only once a project names owners does a feature without one need attention
+  const unownedFeatures = features.some((entity) => entity.owners?.length)
+    ? features.filter((entity) => !entity.owners?.length && !entity.archived)
+    : [];
   const environments = manifest.projectConfig.environments || [];
   const { inheritEnvironments } = manifest.projectConfig;
   const historyPath = setKey
     ? `/data/sets/${encodeRouteSegment(setKey)}/history`
     : "/data/project/history";
   const hasAttention =
-    failingSpecs.length +
+    overdue.length +
+      unownedFeatures.length +
+      failingSpecs.length +
       untestedFeatures.length +
       untestedVariables.length +
       deprecated.length +
@@ -167,6 +190,15 @@ export function OverviewPage() {
         {hasAttention && (
           <OverviewSection title="Needs attention">
             <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+              <AttentionRow
+                label="Overdue deadlines"
+                count={overdue.length}
+                to={`${basePath}/deadlines?status=overdue`}
+                items={overdueEntities.map(({ type, entity }) => ({ type, entity }))}
+                showType
+                tone="danger"
+                setKey={setKey}
+              />
               <AttentionRow
                 label="Failing test specs"
                 count={failingSpecs.length}
@@ -231,7 +263,32 @@ export function OverviewPage() {
                   setKey={setKey}
                 />
               ))}
+              <AttentionRow
+                label="Features without an owner"
+                count={unownedFeatures.length}
+                to={`${basePath}/features?q=${encodeURIComponent("without:owner")}`}
+                items={unownedFeatures.map((entity) => ({ type: "feature" as const, entity }))}
+                setKey={setKey}
+              />
             </ul>
+          </OverviewSection>
+        )}
+
+        {comingUp.length > 0 && (
+          <OverviewSection title="Coming up">
+            <ProjectDeadlineList
+              items={comingUp.slice(0, COMING_UP_LIMIT)}
+              clock={clock}
+              setKey={setKey}
+            />
+            <Link
+              to={`${basePath}/deadlines`}
+              className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+            >
+              {openCount > COMING_UP_LIMIT
+                ? `View all ${openCount} open deadlines`
+                : "View all deadlines"}
+            </Link>
           </OverviewSection>
         )}
 

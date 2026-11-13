@@ -29,6 +29,7 @@ import { getThemePreference, setThemePreference, type ThemePreference } from "..
 import { useCatalogIndex } from "../useCatalogIndex";
 import { recallListSearch } from "../listMemory";
 import { formatDate, formatFullTimestamp, formatTime, formatTimeWithSeconds } from "../dates";
+import { getDeadlineClock, getProjectDeadlines } from "../metadata";
 
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger" | "accent";
 
@@ -385,10 +386,24 @@ export function OverviewChipLink(props: { to: string; title?: string; children: 
   );
 }
 
-export function OverviewMetaPanel(props: { children: React.ReactNode }) {
+/** Facts as labelled rows, and an optional footer below a rule, alone when no row shows */
+export function OverviewMetaPanel(props: {
+  children?: React.ReactNode;
+  footer?: React.ReactNode;
+  footerLabel?: string;
+}) {
   return (
     <div className="rounded-xl bg-elevated px-5 py-4">
-      <dl className="space-y-3.5">{props.children}</dl>
+      <dl className="peer space-y-3.5 empty:hidden">{props.children}</dl>
+      {props.footer && (
+        <div
+          role="group"
+          aria-label={props.footerLabel}
+          className="mt-4 border-t border-border pt-4 peer-empty:mt-0 peer-empty:border-t-0 peer-empty:pt-0"
+        >
+          {props.footer}
+        </div>
+      )}
     </div>
   );
 }
@@ -519,6 +534,20 @@ function Sidebar(props: { setKey?: string }) {
         end: false,
       };
     }),
+    // Only projects that plan deadlines get the page, counting those still open
+    ...(index && hasDeadlines(index)
+      ? [
+          {
+            to: `${basePath}/deadlines`,
+            label: "Deadlines",
+            end: false,
+            counted: true,
+            count: getProjectDeadlines(index, getDeadlineClock()).filter(
+              (item) => item.status !== "done",
+            ).length,
+          },
+        ]
+      : []),
     { to: `${basePath}/history`, label: "History", end: false },
   ];
 
@@ -575,6 +604,12 @@ function Sidebar(props: { setKey?: string }) {
   );
 }
 
+function hasDeadlines(index: CatalogIndex) {
+  return Object.values(index.entities).some((rows) =>
+    rows.some((entity) => !entity.archived && entity.deadlines?.length),
+  );
+}
+
 function isEntityPath(value: string): value is EntityPath {
   return entityPaths.indexOf(value as EntityPath) !== -1;
 }
@@ -596,6 +631,10 @@ export async function getSetSwitchPath(pathname: string, nextSetKey: string) {
 
   if (pathname.match(/^\/sets\/[^/]+\/history$/)) {
     return `/sets/${encodedSetKey}/history`;
+  }
+
+  if (pathname.match(/^\/sets\/[^/]+\/deadlines$/)) {
+    return `/sets/${encodedSetKey}/deadlines`;
   }
 
   const detailMatch = pathname.match(/^\/sets\/[^/]+\/([^/]+)\/([^/]+)(\/.*)?$/);

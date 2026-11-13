@@ -323,6 +323,8 @@ describe("Catalog entity surfaces", () => {
       </Routes>,
     );
     expect(html).toContain(">Root conditions</h2>");
+    // Root conditions come before the description
+    expect(html.indexOf(">Root conditions</h2>")).toBeLessThan(html.indexOf(">Description</div>"));
     expect(html).toContain(">treatment</code>");
     expect(html).not.toContain("Unsupported requirement");
     for (const operator of ["and", "or", "not"]) expect(html).toContain(`>${operator}<`);

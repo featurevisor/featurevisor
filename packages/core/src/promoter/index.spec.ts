@@ -3666,6 +3666,68 @@ describe("promoteProjectSets", function () {
     );
   });
 
+  it("carries metadata with the definition, a done deadline reaching the next set", async function () {
+    const withMetadata = async (root: string, set: string, metadata: string[]) => {
+      const file = path.join(root, `sets/${set}/features/checkoutFlow.yml`);
+      const source = await fs.promises.readFile(file, "utf8");
+      await fs.promises.writeFile(
+        file,
+        source.replace("  - all\n", `  - all\n${["metadata:", ...metadata].join("\n")}\n`),
+      );
+    };
+    const promote = async (conflicts: "source" | "destination") => {
+      const root = await createProject();
+      await withMetadata(root, "dev", [
+        "  owner: checkout-team",
+        "  deadlines:",
+        "    review:",
+        '      by: "2027-01-15T09:00:00Z"',
+        '      done: "2027-01-10T16:30:00Z"',
+      ]);
+      await withMetadata(root, "staging", [
+        "  owner: growth-team",
+        "  deadlines:",
+        "    review:",
+        '      by: "2027-01-15T09:00:00Z"',
+      ]);
+      const projectConfig = getProjectConfig(root);
+      const datasource = new Datasource(projectConfig, root);
+      const result = await promoteProjectSets(projectConfig, datasource, {
+        from: "dev",
+        to: "staging",
+        includeFeatures: "checkout*",
+        conflicts,
+        apply: true,
+      });
+      const promoted = await datasource.forSet("staging").readFeature("checkoutFlow");
+      return { result, metadata: promoted.metadata };
+    };
+
+    // owners differ, so the conflict policy decides, while done is only in the source
+    const source = await promote("source");
+    expect(source.result.conflicts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "feature",
+          key: "checkoutFlow",
+          path: "metadata.owner",
+          source: "checkout-team",
+          destination: "growth-team",
+        }),
+      ]),
+    );
+    expect(source.metadata).toEqual({
+      owner: "checkout-team",
+      deadlines: { review: { by: "2027-01-15T09:00:00Z", done: "2027-01-10T16:30:00Z" } },
+    });
+
+    const destination = await promote("destination");
+    expect(destination.metadata).toEqual({
+      owner: "growth-team",
+      deadlines: { review: { by: "2027-01-15T09:00:00Z", done: "2027-01-10T16:30:00Z" } },
+    });
+  });
+
   it("lints the written form of promoted definitions before writing", async function () {
     const root = await createProject();
     const projectConfig = getProjectConfig(root);

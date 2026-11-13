@@ -239,6 +239,14 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     },
     keyPattern: { type: "string", description: "filter entity keys by regular expression" },
     authors: { type: "boolean", description: "include entity authors" },
+    now: {
+      type: "string",
+      description: "check deadlines as they stand at a timestamp, such as 2027-03-01T09:00:00Z",
+    },
+    failOn: {
+      type: "array",
+      description: "report warnings with this code as errors, such as deadline_overdue",
+    },
     v3MutationOrder: {
       type: "boolean",
       alias: "v3-mutation-order",
@@ -289,6 +297,16 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     disabled: { type: "boolean", description: "filter disabled features, without environments" },
     enabled: { type: "boolean", description: "filter enabled features, without environments" },
     tag: { type: "array", description: "filter features or variables by one or more tags" },
+    owner: { type: "array", description: "filter definitions by one or more owners in metadata" },
+    deadline: {
+      type: "array",
+      description:
+        "filter definitions by a deadline status or type: overdue, today, upcoming, later, open, done, or a type",
+    },
+    now: {
+      type: "string",
+      description: "fix the moment deadline statuses use, such as 2027-03-01T09:00:00Z",
+    },
     variable: { type: "array", description: "filter features by variable keys" },
     variation: { type: "array", description: "filter features by variation values" },
     withTests: { type: "boolean" },
