@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.8.0](https://github.com/featurevisor/featurevisor/compare/v4.7.0...v4.8.0) (2026-11-13)
+
+**Note:** Version bump only for package @featurevisor/example-json
+
+
+
+
+
 ## [4.7.0](https://github.com/featurevisor/featurevisor/compare/v4.6.0...v4.7.0) (2026-11-04)
 
 **Note:** Version bump only for package @featurevisor/example-json

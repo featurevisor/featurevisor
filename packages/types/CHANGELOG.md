@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.8.0](https://github.com/featurevisor/featurevisor/compare/v4.7.0...v4.8.0) (2026-11-13)
+
+### Features
+
+* metadata in definitions ([#442](https://github.com/featurevisor/featurevisor/issues/442)) ([acea1a1](https://github.com/featurevisor/featurevisor/commit/acea1a1eecce6d3f70710aba88bc36db6d0b51c7))
+
+
 ## [4.3.0](https://github.com/featurevisor/featurevisor/compare/v4.2.0...v4.3.0) (2026-10-26)
 
 ### Features

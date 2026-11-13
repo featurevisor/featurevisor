@@ -1,7 +1,7 @@
 {
   "name": "@featurevisor/expressions",
   "sideEffects": false,
-  "version": "4.5.0",
+  "version": "4.8.0",
   "description": "Condition expressions for Featurevisor: parse, compile, print and format conditions written as text",
   "main": "cjs/index.js",
   "module": "esm/index.js",
@@ -56,6 +56,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@featurevisor/types": "4.3.0"
+    "@featurevisor/types": "4.8.0"
   }
 }
