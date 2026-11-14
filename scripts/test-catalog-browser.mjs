@@ -748,6 +748,44 @@ async function runCase({ base, hash, sets, environments }, index) {
       await waitFor(at(segmentRoute));
       await waitFor("document.querySelector('h1')?.textContent === 'audience/eligible'");
       await assertConditionLinks();
+
+      // The Usage tab opens with a dependency map, linking what the segment depends on, and a
+      // drag pans it without opening the entity the drag started on
+      const usageRoute = segmentRoute + "/usage";
+      await navigate(usageRoute, "Boolean(document.querySelector('[data-dependency-map]'))");
+      await waitFor(
+        "[...document.querySelectorAll('[data-dependency-map] a')].some(a => a.href === " +
+          json(url(scope + "/segments/" + encode("audience/premium"))) +
+          ")",
+        "The dependency map links the segment it uses",
+      );
+      const drag = await evaluate(`(async () => {
+        const map = document.querySelector('[data-dependency-map]');
+        map.scrollLeft = 0;
+        const node = map.querySelector('a');
+        const box = node.getBoundingClientRect();
+        const pointer = (x) => ({
+          bubbles: true, pointerType: 'mouse', pointerId: 1, button: 0, buttons: 1,
+          clientX: x, clientY: box.y + 10,
+        });
+        node.dispatchEvent(new PointerEvent('pointerdown', pointer(box.x + 80)));
+        map.dispatchEvent(new PointerEvent('pointermove', pointer(box.x + 20)));
+        map.dispatchEvent(new PointerEvent('pointerup', pointer(box.x + 20)));
+        node.click();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return {
+          overflows: map.scrollWidth > map.clientWidth,
+          scrolled: map.scrollLeft,
+          href: location.href,
+        };
+      })()`);
+      assert.equal(drag.href, url(usageRoute), "A drag never opens an entity");
+      if (drag.overflows) assert.ok(drag.scrolled > 0, "A drag pans a map wider than its frame");
+      await checkPageFits();
+      await navigate(
+        segmentRoute,
+        "document.querySelector('h1')?.textContent === 'audience/eligible'",
+      );
       await clickRoute(referencedFeature + "/variables#button-label");
       await waitFor("Boolean(document.querySelector('section#button-label'))");
       await reload();

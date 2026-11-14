@@ -157,6 +157,30 @@ describe("dependencies on the Usage tab", () => {
       </MemoryRouter>,
     );
 
+  it("opens with a map of what an entity depends on and what depends on it", () => {
+    const html = render({
+      type: "feature",
+      key: "discount",
+      entity: { bucketBy: "userId", conditions: [{ feature: "sidebar", enabled: true }] },
+      usedBy: [{ type: "variable", key: "banner", locations: ["conditions"] }],
+    });
+    const map = html.indexOf(">Dependency map</h2>");
+    expect(map).toBeGreaterThan(-1);
+    expect(map).toBeLessThan(html.indexOf(">Used by</h2>"));
+    expect(html.indexOf(">Used by</h2>")).toBeLessThan(html.indexOf(">Depends on</h2>"));
+    const section = html.slice(map, html.indexOf(">Used by</h2>"));
+    for (const label of [">Depends on<", ">Used by<"]) expect(section).toContain(label);
+    for (const href of ["/features/sidebar", "/attributes/userId", "/variables/banner"]) {
+      expect(section).toContain(`href="${href}"`);
+    }
+    // The entity itself sits in the middle, and is not a link to the page it is on
+    expect(section).toContain(">discount</span>");
+    expect(section).not.toContain('href="/features/discount"');
+    // The lists below can take the reader to whatever the map leaves out
+    expect(html).toContain('data-usage-block="used-by"');
+    expect(html).toContain('data-usage-block="depends-on"');
+  });
+
   it("reads what an entity depends on from its own definition, with what each check reads", () => {
     const html = render({
       type: "feature",

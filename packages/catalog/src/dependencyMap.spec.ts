@@ -1,0 +1,116 @@
+import { getDependencyMap } from "./dependencyMap";
+import type { CatalogIndex, EntityDetail } from "./types";
+
+// discount needs sidebar and buckets by userId. sidebar needs two segments, which both read
+// country, so the map has a diamond. checkout and banner need discount.
+const index = {
+  entities: {
+    attribute: [
+      { key: "country", href: "" },
+      { key: "userId", href: "" },
+    ],
+    segment: [
+      { key: "germany", href: "", references: ["attribute:country"] },
+      { key: "netherlands", href: "", references: ["attribute:country"] },
+    ],
+    feature: [
+      { key: "sidebar", href: "", references: ["segment:germany", "segment:netherlands"] },
+      { key: "discount", href: "", references: ["feature:sidebar", "attribute:userId"] },
+      { key: "checkout", href: "", references: ["feature:discount"] },
+    ],
+    variable: [{ key: "banner", href: "", references: ["feature:discount"] }],
+  },
+} as unknown as CatalogIndex;
+
+const discount: EntityDetail = {
+  type: "feature",
+  key: "discount",
+  entity: {
+    bucketBy: "userId",
+    conditions: [{ feature: "sidebar", enabled: true }],
+    rules: [{ key: "everyone", conditions: "*", percentage: 100 }],
+  },
+  usedBy: [
+    { type: "feature", key: "checkout", locations: ["conditions"] },
+    { type: "variable", key: "banner", locations: ["conditions"] },
+  ],
+};
+
+const ids = (columns: Array<Array<{ id: string }>>) =>
+  columns.map((column) => column.map(({ id }) => id));
+
+describe("dependency map", () => {
+  it("puts what an entity depends on to its left and what depends on it to its right", () => {
+    const map = getDependencyMap(discount, index)!;
+    expect(map.center).toEqual({ id: "feature:discount", type: "feature", key: "discount" });
+    expect(ids(map.dependencies)).toEqual([
+      ["feature:sidebar", "attribute:userId"],
+      ["segment:germany", "segment:netherlands"],
+      ["attribute:country"],
+    ]);
+    expect(ids(map.dependents)).toEqual([["feature:checkout", "variable:banner"]]);
+    expect(map.more).toEqual({ dependencies: 0, dependents: 0 });
+  });
+
+  it("draws every line from what is depended on to what depends on it", () => {
+    const edges = getDependencyMap(discount, index)!.edges.map(({ from, to }) => `${from} > ${to}`);
+    expect(edges.sort()).toEqual(
+      [
+        "feature:sidebar > feature:discount",
+        "attribute:userId > feature:discount",
+        // the diamond meets once, with a line from each side
+        "segment:germany > feature:sidebar",
+        "segment:netherlands > feature:sidebar",
+        "attribute:country > segment:germany",
+        "attribute:country > segment:netherlands",
+        "feature:discount > feature:checkout",
+        "feature:discount > variable:banner",
+      ].sort(),
+    );
+  });
+
+  it("keeps each column short and says how many it leaves out", () => {
+    const narrow = getDependencyMap(discount, index, { levels: 4, perColumn: 1 })!;
+    expect(ids(narrow.dependencies)).toEqual([
+      ["feature:sidebar"],
+      ["segment:germany"],
+      ["attribute:country"],
+    ]);
+    // userId and netherlands
+    expect(narrow.more).toEqual({ dependencies: 2, dependents: 1 });
+
+    const shallow = getDependencyMap(discount, index, { levels: 1, perColumn: 24 })!;
+    expect(ids(shallow.dependencies)).toEqual([["feature:sidebar", "attribute:userId"]]);
+    expect(shallow.more.dependencies).toBe(3);
+  });
+
+  it("walks dependents outwards as far as they go", () => {
+    const country: EntityDetail = {
+      type: "attribute",
+      key: "country",
+      entity: {},
+      usedBy: [
+        { type: "segment", key: "germany", locations: ["conditions"] },
+        { type: "segment", key: "netherlands", locations: ["conditions"] },
+      ],
+    };
+    const map = getDependencyMap(country, index)!;
+    expect(map.dependencies).toEqual([]);
+    expect(ids(map.dependents)).toEqual([
+      ["segment:germany", "segment:netherlands"],
+      ["feature:sidebar"],
+      ["feature:discount"],
+      ["feature:checkout", "variable:banner"],
+    ]);
+  });
+
+  it("knows only direct neighbours before the index loads, and nothing without any", () => {
+    const map = getDependencyMap(discount, null)!;
+    expect(ids(map.dependencies)).toEqual([["feature:sidebar", "attribute:userId"]]);
+    expect(ids(map.dependents)).toEqual([["feature:checkout", "variable:banner"]]);
+
+    expect(
+      getDependencyMap({ type: "attribute", key: "plan", entity: {}, usedBy: [] }, index),
+    ).toBeUndefined();
+  });
+});
