@@ -790,6 +790,18 @@ async function runCase({ base, hash, sets, environments }, index) {
         );
         await waitFor(at(usageRoute + "?map=full"), "The full view is in the URL");
         assert.equal(await evaluate("document.documentElement.style.overflow"), "hidden");
+        // It zooms in steps, from its buttons or the keyboard, and its zoom resets to 100%
+        const zoomShown = (percent) =>
+          "document.querySelector('[role=group][aria-label=Zoom] button:nth-child(2)')?.textContent === " +
+          json(percent);
+        await click('[aria-label="Zoom out"]');
+        await waitFor(zoomShown("90%"), "Zoom out steps to 90%");
+        await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: '+' }))");
+        await waitFor(zoomShown("100%"), "+ steps back to 100%");
+        await click('[aria-label="Zoom in"]');
+        await waitFor(zoomShown("110%"), "Zoom in steps to 110%");
+        await click('[aria-label$="reset to 100%"]');
+        await waitFor(zoomShown("100%"), "The zoom resets to 100%");
         await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
         await waitFor(
           at(usageRoute) +

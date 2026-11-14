@@ -438,16 +438,21 @@ function MapDialog(props: {
               {typeName(props.map.center)} {props.map.center.key}
             </p>
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            aria-label="Close the full view"
-            title="Close (Esc)"
-            className={controlClass}
-          >
-            <CloseIcon />
-          </button>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="hidden text-[11px] text-faint sm:inline">
+              Drag to move, pinch or hold {isMac() ? "⌘" : "Ctrl"} and scroll to zoom
+            </span>
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={onClose}
+              aria-label="Close the full view"
+              title="Close (Esc)"
+              className={controlClass}
+            >
+              <CloseIcon />
+            </button>
+          </div>
         </div>
         <div className="min-h-0 flex-1">
           <MapCanvas
@@ -463,8 +468,26 @@ function MapDialog(props: {
   );
 }
 
+function isMac() {
+  return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+}
+
 const controlClass =
   "flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface text-muted shadow-sm outline-none transition-colors hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary";
+
+/** Zoom levels the buttons and keys step through. A pinch can land between them. */
+const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
+const MIN_ZOOM = ZOOM_STEPS[0];
+const MAX_ZOOM = ZOOM_STEPS[ZOOM_STEPS.length - 1];
+
+function nextZoomStep(zoom: number, direction: 1 | -1) {
+  return direction > 0
+    ? (ZOOM_STEPS.find((step) => step > zoom + 0.001) ?? MAX_ZOOM)
+    : ([...ZOOM_STEPS].reverse().find((step) => step < zoom - 0.001) ?? MIN_ZOOM);
+}
+
+const zoomStepClass =
+  "flex w-6 cursor-pointer items-center justify-center outline-none hover:bg-slate-100 hover:text-text focus-visible:bg-slate-100 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent [&>svg]:h-3 [&>svg]:w-3";
 
 /** The map's own controls, smaller than the close button so they sit quietly in its corner */
 const cornerControlClass =
@@ -486,42 +509,137 @@ function MapCanvas(props: {
   const [hovered, setHovered] = React.useState<string | null>(null);
   const [overflows, setOverflows] = React.useState(false);
   const { ref, dragging, handlers } = useDragToPan(overflows);
+  const boxRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Zoom, in the full view only. The box around the map grows and shrinks with it, so scrolling
+  // reaches every edge at any zoom, and the map inside is scaled to fill the box.
+  const [zoom, setZoom] = React.useState(1);
+  /** The zoom on the page, which a quick run of pinch events can be ahead of */
+  const shownZoom = React.useRef(1);
+  const targetZoom = React.useRef(1);
+  /** The point of the map that stays put while zooming: under the pointer, or the middle */
+  const anchor = React.useRef<{ x: number; y: number; clientX: number; clientY: number } | null>(
+    null,
+  );
 
   const trace = React.useMemo(
     () => (hovered && hovered !== map.center.id ? getPathToCenter(map, hovered) : null),
     [map, hovered],
   );
 
+  const measure = React.useCallback(() => {
+    const element = ref.current;
+    if (!element) return;
+    setOverflows(
+      element.scrollWidth > element.clientWidth + 1 ||
+        element.scrollHeight > element.clientHeight + 1,
+    );
+  }, [ref]);
+
   const centerView = React.useCallback(
     (behavior: ScrollBehavior = "auto") => {
       const element = ref.current;
-      if (!element) return;
-      element.scrollTo({
-        left: layout.center.x + layout.center.width / 2 - element.clientWidth / 2,
-        top: layout.center.y + layout.center.height / 2 - element.clientHeight / 2,
+      const box = boxRef.current;
+      if (!element || !box) return;
+      const frame = element.getBoundingClientRect();
+      const placed = box.getBoundingClientRect();
+      const scale = shownZoom.current;
+      element.scrollBy({
+        left:
+          placed.left +
+          (layout.center.x + layout.center.width / 2) * scale -
+          (frame.left + element.clientLeft + element.clientWidth / 2),
+        top:
+          placed.top +
+          (layout.center.y + layout.center.height / 2) * scale -
+          (frame.top + element.clientTop + element.clientHeight / 2),
         behavior,
       });
     },
     [layout, ref],
   );
 
+  const zoomTo = React.useCallback(
+    (next: number, clientX?: number, clientY?: number) => {
+      const element = ref.current;
+      const box = boxRef.current;
+      const zoomed = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+      if (!element || !box || Math.abs(zoomed - targetZoom.current) < 0.001) return;
+      if (!anchor.current) {
+        const frame = element.getBoundingClientRect();
+        const placed = box.getBoundingClientRect();
+        const x = clientX ?? frame.left + element.clientLeft + element.clientWidth / 2;
+        const y = clientY ?? frame.top + element.clientTop + element.clientHeight / 2;
+        anchor.current = {
+          x: (x - placed.left) / shownZoom.current,
+          y: (y - placed.top) / shownZoom.current,
+          clientX: x,
+          clientY: y,
+        };
+      }
+      targetZoom.current = zoomed;
+      setZoom(zoomed);
+    },
+    [ref],
+  );
+
+  // Once the new zoom is on the page, scrolls so the anchored point is back where it was
+  React.useLayoutEffect(() => {
+    shownZoom.current = zoom;
+    const element = ref.current;
+    const box = boxRef.current;
+    const point = anchor.current;
+    anchor.current = null;
+    if (element && box && point) {
+      const placed = box.getBoundingClientRect();
+      element.scrollLeft += placed.left + point.x * zoom - point.clientX;
+      element.scrollTop += placed.top + point.y * zoom - point.clientY;
+    }
+    measure();
+  }, [zoom, measure, ref]);
+
   // Opens on the entity itself, and notices when the map outgrows its frame
   React.useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
-    const measure = () =>
-      setOverflows(
-        element.scrollWidth > element.clientWidth + 1 ||
-          element.scrollHeight > element.clientHeight + 1,
-      );
     measure();
     centerView();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [layout, centerView, ref]);
+  }, [layout, centerView, measure, ref]);
 
+  // In the full view, a pinch or Ctrl or ⌘ with the wheel zooms around the pointer, and +, −
+  // and 0 zoom around the middle. A plain wheel still scrolls.
+  React.useEffect(() => {
+    const element = ref.current;
+    if (!props.full || !element) return;
+    function onWheel(event: WheelEvent) {
+      // A pinch on a trackpad arrives as a wheel with Ctrl held
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+      zoomTo(targetZoom.current * Math.exp(-delta * 0.002), event.clientX, event.clientY);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === "+" || event.key === "=") zoomTo(nextZoomStep(targetZoom.current, 1));
+      else if (event.key === "-" || event.key === "_") {
+        zoomTo(nextZoomStep(targetZoom.current, -1));
+      } else if (event.key === "0") zoomTo(1);
+      else return;
+      event.preventDefault();
+    }
+    element.addEventListener("wheel", onWheel, { passive: false });
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      element.removeEventListener("wheel", onWheel);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [props.full, zoomTo, ref]);
+
+  const percent = Math.round(zoom * 100);
   const showExpand = !props.full && overflows && props.onExpand;
 
   return (
@@ -545,127 +663,176 @@ function MapCanvas(props: {
           {/* Auto margins centre a map smaller than its frame, and never clip a larger one */}
           <div className="flex min-h-full min-w-full">
             <div
+              ref={boxRef}
               className="relative m-auto shrink-0"
-              style={{ width: layout.width, height: layout.height }}
+              style={{ width: layout.width * zoom, height: layout.height * zoom }}
             >
-              {layout.labels.map((label) => (
-                <div
-                  key={label.x}
-                  className="absolute text-center text-[10px] font-semibold uppercase tracking-wider text-faint"
-                  style={{ left: label.x, top: PADDING - 4, width: label.width }}
-                >
-                  {label.text}
-                </div>
-              ))}
-
-              <svg
-                aria-hidden="true"
-                width={layout.width}
-                height={layout.height}
-                className="pointer-events-none absolute inset-0"
-              >
-                {map.edges.map((edge) => {
-                  const from = layout.positions.get(edge.from);
-                  const to = layout.positions.get(edge.to);
-                  if (!from || !to) return null;
-                  const id = `${edge.from}>${edge.to}`;
-                  const lit = trace?.edges.has(id);
-                  return (
-                    <path
-                      key={id}
-                      d={edgePath(from, to)}
-                      fill="none"
-                      strokeWidth={lit ? 2 : 1.5}
-                      strokeLinecap="round"
-                      className={[
-                        "transition-[stroke,opacity] duration-200",
-                        lit ? "stroke-slate-500" : "stroke-slate-300",
-                        trace && !lit ? "opacity-30" : "",
-                      ].join(" ")}
-                    />
-                  );
-                })}
-                {/* Ports where lines meet each entity */}
-                {layout.nodes.concat(layout.center).flatMap((node) => {
-                  const dimmed = trace && !trace.nodes.has(node.id);
-                  const ports = [];
-                  const y = node.y + node.height / 2;
-                  if (map.edges.some((edge) => edge.from === node.id)) {
-                    ports.push(node.x + node.width);
-                  }
-                  if (map.edges.some((edge) => edge.to === node.id)) ports.push(node.x);
-                  return ports.map((x) => (
-                    <circle
-                      key={`${node.id}@${x}`}
-                      cx={x}
-                      cy={y}
-                      r={3}
-                      className={[
-                        "fill-surface stroke-slate-400 transition-opacity duration-200",
-                        dimmed ? "opacity-30" : "",
-                      ].join(" ")}
-                      strokeWidth={1.5}
-                    />
-                  ));
-                })}
-              </svg>
-
-              {layout.nodes.map((node) => (
-                <MapNode
-                  key={node.id}
-                  node={node}
-                  summary={summaryOf(node)}
-                  setKey={props.setKey}
-                  dimmed={Boolean(trace && !trace.nodes.has(node.id))}
-                  lit={hovered === node.id}
-                  onHover={setHovered}
-                />
-              ))}
-
               <div
-                className="absolute flex flex-col justify-center rounded-lg border border-header-active bg-header-active px-3 text-header-text shadow-md"
+                className="absolute left-0 top-0 origin-top-left"
                 style={{
-                  left: layout.center.x,
-                  top: layout.center.y,
-                  width: layout.center.width,
-                  height: layout.center.height,
+                  width: layout.width,
+                  height: layout.height,
+                  transform: zoom === 1 ? undefined : `scale(${zoom})`,
                 }}
-                title={layout.center.key}
               >
-                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
-                  {typeName(layout.center)}
-                </span>
-                <span className="truncate text-sm font-semibold">{layout.center.key}</span>
-              </div>
+                {layout.labels.map((label) => (
+                  <div
+                    key={label.x}
+                    className="absolute text-center text-[10px] font-semibold uppercase tracking-wider text-faint"
+                    style={{ left: label.x, top: PADDING - 4, width: label.width }}
+                  >
+                    {label.text}
+                  </div>
+                ))}
 
-              {/* The lists below the map name every entity, including those it leaves out */}
-              {layout.more.map((item) => (
-                <button
-                  key={item.side}
-                  type="button"
-                  onClick={() => props.onMore?.(item.side)}
-                  className="absolute flex cursor-pointer items-center justify-center rounded-full border border-dashed border-slate-300 bg-surface text-xs font-medium text-muted outline-none hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary"
-                  style={{ left: item.x, top: item.y, width: item.width, height: MORE_HEIGHT }}
+                <svg
+                  aria-hidden="true"
+                  width={layout.width}
+                  height={layout.height}
+                  className="pointer-events-none absolute inset-0"
                 >
-                  {item.count} more below
-                </button>
-              ))}
+                  {map.edges.map((edge) => {
+                    const from = layout.positions.get(edge.from);
+                    const to = layout.positions.get(edge.to);
+                    if (!from || !to) return null;
+                    const id = `${edge.from}>${edge.to}`;
+                    const lit = trace?.edges.has(id);
+                    return (
+                      <path
+                        key={id}
+                        d={edgePath(from, to)}
+                        fill="none"
+                        strokeWidth={lit ? 2 : 1.5}
+                        strokeLinecap="round"
+                        className={[
+                          "transition-[stroke,opacity] duration-200",
+                          lit ? "stroke-slate-500" : "stroke-slate-300",
+                          trace && !lit ? "opacity-30" : "",
+                        ].join(" ")}
+                      />
+                    );
+                  })}
+                  {/* Ports where lines meet each entity */}
+                  {layout.nodes.concat(layout.center).flatMap((node) => {
+                    const dimmed = trace && !trace.nodes.has(node.id);
+                    const ports = [];
+                    const y = node.y + node.height / 2;
+                    if (map.edges.some((edge) => edge.from === node.id)) {
+                      ports.push(node.x + node.width);
+                    }
+                    if (map.edges.some((edge) => edge.to === node.id)) ports.push(node.x);
+                    return ports.map((x) => (
+                      <circle
+                        key={`${node.id}@${x}`}
+                        cx={x}
+                        cy={y}
+                        r={3}
+                        className={[
+                          "fill-surface stroke-slate-400 transition-opacity duration-200",
+                          dimmed ? "opacity-30" : "",
+                        ].join(" ")}
+                        strokeWidth={1.5}
+                      />
+                    ));
+                  })}
+                </svg>
+
+                {layout.nodes.map((node) => (
+                  <MapNode
+                    key={node.id}
+                    node={node}
+                    summary={summaryOf(node)}
+                    setKey={props.setKey}
+                    dimmed={Boolean(trace && !trace.nodes.has(node.id))}
+                    lit={hovered === node.id}
+                    onHover={setHovered}
+                  />
+                ))}
+
+                <div
+                  className="absolute flex flex-col justify-center rounded-lg border border-header-active bg-header-active px-3 text-header-text shadow-md"
+                  style={{
+                    left: layout.center.x,
+                    top: layout.center.y,
+                    width: layout.center.width,
+                    height: layout.center.height,
+                  }}
+                  title={layout.center.key}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+                    {typeName(layout.center)}
+                  </span>
+                  <span className="truncate text-sm font-semibold">{layout.center.key}</span>
+                </div>
+
+                {/* The lists below the map name every entity, including those it leaves out */}
+                {layout.more.map((item) => (
+                  <button
+                    key={item.side}
+                    type="button"
+                    onClick={() => props.onMore?.(item.side)}
+                    className="absolute flex cursor-pointer items-center justify-center rounded-full border border-dashed border-slate-300 bg-surface text-xs font-medium text-muted outline-none hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary"
+                    style={{ left: item.x, top: item.y, width: item.width, height: MORE_HEIGHT }}
+                  >
+                    {item.count} more below
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
         {/* In the frame's corner, outside what scrolls, so they stay put while the map moves */}
-        {overflows && (
-          <div className="absolute bottom-2 right-2 flex gap-1">
-            <button
-              type="button"
-              onClick={() => centerView("smooth")}
-              aria-label={`Centre the map on ${map.center.key}`}
-              title="Centre"
-              className={cornerControlClass}
-            >
-              <CentreIcon />
-            </button>
+        {(props.full || overflows) && (
+          <div className="absolute bottom-2 right-2 flex items-center gap-1">
+            {props.full && (
+              <div
+                role="group"
+                aria-label="Zoom"
+                className="flex h-6 items-stretch overflow-hidden rounded-md border border-border bg-surface text-muted shadow-sm"
+              >
+                <button
+                  type="button"
+                  onClick={() => zoomTo(nextZoomStep(targetZoom.current, -1))}
+                  disabled={zoom <= MIN_ZOOM + 0.001}
+                  aria-label="Zoom out"
+                  title="Zoom out (−)"
+                  className={zoomStepClass}
+                >
+                  <MinusIcon />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => zoomTo(1)}
+                  aria-label={`Zoom ${percent}%, reset to 100%`}
+                  title="Reset to 100% (0)"
+                  className="min-w-11 cursor-pointer border-x border-border px-1.5 text-[11px] font-medium tabular-nums outline-none hover:bg-slate-100 hover:text-text focus-visible:bg-slate-100"
+                >
+                  {percent}%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => zoomTo(nextZoomStep(targetZoom.current, 1))}
+                  disabled={zoom >= MAX_ZOOM - 0.001}
+                  aria-label="Zoom in"
+                  title="Zoom in (+)"
+                  className={zoomStepClass}
+                >
+                  <PlusIcon />
+                </button>
+              </div>
+            )}
+            {overflows && (
+              <button
+                type="button"
+                onClick={() => centerView("smooth")}
+                aria-label={`Centre the map on ${map.center.key}`}
+                title="Centre"
+                className={cornerControlClass}
+              >
+                <CentreIcon />
+              </button>
+            )}
             {showExpand && (
               <button
                 ref={props.expandRef}
@@ -726,6 +893,22 @@ function MapNode(props: {
       </span>
       <span className="truncate text-sm font-medium text-text">{node.key}</span>
     </Link>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none">
+      <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MinusIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none">
+      <path d="M3.5 8h9" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </svg>
   );
 }
 
