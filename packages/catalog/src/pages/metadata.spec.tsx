@@ -11,6 +11,7 @@ jest.mock("../useCatalogIndex", () => ({
 
 import { CatalogProvider } from "../context/CatalogContext";
 import { getListEntities, getMetadataChips, ListPage } from "./ListPage";
+import { getFilterFacets } from "../components/filterMenus";
 import { OverviewPage } from "./HomePage";
 import { DeadlinesPage } from "./DeadlinesPage";
 import { OverviewTab } from "./EntityDetailPage";
@@ -124,7 +125,7 @@ describe("metadata in lists", () => {
     expect(keys("growth-team")).toEqual(["banner", "redesign"]);
   });
 
-  it("offers owner and deadline chips in labelled groups, only where they apply", () => {
+  it("offers owner and deadline filters in their own menus, only where they apply", () => {
     const clock = getDeadlineClock();
     expect(
       getMetadataChips(summaries, clock).map(({ group, label, token }) => [group, label, token]),
@@ -144,13 +145,21 @@ describe("metadata in lists", () => {
       "deadline:remove",
     ]);
 
+    // owners and deadlines each get a menu, deadlines with statuses and types under headings
+    const facets = getFilterFacets(getMetadataChips(summaries, clock));
+    expect(facets.map(({ name }) => name)).toEqual(["Owner", "Deadlines"]);
+    expect(facets[0].sections.map(({ heading }) => heading)).toEqual([undefined]);
+    expect(
+      facets[1].sections.map(({ heading, chips }) => [heading, chips.map(({ label }) => label)]),
+    ).toEqual([
+      ["Status", ["Overdue", "Due in 30 days"]],
+      ["Type", ["Deprecate", "Remove", "Review"]],
+    ]);
+
     withIndex({ feature: summaries });
     const html = render("/features");
-    // features keep their other chips in one row, with owners and deadlines labelled after it
-    expect(html).toContain('role="group" aria-label="Filters"');
-    expect(html).toContain('role="group" aria-label="Owner"');
-    expect(html).toContain('role="group" aria-label="Deadlines"');
     expect(html).toContain(">Owner</span>");
+    expect(html).toContain(">Deadlines</span>");
   });
 
   it("shows the most pressing deadline and the owner on each row", () => {

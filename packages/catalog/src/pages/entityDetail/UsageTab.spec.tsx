@@ -157,6 +157,58 @@ describe("dependencies on the Usage tab", () => {
       </MemoryRouter>,
     );
 
+  it("opens with a map of what an entity depends on and what depends on it", () => {
+    const html = render({
+      type: "feature",
+      key: "discount",
+      entity: { bucketBy: "userId", conditions: [{ feature: "sidebar", enabled: true }] },
+      usedBy: [{ type: "variable", key: "banner", locations: ["conditions"] }],
+    });
+    const map = html.indexOf(">Dependency map</h2>");
+    expect(map).toBeGreaterThan(-1);
+    expect(map).toBeLessThan(html.indexOf(">Used by</h2>"));
+    expect(html.indexOf(">Used by</h2>")).toBeLessThan(html.indexOf(">Depends on</h2>"));
+    const section = html.slice(map, html.indexOf(">Used by</h2>"));
+    for (const label of [">Depends on<", ">Used by<"]) expect(section).toContain(label);
+    for (const href of ["/features/sidebar", "/attributes/userId", "/variables/banner"]) {
+      expect(section).toContain(`href="${href}"`);
+    }
+    // The entity itself sits in the middle, and is not a link to the page it is on
+    expect(section).toContain(">discount</span>");
+    expect(section).not.toContain('href="/features/discount"');
+    // The lists below can take the reader to whatever the map leaves out
+    expect(html).toContain('data-usage-block="used-by"');
+    expect(html).toContain('data-usage-block="depends-on"');
+  });
+
+  it("renders the map in its page when a link asks for the full view", () => {
+    // The full view needs a document to open over, so server rendering keeps the map in place
+    const html = renderToStaticMarkup(
+      <MemoryRouter initialEntries={["/features/discount/usage?map=full"]}>
+        <Routes>
+          <Route
+            element={
+              <Outlet
+                context={{
+                  detail: {
+                    type: "feature",
+                    key: "discount",
+                    entity: { bucketBy: "userId" },
+                  },
+                }}
+              />
+            }
+          >
+            <Route path="*" element={<UsageTab />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(html).toContain(">Dependency map</h2>");
+    expect(html).toContain('data-dependency-map=""');
+    expect(html).not.toContain('aria-modal="true"');
+  });
+
   it("reads what an entity depends on from its own definition, with what each check reads", () => {
     const html = render({
       type: "feature",

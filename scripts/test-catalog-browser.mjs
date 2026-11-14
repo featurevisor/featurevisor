@@ -657,7 +657,8 @@ async function runCase({ base, hash, sets, environments }, index) {
       scope + "/tests",
       "Boolean(document.querySelector('input[placeholder=\"Search tests...\"]'))",
     );
-    await clickText("button", "Scenarios");
+    await clickText("button", "Kind");
+    await click('[data-option="kind:scenario"]');
     await waitFor(
       "document.querySelector('input[placeholder=\"Search tests...\"]').value.includes('kind:scenario') && !document.querySelector('main').innerText.includes(" +
         json(specKey) +
@@ -747,6 +748,82 @@ async function runCase({ base, hash, sets, environments }, index) {
       await waitFor(at(segmentRoute));
       await waitFor("document.querySelector('h1')?.textContent === 'audience/eligible'");
       await assertConditionLinks();
+
+      // The Usage tab opens with a dependency map, linking what the segment depends on, and a
+      // drag pans it without opening the entity the drag started on
+      const usageRoute = segmentRoute + "/usage";
+      await navigate(usageRoute, "Boolean(document.querySelector('[data-dependency-map]'))");
+      await waitFor(
+        "[...document.querySelectorAll('[data-dependency-map] a')].some(a => a.href === " +
+          json(url(scope + "/segments/" + encode("audience/premium"))) +
+          ")",
+        "The dependency map links the segment it uses",
+      );
+      const drag = await evaluate(`(async () => {
+        const map = document.querySelector('[data-dependency-map]');
+        map.scrollLeft = 0;
+        const node = map.querySelector('a');
+        const box = node.getBoundingClientRect();
+        const pointer = (x) => ({
+          bubbles: true, pointerType: 'mouse', pointerId: 1, button: 0, buttons: 1,
+          clientX: x, clientY: box.y + 10,
+        });
+        node.dispatchEvent(new PointerEvent('pointerdown', pointer(box.x + 80)));
+        map.dispatchEvent(new PointerEvent('pointermove', pointer(box.x + 20)));
+        map.dispatchEvent(new PointerEvent('pointerup', pointer(box.x + 20)));
+        node.click();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return {
+          overflows: map.scrollWidth > map.clientWidth,
+          scrolled: map.scrollLeft,
+          href: location.href,
+        };
+      })()`);
+      assert.equal(drag.href, url(usageRoute), "A drag never opens an entity");
+      if (drag.overflows) {
+        assert.ok(drag.scrolled > 0, "A drag pans a map wider than its frame");
+        // A map larger than its frame opens in a full view, which Escape closes
+        await click('[aria-label="Open the map in a full view"]');
+        await waitFor(
+          "Boolean(document.querySelector('[role=dialog][aria-modal=true] [data-dependency-map=full] a'))",
+          "The full view opens",
+        );
+        await waitFor(at(usageRoute + "?map=full"), "The full view is in the URL");
+        assert.equal(await evaluate("document.documentElement.style.overflow"), "hidden");
+        // It zooms in steps, from its buttons or the keyboard, and its zoom resets to 100%
+        const zoomShown = (percent) =>
+          "document.querySelector('[role=group][aria-label=Zoom] button:nth-child(2)')?.textContent === " +
+          json(percent);
+        await click('[aria-label="Zoom out"]');
+        await waitFor(zoomShown("90%"), "Zoom out steps to 90%");
+        await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: '+' }))");
+        await waitFor(zoomShown("100%"), "+ steps back to 100%");
+        await click('[aria-label="Zoom in"]');
+        await waitFor(zoomShown("110%"), "Zoom in steps to 110%");
+        await click('[aria-label$="reset to 100%"]');
+        await waitFor(zoomShown("100%"), "The zoom resets to 100%");
+        await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
+        await waitFor(
+          at(usageRoute) +
+            " && !document.querySelector('[role=dialog][aria-modal=true]') && document.documentElement.style.overflow === ''",
+          "Escape closes the full view, takes it out of the URL and lets the page scroll",
+        );
+      }
+      // A link to the full view opens it, and closing it keeps the reader on the page
+      await navigate(
+        usageRoute + "?map=full",
+        "Boolean(document.querySelector('[role=dialog][aria-modal=true] [data-dependency-map=full] a'))",
+      );
+      await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
+      await waitFor(
+        at(usageRoute) + " && !document.querySelector('[role=dialog][aria-modal=true]')",
+        "Closing a full view opened from a link stays on the page",
+      );
+      await checkPageFits();
+      await navigate(
+        segmentRoute,
+        "document.querySelector('h1')?.textContent === 'audience/eligible'",
+      );
       await clickRoute(referencedFeature + "/variables#button-label");
       await waitFor("Boolean(document.querySelector('section#button-label'))");
       await reload();
@@ -828,11 +905,17 @@ async function runCase({ base, hash, sets, environments }, index) {
         scope + "/variables",
         "Boolean(document.querySelector('input[placeholder=\"Search variables...\"]'))",
       );
-      const chips = await evaluate(
-        "[...document.querySelectorAll('button')].map(button => button.textContent)",
+      // The Type menu lists types in order, then compositions
+      await clickText("button", "Type");
+      await waitFor(
+        "Boolean(document.querySelector('[role=dialog] [data-option]'))",
+        "Type menu opens",
       );
-      assert.ok(chips.indexOf("json") < chips.indexOf("object"));
-      assert.ok(chips.indexOf("object") < chips.indexOf("Composed"));
+      const options = await evaluate(
+        "[...document.querySelectorAll('[role=dialog] [data-option]')].map(option => option.dataset.option)",
+      );
+      assert.ok(options.indexOf("type:json") < options.indexOf("type:object"));
+      assert.ok(options.indexOf("type:object") < options.indexOf("with:composition"));
       assert.equal(
         await evaluate(
           "[...document.querySelectorAll('a')].find(a => a.href === " +
@@ -841,7 +924,8 @@ async function runCase({ base, hash, sets, environments }, index) {
         ),
         true,
       );
-      await clickText("button", "Composed");
+      // The menu stays open while its filters toggle, and the page still fits around it
+      await click('[data-option="with:composition"]');
       await waitFor(
         "document.querySelector('input[placeholder=\"Search variables...\"]').value.includes('with:composition') && !document.querySelector('main').innerText.includes('checkout/policy')",
       );
@@ -850,8 +934,10 @@ async function runCase({ base, hash, sets, environments }, index) {
         true,
       );
       await checkPageFits();
-      await clickText("button", "json");
+      await click('[data-option="type:json"]');
       await waitFor("document.querySelector('main').innerText.includes('2 of 9 variables')");
+      await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
+      await waitFor("!document.querySelector('[role=dialog]')", "Escape closes the menu");
       assert.equal(
         await evaluate(
           "[...document.querySelectorAll('main code')].filter(code => code.textContent === 'json, decoded').length",
@@ -1183,18 +1269,21 @@ async function runMetadata(sets) {
     await waitFor(listed(featureKey), "The owner's feature is listed");
     assert.equal(await evaluate(listed("mobileOnly")), false);
 
-    // deadline chips describe one deadline together
+    // deadline filters describe one deadline together, and the menu stays open between them
     await cdp.send("Page.navigate", { url: server.origin + scope + "/features" });
+    await clickText("button", "Deadlines");
     await waitFor(
-      "Boolean(document.querySelector('[role=group][aria-label=Deadlines]'))",
-      "Chips show",
+      "Boolean(document.querySelector('[role=dialog][aria-label=\"Deadlines filters\"]'))",
+      "The Deadlines menu opens",
     );
-    await clickText("button", "Overdue");
-    await waitFor("document.querySelector('button[aria-pressed=true]')?.textContent === 'Overdue'");
+    await click('[data-option="deadline:overdue"]');
+    await waitFor(
+      "document.querySelector('[data-option=\"deadline:overdue\"]')?.getAttribute('aria-checked') === 'true'",
+    );
     await waitFor(listed(featureKey));
-    await clickText("button", "Remove");
+    await click('[data-option="deadline:remove"]');
     await waitFor(has("No results found"), "No removal is overdue");
-    await clickText("button", "Overdue");
+    await click('[data-option="deadline:overdue"]');
     await waitFor(listed(featureKey), "Its removal is coming up");
 
     // the home page sends overdue deadlines to the Deadlines page
