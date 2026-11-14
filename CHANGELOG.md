@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.9.0](https://github.com/featurevisor/featurevisor/compare/v4.8.0...v4.9.0) (2026-11-14)
+
+### Features
+
+* catalog ui improvements ([#443](https://github.com/featurevisor/featurevisor/issues/443)) ([9644a7e](https://github.com/featurevisor/featurevisor/commit/9644a7e4b3e72df5e15319693a88d94cb4c57c2e))
+
+
 ## [4.8.0](https://github.com/featurevisor/featurevisor/compare/v4.7.0...v4.8.0) (2026-11-13)
 
 ### Features
