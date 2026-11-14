@@ -466,6 +466,10 @@ function MapDialog(props: {
 const controlClass =
   "flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface text-muted shadow-sm outline-none transition-colors hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary";
 
+/** The map's own controls, smaller than the close button so they sit quietly in its corner */
+const cornerControlClass =
+  "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-muted shadow-sm outline-none transition-colors hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary [&>svg]:h-3 [&>svg]:w-3";
+
 /** The map itself: its scrolling frame, what it draws, and the controls in its corner */
 function MapCanvas(props: {
   map: DependencyMap;
@@ -652,13 +656,13 @@ function MapCanvas(props: {
 
         {/* In the frame's corner, outside what scrolls, so they stay put while the map moves */}
         {overflows && (
-          <div className="absolute bottom-3 right-3 flex gap-1.5">
+          <div className="absolute bottom-2 right-2 flex gap-1">
             <button
               type="button"
               onClick={() => centerView("smooth")}
               aria-label={`Centre the map on ${map.center.key}`}
               title="Centre"
-              className={controlClass}
+              className={cornerControlClass}
             >
               <CentreIcon />
             </button>
@@ -669,7 +673,7 @@ function MapCanvas(props: {
                 onClick={props.onExpand}
                 aria-label="Open the map in a full view"
                 title="Full view"
-                className={controlClass}
+                className={cornerControlClass}
               >
                 <ExpandIcon />
               </button>
