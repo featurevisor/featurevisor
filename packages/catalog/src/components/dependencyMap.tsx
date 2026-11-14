@@ -1,6 +1,6 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { getDependencyMap, type DependencyMap, type DependencyMapNode } from "../dependencyMap";
 import { getEntityRoute } from "../entityTypes";
@@ -23,6 +23,9 @@ const ROW_GAP = 12;
 const PADDING = 24;
 /** Room above the columns for the two side labels */
 const LABEL_HEIGHT = 26;
+/** `?map=full` on the Usage tab opens the full view */
+export const FULL_VIEW_PARAM = "map";
+export const FULL_VIEW_VALUE = "full";
 /** Taller than this, and the map scrolls and drags inside its frame */
 const VIEWPORT_HEIGHT = 440;
 
@@ -290,15 +293,48 @@ export function DependencyMapView(props: {
   /** Shows where the entities a side leaves out are listed */
   onMore?: (side: Side) => void;
 }) {
+  const { onMore } = props;
   const layout = React.useMemo(() => layoutMap(props.map), [props.map]);
-  const [expanded, setExpanded] = React.useState(false);
   const expandRef = React.useRef<HTMLButtonElement | null>(null);
 
+  // The full view lives in the URL, so a link to it opens it for whoever follows the link
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const expanded = searchParams.get(FULL_VIEW_PARAM) === FULL_VIEW_VALUE;
+  const openedHere = (location.state as { openedFullMap?: boolean } | null)?.openedFullMap;
+
+  // Opening adds a history entry, so Back closes it, as it would any page
+  const open = () => {
+    const next = new URLSearchParams(searchParams);
+    next.set(FULL_VIEW_PARAM, FULL_VIEW_VALUE);
+    setSearchParams(next, { state: { openedFullMap: true } });
+  };
+  // Closing returns to the entry it was opened from. Arriving through a link, there is none to
+  // return to here, so it takes the full view out of the URL instead.
   const close = React.useCallback(() => {
-    setExpanded(false);
-    // Back to the button that opened it, once it is in the page again
-    requestAnimationFrame(() => expandRef.current?.focus());
-  }, []);
+    if (openedHere) {
+      navigate(-1);
+      return;
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete(FULL_VIEW_PARAM);
+    setSearchParams(next, { replace: true });
+  }, [openedHere, navigate, searchParams, setSearchParams]);
+
+  // Once closed, however that happened, focus goes back to the button that opened it, or the
+  // list a "more below" asked for comes into view
+  const pendingMore = React.useRef<Side | null>(null);
+  const wasExpanded = React.useRef(expanded);
+  React.useEffect(() => {
+    if (wasExpanded.current && !expanded) {
+      const side = pendingMore.current;
+      pendingMore.current = null;
+      if (side) onMore?.(side);
+      else expandRef.current?.focus();
+    }
+    wasExpanded.current = expanded;
+  }, [expanded, onMore]);
 
   return (
     <>
@@ -307,10 +343,12 @@ export function DependencyMapView(props: {
         layout={layout}
         setKey={props.setKey}
         onMore={props.onMore}
-        onExpand={() => setExpanded(true)}
+        onExpand={open}
         expandRef={expandRef}
       />
+      {/* Server rendering, as tests do, has no document to show it over */}
       {expanded &&
+        typeof document !== "undefined" &&
         createPortal(
           <MapDialog
             map={props.map}
@@ -318,8 +356,8 @@ export function DependencyMapView(props: {
             setKey={props.setKey}
             onClose={close}
             onMore={(side) => {
-              setExpanded(false);
-              requestAnimationFrame(() => props.onMore?.(side));
+              pendingMore.current = side;
+              close();
             }}
           />,
           document.body,
@@ -342,6 +380,9 @@ function MapDialog(props: {
   const { onClose } = props;
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
   const closeRef = React.useRef<HTMLButtonElement | null>(null);
+  // The latest close, so the effect below runs once for each time the view opens
+  const closeLatest = React.useRef(onClose);
+  closeLatest.current = onClose;
 
   React.useEffect(() => {
     closeRef.current?.focus();
@@ -349,14 +390,14 @@ function MapDialog(props: {
     const overflow = root.style.overflow;
     root.style.overflow = "hidden";
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeLatest.current();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       root.style.overflow = overflow;
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
+  }, []);
 
   function keepFocusInside(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Tab") return;

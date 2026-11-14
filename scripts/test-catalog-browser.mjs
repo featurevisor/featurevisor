@@ -788,13 +788,25 @@ async function runCase({ base, hash, sets, environments }, index) {
           "Boolean(document.querySelector('[role=dialog][aria-modal=true] [data-dependency-map=full] a'))",
           "The full view opens",
         );
+        await waitFor(at(usageRoute + "?map=full"), "The full view is in the URL");
         assert.equal(await evaluate("document.documentElement.style.overflow"), "hidden");
         await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
         await waitFor(
-          "!document.querySelector('[role=dialog][aria-modal=true]') && document.documentElement.style.overflow === ''",
-          "Escape closes the full view and lets the page scroll",
+          at(usageRoute) +
+            " && !document.querySelector('[role=dialog][aria-modal=true]') && document.documentElement.style.overflow === ''",
+          "Escape closes the full view, takes it out of the URL and lets the page scroll",
         );
       }
+      // A link to the full view opens it, and closing it keeps the reader on the page
+      await navigate(
+        usageRoute + "?map=full",
+        "Boolean(document.querySelector('[role=dialog][aria-modal=true] [data-dependency-map=full] a'))",
+      );
+      await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
+      await waitFor(
+        at(usageRoute) + " && !document.querySelector('[role=dialog][aria-modal=true]')",
+        "Closing a full view opened from a link stays on the page",
+      );
       await checkPageFits();
       await navigate(
         segmentRoute,

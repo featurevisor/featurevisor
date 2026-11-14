@@ -181,6 +181,34 @@ describe("dependencies on the Usage tab", () => {
     expect(html).toContain('data-usage-block="depends-on"');
   });
 
+  it("renders the map in its page when a link asks for the full view", () => {
+    // The full view needs a document to open over, so server rendering keeps the map in place
+    const html = renderToStaticMarkup(
+      <MemoryRouter initialEntries={["/features/discount/usage?map=full"]}>
+        <Routes>
+          <Route
+            element={
+              <Outlet
+                context={{
+                  detail: {
+                    type: "feature",
+                    key: "discount",
+                    entity: { bucketBy: "userId" },
+                  },
+                }}
+              />
+            }
+          >
+            <Route path="*" element={<UsageTab />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(html).toContain(">Dependency map</h2>");
+    expect(html).toContain('data-dependency-map=""');
+    expect(html).not.toContain('aria-modal="true"');
+  });
+
   it("reads what an entity depends on from its own definition, with what each check reads", () => {
     const html = render({
       type: "feature",
