@@ -36,6 +36,7 @@ import {
   type DeadlineClock,
 } from "../metadata";
 import { DeadlineRowBadge, qualifierToken } from "../components/metadata";
+import { FilterMenus, type FilterChip } from "../components/filterMenus";
 
 const LIST_INITIAL_LIMIT = 1000;
 // Rows off screen skip layout and paint until scrolled near, which keeps long lists cheap.
@@ -114,15 +115,6 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   }
 
   return { terms, qualifiers };
-}
-
-interface FilterChip {
-  label: string;
-  token: string;
-  /** Chips sharing a group sit together under its label. */
-  group: string;
-  /** Keeps its group label even where other chips sit in one row, since its label alone is unclear */
-  labelled?: boolean;
 }
 
 function sortValuesOf(values: Array<string | undefined>) {
@@ -218,7 +210,7 @@ export function getFilterChips(index: CatalogIndex, entityPath: EntityPath): Fil
 
   if (entityPath === "features") {
     sortValuesOf(entities.flatMap((entity) => entity.tags || [])).forEach((tag) =>
-      chips.push({ label: `#${tag}`, token: `tag:${tag}`, group: "Tags" }),
+      chips.push({ label: tag, token: `tag:${tag}`, group: "Tags" }),
     );
   }
 
@@ -246,12 +238,11 @@ export function getMetadataChips(
         label: owner,
         token: qualifierToken("owner", owner),
         group: "Owner",
-        labelled: true,
       }),
     );
   }
   if (owners.length > 0 && entities.some((entity) => !entity.owners?.length && !entity.archived)) {
-    chips.push({ label: "None", token: "without:owner", group: "Owner", labelled: true });
+    chips.push({ label: "None", token: "without:owner", group: "Owner" });
   }
 
   const deadlines = entities.flatMap((entity) => getSummaryDeadlines(entity));
@@ -263,15 +254,16 @@ export function getMetadataChips(
       .flatMap((entity) => getSummaryDeadlines(entity))
       .map((deadline) => getDeadlineStatus(deadline, clock)),
   );
-  const deadline = (label: string, token: string) =>
-    chips.push({ label, token, group: "Deadlines", labelled: true });
-  if (statuses.has("overdue")) deadline("Overdue", "deadline:overdue");
+  // Statuses and types sit under their own headings in the Deadlines menu
+  const deadline = (label: string, token: string, section: string) =>
+    chips.push({ label, token, group: "Deadlines", section });
+  if (statuses.has("overdue")) deadline("Overdue", "deadline:overdue", "Status");
   if (statuses.has("today") || statuses.has("upcoming")) {
-    deadline("Due in 30 days", "deadline:upcoming");
+    deadline("Due in 30 days", "deadline:upcoming", "Status");
   }
   const types = sortValuesOf(deadlines.map((item) => item.type));
   if (types.length <= METADATA_CHIP_LIMIT) {
-    types.forEach((type) => deadline(getDeadlineLabel(type), `deadline:${type}`));
+    types.forEach((type) => deadline(getDeadlineLabel(type), `deadline:${type}`, "Type"));
   }
   return chips;
 }
@@ -938,15 +930,6 @@ function sortValues(values?: string[]) {
   return Array.from(new Set(values || [])).sort((left, right) => left.localeCompare(right));
 }
 
-function toggleToken(query: string, token: string) {
-  const tokens = query.trim().split(/\s+/).filter(Boolean);
-  const existingIndex = tokens.findIndex((item) => item.toLowerCase() === token.toLowerCase());
-
-  return existingIndex >= 0
-    ? tokens.filter((_, index) => index !== existingIndex).join(" ")
-    : [...tokens, token].join(" ");
-}
-
 /** What counts as using each type that exports a usage count. */
 const USAGE_OWNERS: Partial<Record<CatalogEntityType, string>> = {
   segment: "a feature or variable, directly or through other segments",
@@ -954,97 +937,12 @@ const USAGE_OWNERS: Partial<Record<CatalogEntityType, string>> = {
   schema: "a feature or variable",
 };
 
-function FilterChips(props: {
-  query: string;
-  chips: FilterChip[];
-  /** One row without group labels, for lists whose chips read well side by side. */
-  flat?: boolean;
-  className?: string;
-  onChange: (query: string) => void;
-}) {
-  if (props.chips.length === 0) {
-    return null;
-  }
-
-  const tokens = props.query.trim().toLowerCase().split(/\s+/);
-  const groups = new Map<string, FilterChip[]>();
-  for (const chip of props.chips) {
-    const name = props.flat && !chip.labelled ? "Filters" : chip.group;
-    const group = groups.get(name);
-    if (group) group.push(chip);
-    else groups.set(name, [chip]);
-  }
-  const labelled = groups.size > 1;
-
-  const renderChip = (chip: FilterChip) => {
-    const active = tokens.includes(chip.token.toLowerCase());
-
-    return (
-      <button
-        key={chip.token}
-        type="button"
-        aria-pressed={active}
-        onClick={() => props.onChange(toggleToken(props.query, chip.token))}
-        className={[
-          "cursor-pointer rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
-          active
-            ? "border-header-active bg-header-active text-header-text"
-            : "border-slate-300 bg-surface text-slate-700 hover:border-slate-400 hover:bg-slate-50",
-        ].join(" ")}
-      >
-        {chip.label}
-      </button>
-    );
-  };
-  const renderGroup = ([group, chips]: [string, FilterChip[]], labelled: boolean) => (
-    <div
-      key={group}
-      role="group"
-      aria-label={group}
-      className="flex flex-wrap items-center gap-1.5"
-    >
-      {labelled && (
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-faint">
-          {group}
-        </span>
-      )}
-      {chips.map(renderChip)}
-    </div>
-  );
-
-  // Flat chips are direct children, so they wrap across the whole row. Groups whose chips need
-  // their label, such as owners and deadlines, follow with it.
-  if (props.flat) {
-    const flat = props.chips.filter((chip) => !chip.labelled);
-    const labelledGroups = [...groups].filter(([group]) => group !== "Filters");
-    return (
-      <div className={`space-y-2 ${props.className || ""}`}>
-        {flat.length > 0 && (
-          <div role="group" aria-label="Filters" className="flex flex-wrap items-center gap-1.5">
-            {flat.map(renderChip)}
-          </div>
-        )}
-        {labelledGroups.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {labelledGroups.map((entry) => renderGroup(entry, true))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${props.className || ""}`}>
-      {[...groups].map((entry) => renderGroup(entry, labelled))}
-    </div>
-  );
-}
-
 function SearchControls(props: {
   query: string;
   label: string;
   chips: FilterChip[];
-  flatChips?: boolean;
+  /** How many definitions a query finds, for the counts in the filter menus */
+  countMatches: (query: string) => number;
   /** Beside the search box on wide screens, below it on phones. */
   sort: React.ReactNode;
   searchParams: URLSearchParams;
@@ -1057,7 +955,7 @@ function SearchControls(props: {
     });
   }
 
-  // Chips span both columns, so they use the width under Sort too.
+  // Filters span both columns, so they use the width under Sort too.
   return (
     <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
       <input
@@ -1067,12 +965,12 @@ function SearchControls(props: {
         className="w-full rounded-full border border-border bg-surface px-5 py-2 text-xl text-text outline-none placeholder:text-faint focus:border-primary"
       />
       {props.sort}
-      <FilterChips
+      <FilterMenus
         query={props.query}
         chips={props.chips}
-        flat={props.flatChips}
         className="md:col-span-2"
         onChange={setQuery}
+        countMatches={props.countMatches}
       />
     </div>
   );
@@ -1104,6 +1002,15 @@ export function ListPage() {
   const filterChips = React.useMemo(
     () => (index && isEntityPath(entityPath) ? getFilterChips(index, entityPath) : []),
     [index, entityPath],
+  );
+  const countMatches = React.useCallback(
+    (countQuery: string) =>
+      index && listType
+        ? (index.entities[listType] || []).filter(
+            createQueryMatcher(countQuery, { index, type: listType }),
+          ).length
+        : 0,
+    [index, listType],
   );
   const unknownQualifiers = React.useMemo(() => getUnknownQualifiers(listQuery), [listQuery]);
   const location = useLocation();
@@ -1166,8 +1073,7 @@ export function ListPage() {
           query={query}
           label={entityLabels[type].plural}
           chips={filterChips}
-          // Features and variables have small groups, which read better as one row of pills.
-          flatChips={entityPath === "features" || entityPath === "variables"}
+          countMatches={countMatches}
           sort={
             <label className="relative inline-flex h-[46px] w-fit max-w-full cursor-pointer items-center gap-2 rounded-full border border-border bg-surface pl-3 pr-8 text-sm font-semibold text-muted focus-within:ring-2 focus-within:ring-primary">
               <span>Sort</span>

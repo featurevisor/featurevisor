@@ -657,7 +657,8 @@ async function runCase({ base, hash, sets, environments }, index) {
       scope + "/tests",
       "Boolean(document.querySelector('input[placeholder=\"Search tests...\"]'))",
     );
-    await clickText("button", "Scenarios");
+    await clickText("button", "Kind");
+    await click('[data-option="kind:scenario"]');
     await waitFor(
       "document.querySelector('input[placeholder=\"Search tests...\"]').value.includes('kind:scenario') && !document.querySelector('main').innerText.includes(" +
         json(specKey) +
@@ -828,11 +829,17 @@ async function runCase({ base, hash, sets, environments }, index) {
         scope + "/variables",
         "Boolean(document.querySelector('input[placeholder=\"Search variables...\"]'))",
       );
-      const chips = await evaluate(
-        "[...document.querySelectorAll('button')].map(button => button.textContent)",
+      // The Type menu lists types in order, then compositions
+      await clickText("button", "Type");
+      await waitFor(
+        "Boolean(document.querySelector('[role=dialog] [data-option]'))",
+        "Type menu opens",
       );
-      assert.ok(chips.indexOf("json") < chips.indexOf("object"));
-      assert.ok(chips.indexOf("object") < chips.indexOf("Composed"));
+      const options = await evaluate(
+        "[...document.querySelectorAll('[role=dialog] [data-option]')].map(option => option.dataset.option)",
+      );
+      assert.ok(options.indexOf("type:json") < options.indexOf("type:object"));
+      assert.ok(options.indexOf("type:object") < options.indexOf("with:composition"));
       assert.equal(
         await evaluate(
           "[...document.querySelectorAll('a')].find(a => a.href === " +
@@ -841,7 +848,8 @@ async function runCase({ base, hash, sets, environments }, index) {
         ),
         true,
       );
-      await clickText("button", "Composed");
+      // The menu stays open while its filters toggle, and the page still fits around it
+      await click('[data-option="with:composition"]');
       await waitFor(
         "document.querySelector('input[placeholder=\"Search variables...\"]').value.includes('with:composition') && !document.querySelector('main').innerText.includes('checkout/policy')",
       );
@@ -850,8 +858,10 @@ async function runCase({ base, hash, sets, environments }, index) {
         true,
       );
       await checkPageFits();
-      await clickText("button", "json");
+      await click('[data-option="type:json"]');
       await waitFor("document.querySelector('main').innerText.includes('2 of 9 variables')");
+      await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
+      await waitFor("!document.querySelector('[role=dialog]')", "Escape closes the menu");
       assert.equal(
         await evaluate(
           "[...document.querySelectorAll('main code')].filter(code => code.textContent === 'json, decoded').length",
@@ -1183,18 +1193,21 @@ async function runMetadata(sets) {
     await waitFor(listed(featureKey), "The owner's feature is listed");
     assert.equal(await evaluate(listed("mobileOnly")), false);
 
-    // deadline chips describe one deadline together
+    // deadline filters describe one deadline together, and the menu stays open between them
     await cdp.send("Page.navigate", { url: server.origin + scope + "/features" });
+    await clickText("button", "Deadlines");
     await waitFor(
-      "Boolean(document.querySelector('[role=group][aria-label=Deadlines]'))",
-      "Chips show",
+      "Boolean(document.querySelector('[role=dialog][aria-label=\"Deadlines filters\"]'))",
+      "The Deadlines menu opens",
     );
-    await clickText("button", "Overdue");
-    await waitFor("document.querySelector('button[aria-pressed=true]')?.textContent === 'Overdue'");
+    await click('[data-option="deadline:overdue"]');
+    await waitFor(
+      "document.querySelector('[data-option=\"deadline:overdue\"]')?.getAttribute('aria-checked') === 'true'",
+    );
     await waitFor(listed(featureKey));
-    await clickText("button", "Remove");
+    await click('[data-option="deadline:remove"]');
     await waitFor(has("No results found"), "No removal is overdue");
-    await clickText("button", "Overdue");
+    await click('[data-option="deadline:overdue"]');
     await waitFor(listed(featureKey), "Its removal is coming up");
 
     // the home page sends overdue deadlines to the Deadlines page

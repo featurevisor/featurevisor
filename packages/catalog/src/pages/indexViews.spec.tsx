@@ -14,7 +14,13 @@ import { ListPage, getListEntities, getFilterChips } from "./ListPage";
 import { OverviewPage } from "./HomePage";
 import { getHistoryMatcher } from "./HistoryPage";
 import { findNamespacedKey, getExtraKeySegments } from "./EntityDetailPage";
-import type { CatalogIndex, CatalogManifest, EntitySummary, HistoryEntry } from "../types";
+import type {
+  CatalogIndex,
+  CatalogManifest,
+  EntityPath,
+  EntitySummary,
+  HistoryEntry,
+} from "../types";
 
 const manifest: CatalogManifest = {
   schemaVersion: "1",
@@ -54,6 +60,12 @@ function render(route: string) {
 
 const textContent = (markup: string) => markup.replace(/<[^>]*>/g, "");
 
+/** The filter menus a list offers, by the names on their buttons */
+const filterMenus = (markup: string) =>
+  [...markup.matchAll(/aria-haspopup="dialog".*?<span class="shrink-0">([^<]+)<\/span>/g)].map(
+    (match) => match[1],
+  );
+
 describe("Catalog index views", () => {
   it("badges and filters compositions without hiding their object type", () => {
     const entities = [
@@ -70,7 +82,6 @@ describe("Catalog index views", () => {
       { label: "object", token: "type:object", group: "Type" },
       { label: "Composed", token: "with:composition", group: "Type" },
     ]);
-    expect(html).toContain(">Composed</button>");
     const keys = (query: string) => getListEntities(entities, query, "name").map((e) => e.key);
     expect(keys("with:composition")).toEqual(["screen"]);
     expect(keys("type:object")).toEqual(["screen", "settings"]);
@@ -80,7 +91,9 @@ describe("Catalog index views", () => {
     expect(textContent(render("/variables?q=with%3Acomposition"))).toContain("1 of 3 variables");
     expect(textContent(render("/variables?q=missing"))).toContain("0 of 3 variables");
     withIndex({ variable: [entities[1]] });
-    expect(render("/variables")).not.toContain(">Composed</button>");
+    expect(
+      getFilterChips(mockIndex as CatalogIndex, "variables").map((chip) => chip.token),
+    ).not.toContain("with:composition");
   });
 
   it("shows attribute formats beside their type and filters by either", () => {
@@ -152,34 +165,47 @@ describe("Catalog index views", () => {
     expect(textContent(render("/variables"))).toContain("1000 of 1002 variables");
   });
 
-  it("shows feature and variable chips as one row and groups the others", () => {
+  it("shows one filter menu per kind of filter, with small kinds sharing Properties", () => {
     withIndex({
-      feature: [{ key: "checkout", environments: ["production"], tags: ["web"], hasTests: false }],
+      feature: [
+        {
+          key: "checkout",
+          environments: ["production"],
+          tags: ["web"],
+          hasTests: false,
+          hasVariations: true,
+        },
+      ],
     });
     const features = render("/features");
-    expect(features.match(/role="group"/g)).toHaveLength(1);
     expect(features).toContain('role="group" aria-label="Filters"');
-    expect(features).not.toContain(">Environment</span>");
-    expect(features).toContain(">production</button>");
-    expect(features).toContain(">#web</button>");
+    expect(filterMenus(features)).toEqual(["Environment", "Properties", "Tags"]);
+    // Options are listed only in an open menu
+    expect(features).not.toContain('role="checkbox"');
+    expect(features).not.toContain(">Reset");
 
     withIndex({
       variable: [{ key: "limit", variableType: "integer", hasTests: false }],
     });
-    const variables = render("/variables");
-    expect(variables).toContain('role="group" aria-label="Filters"');
-    expect(variables).not.toContain(">Type</span>");
-    expect(variables).toContain(">integer</button>");
-    expect(variables).toContain(">Without tests</button>");
+    // A shared menu holding one kind is named after it
+    expect(filterMenus(render("/variables"))).toEqual(["Type", "Status"]);
 
     withIndex({ segment: [{ key: "netherlands", usedByCount: 0 }] });
-    const segments = render("/segments");
-    expect(segments).toContain('role="group" aria-label="Usage"');
+    expect(filterMenus(render("/segments"))).toEqual(["Usage"]);
     // Both apply whenever the type has usage counts, even when nothing is used.
-    expect(segments).toContain(">Unused</button>");
-    expect(segments).toContain(">Used</button>");
-    // One group needs no label.
-    expect(segments).not.toContain(">Usage</span>");
+    expect(getFilterChips(mockIndex as CatalogIndex, "segments").map((chip) => chip.token)).toEqual(
+      ["with:usage", "without:usage"],
+    );
+  });
+
+  it("names what each menu has on, and offers Reset", () => {
+    withIndex({
+      feature: [{ key: "checkout", environments: ["production"], tags: ["web"] }],
+    });
+    const features = render("/features?q=in%3Aproduction+tag%3Aweb+checkout");
+    expect(features).toMatch(/>Environment<\/span>.*>production<\/span>/);
+    expect(features).toMatch(/>Tags<\/span>.*>web<\/span>/);
+    expect(features).toContain(">Reset");
   });
 
   it.each([
@@ -193,9 +219,12 @@ describe("Catalog index views", () => {
     ];
     withIndex({ [type]: entities });
     const html = render(`/${entityPath}`);
-    expect(html).toContain(">Used</button>");
-    expect(html).toContain(">Unused</button>");
-    if (type === "attribute") expect(html).toContain(">string</button>");
+    expect(filterMenus(html)).toEqual(type === "attribute" ? ["Type", "Usage"] : ["Usage"]);
+    const tokens = getFilterChips(mockIndex as CatalogIndex, entityPath as EntityPath).map(
+      (chip) => chip.token,
+    );
+    expect(tokens).toEqual(expect.arrayContaining(["with:usage", "without:usage"]));
+    if (type === "attribute") expect(tokens).toContain("type:string");
 
     const keys = (query: string) =>
       getListEntities(entities as EntitySummary[], query, "name").map((entity) => entity.key);
