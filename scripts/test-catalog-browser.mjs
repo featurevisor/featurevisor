@@ -780,7 +780,21 @@ async function runCase({ base, hash, sets, environments }, index) {
         };
       })()`);
       assert.equal(drag.href, url(usageRoute), "A drag never opens an entity");
-      if (drag.overflows) assert.ok(drag.scrolled > 0, "A drag pans a map wider than its frame");
+      if (drag.overflows) {
+        assert.ok(drag.scrolled > 0, "A drag pans a map wider than its frame");
+        // A map larger than its frame opens in a full view, which Escape closes
+        await click('[aria-label="Open the map in a full view"]');
+        await waitFor(
+          "Boolean(document.querySelector('[role=dialog][aria-modal=true] [data-dependency-map=full] a'))",
+          "The full view opens",
+        );
+        assert.equal(await evaluate("document.documentElement.style.overflow"), "hidden");
+        await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))");
+        await waitFor(
+          "!document.querySelector('[role=dialog][aria-modal=true]') && document.documentElement.style.overflow === ''",
+          "Escape closes the full view and lets the page scroll",
+        );
+      }
       await checkPageFits();
       await navigate(
         segmentRoute,

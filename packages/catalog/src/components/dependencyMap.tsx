@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 
 import { getDependencyMap, type DependencyMap, type DependencyMapNode } from "../dependencyMap";
@@ -280,7 +281,8 @@ export function useDependencyMap(detail: EntityDetail, setKey?: string) {
 /**
  * What an entity depends on and what depends on it, drawn as a map: the entity in the middle,
  * its dependencies to the left and its dependents to the right, a column for each step away.
- * Hovering an entity traces its way to the middle. A map larger than its frame drags.
+ * Hovering an entity traces its way to the middle. A map larger than its frame drags, and opens
+ * in a full view that takes most of the window.
  */
 export function DependencyMapView(props: {
   map: DependencyMap;
@@ -288,9 +290,154 @@ export function DependencyMapView(props: {
   /** Shows where the entities a side leaves out are listed */
   onMore?: (side: Side) => void;
 }) {
-  const { map } = props;
+  const layout = React.useMemo(() => layoutMap(props.map), [props.map]);
+  const [expanded, setExpanded] = React.useState(false);
+  const expandRef = React.useRef<HTMLButtonElement | null>(null);
+
+  const close = React.useCallback(() => {
+    setExpanded(false);
+    // Back to the button that opened it, once it is in the page again
+    requestAnimationFrame(() => expandRef.current?.focus());
+  }, []);
+
+  return (
+    <>
+      <MapCanvas
+        map={props.map}
+        layout={layout}
+        setKey={props.setKey}
+        onMore={props.onMore}
+        onExpand={() => setExpanded(true)}
+        expandRef={expandRef}
+      />
+      {expanded &&
+        createPortal(
+          <MapDialog
+            map={props.map}
+            layout={layout}
+            setKey={props.setKey}
+            onClose={close}
+            onMore={(side) => {
+              setExpanded(false);
+              requestAnimationFrame(() => props.onMore?.(side));
+            }}
+          />,
+          document.body,
+        )}
+    </>
+  );
+}
+
+/**
+ * The full view: the map over the page, filling the window less a margin. Escape or the close
+ * button returns to the page, the page stays still behind it, and Tab stays inside it.
+ */
+function MapDialog(props: {
+  map: DependencyMap;
+  layout: MapLayout;
+  setKey?: string;
+  onClose: () => void;
+  onMore: (side: Side) => void;
+}) {
+  const { onClose } = props;
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+  const closeRef = React.useRef<HTMLButtonElement | null>(null);
+
+  React.useEffect(() => {
+    closeRef.current?.focus();
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      root.style.overflow = overflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  function keepFocusInside(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Tab") return;
+    const focusable = [
+      ...(dialogRef.current?.querySelectorAll<HTMLElement>("a[href], button") || []),
+    ];
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex bg-background/80 p-3 backdrop-blur-sm sm:p-6"
+      onPointerDown={(event) => {
+        // A press on the backdrop, outside the panel, closes it
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Dependency map of ${props.map.center.key}`}
+        onKeyDown={keepFocusInside}
+        className="flex min-h-0 w-full flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold text-text">Dependency map</h2>
+            <p className="truncate text-xs text-muted">
+              {typeName(props.map.center)} {props.map.center.key}
+            </p>
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Close the full view"
+            title="Close (Esc)"
+            className={controlClass}
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1">
+          <MapCanvas
+            map={props.map}
+            layout={props.layout}
+            setKey={props.setKey}
+            onMore={props.onMore}
+            full
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const controlClass =
+  "flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface text-muted shadow-sm outline-none transition-colors hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary";
+
+/** The map itself: its scrolling frame, what it draws, and the controls in its corner */
+function MapCanvas(props: {
+  map: DependencyMap;
+  layout: MapLayout;
+  setKey?: string;
+  onMore?: (side: Side) => void;
+  /** Fills the full view, rather than sitting in the page */
+  full?: boolean;
+  onExpand?: () => void;
+  expandRef?: React.Ref<HTMLButtonElement>;
+}) {
+  const { map, layout } = props;
   const summaryOf = useSummaryLookup(props.setKey);
-  const layout = React.useMemo(() => layoutMap(map), [map]);
   const [hovered, setHovered] = React.useState<string | null>(null);
   const [overflows, setOverflows] = React.useState(false);
   const { ref, dragging, handlers } = useDragToPan(overflows);
@@ -330,143 +477,168 @@ export function DependencyMapView(props: {
     return () => observer.disconnect();
   }, [layout, centerView, ref]);
 
+  const showExpand = !props.full && overflows && props.onExpand;
+
   return (
-    <div>
-      <div
-        ref={ref}
-        {...handlers}
-        data-dependency-map=""
-        style={{
-          maxHeight: VIEWPORT_HEIGHT,
-          backgroundImage: "radial-gradient(var(--mv-color-border) 1px, transparent 1px)",
-          backgroundSize: "16px 16px",
-        }}
-        className={[
-          "overflow-auto overscroll-contain rounded-xl border border-border bg-elevated/40 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          overflows ? (dragging ? "cursor-grabbing select-none" : "cursor-grab") : "",
-        ].join(" ")}
-      >
-        <div className="relative mx-auto" style={{ width: layout.width, height: layout.height }}>
-          {layout.labels.map((label) => (
+    <div className={props.full ? "h-full" : undefined}>
+      <div className={`relative ${props.full ? "h-full" : ""}`}>
+        <div
+          ref={ref}
+          {...handlers}
+          data-dependency-map={props.full ? "full" : ""}
+          style={{
+            maxHeight: props.full ? undefined : VIEWPORT_HEIGHT,
+            backgroundImage: "radial-gradient(var(--mv-color-border) 1px, transparent 1px)",
+            backgroundSize: "16px 16px",
+          }}
+          className={[
+            "overflow-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            props.full ? "h-full bg-elevated/40" : "rounded-xl border border-border bg-elevated/40",
+            overflows ? (dragging ? "cursor-grabbing select-none" : "cursor-grab") : "",
+          ].join(" ")}
+        >
+          {/* Auto margins centre a map smaller than its frame, and never clip a larger one */}
+          <div className="flex min-h-full min-w-full">
             <div
-              key={label.x}
-              className="absolute text-center text-[10px] font-semibold uppercase tracking-wider text-faint"
-              style={{ left: label.x, top: PADDING - 4, width: label.width }}
+              className="relative m-auto shrink-0"
+              style={{ width: layout.width, height: layout.height }}
             >
-              {label.text}
+              {layout.labels.map((label) => (
+                <div
+                  key={label.x}
+                  className="absolute text-center text-[10px] font-semibold uppercase tracking-wider text-faint"
+                  style={{ left: label.x, top: PADDING - 4, width: label.width }}
+                >
+                  {label.text}
+                </div>
+              ))}
+
+              <svg
+                aria-hidden="true"
+                width={layout.width}
+                height={layout.height}
+                className="pointer-events-none absolute inset-0"
+              >
+                {map.edges.map((edge) => {
+                  const from = layout.positions.get(edge.from);
+                  const to = layout.positions.get(edge.to);
+                  if (!from || !to) return null;
+                  const id = `${edge.from}>${edge.to}`;
+                  const lit = trace?.edges.has(id);
+                  return (
+                    <path
+                      key={id}
+                      d={edgePath(from, to)}
+                      fill="none"
+                      strokeWidth={lit ? 2 : 1.5}
+                      strokeLinecap="round"
+                      className={[
+                        "transition-[stroke,opacity] duration-200",
+                        lit ? "stroke-slate-500" : "stroke-slate-300",
+                        trace && !lit ? "opacity-30" : "",
+                      ].join(" ")}
+                    />
+                  );
+                })}
+                {/* Ports where lines meet each entity */}
+                {layout.nodes.concat(layout.center).flatMap((node) => {
+                  const dimmed = trace && !trace.nodes.has(node.id);
+                  const ports = [];
+                  const y = node.y + node.height / 2;
+                  if (map.edges.some((edge) => edge.from === node.id)) {
+                    ports.push(node.x + node.width);
+                  }
+                  if (map.edges.some((edge) => edge.to === node.id)) ports.push(node.x);
+                  return ports.map((x) => (
+                    <circle
+                      key={`${node.id}@${x}`}
+                      cx={x}
+                      cy={y}
+                      r={3}
+                      className={[
+                        "fill-surface stroke-slate-400 transition-opacity duration-200",
+                        dimmed ? "opacity-30" : "",
+                      ].join(" ")}
+                      strokeWidth={1.5}
+                    />
+                  ));
+                })}
+              </svg>
+
+              {layout.nodes.map((node) => (
+                <MapNode
+                  key={node.id}
+                  node={node}
+                  summary={summaryOf(node)}
+                  setKey={props.setKey}
+                  dimmed={Boolean(trace && !trace.nodes.has(node.id))}
+                  lit={hovered === node.id}
+                  onHover={setHovered}
+                />
+              ))}
+
+              <div
+                className="absolute flex flex-col justify-center rounded-lg border border-header-active bg-header-active px-3 text-header-text shadow-md"
+                style={{
+                  left: layout.center.x,
+                  top: layout.center.y,
+                  width: layout.center.width,
+                  height: layout.center.height,
+                }}
+                title={layout.center.key}
+              >
+                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+                  {typeName(layout.center)}
+                </span>
+                <span className="truncate text-sm font-semibold">{layout.center.key}</span>
+              </div>
+
+              {/* The lists below the map name every entity, including those it leaves out */}
+              {layout.more.map((item) => (
+                <button
+                  key={item.side}
+                  type="button"
+                  onClick={() => props.onMore?.(item.side)}
+                  className="absolute flex cursor-pointer items-center justify-center rounded-full border border-dashed border-slate-300 bg-surface text-xs font-medium text-muted outline-none hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary"
+                  style={{ left: item.x, top: item.y, width: item.width, height: MORE_HEIGHT }}
+                >
+                  {item.count} more below
+                </button>
+              ))}
             </div>
-          ))}
-
-          <svg
-            aria-hidden="true"
-            width={layout.width}
-            height={layout.height}
-            className="pointer-events-none absolute inset-0"
-          >
-            {map.edges.map((edge) => {
-              const from = layout.positions.get(edge.from);
-              const to = layout.positions.get(edge.to);
-              if (!from || !to) return null;
-              const id = `${edge.from}>${edge.to}`;
-              const lit = trace?.edges.has(id);
-              return (
-                <path
-                  key={id}
-                  d={edgePath(from, to)}
-                  fill="none"
-                  strokeWidth={lit ? 2 : 1.5}
-                  strokeLinecap="round"
-                  className={[
-                    "transition-[stroke,opacity] duration-200",
-                    lit ? "stroke-slate-500" : "stroke-slate-300",
-                    trace && !lit ? "opacity-30" : "",
-                  ].join(" ")}
-                />
-              );
-            })}
-            {/* Ports where lines meet each entity */}
-            {layout.nodes.concat(layout.center).flatMap((node) => {
-              const dimmed = trace && !trace.nodes.has(node.id);
-              const ports = [];
-              const y = node.y + node.height / 2;
-              const side = map.edges.some((edge) => edge.from === node.id);
-              const otherSide = map.edges.some((edge) => edge.to === node.id);
-              if (side) ports.push(node.x + node.width);
-              if (otherSide) ports.push(node.x);
-              return ports.map((x) => (
-                <circle
-                  key={`${node.id}@${x}`}
-                  cx={x}
-                  cy={y}
-                  r={3}
-                  className={[
-                    "fill-surface stroke-slate-400 transition-opacity duration-200",
-                    dimmed ? "opacity-30" : "",
-                  ].join(" ")}
-                  strokeWidth={1.5}
-                />
-              ));
-            })}
-          </svg>
-
-          {layout.nodes.map((node) => (
-            <MapNode
-              key={node.id}
-              node={node}
-              summary={summaryOf(node)}
-              setKey={props.setKey}
-              dimmed={Boolean(trace && !trace.nodes.has(node.id))}
-              lit={hovered === node.id}
-              onHover={setHovered}
-            />
-          ))}
-
-          <div
-            className="absolute flex flex-col justify-center rounded-lg border border-header-active bg-header-active px-3 text-header-text shadow-md"
-            style={{
-              left: layout.center.x,
-              top: layout.center.y,
-              width: layout.center.width,
-              height: layout.center.height,
-            }}
-            title={layout.center.key}
-          >
-            <span className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
-              {typeName(layout.center)}
-            </span>
-            <span className="truncate text-sm font-semibold">{layout.center.key}</span>
           </div>
-
-          {/* The lists below the map name every entity, including those it leaves out */}
-          {layout.more.map((item) => (
-            <button
-              key={item.side}
-              type="button"
-              onClick={() => props.onMore?.(item.side)}
-              className="absolute flex cursor-pointer items-center justify-center rounded-full border border-dashed border-slate-300 bg-surface text-xs font-medium text-muted outline-none hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary"
-              style={{ left: item.x, top: item.y, width: item.width, height: MORE_HEIGHT }}
-            >
-              {item.count} more below
-            </button>
-          ))}
         </div>
+
+        {/* In the frame's corner, outside what scrolls, so they stay put while the map moves */}
+        {overflows && (
+          <div className="absolute bottom-3 right-3 flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => centerView("smooth")}
+              aria-label={`Centre the map on ${map.center.key}`}
+              title="Centre"
+              className={controlClass}
+            >
+              <CentreIcon />
+            </button>
+            {showExpand && (
+              <button
+                ref={props.expandRef}
+                type="button"
+                onClick={props.onExpand}
+                aria-label="Open the map in a full view"
+                title="Full view"
+                className={controlClass}
+              >
+                <ExpandIcon />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Below the frame, so it never covers an entity */}
-      {overflows && (
-        <div className="mt-1.5 flex items-center justify-end gap-1 text-[11px] text-faint">
-          <span>Drag to explore</span>
-          <span aria-hidden="true">·</span>
-          <button
-            type="button"
-            onClick={() => centerView("smooth")}
-            aria-label={`Centre the map on ${map.center.key}`}
-            className="inline-flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 font-medium text-muted outline-none hover:text-text focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <CentreIcon />
-            Centre
-          </button>
-        </div>
+      {!props.full && overflows && (
+        <p className="mt-1.5 text-right text-[11px] text-faint">Drag to explore</p>
       )}
     </div>
   );
@@ -509,6 +681,28 @@ function MapNode(props: {
       </span>
       <span className="truncate text-sm font-medium text-text">{node.key}</span>
     </Link>
+  );
+}
+
+function ExpandIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5">
+      <path
+        d="M9.75 2.25h4v4M6.25 13.75h-4v-4M13.75 2.25L9.5 6.5M2.25 13.75L6.5 9.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5">
+      <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
   );
 }
 
