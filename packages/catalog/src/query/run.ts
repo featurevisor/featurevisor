@@ -24,6 +24,7 @@ import {
   propertyOf,
   readOf,
   rowContext,
+  type Detail,
   type Expr,
   type Heading,
   type PropertyType,
@@ -59,6 +60,8 @@ export interface ResultValue {
   type?: PropertyType;
   /** How a grouped answer shows, without the evaluation behind it */
   tone?: Cell["tone"];
+  /** What an evaluation says beside its answer, shown as itself rather than as the answer */
+  detail?: Detail;
 }
 
 export interface ResultColumn {
@@ -143,11 +146,7 @@ function bucketAttributes(datafiles: DatafileContent[], features: string[]) {
  * values its conditions compare plus any other, and `*` with every attribute they compare,
  * leaving out what rollouts bucket by and stopping before the rows grow past a screenful.
  */
-function resolveVary(
-  vary: ReportVary[],
-  compared: Map<string, Set<string>>,
-  bucketBy: Set<string>,
-) {
+function resolveVary(vary: ReportVary[], compared: Map<string, unknown[]>, bucketBy: Set<string>) {
   const resolved: ReportVary[] = [];
   const named = new Set(vary.map((item) => item.attribute));
   for (const item of vary) {
@@ -163,10 +162,10 @@ function resolveVary(
     let rows = resolved.reduce((total, entry) => total * entry.values.length, 1);
     const automatic = [...compared.entries()]
       .filter(([attribute]) => !bucketBy.has(attribute) && !named.has(attribute))
-      .sort(([left, a], [right, b]) => b.size - a.size || left.localeCompare(right));
+      .sort(([left, a], [right, b]) => b.length - a.length || left.localeCompare(right));
     for (const [attribute, values] of automatic) {
-      if (rows * (values.size + 1) > AUTOMATIC_ROWS) continue;
-      rows *= values.size + 1;
+      if (rows * (values.length + 1) > AUTOMATIC_ROWS) continue;
+      rows *= values.length + 1;
       resolved.push({ attribute, values: [...values, ANY_OTHER] });
     }
   }
@@ -381,7 +380,7 @@ export function runReport(input: RunInput): Result {
     if (expr.kind === "read") return { text: cell.text, raw: cell.value, cell };
     if (expr.detail === "rollout") {
       const share = rolloutOf(cell);
-      return { text: percentText(share), raw: share, cell };
+      return { text: percentText(share), raw: share, cell, detail: "rollout" };
     }
     const detail =
       expr.detail === "rule"
@@ -389,7 +388,7 @@ export function runReport(input: RunInput): Result {
         : expr.detail === "reason"
           ? cell.why.reason
           : cell.why.overrideKey;
-    return { text: detail ?? "", raw: detail, cell };
+    return { text: detail ?? "", raw: detail, cell, detail: expr.detail };
   };
 
   // A row per entity, person and environment, every needed expression evaluated once
@@ -456,7 +455,8 @@ export function runReport(input: RunInput): Result {
                 {
                   text: value.text,
                   raw: flag ? rolloutOf(value.cell) : (value.raw ?? value.text),
-                  tone: value.cell.tone,
+                  // A detail is a name or a share, not the answer's on or off
+                  tone: value.detail ? undefined : value.cell.tone,
                 },
               ]
             : [value];

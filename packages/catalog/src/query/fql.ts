@@ -670,7 +670,7 @@ export function parseFql(
             report.vary.push({ attribute: "*", values: [] });
           } else {
             const attribute = literals.word();
-            const values = literals.peek() === "[" ? literals.list(true).map(String) : [];
+            const values = literals.peek() === "[" ? literals.list(true) : [];
             report.vary.push({ attribute, values } satisfies ReportVary);
           }
           if (literals.done()) break;

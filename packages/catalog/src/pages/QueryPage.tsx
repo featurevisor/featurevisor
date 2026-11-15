@@ -26,7 +26,7 @@ import {
   type CompletionKind,
   type CompletionSource,
 } from "../query/complete";
-import { EXAMPLES, FIRST_QUERY } from "../query/examples";
+import { FIRST_QUERY, examplesFor, type ExampleGroup, type ExampleSource } from "../query/examples";
 import {
   CALLS,
   clauseStarts,
@@ -140,6 +140,46 @@ export function QueryPage() {
       owners: [...new Set(definitions.flatMap((entity) => entity.owners || []))].sort(),
     };
   }, [index, environments]);
+  // Examples name this project's own features, teams and attributes
+  const exampleGroups = React.useMemo(() => {
+    const entities = index?.entities;
+    const features = entities?.feature || [];
+    const definitions = [...features, ...(entities?.variable || []), ...(entities?.segment || [])];
+    const owned = new Map<string, number>();
+    for (const owner of definitions.flatMap((entity) => entity.owners || []))
+      owned.set(owner, (owned.get(owner) || 0) + 1);
+    const references = (refs: string[] | undefined, type: string) =>
+      (refs || [])
+        .filter((ref) => ref.startsWith(`${type}:`))
+        .map((ref) => ref.slice(type.length + 1));
+    const source: ExampleSource = {
+      features: features.map((entity) => ({
+        key: entity.key,
+        variations: entity.variationValues || [],
+        variables: entity.variableKeys || [],
+        segments: references(entity.references, "segment"),
+        requires: references(entity.references, "feature"),
+      })),
+      variables: (entities?.variable || []).map((entity) => entity.key),
+      attributes: (entities?.attribute || [])
+        .slice()
+        .sort((a, b) => (b.usedByCount || 0) - (a.usedByCount || 0) || a.key.localeCompare(b.key))
+        .map((entity) => entity.key),
+      owners: [...owned]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([owner]) => owner),
+      // What features bucket by alone, such as userId. Part of a combined bucketBy, an
+      // attribute such as country still names audiences.
+      bucketBy: [
+        ...new Set(
+          features.flatMap((entity) =>
+            entity.bucketBy && !/ (?:and|or) /.test(entity.bucketBy) ? [entity.bucketBy] : [],
+          ),
+        ),
+      ],
+    };
+    return examplesFor(source);
+  }, [index]);
   const [lastGood, setLastGood] = React.useState<Report | undefined>(parsed.report);
   React.useEffect(() => {
     if (parsed.report) setLastGood(parsed.report);
@@ -161,7 +201,7 @@ export function QueryPage() {
       {report && <Results report={report} index={index} setKey={setKey} />}
     </>
   );
-  const examples = <ExamplesMenu onChoose={run} />;
+  const examples = <ExamplesMenu groups={exampleGroups} onChoose={run} />;
 
   return (
     <div className="pb-8">
@@ -203,7 +243,7 @@ export function QueryPage() {
 }
 
 /** Questions ready to run, by what they are about */
-function ExamplesMenu(props: { onChoose: (query: string) => void }) {
+function ExamplesMenu(props: { groups: ExampleGroup[]; onChoose: (query: string) => void }) {
   const [open, setOpen] = React.useState(false);
   const boxRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
@@ -245,7 +285,7 @@ function ExamplesMenu(props: { onChoose: (query: string) => void }) {
           role="menu"
           className="absolute left-0 top-full z-40 mt-1.5 max-h-[28rem] w-[22rem] max-w-[calc(100vw-3rem)] overflow-auto rounded-xl border border-border bg-surface py-1.5 shadow-xl"
         >
-          {EXAMPLES.map((group) => (
+          {props.groups.map((group) => (
             <div key={group.section} className="py-1">
               <div className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-faint">
                 {group.section}
@@ -702,6 +742,19 @@ function ValueView(props: {
   onWhy: (cell: Cell) => void;
 }) {
   const { value } = props;
+  if (value.cell && value.detail) {
+    // A rule, reason, override or share, opening the same explanation as the answer it is about
+    return (
+      <button
+        type="button"
+        onClick={() => props.onWhy(value.cell!)}
+        className="cursor-pointer rounded text-left font-mono text-xs text-text outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        title="Why?"
+      >
+        {value.text || CELL_PLACEHOLDER}
+      </button>
+    );
+  }
   if (value.cell) {
     return (
       <CellView
@@ -875,7 +928,7 @@ function ResultTable(props: {
                     key={index}
                     className={`${tdClass} ${index === 0 ? sticky : ""} ${column.automatic ? "font-mono text-xs" : ""} ${isKey(column) ? keyClass : ""}`}
                   >
-                    {cell(row, column, value, row.environment)}
+                    {cell(row, column, value)}
                   </td>
                 );
               })}
@@ -940,8 +993,30 @@ function WhyPanel(props: { title: string; cell: Cell; why: Why; onClose: () => v
   ];
   if (why.forced) facts.push(["Decided by", "A force entry"]);
   if (why.ruleKey) facts.push(["Matched rule", <code key="rule">{why.ruleKey}</code>]);
+  if (why.requires?.length) {
+    facts.push([
+      "Requires",
+      <span key="requires" className="flex flex-col gap-0.5">
+        {why.requires.map((item) => (
+          <span key={`${item.feature}:${item.variation ?? ""}`}>
+            <code>{item.feature}</code>
+            {item.variation ? (
+              <>
+                {" "}
+                as <code>{item.variation}</code>
+              </>
+            ) : null}
+            , {item.percentage}% of this audience
+          </span>
+        ))}
+      </span>,
+    ]);
+  }
   if (why.percentage !== undefined)
-    facts.push(["Rule's rollout", `${why.percentage}% of this audience`]);
+    facts.push([
+      why.requires?.length ? "Share" : "Rule's rollout",
+      `${why.percentage}% of this audience`,
+    ]);
   if (why.split) {
     facts.push([
       "Split",

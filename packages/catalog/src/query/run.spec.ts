@@ -4,6 +4,7 @@ import { encodeDeadline, getDeadlineClock } from "../metadata";
 import type { CatalogIndex, EntitySummary } from "../types";
 
 import { parseFql } from "./fql";
+import { getComparedValues } from "./engine";
 import { runReport, type ResultValue } from "./run";
 
 const nl = JSON.stringify([{ attribute: "country", operator: "equals", value: "nl" }]);
@@ -217,6 +218,26 @@ describe("runReport, what people get", () => {
     ).toEqual(["legacy | On"]);
   });
 
+  it("says what an evaluation says beside its answer, each detail as itself", () => {
+    const { result, headings, rows } = run(
+      "FROM features\nWHERE key in ['checkout', 'search']\nENVIRONMENT production\nSELECT feature(key), rollout(feature(key)), rule(feature(key)), reason(feature(key))",
+    );
+    expect(headings).toEqual(["key", "enabled", "rollout", "rule", "reason"]);
+    expect(rows).toEqual([
+      "checkout | 50% | 50% | everyone | rule",
+      "search | On | 100% | everyone | rule",
+    ]);
+    expect(result.rows[1].values[2]).toMatchObject({ text: "100%", detail: "rollout" });
+    expect(
+      run(
+        "VARY country ['nl', 'de']\nENVIRONMENT production\nSELECT country, override(variable('supportEmail')), rollout(feature('checkout', 'staging'))",
+      ),
+    ).toMatchObject({
+      headings: ["country", "supportEmail override", "checkout rollout in staging"],
+      rows: ["nl | nl | 100%", "de |  | 100%"],
+    });
+  });
+
   it("sorts a flag by how much of its audience it is on for", () => {
     expect(
       run("FROM features\nENVIRONMENT production\nSELECT feature(key)\nSORT BY feature(key) DESC")
@@ -251,6 +272,34 @@ describe("runReport, what people get", () => {
         "FROM features\nWHERE variations notEmpty\nENVIRONMENT production\nSELECT feature(key).variation, feature(key).label",
       ).rows,
     ).toEqual(["pricing | control 50% · treatment 50% | control: Purchase · treatment: Buy now"]);
+  });
+
+  it("varies a rollout position, and keeps numbers and true or false as written", () => {
+    expect(
+      run(
+        "VARY at [10, 90]\nFOR { country: 'de' }\nENVIRONMENT production\nSELECT at, feature('checkout')",
+      ),
+    ).toMatchObject({ rows: ["10 | On", "90 | Off"] });
+    const compared = getComparedValues([
+      datafile({
+        members: {
+          bucketBy: "userId",
+          traffic: [
+            {
+              key: "members",
+              conditions: JSON.stringify([
+                { attribute: "loggedIn", operator: "equals", value: true },
+                { attribute: "seats", operator: "in", value: [10, 50] },
+              ]),
+              percentage: 100000,
+              allocation: [],
+            },
+          ],
+        },
+      }),
+    ]);
+    expect(compared.get("loggedIn")).toEqual([true]);
+    expect(compared.get("seats")).toEqual([10, 50]);
   });
 
   it("makes a row per person, filtered by what they get", () => {

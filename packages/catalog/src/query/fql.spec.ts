@@ -1,4 +1,4 @@
-import { EXAMPLES } from "./examples";
+import { examplesFor, type ExampleSource } from "./examples";
 import { lexFql, parseFql } from "./fql";
 import { ROW_KEY, whoGetsThisQuery } from "./report";
 
@@ -227,11 +227,64 @@ describe("parseFql without FROM", () => {
   });
 });
 
-describe("EXAMPLES", () => {
+describe("examplesFor", () => {
+  const source: ExampleSource = {
+    features: [
+      { key: "checkout", variations: [], variables: [], segments: ["netherlands"], requires: [] },
+      {
+        key: "buyButton",
+        variations: ["control", "treatment"],
+        variables: ["label"],
+        segments: ["germany"],
+        requires: ["pricing"],
+      },
+    ],
+    variables: ["supportEmail"],
+    attributes: ["userId", "country", "plan"],
+    owners: ["platform-team", "growth-team"],
+    bucketBy: ["userId"],
+  };
+  const titles = (groups: ReturnType<typeof examplesFor>) =>
+    groups.flatMap((group) => group.examples.map((example) => example.title));
+
   it.each(
-    EXAMPLES.flatMap((group) => group.examples).map((example) => [example.title, example.query]),
-  )("%s parses", (_, query) => {
-    expect(parseFql(query, { environments: ["staging", "production"] }).errors).toEqual([]);
+    examplesFor(source)
+      .flatMap((group) => group.examples)
+      .map((example) => [example.title, example.query]),
+  )("%s parses against the project it names", (_, query) => {
+    const known = {
+      environments: ["staging", "production"],
+      features: { checkout: [], buyButton: ["label"] },
+      variables: ["supportEmail"],
+      attributes: ["userId", "country", "plan"],
+    };
+    expect(parseFql(query, known).errors).toEqual([]);
+  });
+
+  it("names the project's own team, attribute, experiment and feature", () => {
+    const queries = examplesFor(source)
+      .flatMap((group) => group.examples)
+      .map((example) => example.query)
+      .join("\n");
+    expect(queries).toContain("WHERE owners includes 'platform-team'");
+    expect(queries).toContain("VARY country");
+    expect(queries).toContain("WHERE feature('buyButton').variation == 'treatment'");
+    expect(queries).toContain("WHERE key == 'checkout'");
+    expect(titles(examplesFor(source))).toContain("Who gets treatment");
+  });
+
+  it("leaves out examples a project has nothing for", () => {
+    const empty = examplesFor({
+      ...source,
+      features: [],
+      variables: [],
+      owners: [],
+      attributes: [],
+    });
+    expect(titles(empty)).not.toContain("Everything a team owns");
+    expect(titles(empty)).not.toContain("Where a feature is on");
+    expect(titles(empty)).not.toContain("Columns from anywhere");
+    expect(titles(empty)).toContain("Features and their owners");
   });
 });
 

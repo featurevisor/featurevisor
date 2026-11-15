@@ -45,6 +45,11 @@ export interface Why {
   at?: number;
   /** What the feature buckets by, such as `userId`, which places one person in its rollout */
   bucketBy?: string;
+  /**
+   * Features its conditions require that are partly on for this audience, each with that share.
+   * The answer's share is its own rule's share of theirs.
+   */
+  requires?: Array<{ feature: string; variation?: string; percentage: number }>;
 }
 
 interface Evaluator {
@@ -163,11 +168,90 @@ export function rolloutOf(cell: Cell): number {
   return 0;
 }
 
-export function flagCell(datafile: DatafileContent, featureKey: string, person: Person): Cell {
+/**
+ * Where an evaluation sits in the rollout. An audience is read at the start of it, where every
+ * rule above 0% includes it, so the SDK names the rule that matched. Read at an anonymous
+ * person's own bucket, a rule whose percentage does not reach it matches nothing at all.
+ */
+const AUDIENCE_POSITION = 0;
+
+/** The features and variations a feature's conditions require, from its own and its rule's */
+function requiredOf(datafile: DatafileContent, featureKey: string, ruleKey?: string) {
+  const feature = datafile.features?.[featureKey];
+  const found = new Map<string, { feature: string; variation?: string }>();
+  const seen = new Set<string>();
+  const walk = (conditions: unknown): void => {
+    if (typeof conditions === "string") {
+      if (/^\s*[[{]/.test(conditions)) {
+        try {
+          walk(JSON.parse(conditions));
+        } catch {
+          // text that is not conditions
+        }
+      } else if (datafile.segments?.[conditions] && !seen.has(conditions)) {
+        seen.add(conditions);
+        walk(datafile.segments[conditions].conditions);
+      }
+      return;
+    }
+    if (Array.isArray(conditions)) return conditions.forEach(walk);
+    if (!conditions || typeof conditions !== "object") return;
+    const leaf = conditions as Record<string, unknown>;
+    if (typeof leaf.feature === "string") {
+      const variation = typeof leaf.variation === "string" ? leaf.variation : undefined;
+      found.set(`${leaf.feature}:${variation ?? ""}`, { feature: leaf.feature, variation });
+    }
+    for (const key of ["and", "or", "not"]) walk(leaf[key]);
+  };
+  if (!feature) return [];
+  walk(feature.conditions);
+  const rule = (feature.traffic || []).find((traffic) => traffic.key === ruleKey);
+  if (rule) walk(rule.conditions ?? rule.segments);
+  return [...found.values()];
+}
+
+/**
+ * The share of an audience the required features let through, each partly on, and their product.
+ * Buckets hash each feature's key, so one person's place in two rollouts is independent.
+ */
+function requiredShares(
+  datafile: DatafileContent,
+  featureKey: string,
+  ruleKey: string | undefined,
+  person: Person,
+  seen: Set<string>,
+) {
+  const partial: NonNullable<Why["requires"]> = [];
+  let share = 100;
+  for (const required of requiredOf(datafile, featureKey, ruleKey)) {
+    if (seen.has(required.feature)) continue;
+    let percentage: number;
+    if (required.variation === undefined) {
+      percentage = rolloutOf(flagCell(datafile, required.feature, person, seen));
+    } else {
+      const cell = variationCell(datafile, required.feature, person, seen);
+      percentage =
+        cell.why.split?.find((item) => item.variation === required.variation)?.percentage ??
+        (cell.variation === required.variation ? (cell.why.percentage ?? 100) : 0);
+    }
+    if (percentage > 0 && percentage < 100) partial.push({ ...required, percentage });
+    share = (share * percentage) / 100;
+  }
+  return { partial, share };
+}
+
+export function flagCell(
+  datafile: DatafileContent,
+  featureKey: string,
+  person: Person,
+  seen: Set<string> = new Set(),
+): Cell {
   const evaluator = evaluatorOf(datafile);
   const { context, position } = placement(person);
   const lens = lensOf(datafile, featureKey, person);
-  const evaluation = at(evaluator, position, () => evaluator.sdk.evaluateFlag(featureKey, context));
+  const evaluation = at(evaluator, lens === "audience" ? AUDIENCE_POSITION : position, () =>
+    evaluator.sdk.evaluateFlag(featureKey, context),
+  );
   const why: Why = {
     lens,
     reason: evaluation.reason,
@@ -179,11 +263,26 @@ export function flagCell(datafile: DatafileContent, featureKey: string, person: 
   const traffic = evaluation.traffic;
   // A rule decides the audience's share with its percentage, unless it turns the feature on or off
   if (lens === "audience" && evaluation.reason === "rule" && traffic) {
-    if (typeof traffic.enabled === "boolean") {
-      return traffic.enabled ? on(why) : off(why);
-    }
-    const share = percent(traffic.percentage);
-    why.percentage = share;
+    const own =
+      typeof traffic.enabled === "boolean"
+        ? traffic.enabled
+          ? 100
+          : 0
+        : percent(traffic.percentage);
+    // Read with every required feature on, so their shares narrow it
+    const required =
+      own > 0
+        ? requiredShares(
+            datafile,
+            featureKey,
+            evaluation.ruleKey,
+            person,
+            new Set([...seen, featureKey]),
+          )
+        : undefined;
+    const share = Math.round(((own * (required?.share ?? 100)) / 100) * 10) / 10;
+    if (required?.partial.length) why.requires = required.partial;
+    if (typeof traffic.enabled !== "boolean" || why.requires) why.percentage = share;
     if (share >= 100) return on(why);
     if (share <= 0) return off(why);
     return { text: formatPercent(share), tone: "partial", value: null, why };
@@ -192,18 +291,32 @@ export function flagCell(datafile: DatafileContent, featureKey: string, person: 
 }
 
 /** The variation the person gets, or the audience's split between variations */
-export function variationCell(datafile: DatafileContent, featureKey: string, person: Person): Cell {
-  const flag = flagCell(datafile, featureKey, person);
+export function variationCell(
+  datafile: DatafileContent,
+  featureKey: string,
+  person: Person,
+  seen: Set<string> = new Set(),
+): Cell {
+  const flag = flagCell(datafile, featureKey, person, seen);
   if (flag.tone === "off") return { ...flag, text: "Off", value: null };
   const evaluator = evaluatorOf(datafile);
   const { context, position } = placement(person);
-  const evaluation = at(evaluator, position, () =>
+  const audience = flag.why.lens === "audience";
+  const evaluation = at(evaluator, audience ? AUDIENCE_POSITION : position, () =>
     evaluator.sdk.evaluateVariation(featureKey, context),
   );
   const why: Why = { ...flag.why, reason: evaluation.reason, ruleKey: evaluation.ruleKey };
   const fixed = evaluation.traffic?.variation;
   if (flag.why.lens === "audience" && !fixed && evaluation.reason !== "forced") {
-    const split = splitOf(evaluation);
+    // Required features partly on narrow every variation's share alike
+    const narrowed = (flag.why.requires || []).reduce(
+      (share, item) => (share * item.percentage) / 100,
+      100,
+    );
+    const split = splitOf(evaluation)?.map((item) => ({
+      ...item,
+      percentage: Math.round(((item.percentage * narrowed) / 100) * 10) / 10,
+    }));
     if (split && split.length > 1) {
       why.split = split;
       return {
@@ -247,17 +360,23 @@ export function featureVariableCell(
   if (split && variation.why.lens === "audience") {
     // The variation's own evaluation carries the rule's allocation, even where this bucket is off
     const allocation =
-      at(evaluator, undefined, () => evaluator.sdk.evaluateVariation(featureKey, context)).traffic
-        ?.allocation || [];
+      at(evaluator, AUDIENCE_POSITION, () => evaluator.sdk.evaluateVariation(featureKey, context))
+        .traffic?.allocation || [];
     const values = split.map((share) => {
       const range = allocation.find((item) => item.variation === share.variation)?.range;
       const middle = range ? Math.floor((range[0] + range[1]) / 2) : undefined;
-      const raw = valueAtPath(valueAt(middle).variableValue, path);
-      return { ...share, raw, value: formatValue(raw) };
+      const evaluated = valueAt(middle);
+      const raw = valueAtPath(evaluated.variableValue, path);
+      return { ...share, raw, value: formatValue(raw), overrideKey: evaluated.variableOverrideKey };
     });
-    const why = {
+    // An override every variation's value came from is the answer's own
+    const overrides = new Set(values.map((share) => share.overrideKey));
+    const why: Why = {
       ...variation.why,
       split: values.map(({ variation, percentage, value }) => ({ variation, percentage, value })),
+      ...(overrides.size === 1 && values[0].overrideKey
+        ? { overrideKey: values[0].overrideKey }
+        : {}),
     };
     if (new Set(values.map((share) => share.value)).size === 1) {
       return { text: values[0].value, tone: "value", value: values[0].raw, why };
@@ -316,19 +435,20 @@ const EXACT_OPERATORS = ["equals", "notEquals", "in", "notIn"];
 /**
  * The values the project's conditions compare each attribute with, read from the datafiles, so
  * varying a person by an attribute gives every distinct behaviour a row of its own. With `only`,
- * just the conditions of those features or global variables, and the segments they use.
+ * just the conditions of those features or global variables, and the segments they use. Values
+ * keep their type, so a person varied by `loggedIn` gets `true`, not the text "true".
  */
 export function getComparedValues(
   datafiles: DatafileContent[],
   only?: { features?: string[]; variables?: string[] },
-): Map<string, Set<string>> {
-  const values = new Map<string, Set<string>>();
+): Map<string, unknown[]> {
+  const found = new Map<string, Map<string, unknown>>();
   const add = (attribute: string, value: unknown) => {
     if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean")
       return;
-    const set = values.get(attribute) || new Set<string>();
-    set.add(String(value));
-    values.set(attribute, set);
+    const values = found.get(attribute) || new Map<string, unknown>();
+    values.set(`${typeof value}:${String(value)}`, value);
+    found.set(attribute, values);
   };
   for (const datafile of datafiles) {
     const visited = new Set<string>();
@@ -386,5 +506,5 @@ export function getComparedValues(
       (variable.overrides || []).forEach((override) => walk(override.conditions));
     }
   }
-  return values;
+  return new Map([...found].map(([attribute, values]) => [attribute, [...values.values()]]));
 }

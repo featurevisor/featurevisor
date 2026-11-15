@@ -9,7 +9,7 @@ import {
 } from "../metadata";
 import type { EntitySummary } from "../types";
 
-import type { Person } from "./engine";
+import { formatValue, type Person } from "./engine";
 
 /**
  * A Query report, as FQL describes it. Rows are definitions, features, global variables,
@@ -35,7 +35,8 @@ export type ReportLayout = "table" | "matrix";
  */
 export interface ReportVary {
   attribute: string;
-  values: string[];
+  /** As written, so numbers and true or false stay what conditions compare */
+  values: unknown[];
 }
 
 /** `key` written bare inside a read, as in `feature(key)`: the row's own key */
@@ -179,16 +180,21 @@ export function columnHeading(column: ReportColumn): Heading {
   if (expr.kind === "count") return { text: column.alias ?? "count" };
   const { words, ...heading } = readHeading(expr.read);
   if (expr.kind === "read") return { ...heading, text: column.alias ?? words };
+  // A flag's rule or a whole global variable's override is the read's own, so it needs no "of"
+  const { read } = expr;
+  const plain = read.kind === "flag" || (read.kind === "global" && read.path.length === 0);
+  const where = read.environment ? ` in ${read.environment}` : "";
+  const what = plain ? `${expr.detail}${where}` : `${expr.detail} of ${heading.detail ?? words}`;
   return {
     ...heading,
-    detail: heading.detail && `${expr.detail} of ${heading.detail}`,
-    text: column.alias ?? `${expr.detail} of ${words}`,
+    detail: heading.entity && what,
+    text: column.alias ?? (heading.entity ? `${heading.entity.key} ${what}` : what),
   };
 }
 
 export interface ReportPerson {
   /** The values this row varies, by attribute */
-  values: Record<string, string>;
+  values: Record<string, unknown>;
   label: string;
   person: Person;
 }
@@ -204,7 +210,7 @@ export function peopleOf(person: Person | undefined, vary: ReportVary[]): Report
         const varied = { ...row.values, [attribute]: value };
         return {
           values: varied,
-          label: Object.values(varied).join(" · "),
+          label: Object.values(varied).map(formatValue).join(" · "),
           person: { ...row.person, [attribute]: value },
         };
       }),
@@ -350,7 +356,7 @@ export const PROPERTIES: Record<string, Property> = {
   },
   attributes: {
     type: "list",
-    about: "attributes it compares directly",
+    about: "attributes it compares, and buckets by",
     subjects: DEFINED,
     get: (entity) => references(entity, "attribute"),
   },
