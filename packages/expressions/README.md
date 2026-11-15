@@ -23,7 +23,7 @@ console.log(print(conditions));
 // netherlands and plan in ['pro', 'enterprise']
 ```
 
-`treeToExpression` writes a tree as an expression only where the expression builds exactly the same tree, and `formatExpression` lays an expression out one condition a line, as `featurevisor fmt` does.
+`treeToExpression` writes a tree as an expression only where the expression builds exactly the same tree, and `formatExpression` lays an expression out one condition a line, as `featurevisor fmt` does. A list stays on its condition's line with up to `listItems` items, 3 by default, while the line fits `width`, 80 by default, and otherwise takes one item a line, keeping its comments above or beside their items.
 
 Errors carry a code, a position and a hint:
 

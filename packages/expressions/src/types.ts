@@ -114,6 +114,8 @@ export interface ExpressionParseResult {
   ast?: ExpressionNode;
   errors: ExpressionDiagnostic[];
   warnings: ExpressionDiagnostic[];
+  /** The comments read, in order, each from its `#`. Set when the expression parses. */
+  comments?: string[];
 }
 
 /** Where one compiled leaf came from in its expression. */

@@ -27,6 +27,91 @@ describe("formatExpression", () => {
     expect(formatExpression("(netherlands)")).toBe("netherlands");
   });
 
+  it("keeps a list of up to three items on its condition's line while the line fits", () => {
+    expect(formatExpression("country in ['nl', 'de', 'fr']")).toBe("country in ['nl', 'de', 'fr']");
+    expect(formatExpression("plan == 'pro' and country in [ 'nl','de' ]")).toBe(
+      "plan == 'pro'\nand country in ['nl', 'de']",
+    );
+    // a list written over lines without comments goes back on its condition's line
+    expect(formatExpression("country in [\n  'nl',\n  'de'\n]")).toBe("country in ['nl', 'de']");
+    expect(formatExpression("age in [13, 14, 15]")).toBe("age in [13, 14, 15]");
+  });
+
+  it("writes a list of four or more items one item a line, however short", () => {
+    expect(formatExpression("country in ['nl', 'de', 'fr', 'be'] and plan == 'pro'")).toBe(
+      ["country in [", "  'nl',", "  'de',", "  'fr',", "  'be'", "]", "and plan == 'pro'"].join(
+        "\n",
+      ),
+    );
+    expect(formatExpression("not (age in [1, 2, 3, 4, 5])")).toBe(
+      ["not age in [", "  1,", "  2,", "  3,", "  4,", "  5", "]"].join("\n"),
+    );
+  });
+
+  it("writes a list one item a line once its condition's line passes 80 characters", () => {
+    const item = (length: number) => `'${"x".repeat(length - 2)}'`;
+    // `browser in [` and `]` take 13 characters, and two separators 4 more
+    const fits = `browser in [${item(21)}, ${item(21)}, ${item(21)}]`;
+    expect(fits).toHaveLength(80);
+    expect(formatExpression(fits)).toBe(fits);
+    const long = `browser in [${item(21)}, ${item(21)}, ${item(22)}]`;
+    expect(formatExpression(long)).toBe(
+      ["browser in [", `  ${item(21)},`, `  ${item(21)},`, `  ${item(22)}`, "]"].join("\n"),
+    );
+    // the indent and the `and` before a condition count towards its line
+    expect(formatExpression(`a or (b and ${fits})`)).toBe(
+      [
+        "a",
+        "or (",
+        "  b",
+        "  and browser in [",
+        ...[21, 21, 21].map((length, index) => `    ${item(length)}${index < 2 ? "," : ""}`),
+        "  ]",
+        ")",
+      ].join("\n"),
+    );
+  });
+
+  it("keeps comments above list items and beside them, writing such a list one item a line", () => {
+    const source = [
+      "country in [ # where we sell",
+      "  # Benelux",
+      "  'nl',   # the Netherlands",
+      "  'be',",
+      "",
+      "",
+      "  # DACH",
+      "  'de' # Germany",
+      "  # more to come",
+      "] and plan == 'pro'",
+    ].join("\n");
+    expect(formatExpression(source)).toBe(
+      [
+        "country in [ # where we sell",
+        "  # Benelux",
+        "  'nl', # the Netherlands",
+        "  'be',",
+        "",
+        "  # DACH",
+        "  'de' # Germany",
+        "  # more to come",
+        "]",
+        "and plan == 'pro'",
+      ].join("\n"),
+    );
+    // a short list with a comment beside an item cannot go back on one line
+    expect(formatExpression("plan in [\n'pro', # paying\n'team']")).toBe(
+      ["plan in [", "  'pro', # paying", "  'team'", "]"].join("\n"),
+    );
+    expect(formatExpression("plan in [\n# inside one condition\n'a']")).toBe(
+      ["plan in [", "  # inside one condition", "  'a'", "]"].join("\n"),
+    );
+  });
+
+  it("leaves a list as written when one of its comments has no item to sit beside", () => {
+    expect(formatExpression("plan in [\n'pro'\n, # after a comma alone\n'team']")).toBeUndefined();
+  });
+
   it("puts a group's conditions between its parentheses, indented a level", () => {
     expect(
       formatExpression(
@@ -85,7 +170,7 @@ describe("formatExpression", () => {
   it("leaves an expression as written when a comment is not above a condition", () => {
     expect(formatExpression("a and (b and c\n# after a group's last condition\n)")).toBeUndefined();
     expect(formatExpression("a and b\n# after the last condition")).toBeUndefined();
-    expect(formatExpression("plan in [\n# inside one condition\n'a']")).toBeUndefined();
+    expect(formatExpression("plan\n# between a condition's parts\nin ['a']")).toBeUndefined();
     expect(formatExpression("not\n# between not and its group\n(a and b)")).toBeUndefined();
   });
 
@@ -188,6 +273,50 @@ describe("formatExpression on generated expressions", () => {
       checked++;
     }
     expect(checked).toBeGreaterThan(250);
+  });
+
+  it("lays lists out by their size, width and comments, keeping every comment", () => {
+    const next = random(11);
+    const pick = <T>(values: T[]) => values[Math.floor(next() * values.length)];
+    const values = ["'nl'", "'de'", "'a-somewhat-longer-value'", "1", "2.5", "true", "null"];
+    let broken = 0;
+    for (let run = 0; run < 400; run++) {
+      const count = Math.floor(next() * 7);
+      const items = Array.from({ length: count }, () => pick(values));
+      let comments = 0;
+      const note = () => `# note ${comments++}`;
+      // the author's layout: spacing, line breaks, comments above and beside items
+      let list = "[";
+      if (next() < 0.2) list += ` ${note()}`;
+      items.forEach((item, index) => {
+        const lineBreak = next() < 0.5 || list.includes("#");
+        if (lineBreak) list += "\n" + (next() < 0.1 ? "\n" : "");
+        if (lineBreak && next() < 0.3) list += `  ${note()}\n`;
+        list += `${pick(["", " ", "  "])}${item}${index < count - 1 ? "," : ""}`;
+        if (next() < 0.25) list += ` ${note()}`;
+      });
+      if (list.includes("#") || next() < 0.3) list += "\n";
+      if (list.endsWith("\n") && next() < 0.2) list += `${note()}\n`;
+      list += "]";
+      const prefix = pick(["", "plan == 'pro' and ", "a or (b and "]);
+      const source = `${prefix}country ${pick(["in", "notIn"])} ${list}${prefix.endsWith("(") ? ")" : ""}`;
+      const expected = tree(source);
+      if (expected === undefined) continue;
+
+      const formatted = formatExpression(source);
+      expect(formatted).toBeDefined();
+      expect(sameBuilt(tree(formatted!), expected)).toBe(true);
+      expect(formatExpression(formatted!)).toBe(formatted);
+      for (let index = 0; index < comments; index++) {
+        expect(formatted).toContain(`# note ${index}`);
+      }
+      const line = formatted!.split("\n").find((text) => text.includes("country"))!;
+      const oneLine = line.trimEnd().endsWith("]");
+      if (comments > 0 || count > 3) expect(oneLine).toBe(count === 0 && comments === 0);
+      else if (count > 0) expect(oneLine).toBe(line.length <= 80);
+      if (!oneLine) broken++;
+    }
+    expect(broken).toBeGreaterThan(100);
   });
 });
 

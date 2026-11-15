@@ -1,3 +1,10 @@
 description: Denmark, Finland, Iceland, Norway and Sweden
 
-conditions: country in ['dk', 'fi', 'is', 'no', 'se']
+conditions: |
+  country in [
+    'dk',
+    'fi',
+    'is',
+    'no',
+    'se'
+  ]

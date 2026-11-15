@@ -346,9 +346,34 @@ describe("comments and positions", () => {
     ]);
   });
 
-  it("does not treat a # inside a line as a comment", () => {
+  it("does not treat a # inside a line as a comment, outside a list", () => {
     expect(error("netherlands # note").code).toBe("expression_comment");
+    expect(error("netherlands # note").message).toBe(
+      "Comments are whole lines starting with `#`, or end a line inside a list.",
+    );
+    expect(error("country in ['nl'] # after the list").code).toBe("expression_comment");
     expect((tree("tag == ' #sale'") as { value: unknown }).value).toBe(" #sale");
+  });
+
+  it("reads comments that end a line inside a list, beside an item or a bracket", () => {
+    const source = [
+      "country in [ # where we sell",
+      "  # Benelux",
+      "  'nl', # the Netherlands",
+      "  '#be' # a # in a string is not a comment",
+      "]",
+    ].join("\n");
+    expect(tree(source)).toEqual({ attribute: "country", operator: "in", value: ["nl", "#be"] });
+    expect(parse(source).comments).toEqual([
+      "# where we sell",
+      "# Benelux",
+      "# the Netherlands",
+      "# a # in a string is not a comment",
+    ]);
+    // a comment ends its line, so the list goes on below it
+    expect(error("country in ['nl', # the rest is a comment 'de']").code).toBe(
+      "expression_unclosed_list",
+    );
   });
 
   it("reports lines and columns inside multi line expressions", () => {

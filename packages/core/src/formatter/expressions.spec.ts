@@ -72,6 +72,57 @@ describe("formatting expressions", () => {
     );
   });
 
+  it("writes a list one item a line past three items, keeping comments beside and above them", () => {
+    const source = [
+      "description: Nordics",
+      "conditions: |-",
+      "  country in [ # where we sell",
+      "    'dk',   # Denmark",
+      "    # and the rest",
+      "    'fi','no'",
+      "  ]",
+      "rules:",
+      "  - key: all",
+      "    conditions:",
+      "      - plan in ['pro', 'team', 'enterprise', 'staff']",
+      "      - country in ['dk', 'fi']",
+      "    percentage: 100",
+      "",
+    ].join("\n");
+    const { output } = formatDefinition("feature", source, yml, undefined, { expressions });
+
+    expect(output).toBe(
+      [
+        "description: Nordics",
+        "",
+        "conditions: |",
+        "  country in [ # where we sell",
+        "    'dk', # Denmark",
+        "    # and the rest",
+        "    'fi',",
+        "    'no'",
+        "  ]",
+        "",
+        "rules:",
+        "  - key: all",
+        "    conditions:",
+        "      - |",
+        "        plan in [",
+        "          'pro',",
+        "          'team',",
+        "          'enterprise',",
+        "          'staff'",
+        "        ]",
+        "      - country in ['dk', 'fi']",
+        "    percentage: 100",
+        "",
+      ].join("\n"),
+    );
+    expect(formatDefinition("feature", output, yml, undefined, { expressions }).changed).toBe(
+      false,
+    );
+  });
+
   it("leaves expressions as written without the project's expression options", () => {
     const source = "description: x\n\nconditions: country=='nl'\n";
     expect(formatDefinition("segment", source, yml).changed).toBe(false);

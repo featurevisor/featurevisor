@@ -89,6 +89,8 @@ function outerEnd(node: ExpressionNode): number {
 class Parser {
   private pos = 0;
   readonly warnings: RawIssue[] = [];
+  /** Each comment skipped, by where it starts, so a second look at the same place adds none */
+  readonly comments = new Map<number, string>();
   private readonly maxDepth: number;
   /** The last leaf parsed, to explain what may have been meant after it. */
   private lastLeaf?: ExpressionLeafNode;
@@ -140,16 +142,21 @@ class Parser {
     return true;
   }
 
-  /** Spaces, line breaks and whole line comments. */
-  private skipTrivia() {
+  /**
+   * Spaces, line breaks and whole line comments. Inside a list, a comment may also end a line,
+   * beside the item or bracket before it.
+   */
+  private skipTrivia(inList = false) {
     while (!this.atEnd()) {
       const character = this.peek();
       if (character === " " || character === "\t" || character === "\n" || character === "\r") {
         this.pos++;
         continue;
       }
-      if (character === "#" && this.startOfLine(this.pos)) {
+      if (character === "#" && (inList || this.startOfLine(this.pos))) {
+        const start = this.pos;
         while (!this.atEnd() && this.peek() !== "\n") this.pos++;
+        this.comments.set(start, this.source.slice(start, this.pos).trimEnd());
         continue;
       }
       return;
@@ -1124,13 +1131,23 @@ class Parser {
     const start = this.pos;
     this.pos++;
     const items: ExpressionValue[] = [];
-    this.skipTrivia();
+    this.skipTrivia(true);
     if (this.peek() === "]") {
       this.pos++;
       return { type: "list", items, start, end: this.pos };
     }
     while (true) {
-      this.skipTrivia();
+      this.skipTrivia(true);
+      // as when a comment beside an item takes the rest of the line
+      if (this.atEnd()) {
+        this.fail(
+          "expression_unclosed_list",
+          "Missing `]`.",
+          start,
+          start + 1,
+          "Close the list opened here.",
+        );
+      }
       if (this.peek() === "]") {
         this.fail(
           "expression_trailing_comma",
@@ -1149,7 +1166,7 @@ class Parser {
         );
       }
       items.push(item);
-      this.skipTrivia();
+      this.skipTrivia(true);
       if (this.peek() === ",") {
         this.pos++;
         continue;
@@ -1291,7 +1308,7 @@ class Parser {
     if (character === "#") {
       this.fail(
         "expression_comment",
-        "Comments are whole lines starting with `#`.",
+        "Comments are whole lines starting with `#`, or end a line inside a list.",
         start,
         start + 1,
         "Move the comment to a line of its own.",
@@ -1386,7 +1403,14 @@ export function parse(source: string, options: ExpressionOptions = {}): Expressi
   const parser = new Parser(source, options);
   try {
     const ast = parser.run();
-    return { ast, errors: [], warnings: parser.warnings.map((issue) => toError(issue, "warning")) };
+    return {
+      ast,
+      errors: [],
+      warnings: parser.warnings.map((issue) => toError(issue, "warning")),
+      comments: [...parser.comments]
+        .sort(([left], [right]) => left - right)
+        .map(([, text]) => text),
+    };
   } catch (error) {
     if (!(error instanceof ParseFailure)) throw error;
     return {

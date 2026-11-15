@@ -61,13 +61,25 @@ export const HOUSE_STYLE = {
   /**
    * How expressions in `conditions` are written, in projects with `conditionExpressions: true`: one
    * condition a line, with a group's conditions between its parentheses, indented by `indent`.
-   * A single condition stays on one line. fmt rewrites an expression only when it reads back
-   * to exactly the same tree, so nothing here can change a datafile either. Comment lines stay
-   * above the condition below them.
+   * A single condition stays on one line, unless its list is written one item a line. fmt
+   * rewrites an expression only when it reads back to exactly the same tree with every comment,
+   * so nothing here can change a datafile either. Comment lines stay above the condition below
+   * them, and in a list above or beside the item they were written with.
    */
   expressions: {
     /** End an expression over several lines with a line break, which YAML writes as `|` */
     finalNewline: true,
+    /**
+     * Most items a condition keeps on one line in its list, such as `country in ['nl', 'de']`.
+     * A list with more, or with comments, is written one item a line.
+     */
+    listItems: 3,
+    /**
+     * The longest a condition's line may be with its list on it, counting the indent and the
+     * `and`, `or` or `not` before it, but not the file's own indent. Past this, its list is
+     * written one item a line, however few items it holds.
+     */
+    width: 80,
   },
 
   /**
@@ -262,4 +274,11 @@ export const HOUSE_STYLE = {
       lineWidth: 80,
     } satisfies JsonFormatOptions,
   },
+};
+
+/** How every writer lays expressions out: fmt, convert and promote alike */
+export const EXPRESSION_LAYOUT = {
+  indent: HOUSE_STYLE.indent,
+  listItems: HOUSE_STYLE.expressions.listItems,
+  width: HOUSE_STYLE.expressions.width,
 };

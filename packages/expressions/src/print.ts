@@ -48,7 +48,8 @@ function isBareName(name: string, options: ExpressionOptions): boolean {
   return true;
 }
 
-function printValue(value: unknown): string | undefined {
+/** A value as an expression writes it, or undefined when it has no expression form */
+export function printValue(value: unknown): string | undefined {
   if (typeof value === "string") return quoteString(value);
   if (typeof value === "number") return Number.isFinite(value) ? JSON.stringify(value) : undefined;
   if (typeof value === "boolean") return String(value);
