@@ -1,0 +1,159 @@
+import { completeFql, type CompletionSource } from "./complete";
+import { PROPERTIES } from "./report";
+
+const project: CompletionSource = {
+  environments: ["staging", "production"],
+  features: [
+    { key: "foo", description: "Foo", variables: ["bar", "baz"] },
+    { key: "allowSignup", variables: [] },
+  ],
+  variables: [{ key: "checkoutSettings" }, { key: "headerMessage" }],
+  segments: ["nl", "eu"],
+  attributes: [{ key: "country" }, { key: "device" }, { key: "userId" }],
+  tags: ["web", "checkout"],
+  owners: ["growth-team"],
+};
+
+/** The completion at `|` */
+function complete(query: string) {
+  const caret = query.indexOf("|");
+  const source = query.replace("|", "");
+  return completeFql(source, caret, project);
+}
+
+const labels = (query: string) => complete(query)?.items.map((item) => item.label) || [];
+
+/** The query after choosing the item labelled `label` */
+function choose(query: string, label: string) {
+  const caret = query.indexOf("|");
+  const source = query.replace("|", "");
+  const completion = completeFql(source, caret, project)!;
+  const item = completion.items.find((candidate) => candidate.label === label)!;
+  return source.slice(0, completion.from) + item.insert + source.slice(completion.to);
+}
+
+const featureProperties = Object.entries(PROPERTIES)
+  .filter(([, property]) => property.subjects.includes("feature"))
+  .map(([name]) => name);
+
+describe("completeFql", () => {
+  it("offers clauses to start with, then those yet to be written", () => {
+    expect(labels("|")).toEqual([
+      "FROM",
+      "WHERE",
+      "FOR",
+      "VARY",
+      "ENVIRONMENT",
+      "SELECT",
+      "GROUP BY",
+      "SORT BY",
+      "LIMIT",
+      "AS TABLE",
+      "AS MATRIX",
+    ]);
+    expect(choose("so|", "SORT BY")).toBe("SORT BY ");
+    expect(labels("FROM features\nSELECT key\n|")).not.toContain("SELECT");
+    expect(labels("FROM |")).toEqual(["features", "variables", "segments", "attributes"]);
+    expect(labels("FROM features, |")).toEqual(["variables", "segments", "attributes"]);
+  });
+
+  it("offers the rows' properties and reads of the row's own feature", () => {
+    const items = labels("FROM features\nSELECT |");
+    expect(items.slice(0, featureProperties.length)).toEqual(featureProperties);
+    expect(items).toEqual(
+      expect.arrayContaining([
+        "metadata.…",
+        "feature(key)",
+        "feature(key).variation",
+        "rollout(…)",
+        "count()",
+      ]),
+    );
+    expect(items).not.toContain("variable(key)");
+    expect(labels("FROM variables\nSELECT bu|")).not.toContain("bucketBy");
+    expect(labels("FROM features\nSELECT buc|")).toEqual(["bucketBy"]);
+  });
+
+  it("completes a read's key, its environment, and what follows its dot", () => {
+    expect(labels("FROM features\nSELECT feature(|")).toEqual(["key", "'…'"]);
+    expect(choose("FROM features\nSELECT feature(|", "key")).toBe(
+      "FROM features\nSELECT feature(key)",
+    );
+    expect(labels("SELECT feature(|")).toEqual(["'…'"]);
+    expect(labels("SELECT feature('|")).toEqual(["foo", "allowSignup"]);
+    expect(choose("SELECT feature('f|oo'), country", "foo")).toBe("SELECT feature('foo'), country");
+    expect(labels("FROM features\nSELECT feature(key, |")).toEqual(["'staging'", "'production'"]);
+    expect(labels("SELECT feature('foo', 'p|")).toEqual(["production"]);
+    expect(labels("SELECT feature('foo').|")).toEqual(["variation", "bar", "baz"]);
+    expect(labels("FROM features\nSELECT feature(key).|")).toEqual(["variation", "bar", "baz"]);
+    expect(labels("SELECT variable('checkoutSettings').|")).toEqual([]);
+  });
+
+  it("offers what a detail reads inside its brackets", () => {
+    expect(labels("FROM features\nSELECT rollout(|")).toEqual(["feature(key)", "feature('…')"]);
+    expect(labels("FROM variables\nSELECT override(|")).toEqual(
+      expect.arrayContaining(["variable(key)", "variable('…')"]),
+    );
+  });
+
+  it("offers a heading after a column, and a direction after a sort", () => {
+    const heading = complete("SELECT feature('foo') |")!.items[0];
+    expect(heading).toMatchObject({ label: "AS '…'", insert: "AS ''", cursor: 4 });
+    expect(labels("SELECT feature('foo') AS |")).toEqual(["TABLE", "MATRIX"]);
+    expect(labels("FROM features\nSORT BY owner |").slice(0, 2)).toEqual(["DESC", "ASC"]);
+    expect(labels("FROM features\nGROUP BY owner\nSORT BY c|")).toContain("count()");
+  });
+
+  it("offers attributes, environments, people and limits where clauses take them", () => {
+    expect(labels("VARY |")).toEqual(["*", "country", "device", "userId"]);
+    expect(labels("VARY country, d|")).toEqual(["device"]);
+    expect(labels("ENVIRONMENT staging, |")).toEqual(["*", "staging", "production"]);
+    expect(labels("FOR |")).toEqual(["{}", "{ … }"]);
+    expect(choose("FOR { country: 'nl', dev|", "device")).toBe("FOR { country: 'nl', device: ");
+    expect(labels("FROM features\nLIMIT |")).toEqual(["10", "20", "50", "100"]);
+  });
+
+  it("completes WHERE by each property's type, and values from the project", () => {
+    expect(labels("FROM features\nWHERE tags |")).toEqual([
+      "includes",
+      "notIncludes",
+      "includesAny",
+      "empty",
+      "notEmpty",
+    ]);
+    expect(labels("FROM features\nWHERE usedBy |")).toEqual(["==", "!=", ">", ">=", "<", "<="]);
+    expect(labels("FROM features\nWHERE deadline |")).toEqual([
+      "before",
+      "after",
+      "exists",
+      "notExists",
+    ]);
+    expect(labels("FROM features\nWHERE rollout(feature(key)) |").slice(0, 2)).toEqual([
+      "==",
+      "!=",
+    ]);
+    expect(labels("FROM features\nWHERE feature(key) |").slice(0, 2)).toEqual([
+      "== true",
+      "== false",
+    ]);
+    expect(labels("FROM features\nWHERE key == '|")).toEqual(["foo", "allowSignup"]);
+    expect(labels("FROM segments\nWHERE key in ['nl', '|")).toEqual(["nl", "eu"]);
+    expect(labels("FROM features\nWHERE deadlineStatus == '|")).toEqual([
+      "overdue",
+      "today",
+      "upcoming",
+      "later",
+      "done",
+    ]);
+    expect(choose("FROM features\nWHERE tags includes 'w|", "web")).toBe(
+      "FROM features\nWHERE tags includes 'web'",
+    );
+    expect(labels("FROM features\nWHERE archived == true |")).toEqual(
+      expect.arrayContaining(["and", "or", "SELECT", "SORT BY"]),
+    );
+  });
+
+  it("offers nothing where it has no names to give", () => {
+    expect(labels("FOR { country: '|")).toEqual([]);
+  });
+});

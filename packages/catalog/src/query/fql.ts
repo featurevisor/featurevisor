@@ -3,41 +3,65 @@ import type { Condition } from "@featurevisor/types";
 
 import { ANY_OTHER, type Person } from "./engine";
 import {
-  DEFINITION_COLUMNS,
-  FEATURE_COLUMNS,
-  VARIABLE_COLUMNS,
-  type ColumnRead,
+  DETAILS,
+  PROPERTIES,
+  ROW_KEY,
+  SUBJECTS,
+  exprText,
+  propertyOf,
+  readOf,
+  type Detail,
+  type Expr,
+  type Read,
+  type ReadKey,
   type Report,
   type ReportColumn,
+  type ReportSort,
   type ReportVary,
+  type ReportWhere,
+  type Subject,
 } from "./report";
 
 /**
  * FQL, the text form of a Query report. One clause a line, keywords in capitals:
  *
  *   FROM features
- *   WHERE tags includes 'checkout'
+ *   WHERE tags includes 'checkout' and rollout(feature(key)) < 100
  *   FOR { country: 'nl' }
  *   VARY country, device ['mobile', OTHER]
  *   ENVIRONMENT staging, production
- *   SELECT enabled, variation, variables.label
+ *   SELECT key, owner, feature(key), feature(key).variation, feature(key).label
+ *   SORT BY owner, key DESC
+ *   LIMIT 20
  *   AS MATRIX
  *
- * `WHERE` is a condition expression over each row's columns, matched as conditions are. Without
- * `FOR` the report lists definitions. `VARY *` varies by every attribute the rows' conditions
- * compare, and an attribute alone varies by the values they compare it with, plus `OTHER`.
+ * A bare name is a property of the row, such as `owner` or `bucketBy`. A call reads what someone
+ * gets, as conditions read it: `feature('foo')`, its `.variation` or a variable, or
+ * `variable('foo')`, with `key` standing for the row's own key and an environment of its own as
+ * a second argument. `rollout()`, `rule()`, `reason()` and `override()` read what an evaluation
+ * says beside its answer, and `count()` counts the rows GROUP BY gathers.
  *
- * Without `FROM`, each row is a person, and `SELECT` reads columns from anywhere, as conditions
- * read features and variables, each optionally headed with `AS`:
- *
- *   FOR { userId: 'user-1' }
- *   VARY country
- *   SELECT country, feature('foo') AS 'Foo', feature('foo').variation, feature('foo').bar,
- *     variable('checkoutSettings').currency
+ * Without FROM, each row is a person, one per combination FOR and VARY give.
  */
 
-export const CLAUSES = ["FROM", "WHERE", "FOR", "VARY", "ENVIRONMENT", "SELECT", "AS"] as const;
-const KEYWORDS = new Set<string>([...CLAUSES, "TABLE", "MATRIX", "OTHER"]);
+export const CLAUSES = [
+  "FROM",
+  "WHERE",
+  "FOR",
+  "VARY",
+  "ENVIRONMENT",
+  "SELECT",
+  "GROUP",
+  "SORT",
+  "LIMIT",
+  "AS",
+] as const;
+type ClauseKeyword = (typeof CLAUSES)[number];
+const KEYWORDS = new Set<string>([...CLAUSES, "TABLE", "MATRIX", "OTHER", "BY", "ASC", "DESC"]);
+
+/** Calls a column can make, each reading what someone gets or counting rows */
+export const READ_CALLS = ["feature", "variable"];
+export const CALLS = [...READ_CALLS, ...Object.keys(DETAILS), "count"];
 
 export interface FqlError {
   message: string;
@@ -105,7 +129,7 @@ function position(source: string, offset: number) {
 }
 
 interface Clause {
-  keyword: (typeof CLAUSES)[number];
+  keyword: ClauseKeyword;
   start: number;
   /** Where its text starts, after the keyword */
   textStart: number;
@@ -139,16 +163,15 @@ function clausesOf(source: string, tokens: FqlToken[]): Clause[] {
   const clauses: Clause[] = [];
   const starts = clauseStarts(tokens);
   for (const [index, token] of tokens.entries()) {
-    if (starts.has(index)) {
-      const previous = clauses[clauses.length - 1];
-      if (previous) previous.text = source.slice(previous.textStart, token.start);
-      clauses.push({
-        keyword: token.text as Clause["keyword"],
-        start: token.start,
-        textStart: token.start + token.text.length,
-        text: "",
-      });
-    }
+    if (!starts.has(index)) continue;
+    const previous = clauses[clauses.length - 1];
+    if (previous) previous.text = source.slice(previous.textStart, token.start);
+    clauses.push({
+      keyword: token.text as ClauseKeyword,
+      start: token.start,
+      textStart: token.start + token.text.length,
+      text: "",
+    });
   }
   const last = clauses[clauses.length - 1];
   if (last) last.text = source.slice(last.textStart);
@@ -164,7 +187,20 @@ class Failure extends Error {
   }
 }
 
-/** Literal values, as conditions write them: single quoted text, numbers, lists and objects */
+/** An expression as written, and where its parts sit, for errors that point at them */
+interface Located {
+  expr: Expr;
+  offset: number;
+  keyOffset?: number;
+  variableOffset?: number;
+  environmentOffset?: number;
+}
+
+interface SelectItem extends Located {
+  alias?: string;
+}
+
+/** Literal values and expressions, as conditions write them */
 class Literals {
   private at = 0;
 
@@ -186,6 +222,22 @@ class Literals {
     }
   }
 
+  /** Where the next character sits in the whole query */
+  here() {
+    this.skip();
+    return this.offset + this.at;
+  }
+
+  /** Moves to a place in the text, for reading an expression from the middle of it */
+  seek(at: number) {
+    this.at = at;
+  }
+
+  /** Where reading stopped, within the text */
+  stop() {
+    return this.at;
+  }
+
   peek() {
     this.skip();
     return this.text[this.at];
@@ -198,6 +250,14 @@ class Literals {
   expect(character: string) {
     if (this.peek() !== character) this.fail(`Expected \`${character}\`.`);
     this.at++;
+  }
+
+  /** Takes a keyword such as `BY` or `DESC`, when it comes next */
+  keyword(word: string) {
+    this.skip();
+    if (!new RegExp(`^${word}\\b`).test(this.text.slice(this.at))) return false;
+    this.at += word.length;
+    return true;
   }
 
   word(): string {
@@ -272,83 +332,134 @@ class Literals {
     }
   }
 
-  /** Where the next character sits in the whole query */
-  here() {
-    this.skip();
-    return this.offset + this.at;
+  /** Names or text separated by commas, such as environments */
+  names(): string[] {
+    const names: string[] = [];
+    while (true) {
+      names.push(this.peek() === "'" ? String(this.value()) : this.word());
+      if (this.peek() !== ",") return names;
+      this.at++;
+    }
   }
 
   /**
-   * A SELECT item: a column's name, or a read as conditions write one, `feature('foo')`,
-   * `feature('foo').variation`, `feature('foo').label`, `variable('settings').currency`, then
-   * optionally `AS` and a heading.
+   * An expression: a property's name, a read as conditions write one, `feature('foo')`,
+   * `feature(key).variation`, `feature('foo', 'staging').label`, `variable(key).currency`, a
+   * detail of a read, such as `rollout(feature(key))`, or `count()`.
    */
-  column(): SelectItem {
+  expr(): Located {
     const offset = this.here();
     const name = this.word();
-    let item: SelectItem;
-    if ((name === "feature" || name === "variable") && this.peek() === "(") {
+    if (this.peek() !== "(" || !CALLS.includes(name))
+      return { offset, expr: { kind: "property", name } };
+    if (name === "count") {
       this.expect("(");
-      const keyOffset = this.here();
-      const key = this.value();
-      if (typeof key !== "string" || key === "")
+      this.expect(")");
+      return { offset, expr: { kind: "count" } };
+    }
+    if (name in DETAILS) {
+      this.expect("(");
+      const inner = this.expr();
+      this.expect(")");
+      const read = readOf(inner.expr);
+      if (!read || inner.expr.kind !== "read")
+        throw new Failure(`${name}() takes a read, such as ${name}(feature(key)).`, inner.offset);
+      return { ...inner, offset, expr: { kind: "detail", detail: name as Detail, read } };
+    }
+    return { offset, ...this.read(name) };
+  }
+
+  private read(name: string): Omit<Located, "offset"> {
+    this.expect("(");
+    const keyOffset = this.here();
+    let key: ReadKey;
+    if (this.text[this.at] === "'") {
+      const value = this.value();
+      if (typeof value !== "string" || value === "")
         throw new Failure(
           `${name}() takes a key in quotes, such as ${name}('checkout').`,
           keyOffset,
         );
-      this.expect(")");
-      const accessors = this.accessors();
-      if (name === "variable") {
-        item = {
-          offset,
-          keyOffset,
-          read: { kind: "variable", variable: key, path: accessors.map((item) => item.key) },
-        };
-      } else if (accessors.length === 0) {
-        item = { offset, keyOffset, read: { kind: "flag", feature: key } };
-      } else if (accessors[0].style === "dot" && accessors[0].key === "variation") {
-        if (accessors.length > 1)
-          throw new Failure(
-            "A variation is text, so nothing can follow `.variation`.",
-            accessors[1].offset,
-          );
-        item = { offset, keyOffset, read: { kind: "variation", feature: key } };
-      } else {
-        const [variable, ...path] = accessors;
-        if (typeof variable.key !== "string")
-          throw new Failure(
-            `Read a variable by its name, such as feature('${key}').label.`,
-            variable.offset,
-          );
-        item = {
-          offset,
-          keyOffset,
-          variableOffset: variable.offset,
-          read: {
-            kind: "variable",
-            feature: key,
-            variable: variable.key,
-            path: path.map((item) => item.key),
-          },
-        };
-      }
+      key = value;
+    } else if (/^key\b/.test(this.text.slice(this.at))) {
+      this.at += 3;
+      key = ROW_KEY;
     } else {
-      item = { offset, name };
+      throw new Failure(
+        `${name}() takes a key in quotes, such as ${name}('checkout'), or key for the row's own.`,
+        keyOffset,
+      );
     }
-    this.skip();
-    if (/^AS\b/.test(this.text.slice(this.at))) {
-      this.at += 2;
-      item.alias = this.peek() === "'" ? String(this.value()) : this.word();
+    let environment: string | undefined;
+    let environmentOffset: number | undefined;
+    if (this.peek() === ",") {
+      this.at++;
+      environmentOffset = this.here();
+      const value = this.value();
+      if (typeof value !== "string")
+        throw new Failure(
+          "An environment goes in quotes, such as 'production'.",
+          environmentOffset,
+        );
+      environment = value;
     }
-    return item;
+    this.expect(")");
+    const accessors = this.accessors();
+    const where = environment === undefined ? {} : { environment };
+    if (name === "variable") {
+      const read: Read = {
+        kind: "global",
+        variable: key,
+        path: accessors.map((item) => item.key),
+        ...where,
+      };
+      return { expr: { kind: "read", read }, keyOffset, environmentOffset };
+    }
+    if (accessors.length === 0)
+      return {
+        expr: { kind: "read", read: { kind: "flag", feature: key, ...where } },
+        keyOffset,
+        environmentOffset,
+      };
+    if (accessors[0].style === "dot" && accessors[0].key === "variation") {
+      if (accessors.length > 1)
+        throw new Failure(
+          "A variation is text, so nothing can follow `.variation`.",
+          accessors[1].offset,
+        );
+      return {
+        expr: { kind: "read", read: { kind: "variation", feature: key, ...where } },
+        keyOffset,
+        environmentOffset,
+      };
+    }
+    const [variable, ...path] = accessors;
+    if (typeof variable.key !== "string")
+      throw new Failure(
+        "Read a variable by its name, such as feature(key).label.",
+        variable.offset,
+      );
+    const read: Read = {
+      kind: "variable",
+      feature: key,
+      variable: variable.key,
+      path: path.map((item) => item.key),
+      ...where,
+    };
+    return {
+      expr: { kind: "read", read },
+      keyOffset,
+      variableOffset: variable.offset,
+      environmentOffset,
+    };
   }
 
   /** `.name`, `.0`, `['name']` or `[0]` after a read, as conditions write paths */
   private accessors() {
     const accessors: Array<{ key: string | number; style: "dot" | "bracket"; offset: number }> = [];
     while (true) {
-      const offset = this.here();
-      const character = this.peek();
+      const offset = this.offset + this.at;
+      const character = this.text[this.at];
       if (character === ".") {
         this.at++;
         const match = /^(\d+|[A-Za-z_][\w-]*)/.exec(this.text.slice(this.at));
@@ -372,25 +483,22 @@ class Literals {
     }
   }
 
-  /** Names or text separated by commas, such as environments */
-  names(): string[] {
-    const names: string[] = [];
+  /** A SELECT item: an expression, then optionally `AS` and a heading */
+  column(): SelectItem {
+    const item: SelectItem = this.expr();
+    if (this.keyword("AS")) item.alias = this.peek() === "'" ? String(this.value()) : this.word();
+    return item;
+  }
+
+  /** Items separated by commas, until the clause ends */
+  items<T>(read: () => T): T[] {
+    const items: T[] = [];
     while (true) {
-      names.push(this.peek() === "'" ? String(this.value()) : this.word());
-      if (this.peek() !== ",") return names;
-      this.at++;
+      items.push(read());
+      if (this.done()) return items;
+      this.expect(",");
     }
   }
-}
-
-interface SelectItem {
-  offset: number;
-  /** A column of the row, or a person's attribute */
-  name?: string;
-  read?: ColumnRead;
-  alias?: string;
-  keyOffset?: number;
-  variableOffset?: number;
 }
 
 /** What the project has, for checking the names a query reads */
@@ -402,25 +510,78 @@ export interface FqlProject {
   attributes?: string[];
 }
 
-/** Every leaf of a compiled filter that names a segment or reads a feature, which rows lack */
-function unsupportedLeaf(conditions: unknown): string | undefined {
-  if (typeof conditions === "string") return conditions === "*" ? undefined : conditions;
-  if (Array.isArray(conditions)) {
-    for (const item of conditions) {
-      const found = unsupportedLeaf(item);
-      if (found) return found;
+/** Names that used to be columns but are what someone gets, with how to read each now */
+const READ_INSTEAD: Record<string, string> = {
+  enabled: "feature(key)",
+  variation: "feature(key).variation",
+  value: "variable(key)",
+  rule: "rule(feature(key))",
+  reason: "reason(feature(key))",
+  override: "override(variable(key))",
+};
+
+/** Placeholder names that stand in for reads while WHERE compiles as a condition expression */
+const placeholder = (index: number, length: number) => `q${index}`.padEnd(Math.max(length, 3), "_");
+
+/**
+ * WHERE as conditions, each read swapped for a name of the same length that the row's context
+ * then holds the read's answer under, so errors point where they did in the text.
+ */
+function parseWhere(text: string, offset: number): { where: ReportWhere; reads: Located[] } {
+  const literals = new Literals(text, offset);
+  const located: Located[] = [];
+  const reads: Record<string, Expr> = {};
+  let substituted = "";
+  let copied = 0;
+  const tokens = lexFql(text);
+  for (const [index, token] of tokens.entries()) {
+    if (token.start < copied || token.type !== "word" || !CALLS.includes(token.text)) continue;
+    if (tokens[index + 1]?.text !== "(") continue;
+    literals.seek(token.start);
+    const item = literals.expr();
+    if (item.expr.kind === "count")
+      throw new Failure("count() counts groups, so WHERE cannot compare it.", item.offset);
+    const end = literals.stop();
+    const name = placeholder(located.length, end - token.start);
+    reads[name] = item.expr;
+    located.push(item);
+    substituted += text.slice(copied, token.start) + name;
+    copied = end;
+  }
+  substituted += text.slice(copied);
+
+  const result = compile(substituted, { root: true });
+  if (result.errors.length) {
+    const error = result.errors[0];
+    throw new Failure(error.message, offset + error.start.offset);
+  }
+  const names = new Set<string>();
+  // A read written alone, as `feature(key)`, compiles as a segment's name: it means true
+  const resolve = (conditions: unknown): unknown => {
+    if (typeof conditions === "string") {
+      if (reads[conditions]) return { attribute: conditions, operator: "equals", value: true };
+      if (conditions !== "*")
+        throw new Failure(
+          `\`${conditions}\` alone names a segment, which rows do not have. Compare it, such as archived == true.`,
+          offset,
+        );
+      return conditions;
     }
-    return undefined;
-  }
-  if (!conditions || typeof conditions !== "object") return undefined;
-  const leaf = conditions as Record<string, unknown>;
-  if (typeof leaf.feature === "string") return `feature('${leaf.feature}')`;
-  if (typeof leaf.variable === "string") return `variable('${leaf.variable}')`;
-  for (const key of ["and", "or", "not"]) {
-    const found = unsupportedLeaf(leaf[key]);
-    if (found) return found;
-  }
-  return undefined;
+    if (Array.isArray(conditions)) return conditions.map(resolve);
+    if (!conditions || typeof conditions !== "object") return conditions;
+    const leaf = conditions as Record<string, unknown>;
+    if (typeof leaf.attribute === "string") {
+      if (!reads[leaf.attribute]) names.add(leaf.attribute);
+      return leaf;
+    }
+    return Object.fromEntries(
+      Object.entries(leaf).map(([key, value]) =>
+        ["and", "or", "not"].includes(key) ? [key, resolve(value)] : [key, value],
+      ),
+    );
+  };
+  const conditions = resolve(result.conditions) as Condition | Condition[];
+  return { where: { conditions, reads, names: [...names] }, reads: located };
 }
 
 /** The names a project offers, for an error's "it has" hint */
@@ -428,10 +589,13 @@ function some(names: string[]) {
   return names.length > 6 ? `${names.slice(0, 6).join(", ")} and more` : names.join(", ");
 }
 
+const subjectWords = (subjects: Subject[]) =>
+  subjects.map((subject) => `${subject}s`).join(" and ");
+
 /**
  * A report from FQL, or the errors that keep it from being one, each at its line and column.
  * Environments are checked against the project's, and so are the features, variables and
- * attributes a people report reads, when the project lists them.
+ * attributes a query reads, when the project lists them.
  */
 export function parseFql(
   source: string,
@@ -453,16 +617,22 @@ export function parseFql(
   }
 
   const report: Report = {
-    of: clauses.some((clause) => clause.keyword === "FROM") ? "features" : "people",
+    subjects: [],
     vary: [],
     environments: project.environments.slice(-1),
-    show: [],
+    columns: [],
+    group: [],
+    sort: [],
     as: "table",
   };
   const seen = new Set<string>();
   let selected: SelectItem[] | undefined;
-  let selectBroken = false;
-  let whereOffset: number | undefined;
+  let grouped: Located[] = [];
+  let sorted: Array<{ item: Located & { alias?: string }; descending: boolean }> = [];
+  let whereReads: Located[] = [];
+  let person: Person | undefined;
+  let varied = false;
+  let matrixOffset: number | undefined;
 
   for (const clause of clauses) {
     if (seen.has(clause.keyword) && clause.keyword !== "VARY") {
@@ -474,36 +644,26 @@ export function parseFql(
     try {
       if (clause.keyword === "FROM") {
         if (clause !== clauses[0]) throw new Failure("FROM comes first.", clause.start);
-        const table = literals.word();
-        if (table !== "features" && table !== "variables")
-          throw new Failure(
-            "FROM reads features or variables. Leave it out for a row per person.",
-            clause.textStart + clause.text.indexOf(table),
-          );
-        report.of = table;
+        for (const name of literals.names()) {
+          const subject = SUBJECTS[name];
+          if (!subject)
+            throw new Failure(
+              "FROM reads features, variables, segments or attributes. Leave it out for a row per person.",
+              clause.textStart + clause.text.indexOf(name),
+            );
+          if (!report.subjects.includes(subject)) report.subjects.push(subject);
+        }
       } else if (clause.keyword === "WHERE") {
-        whereOffset = clause.start;
-        const result = compile(clause.text, { root: true });
-        if (result.errors.length) {
-          const error = result.errors[0];
-          throw new Failure(error.message, clause.textStart + error.start.offset);
-        }
-        const unsupported = unsupportedLeaf(result.conditions);
-        if (unsupported) {
-          throw new Failure(
-            unsupported.includes("(")
-              ? `${unsupported} reads what someone gets. Select it instead, such as SELECT enabled.`
-              : `\`${unsupported}\` alone names a segment, which rows do not have. Compare it, such as archived == true.`,
-            clause.textStart,
-          );
-        }
-        report.where = result.conditions as Condition | Condition[];
+        const parsed = parseWhere(clause.text, clause.textStart);
+        report.where = parsed.where;
+        whereReads = parsed.reads;
       } else if (clause.keyword === "FOR") {
-        const person = literals.value();
-        if (!person || typeof person !== "object" || Array.isArray(person))
+        const value = literals.value();
+        if (!value || typeof value !== "object" || Array.isArray(value))
           throw new Failure("FOR takes a person, such as { country: 'nl' }.", clause.textStart);
-        report.person = person as Person;
+        person = value as Person;
       } else if (clause.keyword === "VARY") {
+        varied = true;
         while (!literals.done()) {
           if (literals.peek() === "*") {
             literals.expect("*");
@@ -532,17 +692,40 @@ export function parseFql(
           report.environments = environments;
         }
       } else if (clause.keyword === "SELECT") {
-        selected = [];
-        while (true) {
-          selected.push(literals.column());
-          if (literals.done()) break;
-          literals.expect(",");
-        }
+        selected = literals.items(() => literals.column());
+      } else if (clause.keyword === "GROUP") {
+        literals.keyword("BY");
+        grouped = literals.items(() => literals.expr());
+      } else if (clause.keyword === "SORT") {
+        literals.keyword("BY");
+        sorted = literals.items(() => {
+          // A heading in quotes names a SELECT column
+          const item: Located & { alias?: string } =
+            literals.peek() === "'"
+              ? {
+                  offset: literals.here(),
+                  expr: { kind: "property", name: "" },
+                  alias: String(literals.value()),
+                }
+              : literals.expr();
+          const descending = literals.keyword("DESC");
+          if (!descending) literals.keyword("ASC");
+          return { item, descending };
+        });
+      } else if (clause.keyword === "LIMIT") {
+        const offset = literals.here();
+        const value = literals.value();
+        if (typeof value !== "number" || !Number.isInteger(value) || value < 1)
+          throw new Failure("LIMIT takes how many rows to show, such as LIMIT 10.", offset);
+        report.limit = value;
       } else if (clause.keyword === "AS") {
-        const layout = literals.word();
-        report.as = layout === "MATRIX" ? "matrix" : "table";
+        if (literals.word() === "MATRIX") {
+          report.as = "matrix";
+          matrixOffset = clause.start;
+        }
       }
-      if (clause.keyword !== "WHERE" && clause.keyword !== "VARY" && !literals.done()) {
+      // WHERE's text is a condition expression, compiled whole above
+      if (clause.keyword !== "WHERE" && !literals.done()) {
         throw new Failure(
           `Unexpected text after ${clause.keyword}.`,
           clause.textStart + clause.text.search(/\S(?=\s*$)/),
@@ -551,133 +734,229 @@ export function parseFql(
     } catch (error) {
       if (!(error instanceof Failure)) throw error;
       fail(error.message, error.offset);
-      if (clause.keyword === "SELECT") selectBroken = true;
     }
   }
+  if (errors.length) return { errors };
 
-  if (report.of === "people")
-    checkPeople(report, selectBroken ? [] : selected, whereOffset, project, fail, source);
-  else checkEntities(report, selected, fail, source);
+  const people = report.subjects.length === 0;
+  // Reading what someone gets needs someone: FOR's person, or everyone when it says none
+  const reads = [
+    ...(selected || []),
+    ...grouped,
+    ...sorted.map((sort) => sort.item),
+    ...whereReads,
+  ];
+  if (person || varied || people || reads.some((item) => readOf(item.expr)))
+    report.person = person ?? {};
+  const evaluating = report.person !== undefined;
 
-  return errors.length ? { errors } : { report, errors };
-}
-
-type Fail = (message: string, offset: number) => void;
-
-/** A row per person: columns are reads and the person's own attributes */
-function checkPeople(
-  report: Report,
-  selected: SelectItem[] | undefined,
-  whereOffset: number | undefined,
-  project: FqlProject,
-  fail: Fail,
-  source: string,
-) {
-  report.person ??= {};
-  const broken = selected?.length === 0;
-  if (whereOffset !== undefined)
-    fail(
-      "WHERE filters features or variables, so it needs FROM. A row per person has no filter yet.",
-      whereOffset,
-    );
-  if (!broken && !selected?.some((item) => item.read)) {
-    fail(
-      "SELECT what to read, such as SELECT feature('key'), feature('key').variation or variable('key').",
-      selected?.[0]?.offset ?? source.length,
-    );
-  }
   const attributes = project.attributes && [
     ...project.attributes,
-    ...Object.keys(report.person),
+    ...Object.keys(report.person || {}),
     ...report.vary.map((vary) => vary.attribute),
   ];
-  const columns: ReportColumn[] = [];
-  for (const item of selected || []) {
-    if (item.name !== undefined) {
-      if (attributes && !attributes.includes(item.name)) {
+  const isAttribute = (name: string) => (attributes ? attributes.includes(name) : evaluating);
+
+  /** Checks an expression's names against the rows and the project */
+  const check = (item: Located, place: "SELECT" | "GROUP BY" | "SORT" | "WHERE") => {
+    const { expr } = item;
+    if (expr.kind === "count") {
+      if (place === "GROUP BY")
+        fail("GROUP BY gathers rows by a column, and count() counts them.", item.offset);
+      return;
+    }
+    if (expr.kind === "property") {
+      const { name } = expr;
+      if (name === "environment" && evaluating) return;
+      if (people) {
+        if (!isAttribute(name))
+          fail(
+            `No attribute called ${name}. Read a feature with feature('key'), or a global variable with variable('key').`,
+            item.offset,
+          );
+        return;
+      }
+      const property = propertyOf(name);
+      if (property && report.subjects.some((subject) => property.subjects.includes(subject)))
+        return;
+      if (property) {
+        fail(`${name} is a property of ${subjectWords(property.subjects)} only.`, item.offset);
+        return;
+      }
+      if (READ_INSTEAD[name] || name.startsWith("variables.")) {
+        const instead = READ_INSTEAD[name] ?? `feature(key).${name.slice("variables.".length)}`;
+        fail(`${name} is what someone gets, not a property. Read it with ${instead}.`, item.offset);
+        return;
+      }
+      if (evaluating && isAttribute(name)) return;
+      const known = Object.keys(PROPERTIES).filter((key) =>
+        report.subjects.some((subject) => PROPERTIES[key].subjects.includes(subject)),
+      );
+      fail(`No property called ${name}. Try ${some(known)}, or metadata.<key>.`, item.offset);
+      return;
+    }
+    const read = expr.read;
+    if (expr.kind === "detail") {
+      const fits =
+        expr.detail === "rollout"
+          ? read.kind === "flag"
+          : expr.detail === "override"
+            ? read.kind === "variable" || read.kind === "global"
+            : expr.detail === "rule"
+              ? read.kind !== "global"
+              : true;
+      if (!fits)
         fail(
-          `No attribute called ${item.name}. Read a feature with feature('key'), or a global variable with variable('key').`,
+          expr.detail === "rollout"
+            ? "rollout() reads how much of an audience a feature is on for, such as rollout(feature(key))."
+            : expr.detail === "override"
+              ? "override() reads which override a variable's value came from, such as override(variable(key))."
+              : "Global variables have overrides, not rules. Read override(variable(key)) instead.",
           item.offset,
         );
-      }
-      columns.push({ read: { kind: "attribute", attribute: item.name }, alias: item.alias });
-      continue;
     }
-    const read = item.read!;
-    if (read.kind === "attribute") continue;
-    if (read.kind === "variable" && !read.feature) {
-      if (project.variables && !project.variables.includes(read.variable))
+    if (read.environment !== undefined && !project.environments.includes(read.environment))
+      fail(
+        `No environment called ${read.environment}. The project has ${project.environments.join(", ") || "none"}.`,
+        item.environmentOffset ?? item.offset,
+      );
+    const global = read.kind === "global";
+    const key = global ? read.variable : read.feature;
+    if (typeof key !== "string") {
+      const subject: Subject = global ? "variable" : "feature";
+      if (people)
         fail(
-          `No global variable called ${read.variable}.${project.features?.[read.variable] ? ` ${read.variable} is a feature, read with feature('${read.variable}').` : ""}`,
-          item.keyOffset!,
+          `key names each row's own key, and a row per person has none. Name one, such as ${global ? "variable" : "feature"}('checkout').`,
+          item.keyOffset ?? item.offset,
         );
-    } else if (project.features) {
-      const variables = project.features[read.feature!];
-      if (!variables) {
+      else if (!report.subjects.includes(subject))
         fail(
-          `No feature called ${read.feature}.${project.variables?.includes(read.feature!) ? ` ${read.feature} is a global variable, read with variable('${read.feature}').` : ""}`,
-          item.keyOffset!,
+          `${global ? "variable" : "feature"}(key) reads each row's own ${global ? "global variable" : "feature"}, so it needs FROM ${subject}s.`,
+          item.keyOffset ?? item.offset,
         );
-      } else if (read.kind === "variable" && !variables.includes(read.variable)) {
-        fail(
-          variables.length
-            ? `${read.feature} has no variable called ${read.variable}. It has ${some(variables)}.`
-            : `${read.feature} has no variables.`,
-          item.variableOffset!,
-        );
-      }
+      return;
     }
-    columns.push({ read, alias: item.alias });
-  }
-  report.columns = columns;
-}
+    if (global) {
+      if (project.variables && !project.variables.includes(key))
+        fail(
+          `No global variable called ${key}.${project.features?.[key] ? ` ${key} is a feature, read with feature('${key}').` : ""}`,
+          item.keyOffset ?? item.offset,
+        );
+      return;
+    }
+    if (!project.features) return;
+    const variables = project.features[key];
+    if (!variables) {
+      fail(
+        `No feature called ${key}.${project.variables?.includes(key) ? ` ${key} is a global variable, read with variable('${key}').` : ""}`,
+        item.keyOffset ?? item.offset,
+      );
+    } else if (read.kind === "variable" && !variables.includes(read.variable)) {
+      fail(
+        variables.length
+          ? `${key} has no variable called ${read.variable}. It has ${some(variables)}.`
+          : `${key} has no variables.`,
+        item.variableOffset ?? item.offset,
+      );
+    }
+  };
 
-/** A row per feature or global variable: columns are the row's own */
-function checkEntities(
-  report: Report,
-  selected: SelectItem[] | undefined,
-  fail: Fail,
-  source: string,
-) {
-  const allowed = report.person
-    ? report.of === "features"
-      ? FEATURE_COLUMNS
-      : VARIABLE_COLUMNS
-    : ["key", ...DEFINITION_COLUMNS];
-  const show: string[] = [];
-  for (const item of selected || []) {
-    if (item.read) {
+  for (const item of selected || []) check(item, "SELECT");
+  for (const item of grouped) check(item, "GROUP BY");
+  for (const item of whereReads) check(item, "WHERE");
+  for (const name of report.where?.names || []) {
+    check(
+      {
+        expr: { kind: "property", name },
+        offset: clauses.find((clause) => clause.keyword === "WHERE")!.textStart,
+      },
+      "WHERE",
+    );
+  }
+
+  report.group = grouped.map((item) => ({ expr: item.expr }));
+  const groupTexts = new Set(report.group.map((column) => exprText(column.expr)));
+  const counting = (selected || []).some((item) => item.expr.kind === "count");
+
+  // Columns: as written, or what the rows are best known by
+  if (selected) {
+    report.columns = selected.map((item) => ({ expr: item.expr, alias: item.alias }));
+  } else if (report.group.length) {
+    report.columns = [...report.group, { expr: { kind: "count" } }];
+  } else if (people) {
+    fail(
+      "SELECT what to read, such as SELECT feature('key'), feature('key').variation or variable('key').",
+      source.length,
+    );
+  } else {
+    const subjects = report.subjects;
+    const read: ReportColumn[] =
+      evaluating && subjects.length === 1 && subjects[0] === "feature"
+        ? [{ expr: { kind: "read", read: { kind: "flag", feature: ROW_KEY } } }]
+        : evaluating && subjects.length === 1 && subjects[0] === "variable"
+          ? [{ expr: { kind: "read", read: { kind: "global", variable: ROW_KEY, path: [] } } }]
+          : [];
+    const names = read.length
+      ? ["key"]
+      : [...(subjects.length > 1 ? ["kind"] : []), "key", "description", "owner", "tags"];
+    report.columns = [
+      ...names.map((name) => ({ expr: { kind: "property" as const, name } })),
+      ...read,
+    ];
+  }
+
+  if (report.group.length || counting) {
+    for (const item of selected || []) {
+      if (item.expr.kind !== "count" && !groupTexts.has(exprText(item.expr)))
+        fail(
+          report.group.length
+            ? `${exprText(item.expr)} is not in GROUP BY. SELECT what GROUP BY names, and count().`
+            : "count() counts groups. Add GROUP BY, such as GROUP BY owner, or SELECT count() alone.",
+          item.offset,
+        );
+    }
+  }
+
+  // SORT names a column by its heading, or by an expression of its own
+  for (const { item, descending } of sorted) {
+    const byHeading = report.columns.find(
+      (column) =>
+        column.alias !== undefined &&
+        (column.alias === item.alias ||
+          (item.expr.kind === "property" && column.alias === item.expr.name)),
+    );
+    if (item.alias !== undefined && !byHeading) {
       fail(
-        `${source.slice(item.offset).match(/^\w+\(/)?.[0]}...) reads one thing for every row. Leave out FROM for a row per person, and SELECT reads from anywhere.`,
+        `No column headed ${item.alias}. SORT names a heading AS gives, or an expression.`,
         item.offset,
       );
       continue;
     }
-    if (item.alias !== undefined) {
-      fail("AS heads columns of a row per person report only.", item.offset);
+    if (byHeading) {
+      report.sort.push({ column: byHeading, descending } satisfies ReportSort);
+      continue;
     }
-    const name = item.name!;
-    const column = name.startsWith("variables.") ? `variable:${name.slice(10)}` : name;
-    const ok =
-      allowed.includes(column) ||
-      (report.person && report.of === "features" && column.startsWith("variable:"));
-    if (!ok) {
-      fail(
-        report.person || !FEATURE_COLUMNS.includes(column)
-          ? `No column ${column} here. Try ${allowed.join(", ")}${report.person && report.of === "features" ? " or variables.<key>" : ""}.`
-          : `${column} is what someone gets, so it needs FOR, such as FOR { country: 'nl' }.`,
-        item.offset,
-      );
+    if (report.group.length || counting) {
+      if (item.expr.kind !== "count" && !groupTexts.has(exprText(item.expr)))
+        fail(`SORT a grouped report by what GROUP BY names, or by count().`, item.offset);
+    } else if (item.expr.kind === "count") {
+      fail("count() counts groups, so it sorts a report with GROUP BY.", item.offset);
+      continue;
+    } else {
+      check(item, "SORT");
     }
-    if (column !== "key") show.push(column);
+    report.sort.push({ column: { expr: item.expr }, descending });
   }
-  report.show = selected
-    ? show
-    : report.person
-      ? report.of === "features"
-        ? ["enabled"]
-        : ["value"]
-      : ["description", "owner", "tags"];
-  if (report.as === "matrix" && !report.person)
-    fail("AS MATRIX needs FOR, since it shows what people get.", source.length);
+
+  if (report.as === "matrix") {
+    if (!evaluating)
+      fail(
+        "AS MATRIX shows what people get, so it needs a read, such as SELECT feature(key).",
+        matrixOffset!,
+      );
+    else if (report.group.length || counting)
+      fail("AS MATRIX cannot show groups. Leave out one or the other.", matrixOffset!);
+  }
+
+  return errors.length ? { errors } : { report, errors };
 }

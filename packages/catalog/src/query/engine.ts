@@ -24,6 +24,11 @@ export interface Cell {
   tone: CellTone;
   /** The variation it shows, so every cell colours a variation alike */
   variation?: string;
+  /**
+   * The answer itself, for comparing and sorting: true or false, a variation, a variable's
+   * value, or null where an audience gets more than one answer
+   */
+  value: unknown;
   why: Why;
 }
 
@@ -148,6 +153,16 @@ function splitOf(evaluation: Evaluation): Why["split"] {
 }
 
 /** Whether the feature is on: for the person, or the share of the row's audience */
+const on = (why: Why): Cell => ({ text: "On", tone: "on", value: true, why });
+const off = (why: Why): Cell => ({ text: "Off", tone: "off", value: false, why });
+
+/** The share of the row's audience a flag cell is on for, from 0 to 100 */
+export function rolloutOf(cell: Cell): number {
+  if (cell.tone === "on") return 100;
+  if (cell.tone === "partial") return cell.why.percentage ?? 0;
+  return 0;
+}
+
 export function flagCell(datafile: DatafileContent, featureKey: string, person: Person): Cell {
   const evaluator = evaluatorOf(datafile);
   const { context, position } = placement(person);
@@ -165,21 +180,21 @@ export function flagCell(datafile: DatafileContent, featureKey: string, person: 
   // A rule decides the audience's share with its percentage, unless it turns the feature on or off
   if (lens === "audience" && evaluation.reason === "rule" && traffic) {
     if (typeof traffic.enabled === "boolean") {
-      return { text: traffic.enabled ? "On" : "Off", tone: traffic.enabled ? "on" : "off", why };
+      return traffic.enabled ? on(why) : off(why);
     }
     const share = percent(traffic.percentage);
     why.percentage = share;
-    if (share >= 100) return { text: "On", tone: "on", why };
-    if (share <= 0) return { text: "Off", tone: "off", why };
-    return { text: formatPercent(share), tone: "partial", why };
+    if (share >= 100) return on(why);
+    if (share <= 0) return off(why);
+    return { text: formatPercent(share), tone: "partial", value: null, why };
   }
-  return evaluation.enabled ? { text: "On", tone: "on", why } : { text: "Off", tone: "off", why };
+  return evaluation.enabled ? on(why) : off(why);
 }
 
 /** The variation the person gets, or the audience's split between variations */
 export function variationCell(datafile: DatafileContent, featureKey: string, person: Person): Cell {
   const flag = flagCell(datafile, featureKey, person);
-  if (flag.tone === "off") return { ...flag, text: "Off" };
+  if (flag.tone === "off") return { ...flag, text: "Off", value: null };
   const evaluator = evaluatorOf(datafile);
   const { context, position } = placement(person);
   const evaluation = at(evaluator, position, () =>
@@ -196,14 +211,21 @@ export function variationCell(datafile: DatafileContent, featureKey: string, per
           .map((share) => `${share.variation} ${formatPercent(share.percentage)}`)
           .join(" · "),
         tone: "partial",
+        value: null,
         why,
       };
     }
   }
   const variation = evaluation.variationValue ?? evaluation.variation?.value;
   return variation === undefined
-    ? { text: "None", tone: "none", why }
-    : { text: String(variation), tone: "value", variation: String(variation), why };
+    ? { text: "None", tone: "none", value: null, why }
+    : {
+        text: String(variation),
+        tone: "value",
+        variation: String(variation),
+        value: String(variation),
+        why,
+      };
 }
 
 /** A feature's own variable, for the person, or per variation across the audience's split */
@@ -217,7 +239,7 @@ export function featureVariableCell(
   const evaluator = evaluatorOf(datafile);
   const { context, position } = placement(person);
   const variation = variationCell(datafile, featureKey, person);
-  const read = (value: unknown) => formatValue(valueAtPath(value, path));
+
   const valueAt = (place: number | undefined) =>
     at(evaluator, place, () => evaluator.sdk.evaluateVariable(featureKey, variableKey, context));
   // Read the value where each variation is allocated, so every variation's value shows
@@ -230,22 +252,29 @@ export function featureVariableCell(
     const values = split.map((share) => {
       const range = allocation.find((item) => item.variation === share.variation)?.range;
       const middle = range ? Math.floor((range[0] + range[1]) / 2) : undefined;
-      return { ...share, value: read(valueAt(middle).variableValue) };
+      const raw = valueAtPath(valueAt(middle).variableValue, path);
+      return { ...share, raw, value: formatValue(raw) };
     });
-    const why = { ...variation.why, split: values };
+    const why = {
+      ...variation.why,
+      split: values.map(({ variation, percentage, value }) => ({ variation, percentage, value })),
+    };
     if (new Set(values.map((share) => share.value)).size === 1) {
-      return { text: values[0].value, tone: "value", why };
+      return { text: values[0].value, tone: "value", value: values[0].raw, why };
     }
     return {
       text: values.map((share) => `${share.variation}: ${share.value}`).join(" · "),
       tone: "partial",
+      value: null,
       why,
     };
   }
   const evaluation = valueAt(position);
+  const value = valueAtPath(evaluation.variableValue, path);
   return {
-    text: read(evaluation.variableValue),
+    text: formatValue(value),
     tone: "value",
+    value,
     why: {
       ...variation.why,
       reason: evaluation.reason,
@@ -266,9 +295,11 @@ export function globalVariableCell(
   const evaluation = at(evaluator, position, () =>
     evaluator.sdk.evaluateVariable(variableKey, context),
   );
+  const value = valueAtPath(evaluation.variableValue, path);
   return {
-    text: formatValue(valueAtPath(evaluation.variableValue, path)),
+    text: formatValue(value),
     tone: "value",
+    value,
     why: { lens: "exact", reason: evaluation.reason, overrideKey: evaluation.variableOverrideKey },
   };
 }
@@ -350,6 +381,8 @@ export function getComparedValues(
     }
     for (const [key, variable] of Object.entries(datafile.variables || {})) {
       if (only && !only.variables?.includes(key)) continue;
+      // Its own conditions decide too, such as a feature it requires
+      walk((variable as { conditions?: unknown }).conditions);
       (variable.overrides || []).forEach((override) => walk(override.conditions));
     }
   }

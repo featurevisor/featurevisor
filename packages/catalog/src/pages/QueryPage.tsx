@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { allConditionsAreMatched } from "@featurevisor/sdk";
-import type { BucketBy, DatafileContent } from "@featurevisor/types";
+import type { DatafileContent } from "@featurevisor/types";
 
 import { fetchDatafile } from "../api";
 import { useCatalog } from "../context/CatalogContext";
@@ -16,77 +15,39 @@ import {
 } from "../components/fullView";
 import { TOKEN_CLASSES } from "../components/trees";
 import { Badge, EmptyState, EntityKey, PageHeader } from "../components/ui";
+import { getDeadlineClock } from "../metadata";
 import { useCatalogIndex } from "../useCatalogIndex";
 import { useDocumentTitle } from "../useDocumentTitle";
-import type { CatalogIndex, EntitySummary } from "../types";
+import type { CatalogIndex } from "../types";
+import type { Cell, Why } from "../query/engine";
 import {
-  ANY_OTHER,
-  featureVariableCell,
-  flagCell,
-  formatValue,
-  getComparedValues,
-  globalVariableCell,
-  lensOf,
-  variationCell,
-  type Cell,
-  type Person,
-  type Why,
-} from "../query/engine";
-import { clauseStarts, lexFql, parseFql, type FqlError, type FqlProject } from "../query/fql";
+  completeFql,
+  type CompletionItem,
+  type CompletionKind,
+  type CompletionSource,
+} from "../query/complete";
+import { EXAMPLES, FIRST_QUERY } from "../query/examples";
 import {
-  columnHeading,
-  columnLabel,
-  DEFINITION_COLUMNS,
-  peopleOf,
-  type ColumnRead,
-  type Report,
-  type ReportColumn,
-  type ReportPerson,
-  type ReportVary,
-} from "../query/report";
+  CALLS,
+  clauseStarts,
+  lexFql,
+  parseFql,
+  type FqlError,
+  type FqlProject,
+} from "../query/fql";
+import { evaluates, type Report } from "../query/report";
+import {
+  EVALUATION_LIMIT,
+  datafileEnvironments,
+  runReport,
+  type Result,
+  type ResultColumn,
+  type ResultRow,
+  type ResultValue,
+} from "../query/run";
 
 /** `?view=full` opens the full view */
 const FULL_VIEW_PARAM = "view";
-
-/** Evaluations a report may run before it asks */
-const EVALUATION_LIMIT = 20000;
-
-/** Rows `VARY *` grows into at most, so a matrix stays readable */
-const AUTOMATIC_ROWS = 48;
-
-const STARTERS: Array<{ title: string; query: string }> = [
-  {
-    title: "What one person gets",
-    query: "FROM features\nFOR { userId: 'user-1', country: 'nl' }\nSELECT enabled, variation",
-  },
-  {
-    title: "Columns from anywhere",
-    query: [
-      "FOR {}",
-      "VARY country",
-      "SELECT",
-      "  country,",
-      "  feature('foo') AS 'Foo',",
-      "  feature('foo').variation,",
-      "  feature('foo').bar,",
-      "  feature('allowSignup').variation,",
-      "  variable('checkoutSettings').currency",
-    ].join("\n"),
-  },
-  {
-    title: "Experiments by country",
-    query:
-      "FROM features\nWHERE variations notEmpty\nFOR {}\nVARY country\nSELECT variation\nAS MATRIX",
-  },
-  {
-    title: "Global variables by country",
-    query: "FROM variables\nFOR {}\nVARY country\nSELECT value\nAS MATRIX",
-  },
-  {
-    title: "Features without an owner",
-    query: "FROM features\nWHERE owner notExists\nSELECT description, tags",
-  },
-];
 
 export function QueryPage() {
   const { setKey: encodedSetKey } = useParams();
@@ -98,7 +59,7 @@ export function QueryPage() {
     () => manifest.projectConfig.environments || [],
     [manifest.projectConfig.environments],
   );
-  const written = searchParams.get("q") ?? STARTERS[0].query;
+  const written = searchParams.get("q") ?? FIRST_QUERY;
   const [draft, setDraft] = React.useState(written);
   const [ran, setRan] = React.useState(written);
   useDocumentTitle("Query", setKey);
@@ -155,6 +116,30 @@ export function QueryPage() {
     [index, environments],
   );
   const parsed = React.useMemo(() => parseFql(ran, project), [ran, project]);
+  // Names the editor completes
+  const completions = React.useMemo<CompletionSource>(() => {
+    const entities = index?.entities;
+    const features = entities?.feature || [];
+    const variables = entities?.variable || [];
+    const segments = entities?.segment || [];
+    const definitions = [...features, ...variables, ...segments, ...(entities?.attribute || [])];
+    return {
+      environments,
+      features: features.map((entity) => ({
+        key: entity.key,
+        description: entity.description,
+        variables: entity.variableKeys || [],
+      })),
+      variables: variables.map((entity) => ({ key: entity.key, description: entity.description })),
+      segments: segments.map((entity) => entity.key),
+      attributes: (entities?.attribute || []).map((entity) => ({
+        key: entity.key,
+        description: entity.description,
+      })),
+      tags: [...new Set(definitions.flatMap((entity) => entity.tags || []))].sort(),
+      owners: [...new Set(definitions.flatMap((entity) => entity.owners || []))].sort(),
+    };
+  }, [index, environments]);
   const [lastGood, setLastGood] = React.useState<Report | undefined>(parsed.report);
   React.useEffect(() => {
     if (parsed.report) setLastGood(parsed.report);
@@ -166,32 +151,27 @@ export function QueryPage() {
   // Shown in one place at a time, so a report evaluates once
   const workspace = (
     <>
-      <FqlEditor value={draft} onChange={setDraft} onRun={() => run(draft)} />
+      <FqlEditor
+        value={draft}
+        onChange={setDraft}
+        onRun={() => run(draft)}
+        completions={completions}
+      />
       <Errors errors={parsed.errors} />
       {report && <Results report={report} index={index} setKey={setKey} />}
     </>
   );
+  const examples = <ExamplesMenu onChoose={run} />;
 
   return (
     <div className="pb-8">
       <PageHeader
         title="Query"
-        description="Ask the project a question in FQL: what is configured, or what people get."
+        description="Ask the project a question in FQL: what is defined, who owns it, and what people get."
       />
       <div className="space-y-4 px-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {STARTERS.map((starter) => (
-              <button
-                key={starter.title}
-                type="button"
-                onClick={() => run(starter.query)}
-                className="cursor-pointer rounded-full border border-slate-300 bg-surface px-3 py-1 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-              >
-                {starter.title}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-between gap-3">
+          {examples}
           <button
             ref={expandRef}
             type="button"
@@ -209,11 +189,85 @@ export function QueryPage() {
         <FullViewDialog
           label="Query in a full view"
           title="Query"
-          hint={`${isMac() ? "⌘" : "Ctrl"} Enter runs`}
+          hint={`${isMac() ? "⌘" : "Ctrl"} Enter runs, Ctrl Space suggests`}
           onClose={close}
         >
-          <div className="h-full space-y-4 overflow-auto p-4">{workspace}</div>
+          <div className="h-full space-y-4 overflow-auto p-4">
+            {examples}
+            {workspace}
+          </div>
         </FullViewDialog>
+      )}
+    </div>
+  );
+}
+
+/** Questions ready to run, by what they are about */
+function ExamplesMenu(props: { onChoose: (query: string) => void }) {
+  const [open, setOpen] = React.useState(false);
+  const boxRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const close = (event: PointerEvent | KeyboardEvent) => {
+      if (
+        event instanceof KeyboardEvent
+          ? event.key === "Escape"
+          : !boxRef.current?.contains(event.target as Node)
+      ) {
+        if (event instanceof KeyboardEvent) event.stopPropagation();
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close, true);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close, true);
+    };
+  }, [open]);
+
+  return (
+    <div ref={boxRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((current) => !current)}
+        className="flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 bg-surface px-3 py-1 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+      >
+        Examples
+        <span aria-hidden="true" className="text-faint">
+          ▾
+        </span>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-0 top-full z-40 mt-1.5 max-h-[28rem] w-[22rem] max-w-[calc(100vw-3rem)] overflow-auto rounded-xl border border-border bg-surface py-1.5 shadow-xl"
+        >
+          {EXAMPLES.map((group) => (
+            <div key={group.section} className="py-1">
+              <div className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-faint">
+                {group.section}
+              </div>
+              {group.examples.map((example) => (
+                <button
+                  key={example.title}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    props.onChoose(example.query);
+                  }}
+                  className="block w-full cursor-pointer px-3 py-1.5 text-left hover:bg-elevated focus-visible:bg-elevated focus-visible:outline-none"
+                >
+                  <span className="block text-sm font-medium text-text">{example.title}</span>
+                  <span className="block text-xs text-muted">{example.about}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -231,8 +285,17 @@ function highlight(source: string): Array<{ text: string; className?: string }> 
     const lines = colourExpression(source.slice(expression.start, end));
     lines.forEach((line, index) => {
       if (index > 0) segments.push({ text: "\n" });
+      const words = line.filter((token) => token.text.trim() !== "");
       for (const token of line) {
-        segments.push({ text: token.text, className: TOKEN_CLASSES[token.type] || undefined });
+        // FQL's own calls, such as rollout(), and the row's key inside a read, are not segments
+        const at = words.indexOf(token);
+        const type =
+          CALLS.includes(token.text) && words[at + 1]?.text === "("
+            ? "call"
+            : token.text === "key" && words[at - 1]?.text === "("
+              ? "name"
+              : token.type;
+        segments.push({ text: token.text, className: TOKEN_CLASSES[type] || undefined });
       }
     });
     expression = undefined;
@@ -269,14 +332,94 @@ function highlight(source: string): Array<{ text: string; className?: string }> 
 const EDITOR_TEXT =
   "m-0 p-4 font-mono text-sm leading-6 whitespace-pre-wrap [overflow-wrap:anywhere]";
 
+/** How each kind of completion shows its label, as the editor colours the same words */
+const COMPLETION_CLASSES: Record<CompletionKind, string> = {
+  keyword: "font-bold text-text",
+  feature: "text-text",
+  variable: "text-text",
+  attribute: "text-text",
+  column: "text-text",
+  operator: TOKEN_CLASSES.operator,
+  value: TOKEN_CLASSES.string,
+};
+
+/** Characters that open completions as they are typed: names, the start of a key, or a read */
+const OPENS_COMPLETIONS = /^[\w'.{*]$/;
+
 /**
  * A plain text area over its own highlighted copy, so typing, selecting and the caret are the
- * browser's own while the text shows in colour.
+ * browser's own while the text shows in colour. Completions open as names are typed, or with
+ * Ctrl+Space, under where the text they complete starts.
  */
-function FqlEditor(props: { value: string; onChange: (value: string) => void; onRun: () => void }) {
-  const segments = React.useMemo(() => highlight(props.value), [props.value]);
+function FqlEditor(props: {
+  value: string;
+  onChange: (value: string) => void;
+  onRun: () => void;
+  completions: CompletionSource;
+}) {
+  const { value } = props;
+  const segments = React.useMemo(() => highlight(value), [value]);
+  const boxRef = React.useRef<HTMLDivElement | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const markerRef = React.useRef<HTMLSpanElement | null>(null);
+  const activeRef = React.useRef<HTMLLIElement | null>(null);
+  const [caret, setCaret] = React.useState<number | null>(null);
+  const [open, setOpen] = React.useState(false);
+  const [active, setActive] = React.useState(0);
+  const [position, setPosition] = React.useState<{ top: number; left: number } | null>(null);
+  // Where the caret goes once a chosen completion is in the text
+  const pendingCaret = React.useRef<number | null>(null);
+  const listId = React.useId();
+
+  const completion = React.useMemo(
+    () => (open && caret !== null ? completeFql(value, caret, props.completions) : null),
+    [open, caret, value, props.completions],
+  );
+  const items = completion?.items || [];
+  const showing = items.length > 0 && position !== null;
+
+  React.useLayoutEffect(() => {
+    const marker = markerRef.current;
+    const box = boxRef.current;
+    if (!completion || !marker || !box) {
+      setPosition(null);
+      return;
+    }
+    const width = 288;
+    setPosition({
+      top: marker.offsetTop + marker.offsetHeight,
+      left: Math.max(0, Math.min(marker.offsetLeft, box.clientWidth - width - 8)),
+    });
+  }, [completion, value]);
+
+  React.useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (pendingCaret.current === null || !textarea) return;
+    textarea.setSelectionRange(pendingCaret.current, pendingCaret.current);
+    setCaret(pendingCaret.current);
+    pendingCaret.current = null;
+  }, [value]);
+
+  React.useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: "nearest" });
+  }, [active, showing]);
+
+  const accept = (item: CompletionItem) => {
+    if (!completion) return;
+    pendingCaret.current = completion.from + (item.cursor ?? item.insert.length);
+    setActive(0);
+    setOpen(Boolean(item.chain));
+    props.onChange(value.slice(0, completion.from) + item.insert + value.slice(completion.to));
+  };
+
+  const caretOf = (textarea: HTMLTextAreaElement) =>
+    textarea.selectionStart === textarea.selectionEnd ? textarea.selectionEnd : null;
+
   return (
-    <div className="relative rounded-xl border border-border bg-surface focus-within:border-primary">
+    <div
+      ref={boxRef}
+      className="relative rounded-xl border border-border bg-surface focus-within:border-primary"
+    >
       <pre aria-hidden="true" className={`${EDITOR_TEXT} pointer-events-none text-text`}>
         {segments.map((segment, index) =>
           segment.className ? (
@@ -290,21 +433,99 @@ function FqlEditor(props: { value: string; onChange: (value: string) => void; on
         {/* keeps a last empty line as tall as the text area's */}
         {"\n"}
       </pre>
+      {completion && (
+        // An invisible copy of the text up to what is completed, to find where that sits
+        <div
+          aria-hidden="true"
+          className={`${EDITOR_TEXT} pointer-events-none invisible absolute inset-0`}
+        >
+          {value.slice(0, completion.from)}
+          <span ref={markerRef}>{"\u200b"}</span>
+        </div>
+      )}
       <textarea
-        value={props.value}
-        onChange={(event) => props.onChange(event.target.value)}
+        ref={textareaRef}
+        value={value}
+        onChange={(event) => {
+          const input = event.nativeEvent as InputEvent;
+          const typed = input.inputType === "insertText" ? input.data || "" : "";
+          if (OPENS_COMPLETIONS.test(typed.slice(-1))) setOpen(true);
+          else if (!input.inputType?.startsWith("delete")) setOpen(false);
+          setActive(0);
+          setCaret(caretOf(event.target));
+          props.onChange(event.target.value);
+        }}
+        onSelect={(event) => setCaret(caretOf(event.currentTarget))}
+        onMouseDown={() => setOpen(false)}
+        onBlur={() => setOpen(false)}
         onKeyDown={(event) => {
           if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
             event.preventDefault();
+            setOpen(false);
             props.onRun();
+            return;
+          }
+          if (event.ctrlKey && event.key === " ") {
+            event.preventDefault();
+            setCaret(caretOf(event.currentTarget));
+            setOpen(true);
+            return;
+          }
+          if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) setOpen(false);
+          if (!showing) return;
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            const step = event.key === "ArrowDown" ? 1 : -1;
+            setActive((current) => (current + step + items.length) % items.length);
+          } else if ((event.key === "Enter" || event.key === "Tab") && !event.shiftKey) {
+            event.preventDefault();
+            accept(items[Math.min(active, items.length - 1)]);
+          } else if (event.key === "Escape") {
+            // Closes the list only, not a full view around the editor
+            event.preventDefault();
+            event.stopPropagation();
+            setOpen(false);
           }
         }}
         spellCheck={false}
         autoCapitalize="off"
         autoCorrect="off"
         aria-label="FQL query"
+        aria-autocomplete="list"
+        aria-expanded={showing}
+        aria-controls={showing ? listId : undefined}
+        aria-activedescendant={showing ? `${listId}-${active}` : undefined}
         className={`${EDITOR_TEXT} absolute inset-0 h-full w-full resize-none overflow-hidden bg-transparent text-transparent caret-text outline-none selection:bg-sky-200/60`}
       />
+      {showing && (
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label="Completions"
+          // Keeps the caret in the text area while an item is clicked
+          onMouseDown={(event) => event.preventDefault()}
+          className="absolute z-30 max-h-64 w-72 overflow-auto rounded-lg border border-border bg-surface py-1 text-xs shadow-lg"
+          style={{ top: position.top, left: position.left }}
+        >
+          {items.map((item, index) => (
+            <li
+              key={`${item.kind}:${item.label}`}
+              id={`${listId}-${index}`}
+              ref={index === active ? activeRef : undefined}
+              role="option"
+              aria-selected={index === active}
+              onMouseEnter={() => setActive(index)}
+              onClick={() => accept(item)}
+              className={`flex cursor-pointer items-baseline gap-3 px-3 py-1 ${index === active ? "bg-elevated" : ""}`}
+            >
+              <span className={`shrink-0 font-mono ${COMPLETION_CLASSES[item.kind]}`}>
+                {item.label}
+              </span>
+              {item.detail && <span className="ml-auto truncate text-faint">{item.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -325,11 +546,8 @@ function Errors(props: { errors: FqlError[] }) {
   );
 }
 
-/** The datafiles a report evaluates with, one per chosen environment, or the project's own */
-function useDatafiles(report: Report, setKey?: string) {
-  const { manifest } = useCatalog();
-  const hasEnvironments = Boolean(manifest.projectConfig.environments?.length);
-  const wanted = hasEnvironments ? report.environments : [null];
+/** The datafiles a report evaluates with, one per environment it reads, or the project's own */
+function useDatafiles(wanted: Array<string | null>, setKey?: string) {
   const key = JSON.stringify([setKey, wanted]);
   const [state, setState] = React.useState<{
     key: string;
@@ -338,7 +556,7 @@ function useDatafiles(report: Report, setKey?: string) {
   }>({ key: "" });
 
   React.useEffect(() => {
-    if (!report.person) return;
+    if (!wanted.length) return;
     let active = true;
     Promise.all(wanted.map((environment) => fetchDatafile(environment, setKey)))
       .then((loaded) => {
@@ -359,335 +577,52 @@ function useDatafiles(report: Report, setKey?: string) {
     return () => {
       active = false;
     };
-  }, [key, Boolean(report.person)]);
+  }, [key]);
 
   return state.key === key ? state : { key, datafiles: undefined, error: undefined };
 }
 
-/** A row's columns as a context, for WHERE to match as conditions match */
-function rowContext(entity: EntitySummary) {
-  return {
-    key: entity.key,
-    description: entity.description,
-    tags: entity.tags || [],
-    owner: entity.owners?.[0],
-    owners: entity.owners || [],
-    status: entity.environmentStatus,
-    environments: entity.environments || [],
-    variations: entity.variationValues || [],
-    variables: entity.variableKeys || [],
-    type: entity.variableType,
-    archived: entity.archived === true,
-    deprecated: entity.deprecated === true,
-    tested: entity.hasTests !== false,
-  };
-}
-
-function selectEntities(report: Report, index: CatalogIndex) {
-  const rows = index.entities[report.of === "features" ? "feature" : "variable"] || [];
-  const where = report.where;
-  return where === undefined
-    ? rows
-    : rows.filter((row) => allConditionsAreMatched(where as never, rowContext(row)));
-}
-
-/** Attributes the selected features bucket by, which split rollouts rather than audiences */
-function bucketAttributes(datafiles: DatafileContent[], features: string[]) {
-  const attributes = new Set<string>();
-  const add = (bucketBy: BucketBy) =>
-    typeof bucketBy === "string"
-      ? attributes.add(bucketBy)
-      : (Array.isArray(bucketBy) ? bucketBy : bucketBy.or).forEach((item) => attributes.add(item));
-  for (const datafile of datafiles) {
-    for (const key of features) {
-      const feature = datafile.features?.[key];
-      if (feature) add(feature.bucketBy);
-    }
-  }
-  return attributes;
-}
-
-/**
- * The attributes and values rows vary by: written ones as written, an attribute alone with the
- * values its conditions compare plus any other, and `*` with every attribute they compare,
- * leaving out what rollouts bucket by and stopping before the rows grow past a screenful.
- */
-function resolveVary(
-  vary: ReportVary[],
-  compared: Map<string, Set<string>>,
-  bucketBy: Set<string>,
-): ReportVary[] {
-  const resolved: ReportVary[] = [];
-  const named = new Set(vary.map((item) => item.attribute));
-  for (const item of vary) {
-    if (item.attribute !== "*") {
-      resolved.push({
-        attribute: item.attribute,
-        values: item.values.length
-          ? item.values
-          : [...(compared.get(item.attribute) || []), ANY_OTHER],
-      });
-      continue;
-    }
-    let rows = resolved.reduce((total, entry) => total * entry.values.length, 1);
-    const automatic = [...compared.entries()]
-      .filter(([attribute]) => !bucketBy.has(attribute) && !named.has(attribute))
-      .sort(([left, a], [right, b]) => b.size - a.size || left.localeCompare(right));
-    for (const [attribute, values] of automatic) {
-      if (rows * (values.size + 1) > AUTOMATIC_ROWS) continue;
-      rows *= values.size + 1;
-      resolved.push({ attribute, values: [...values, ANY_OTHER] });
-    }
-  }
-  return resolved;
-}
-
-interface OutcomeRow {
-  entity: EntitySummary;
-  person: ReportPerson;
-  environment: string | null;
-  cells: Record<string, Cell>;
-}
-
 function Results(props: { report: Report; index: CatalogIndex; setKey?: string }) {
-  return props.report.of === "people" ? (
-    <PeopleResults report={props.report} setKey={props.setKey} />
-  ) : (
-    <EntityResults {...props} />
-  );
-}
-
-function EntityResults(props: { report: Report; index: CatalogIndex; setKey?: string }) {
-  const { index, setKey } = props;
-  const entities = React.useMemo(() => selectEntities(props.report, index), [props.report, index]);
-  const { datafiles, error } = useDatafiles(props.report, setKey);
-  const [why, setWhy] = React.useState<{ title: string; cell: Cell } | null>(null);
-  // A new report has new cells, so an open explanation would be about the old one
-  React.useEffect(() => setWhy(null), [props.report]);
-
-  // Vary by what the selected rows' conditions compare, or every condition's when none narrow
-  const report = React.useMemo(() => {
-    if (!datafiles) return props.report;
-    const loaded = [...datafiles.values()];
-    const all = index.entities[props.report.of === "features" ? "feature" : "variable"] || [];
-    const keys = entities.map((entity) => entity.key);
-    const only =
-      entities.length === all.length
+  const { report, index, setKey } = props;
+  const { manifest } = useCatalog();
+  const hasEnvironments = Boolean(manifest.projectConfig.environments?.length);
+  const wanted = evaluates(report) ? datafileEnvironments(report, hasEnvironments) : [];
+  const { datafiles, error } = useDatafiles(wanted, setKey);
+  // Deadlines read against the browser's clock, as everywhere in the Catalog
+  const clock = React.useMemo(() => getDeadlineClock(), []);
+  const result = React.useMemo(
+    () =>
+      evaluates(report) && !datafiles
         ? undefined
-        : props.report.of === "features"
-          ? { features: keys }
-          : { variables: keys };
-    const vary = resolveVary(
-      props.report.vary,
-      getComparedValues(loaded, only),
-      bucketAttributes(loaded, props.report.of === "features" ? keys : []),
-    );
-    return { ...props.report, vary };
-  }, [props.report, datafiles, entities, index]);
-
-  if (!report.person) return <DefinitionsTable report={report} rows={entities} setKey={setKey} />;
-  if (error) return <EmptyState title="No datafiles to evaluate with" description={error} />;
-  if (!datafiles) return <p className="text-sm text-muted">Loading datafiles…</p>;
-  if (entities.length === 0) return <EmptyState title="Nothing matches" />;
-
-  const people = peopleOf(report.person, report.vary);
-  const environments = [...datafiles.keys()];
-  const columns = report.show.length
-    ? report.show
-    : report.of === "features"
-      ? ["enabled"]
-      : ["value"];
-  const evaluations = entities.length * people.length * environments.length * columns.length;
-  if (evaluations > EVALUATION_LIMIT) {
-    return (
-      <EmptyState
-        title={`${evaluations.toLocaleString()} evaluations is more than this prototype runs at once`}
-        description="Narrow the report with WHERE, fewer values or fewer environments."
-      />
-    );
-  }
-
-  const rows: OutcomeRow[] = [];
-  for (const entity of entities) {
-    for (const person of people) {
-      for (const environment of environments) {
-        const datafile = datafiles.get(environment)!;
-        const cells: Record<string, Cell> = {};
-        for (const column of columns) {
-          cells[column] = evaluateCell(report, datafile, entity.key, column, person.person);
-        }
-        rows.push({ entity, person, environment, cells });
-      }
-    }
-  }
-
-  const lenses = new Set(
-    report.of === "features"
-      ? rows.map((row) =>
-          lensOf(datafiles.get(row.environment)!, row.entity.key, row.person.person),
-        )
-      : [],
+        : runReport({ report, index, datafiles, hasEnvironments, clock }),
+    [report, index, datafiles, hasEnvironments, clock],
   );
-  const open = (title: string, cell: Cell) => setWhy({ title, cell });
-
-  return (
-    <div className="space-y-3">
-      <Summary
-        noun={report.of === "features" ? "feature" : "global variable"}
-        count={evaluations}
-        entities={entities.length}
-        people={people.length}
-        environments={environments.length}
-        lenses={lenses}
-        markdown={() => toMarkdown(report, rows, columns, environments)}
-      />
-      {report.as === "matrix" ? (
-        <MatrixTable
-          report={report}
-          rows={rows}
-          entities={entities}
-          people={people}
-          environments={environments}
-          column={columns[0]}
-          setKey={setKey}
-          onWhy={open}
-        />
-      ) : (
-        <OutcomeTable
-          report={report}
-          rows={rows}
-          columns={columns}
-          people={people}
-          environments={environments}
-          setKey={setKey}
-          onWhy={open}
-        />
-      )}
-      {why && (
-        <WhyPanel
-          title={why.title}
-          why={why.cell.why}
-          cell={why.cell}
-          onClose={() => setWhy(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-/** One row of a people report: a person in an environment, a cell per read column */
-interface PeopleRow {
-  person: ReportPerson;
-  environment: string | null;
-  cells: Array<Cell | undefined>;
-}
-
-function readCell(datafile: DatafileContent, read: ColumnRead, person: Person): Cell | undefined {
-  if (read.kind === "flag") return flagCell(datafile, read.feature, person);
-  if (read.kind === "variation") return variationCell(datafile, read.feature, person);
-  if (read.kind === "variable")
-    return read.feature
-      ? featureVariableCell(datafile, read.feature, read.variable, person, read.path)
-      : globalVariableCell(datafile, read.variable, person, read.path);
-  return undefined;
-}
-
-/** The feature a read evaluates, which decides its lens and what varying it follows */
-function featureOf(read: ColumnRead) {
-  return read.kind === "attribute" || (read.kind === "variable" && !read.feature)
-    ? undefined
-    : read.feature;
-}
-
-function PeopleResults(props: { report: Report; setKey?: string }) {
-  const { datafiles, error } = useDatafiles(props.report, props.setKey);
   const [why, setWhy] = React.useState<{ title: string; cell: Cell } | null>(null);
   // A new report has new cells, so an open explanation would be about the old one
-  React.useEffect(() => setWhy(null), [props.report]);
-
-  // Vary by what the columns' features and global variables compare
-  const report = React.useMemo(() => {
-    if (!datafiles) return props.report;
-    const loaded = [...datafiles.values()];
-    const reads = (props.report.columns || []).map((column) => column.read);
-    const features = [...new Set(reads.map(featureOf).filter(Boolean) as string[])];
-    const variables = [
-      ...new Set(
-        reads.flatMap((read) => (read.kind === "variable" && !read.feature ? [read.variable] : [])),
-      ),
-    ];
-    const vary = resolveVary(
-      props.report.vary,
-      getComparedValues(loaded, { features, variables }),
-      bucketAttributes(loaded, features),
-    );
-    return { ...props.report, vary };
-  }, [props.report, datafiles]);
+  React.useEffect(() => setWhy(null), [report]);
 
   if (error) return <EmptyState title="No datafiles to evaluate with" description={error} />;
-  if (!datafiles) return <p className="text-sm text-muted">Loading datafiles…</p>;
-
-  const people = peopleOf(report.person, report.vary);
-  const environments = [...datafiles.keys()];
-  const selected = report.columns || [];
-  // Rows are named by the attributes SELECT names, or else by the ones varied
-  const columns: ReportColumn[] = selected.some((column) => column.read.kind === "attribute")
-    ? selected
-    : [
-        ...report.vary.map((vary) => ({
-          read: { kind: "attribute" as const, attribute: vary.attribute },
-        })),
-        ...selected,
-      ];
-  const reads = columns.filter((column) => column.read.kind !== "attribute").length;
-  const evaluations = reads * people.length * environments.length;
-  if (evaluations > EVALUATION_LIMIT) {
+  if (!result) return <p className="text-sm text-muted">Loading datafiles…</p>;
+  if (result.tooMany) {
     return (
       <EmptyState
-        title={`${evaluations.toLocaleString()} evaluations is more than this prototype runs at once`}
-        description="Narrow the report with fewer values, columns or environments."
+        title={`${result.tooMany.toLocaleString()} evaluations is more than the page runs at once`}
+        description={`It runs up to ${EVALUATION_LIMIT.toLocaleString()}. Narrow the report with WHERE, fewer values, columns or environments.`}
       />
     );
   }
-
-  const rows: PeopleRow[] = people.flatMap((person) =>
-    environments.map((environment) => ({
-      person,
-      environment,
-      cells: columns.map((column) =>
-        readCell(datafiles.get(environment)!, column.read, person.person),
-      ),
-    })),
-  );
-  const lenses = new Set(
-    rows.flatMap((row) =>
-      columns.flatMap((column) => {
-        const feature = featureOf(column.read);
-        return feature ? [lensOf(datafiles.get(row.environment)!, feature, row.person.person)] : [];
-      }),
-    ),
-  );
-
   return (
     <div className="space-y-3">
-      <Summary
-        noun="column"
-        count={evaluations}
-        entities={reads}
-        people={people.length}
-        environments={environments.length}
-        lenses={lenses}
-        markdown={() => peopleMarkdown(columns, rows, environments)}
-      />
-      <PeopleTable
-        columns={columns}
-        rows={rows}
-        people={people}
-        environments={environments}
-        matrix={report.as === "matrix"}
-        setKey={props.setKey}
-        onWhy={(title, cell) => setWhy({ title, cell })}
-      />
+      <Summary result={result} />
+      {result.rows.length === 0 ? (
+        <EmptyState title="Nothing matches" />
+      ) : (
+        <ResultTable
+          result={result}
+          setKey={setKey}
+          onWhy={(title, cell) => setWhy({ title, cell })}
+        />
+      )}
       {why && (
         <WhyPanel
           title={why.title}
@@ -700,9 +635,139 @@ function PeopleResults(props: { report: Report; setKey?: string }) {
   );
 }
 
-function ColumnHeading(props: { column: ReportColumn; setKey?: string }) {
-  const heading = columnHeading(props.column);
-  if (props.column.alias !== undefined || !heading.entity) return <>{heading.text}</>;
+function Summary(props: { result: Result }) {
+  const { result } = props;
+  const [copied, setCopied] = React.useState("");
+  const copy = (what: string, text: string) =>
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(what);
+      setTimeout(() => setCopied(""), 1500);
+    });
+  const grouped = result.columns.some((column) => column.column.expr.kind === "count");
+  const noun = grouped ? "group" : "row";
+  const shown =
+    result.rows.length < result.total
+      ? `${result.rows.length} of ${result.total} ${noun}s`
+      : `${result.total} ${noun}${result.total === 1 ? "" : "s"}`;
+  const { lenses } = result;
+  const lens = !result.evaluations
+    ? undefined
+    : lenses.has("audience")
+      ? lenses.has("person")
+        ? "Mixed: some cells describe audiences, others one person"
+        : "Audience: a share of everyone matching each row, as rollouts give it"
+      : lenses.has("person")
+        ? "One person: the exact answer for each row's person"
+        : "Exact: global variables have no rollouts";
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+      <span>
+        {shown}
+        {result.evaluations ? `, ${result.evaluations.toLocaleString()} evaluations` : ""}
+        {lens && (
+          <>
+            {" "}
+            · <span className="font-medium text-text">{lens}</span>
+          </>
+        )}
+      </span>
+      <span className="flex gap-3">
+        <button
+          type="button"
+          className="cursor-pointer font-medium text-muted hover:text-text"
+          onClick={() => copy("link", window.location.href)}
+        >
+          {copied === "link" ? "Copied" : "Copy link"}
+        </button>
+        <button
+          type="button"
+          className="cursor-pointer font-medium text-muted hover:text-text"
+          onClick={() => copy("markdown", toMarkdown(result))}
+        >
+          {copied === "markdown" ? "Copied" : "Copy as Markdown"}
+        </button>
+      </span>
+    </div>
+  );
+}
+
+const CELL_PLACEHOLDER = <span className="text-faint">—</span>;
+
+/** A property's value, as the lists show the same things */
+function ValueView(props: {
+  value: ResultValue;
+  setKey?: string;
+  variations: string[];
+  onWhy: (cell: Cell) => void;
+}) {
+  const { value } = props;
+  if (value.cell) {
+    return (
+      <CellView
+        cell={value.cell}
+        variations={props.variations}
+        onClick={() => props.onWhy(value.cell!)}
+      />
+    );
+  }
+  if (value.tone) {
+    const tone = value.tone === "on" ? "success" : value.tone === "partial" ? "warning" : undefined;
+    return <Badge tone={tone}>{value.text}</Badge>;
+  }
+  if (value.link) {
+    return (
+      <Link
+        to={getEntityRoute(value.link.type, value.link.key, props.setKey)}
+        className="font-medium text-text hover:underline"
+      >
+        <EntityKey value={value.link.key} />
+      </Link>
+    );
+  }
+  if (value.list) {
+    if (!value.list.length) return CELL_PLACEHOLDER;
+    return (
+      <span className="flex flex-wrap gap-1">
+        {value.list.map((item) => (
+          <Badge key={item}>{item}</Badge>
+        ))}
+      </span>
+    );
+  }
+  if (value.text === "") return CELL_PLACEHOLDER;
+  if (value.type === "boolean")
+    return value.raw ? <Badge tone="success">Yes</Badge> : <span className="text-muted">No</span>;
+  if (value.type === "date") {
+    // The day is what a table compares, and the moment shows on hover
+    const day = /^\d{4}-\d{2}-\d{2}/.exec(value.text)?.[0];
+    return (
+      <span className="whitespace-nowrap tabular-nums" title={value.text}>
+        {day ?? value.text}
+      </span>
+    );
+  }
+  if (value.type === "number") return <span className="tabular-nums">{value.text}</span>;
+  return (
+    <span className={value.type === "text" ? "text-text" : "font-mono text-xs text-text"}>
+      {value.text}
+    </span>
+  );
+}
+
+/** A heading cell. Headings that show keys keep their case, the rest are small capitals. */
+const thBase = "border-b border-border px-3 py-2 text-left text-[11px] font-semibold text-faint";
+const thClass = `${thBase} uppercase tracking-wider`;
+const tdClass = "border-b border-border px-3 py-2 align-top text-sm";
+const sticky = "sticky left-0 bg-surface";
+/** Keys stay wide enough that they break only at dots */
+const keyClass = "min-w-[12rem]";
+const isKey = (column: ResultColumn) =>
+  column.column.expr.kind === "property" && column.column.expr.name === "key";
+
+function Heading(props: { column: ResultColumn; setKey?: string }) {
+  const { heading } = props.column;
+  if (!heading.entity || props.column.column.alias !== undefined) return <>{heading.text}</>;
   return (
     <>
       <Link
@@ -716,267 +781,108 @@ function ColumnHeading(props: { column: ReportColumn; setKey?: string }) {
   );
 }
 
-const headingClass = (column: ReportColumn) =>
-  column.read.kind === "attribute" || column.alias !== undefined
-    ? thClass
-    : `${thBase} whitespace-nowrap`;
+function variationsOf(result: Result) {
+  const variations = new Set<string>();
+  for (const row of result.rows) {
+    for (const value of row.values.flat())
+      if (value.cell?.variation) variations.add(value.cell.variation);
+  }
+  return [...variations];
+}
 
 /**
- * A row per person, columns in SELECT's order. In a matrix with several environments, each read
- * column splits into one per environment, otherwise an Environment column comes before the reads.
+ * The report's rows, columns in SELECT's order after whatever says what each row is about. In a
+ * matrix with several environments, each read column splits into one per environment.
  */
-function PeopleTable(props: {
-  columns: ReportColumn[];
-  rows: PeopleRow[];
-  people: ReportPerson[];
-  environments: Array<string | null>;
-  matrix: boolean;
+function ResultTable(props: {
+  result: Result;
   setKey?: string;
   onWhy: (title: string, cell: Cell) => void;
 }) {
-  const { columns, environments } = props;
-  const variations = variationsOf(props.rows);
-  const named = columns.some((column) => column.read.kind === "attribute");
-  const many = environments.length > 1;
-  const split = props.matrix && many;
-  const firstRead = columns.findIndex((column) => column.read.kind !== "attribute");
-  const byPerson = new Map(
-    props.rows.map((row) => [`${row.person.label}\u0000${row.environment}`, row]),
+  const { result } = props;
+  const variations = variationsOf(result);
+  const split = result.matrix && result.environments.length > 1;
+  const headingClass = (column: ResultColumn) =>
+    column.heading.entity && column.column.alias === undefined
+      ? `${thBase} whitespace-nowrap`
+      : thClass;
+  const cell = (
+    row: ResultRow,
+    column: ResultColumn,
+    value: ResultValue,
+    environment?: string | null,
+  ) => (
+    <ValueView
+      value={value}
+      setKey={props.setKey}
+      variations={variations}
+      onWhy={(evaluated) =>
+        props.onWhy(
+          [column.heading.text, row.title, environment].filter(Boolean).join(" · "),
+          evaluated,
+        )
+      }
+    />
   );
-  const sticky = "sticky left-0 bg-surface";
-
-  const attributeCell = (person: ReportPerson, column: ReportColumn, first: boolean) => {
-    const value =
-      column.read.kind === "attribute" ? formatValue(person.person[column.read.attribute]) : "";
-    return (
-      <td className={`${tdClass} ${first ? sticky : ""} font-mono text-xs`}>
-        {value || <span className="text-faint">—</span>}
-      </td>
-    );
-  };
-  const readCellView = (row: PeopleRow | undefined, index: number) => {
-    const cell = row?.cells[index];
-    return (
-      cell && (
-        <CellView
-          cell={cell}
-          variations={variations}
-          onClick={() =>
-            props.onWhy(
-              `${columnHeading(columns[index]).text} · ${row.person.label}${row.environment ? ` · ${row.environment}` : ""}`,
-              cell,
-            )
-          }
-        />
-      )
-    );
-  };
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-collapse">
         <thead>
           <tr>
-            {!named && (
-              <th className={`${thClass} ${sticky}`} rowSpan={split ? 2 : 1}>
-                Person
+            {result.columns.map((column, index) => (
+              <th
+                key={index}
+                className={`${headingClass(column)} ${index === 0 ? sticky : ""}`}
+                rowSpan={split && !column.byEnvironment ? 2 : 1}
+                colSpan={split && column.byEnvironment ? result.environments.length : 1}
+              >
+                <Heading column={column} setKey={props.setKey} />
               </th>
-            )}
-            {columns.map((column, index) => (
-              <React.Fragment key={index}>
-                {!split && many && index === firstRead && <th className={thClass}>Environment</th>}
-                <th
-                  className={`${headingClass(column)} ${named && index === 0 ? sticky : ""}`}
-                  rowSpan={split && column.read.kind === "attribute" ? 2 : 1}
-                  colSpan={split && column.read.kind !== "attribute" ? environments.length : 1}
-                >
-                  <ColumnHeading column={column} setKey={props.setKey} />
-                </th>
-              </React.Fragment>
             ))}
           </tr>
           {split && (
             <tr>
-              {columns.flatMap((column, index) =>
-                column.read.kind === "attribute"
-                  ? []
-                  : environments.map((environment) => (
+              {result.columns.flatMap((column, index) =>
+                column.byEnvironment
+                  ? result.environments.map((environment) => (
                       <th
                         key={`${index}:${environment}`}
                         className={`${thBase} whitespace-nowrap font-medium`}
                       >
                         {environment}
                       </th>
-                    )),
+                    ))
+                  : [],
               )}
             </tr>
           )}
         </thead>
         <tbody>
-          {split
-            ? props.people.map((person) => (
-                <tr key={person.label} className="hover:bg-elevated/60">
-                  {!named && (
-                    <td className={`${tdClass} ${sticky} font-mono text-xs`}>{person.label}</td>
-                  )}
-                  {columns.map((column, index) =>
-                    column.read.kind === "attribute" ? (
-                      <React.Fragment key={index}>
-                        {attributeCell(person, column, index === 0)}
-                      </React.Fragment>
-                    ) : (
-                      environments.map((environment) => (
-                        <td key={`${index}:${environment}`} className={tdClass}>
-                          {readCellView(byPerson.get(`${person.label}\u0000${environment}`), index)}
-                        </td>
-                      ))
-                    ),
-                  )}
-                </tr>
-              ))
-            : props.rows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="hover:bg-elevated/60">
-                  {!named && (
-                    <td className={`${tdClass} ${sticky} font-mono text-xs`}>{row.person.label}</td>
-                  )}
-                  {columns.map((column, index) => (
-                    <React.Fragment key={index}>
-                      {many && index === firstRead && (
-                        <td className={`${tdClass} text-xs`}>{row.environment}</td>
-                      )}
-                      {column.read.kind === "attribute" ? (
-                        attributeCell(row.person, column, index === 0)
-                      ) : (
-                        <td className={tdClass}>{readCellView(row, index)}</td>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tr>
-              ))}
+          {result.rows.map((row) => (
+            <tr key={row.id} className="hover:bg-elevated/60">
+              {result.columns.map((column, index) => {
+                const value = row.values[index];
+                if (Array.isArray(value)) {
+                  return value.map((item, at) => (
+                    <td key={`${index}:${at}`} className={tdClass}>
+                      {cell(row, column, item, result.environments[at])}
+                    </td>
+                  ));
+                }
+                return (
+                  <td
+                    key={index}
+                    className={`${tdClass} ${index === 0 ? sticky : ""} ${column.automatic ? "font-mono text-xs" : ""} ${isKey(column) ? keyClass : ""}`}
+                  >
+                    {cell(row, column, value, row.environment)}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-function peopleMarkdown(
-  columns: ReportColumn[],
-  rows: PeopleRow[],
-  environments: Array<string | null>,
-) {
-  const named = columns.some((column) => column.read.kind === "attribute");
-  const firstRead = columns.findIndex((column) => column.read.kind !== "attribute");
-  const many = environments.length > 1;
-  const line = (cells: string[]) => `| ${cells.join(" | ")} |`;
-  const shape = (person: string, environment: string, cells: string[]) => {
-    const all = [...cells];
-    if (many) all.splice(firstRead, 0, environment);
-    return named ? all : [person, ...all];
-  };
-  const header = shape(
-    "Person",
-    "Environment",
-    columns.map((column) => columnHeading(column).text),
-  );
-  return [
-    line(header),
-    line(header.map(() => "---")),
-    ...rows.map((row) =>
-      line(
-        shape(
-          row.person.label,
-          row.environment ?? "",
-          columns.map((column, index) =>
-            column.read.kind === "attribute"
-              ? formatValue(row.person.person[column.read.attribute])
-              : (row.cells[index]?.text ?? ""),
-          ),
-        ),
-      ),
-    ),
-  ].join("\n");
-}
-
-function evaluateCell(
-  report: Report,
-  datafile: DatafileContent,
-  key: string,
-  column: string,
-  person: Person,
-): Cell {
-  if (report.of === "variables") {
-    const cell = globalVariableCell(datafile, key, person);
-    if (column === "override")
-      return {
-        ...cell,
-        text: cell.why.overrideKey || "Default",
-        tone: cell.why.overrideKey ? "value" : "none",
-      };
-    if (column === "reason") return { ...cell, text: cell.why.reason, tone: "none" };
-    return cell;
-  }
-  if (column.startsWith("variable:"))
-    return featureVariableCell(datafile, key, column.slice(9), person);
-  if (column === "variation") return variationCell(datafile, key, person);
-  const flag = flagCell(datafile, key, person);
-  if (column === "rule")
-    return {
-      ...flag,
-      text: flag.why.ruleKey || (flag.why.forced ? "forced" : "None"),
-      tone: "none",
-    };
-  if (column === "reason") return { ...flag, text: flag.why.reason, tone: "none" };
-  return flag;
-}
-
-function Summary(props: {
-  noun: string;
-  count: number;
-  entities: number;
-  people: number;
-  environments: number;
-  lenses: Set<string>;
-  markdown: () => string;
-}) {
-  const [copied, setCopied] = React.useState("");
-  const copy = (what: string, text: string) =>
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(what);
-      setTimeout(() => setCopied(""), 1500);
-    });
-  const lens = props.lenses.has("audience")
-    ? props.lenses.has("person")
-      ? "Mixed: some rows describe audiences, others one person"
-      : "Audience: a share of everyone matching each row, as rollouts give it"
-    : props.lenses.has("person")
-      ? "One person: the exact answer for each row's person"
-      : "Exact: global variables have no rollouts";
-
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-      <span>
-        {props.entities} {props.noun}
-        {props.entities === 1 ? "" : "s"} × {props.people}{" "}
-        {props.people === 1 ? "person" : "people"} × {props.environments}{" "}
-        {props.environments === 1 ? "environment" : "environments"}, {props.count.toLocaleString()}{" "}
-        evaluations · <span className="font-medium text-text">{lens}</span>
-      </span>
-      <span className="flex gap-3">
-        <button
-          type="button"
-          className="cursor-pointer font-medium text-muted hover:text-text"
-          onClick={() => copy("link", window.location.href)}
-        >
-          {copied === "link" ? "Copied" : "Copy link"}
-        </button>
-        <button
-          type="button"
-          className="cursor-pointer font-medium text-muted hover:text-text"
-          onClick={() => copy("markdown", props.markdown())}
-        >
-          {copied === "markdown" ? "Copied" : "Copy as Markdown"}
-        </button>
-      </span>
     </div>
   );
 }
@@ -1012,257 +918,6 @@ function CellView(props: { cell: Cell; onClick: () => void; variations: string[]
     >
       {body}
     </button>
-  );
-}
-
-function variationsOf(rows: Array<{ cells: Record<string, Cell> | Array<Cell | undefined> }>) {
-  return [
-    ...new Set(
-      rows.flatMap(
-        (row) =>
-          Object.values(row.cells)
-            .map((cell) => cell?.variation)
-            .filter(Boolean) as string[],
-      ),
-    ),
-  ];
-}
-
-/** A heading cell. Headings that show keys keep their case, the rest are small capitals. */
-const thBase = "border-b border-border px-3 py-2 text-left text-[11px] font-semibold text-faint";
-const thClass = `${thBase} uppercase tracking-wider`;
-const tdClass = "border-b border-border px-3 py-2 align-top";
-/** The first column holds keys, kept wide enough that they break only at dots */
-const keyClass = "min-w-[12rem]";
-
-function EntityLink(props: { report: Report; entity: EntitySummary; setKey?: string }) {
-  return (
-    <Link
-      to={getEntityRoute(
-        props.report.of === "features" ? "feature" : "variable",
-        props.entity.key,
-        props.setKey,
-      )}
-      className="font-medium text-text hover:underline"
-    >
-      <EntityKey value={props.entity.key} />
-    </Link>
-  );
-}
-
-function OutcomeTable(props: {
-  report: Report;
-  rows: OutcomeRow[];
-  columns: string[];
-  people: ReportPerson[];
-  environments: Array<string | null>;
-  setKey?: string;
-  onWhy: (title: string, cell: Cell) => void;
-}) {
-  const variations = variationsOf(props.rows);
-  const varied = props.report.vary.map((vary) => vary.attribute);
-  const showEnvironment = props.environments.length > 1;
-  return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            <th className={`${thClass} ${keyClass}`}>
-              {props.report.of === "features" ? "Feature" : "Variable"}
-            </th>
-            {varied.map((attribute) => (
-              <th key={attribute} className={thClass}>
-                {attribute}
-              </th>
-            ))}
-            {showEnvironment && <th className={thClass}>Environment</th>}
-            {props.columns.map((column) => (
-              <th key={column} className={thClass}>
-                {columnLabel(column)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {props.rows.map((row, index) => (
-            <tr key={index} className="hover:bg-elevated/60">
-              <td className={tdClass}>
-                <EntityLink report={props.report} entity={row.entity} setKey={props.setKey} />
-              </td>
-              {varied.map((attribute) => (
-                <td key={attribute} className={`${tdClass} font-mono text-xs`}>
-                  {row.person.values[attribute]}
-                </td>
-              ))}
-              {showEnvironment && <td className={`${tdClass} text-xs`}>{row.environment}</td>}
-              {props.columns.map((column) => (
-                <td key={column} className={tdClass}>
-                  <CellView
-                    cell={row.cells[column]}
-                    variations={variations}
-                    onClick={() =>
-                      props.onWhy(
-                        `${row.entity.key} · ${row.person.label}${row.environment ? ` · ${row.environment}` : ""}`,
-                        row.cells[column],
-                      )
-                    }
-                  />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/** People down the side, each entity and environment across the top, one outcome per cell */
-function MatrixTable(props: {
-  report: Report;
-  rows: OutcomeRow[];
-  entities: EntitySummary[];
-  people: ReportPerson[];
-  environments: Array<string | null>;
-  column: string;
-  setKey?: string;
-  onWhy: (title: string, cell: Cell) => void;
-}) {
-  const variations = variationsOf(props.rows);
-  const varied = props.report.vary.map((vary) => vary.attribute);
-  const cellOf = (entity: string, person: string, environment: string | null) =>
-    props.rows.find(
-      (row) =>
-        row.entity.key === entity && row.person.label === person && row.environment === environment,
-    );
-  const many = props.environments.length > 1;
-  return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            {(varied.length ? varied : ["Person"]).map((attribute, index) => (
-              <th
-                key={attribute}
-                className={`${thClass} ${index === 0 ? "sticky left-0 bg-surface" : ""}`}
-                rowSpan={many ? 2 : 1}
-              >
-                {attribute}
-              </th>
-            ))}
-            {props.entities.map((entity) => (
-              <th
-                key={entity.key}
-                className={`${thBase} whitespace-nowrap`}
-                colSpan={props.environments.length}
-              >
-                <EntityLink report={props.report} entity={entity} setKey={props.setKey} />
-                <span className="ml-1.5 font-normal text-faint">{columnLabel(props.column)}</span>
-              </th>
-            ))}
-          </tr>
-          {many && (
-            <tr>
-              {props.entities.flatMap((entity) =>
-                props.environments.map((environment) => (
-                  <th
-                    key={`${entity.key}:${environment}`}
-                    className={`${thBase} whitespace-nowrap font-medium`}
-                  >
-                    {environment}
-                  </th>
-                )),
-              )}
-            </tr>
-          )}
-        </thead>
-        <tbody>
-          {props.people.map((person) => (
-            <tr key={person.label} className="hover:bg-elevated/60">
-              {(varied.length ? varied : [""]).map((attribute, index) => (
-                <td
-                  key={attribute}
-                  className={`${tdClass} ${index === 0 ? "sticky left-0 bg-surface" : ""} font-mono text-xs`}
-                >
-                  {attribute ? person.values[attribute] : person.label}
-                </td>
-              ))}
-              {props.entities.flatMap((entity) =>
-                props.environments.map((environment) => {
-                  const row = cellOf(entity.key, person.label, environment);
-                  const cell = row?.cells[props.column];
-                  return (
-                    <td key={`${entity.key}:${environment}`} className={tdClass}>
-                      {cell && (
-                        <CellView
-                          cell={cell}
-                          variations={variations}
-                          onClick={() =>
-                            props.onWhy(
-                              `${entity.key} · ${person.label}${environment ? ` · ${environment}` : ""}`,
-                              cell,
-                            )
-                          }
-                        />
-                      )}
-                    </td>
-                  );
-                }),
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function DefinitionsTable(props: { report: Report; rows: EntitySummary[]; setKey?: string }) {
-  const columns = props.report.show.filter((column) => DEFINITION_COLUMNS.includes(column));
-  if (props.rows.length === 0) return <EmptyState title="Nothing matches" />;
-  const value = (row: EntitySummary, column: string): React.ReactNode => {
-    if (column === "description") return <span className="text-muted">{row.description}</span>;
-    if (column === "owner")
-      return row.owners?.join(", ") || <span className="text-faint">None</span>;
-    if (column === "tags") return (row.tags || []).map((tag) => <Badge key={tag}>{tag}</Badge>);
-    if (column === "status")
-      return row.environmentStatus ? <Badge>{row.environmentStatus}</Badge> : null;
-    return null;
-  };
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted">
-        {props.rows.length} {props.report.of === "features" ? "features" : "global variables"}
-      </p>
-      <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr>
-              <th className={`${thClass} ${keyClass}`}>Key</th>
-              {columns.map((column) => (
-                <th key={column} className={thClass}>
-                  {columnLabel(column)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {props.rows.map((row) => (
-              <tr key={row.key} className="hover:bg-elevated/60">
-                <td className={tdClass}>
-                  <EntityLink report={props.report} entity={row} setKey={props.setKey} />
-                </td>
-                {columns.map((column) => (
-                  <td key={column} className={`${tdClass} text-xs`}>
-                    <span className="flex flex-wrap gap-1">{value(row, column)}</span>
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
   );
 }
 
@@ -1339,32 +994,24 @@ function WhyPanel(props: { title: string; cell: Cell; why: Why; onClose: () => v
   );
 }
 
-function toMarkdown(
-  report: Report,
-  rows: OutcomeRow[],
-  columns: string[],
-  environments: Array<string | null>,
-) {
-  const varied = report.vary.map((vary) => vary.attribute);
-  const showEnvironment = environments.length > 1;
-  const header = [
-    report.of === "features" ? "Feature" : "Variable",
-    ...varied,
-    ...(showEnvironment ? ["Environment"] : []),
-    ...columns.map(columnLabel),
-  ];
-  const lines = [
-    `| ${header.join(" | ")} |`,
-    `| ${header.map(() => "---").join(" | ")} |`,
-    ...rows.map(
-      (row) =>
-        `| ${[
-          `\`${row.entity.key}\``,
-          ...varied.map((attribute) => row.person.values[attribute]),
-          ...(showEnvironment ? [row.environment ?? ""] : []),
-          ...columns.map((column) => row.cells[column].text),
-        ].join(" | ")} |`,
+/** The rows as a Markdown table, a matrix's environments each a column of their own */
+function toMarkdown(result: Result) {
+  const escape = (text: string) => text.replace(/\|/g, "\\|").replace(/\n/g, " ");
+  const headings = result.columns.flatMap((column) =>
+    column.byEnvironment && result.matrix
+      ? result.environments.map((environment) => `${column.heading.text} (${environment})`)
+      : [column.heading.text],
+  );
+  const line = (cells: string[]) => `| ${cells.map(escape).join(" | ")} |`;
+  return [
+    line(headings),
+    line(headings.map(() => "---")),
+    ...result.rows.map((row) =>
+      line(
+        row.values.flatMap((value) =>
+          (Array.isArray(value) ? value : [value]).map((item) => item.text),
+        ),
+      ),
     ),
-  ];
-  return lines.join("\n");
+  ].join("\n");
 }

@@ -4,6 +4,7 @@ import http from "http";
 import * as path from "path";
 import type {
   Attribute,
+  BucketBy,
   ComposeReference,
   HistoryEntry,
   ParsedFeature,
@@ -952,6 +953,14 @@ function toSearchableScalar(value: unknown): string | undefined {
   }
 
   return undefined;
+}
+
+/** What a feature buckets by, in words: `userId`, `userId and deviceId` or `userId or deviceId` */
+function describeBucketBy(bucketBy: BucketBy | undefined): string | undefined {
+  if (bucketBy === undefined) return undefined;
+  if (typeof bucketBy === "string") return bucketBy;
+  if (Array.isArray(bucketBy)) return bucketBy.join(" and ");
+  return Array.isArray(bucketBy.or) ? bucketBy.or.join(" or ") : undefined;
 }
 
 function getFeatureVariationValues(feature: ParsedFeature) {
@@ -2525,6 +2534,10 @@ async function buildSetCatalog(
           inheritedEnvironments:
             plan.type === "feature" || plan.type === "variable"
               ? getInheritedEnvironments(entity, projectConfig.inheritEnvironments)
+              : undefined,
+          bucketBy:
+            plan.type === "feature"
+              ? describeBucketBy((entity as { bucketBy?: BucketBy }).bucketBy)
               : undefined,
           variationValues: plan.type === "feature" ? getFeatureVariationValues(entity) : undefined,
           variableKeys: plan.type === "feature" ? getFeatureVariableKeys(entity) : undefined,

@@ -1,7 +1,15 @@
+import { EXAMPLES } from "./examples";
 import { lexFql, parseFql } from "./fql";
-import { whoGetsThisQuery } from "./report";
+import { ROW_KEY, whoGetsThisQuery } from "./report";
 
-const project = { environments: ["staging", "production"] };
+const project = {
+  environments: ["staging", "production"],
+  features: { foo: ["bar", "settings"], allowSignup: [] },
+  variables: ["checkoutSettings"],
+  attributes: ["country", "device", "userId"],
+};
+
+const messages = (query: string) => parseFql(query, project).errors.map((error) => error.message);
 
 describe("parseFql", () => {
   it("reads every clause", () => {
@@ -13,39 +21,98 @@ describe("parseFql", () => {
         "FOR { userId: 'user-1', country: 'nl' }",
         "VARY device ['mobile', 'desktop', OTHER], country",
         "ENVIRONMENT *",
-        "SELECT enabled, variation",
+        "SELECT key, feature(key), feature(key).variation AS 'Variation'",
+        "SORT BY owner DESC, key",
+        "LIMIT 10",
         "AS MATRIX",
       ].join("\n"),
       project,
     );
     expect(errors).toEqual([]);
     expect(report).toMatchObject({
-      of: "features",
+      subjects: ["feature"],
       person: { userId: "user-1", country: "nl" },
       vary: [
         { attribute: "device", values: ["mobile", "desktop", "(any other)"] },
         { attribute: "country", values: [] },
       ],
       environments: ["staging", "production"],
-      show: ["enabled", "variation"],
+      columns: [
+        { expr: { kind: "property", name: "key" } },
+        { expr: { kind: "read", read: { kind: "flag", feature: ROW_KEY } } },
+        {
+          expr: { kind: "read", read: { kind: "variation", feature: ROW_KEY } },
+          alias: "Variation",
+        },
+      ],
+      sort: [
+        { column: { expr: { kind: "property", name: "owner" } }, descending: true },
+        { column: { expr: { kind: "property", name: "key" } }, descending: false },
+      ],
+      limit: 10,
       as: "matrix",
     });
     expect(report?.where).toBeDefined();
   });
 
-  it("defaults to the last environment and definition columns", () => {
+  it("lists definitions without anyone to evaluate for", () => {
     const { report, errors } = parseFql("FROM variables", project);
     expect(errors).toEqual([]);
-    expect(report).toMatchObject({ of: "variables", environments: ["production"], as: "table" });
+    expect(report).toMatchObject({ subjects: ["variable"], environments: ["production"] });
     expect(report?.person).toBeUndefined();
+    expect(report?.columns.map((column) => column.expr)).toEqual(
+      ["key", "description", "owner", "tags"].map((name) => ({ kind: "property", name })),
+    );
+  });
+
+  it("evaluates for everyone once anything is read", () => {
+    expect(parseFql("FROM features\nSELECT feature(key)", project).report?.person).toEqual({});
+    expect(parseFql("FROM features\nWHERE feature(key)", project).report?.person).toEqual({});
+  });
+
+  it("reads in an environment of its own, and the details beside an answer", () => {
+    const { report } = parseFql(
+      "FROM features\nSELECT rollout(feature(key, 'staging')), rule(feature(key).variation)",
+      project,
+    );
+    expect(report?.columns.map((column) => column.expr)).toEqual([
+      {
+        kind: "detail",
+        detail: "rollout",
+        read: { kind: "flag", feature: ROW_KEY, environment: "staging" },
+      },
+      { kind: "detail", detail: "rule", read: { kind: "variation", feature: ROW_KEY } },
+    ]);
+  });
+
+  it("swaps WHERE's reads for names the row's answers fill", () => {
+    const where = parseFql(
+      "FROM features\nWHERE owner == 'growth' and rollout(feature(key)) < 100 and feature(key)",
+      project,
+    ).report!.where!;
+    const [rollout, flag] = Object.keys(where.reads);
+    expect(where.conditions).toEqual([
+      { attribute: "owner", operator: "equals", value: "growth" },
+      { attribute: rollout, operator: "lessThan", value: 100 },
+      { attribute: flag, operator: "equals", value: true },
+    ]);
+    expect(where.names).toEqual(["owner"]);
+  });
+
+  it("groups and counts", () => {
+    const { report, errors } = parseFql("FROM features\nGROUP BY owner", project);
+    expect(errors).toEqual([]);
+    expect(report?.columns.map((column) => column.expr)).toEqual([
+      { kind: "property", name: "owner" },
+      { kind: "count" },
+    ]);
   });
 
   it("parses the Overview tab's link for features and variables", () => {
     for (const type of ["feature", "variable"] as const) {
-      const { report, errors } = parseFql(
-        whoGetsThisQuery(type, "it's", project.environments),
-        project,
-      );
+      const { report, errors } = parseFql(whoGetsThisQuery(type, "it's", project.environments), {
+        environments: project.environments,
+      });
       expect(errors).toEqual([]);
       expect(report).toMatchObject({ vary: [{ attribute: "*", values: [] }], as: "matrix" });
     }
@@ -53,26 +120,44 @@ describe("parseFql", () => {
 
   it("points at what is wrong", () => {
     expect(parseFql("enabled", project).errors[0]).toMatchObject({ line: 1, column: 1 });
-    expect(parseFql("FROM flags", project).errors[0]).toMatchObject({
-      message: "FROM reads features or variables. Leave it out for a row per person.",
-      line: 1,
-      column: 6,
-    });
+    expect(parseFql("FROM flags", project).errors[0]).toMatchObject({ line: 1, column: 6 });
     expect(parseFql("FROM features\nENVIRONMENT qa", project).errors[0]).toMatchObject({
       line: 2,
     });
     expect(parseFql("FROM features\nWHERE key ==", project).errors[0]).toMatchObject({ line: 2 });
   });
+
+  it("says how to read what someone gets, rather than naming it as a property", () => {
+    expect(messages("FROM features\nSELECT key, enabled")).toEqual([
+      "enabled is what someone gets, not a property. Read it with feature(key).",
+    ]);
+    expect(messages("FROM features\nSELECT variables.bar")).toEqual([
+      "variables.bar is what someone gets, not a property. Read it with feature(key).bar.",
+    ]);
+    expect(messages("FROM variables\nSELECT bucketBy")).toEqual([
+      "bucketBy is a property of features only.",
+    ]);
+    expect(messages("FROM variables\nSELECT feature(key)")).toEqual([
+      "feature(key) reads each row's own feature, so it needs FROM features.",
+    ]);
+  });
+
+  it("keeps groups, sorting and layouts to what makes sense", () => {
+    expect(messages("FROM features\nSELECT key, count()\nGROUP BY owner")).toEqual([
+      "key is not in GROUP BY. SELECT what GROUP BY names, and count().",
+    ]);
+    expect(messages("FROM features\nSELECT key\nSORT BY count()")).toEqual([
+      "count() counts groups, so it sorts a report with GROUP BY.",
+    ]);
+    expect(messages("FROM features\nSELECT key\nAS MATRIX")[0]).toMatch(/needs a read/);
+    expect(messages("FROM features\nLIMIT 0")[0]).toMatch(/LIMIT takes/);
+    expect(messages("FROM features\nSELECT rollout(variable('checkoutSettings'))")[0]).toMatch(
+      /rollout\(\) reads/,
+    );
+  });
 });
 
 describe("parseFql without FROM", () => {
-  const known = {
-    ...project,
-    features: { foo: ["bar", "settings"], allowSignup: [] },
-    variables: ["checkoutSettings"],
-    attributes: ["country", "device", "userId"],
-  };
-
   it("makes a row per person, with columns read from anywhere", () => {
     const { report, errors } = parseFql(
       [
@@ -86,49 +171,73 @@ describe("parseFql without FROM", () => {
         "  variable('checkoutSettings').currency",
         "AS MATRIX",
       ].join("\n"),
-      known,
+      project,
     );
     expect(errors).toEqual([]);
     expect(report).toMatchObject({
-      of: "people",
+      subjects: [],
       person: {},
       as: "matrix",
       columns: [
-        { read: { kind: "attribute", attribute: "country" }, alias: "Country" },
-        { read: { kind: "flag", feature: "foo" }, alias: "Foo on" },
-        { read: { kind: "variation", feature: "foo" } },
-        { read: { kind: "variable", feature: "foo", variable: "bar", path: [] } },
+        { expr: { kind: "property", name: "country" }, alias: "Country" },
+        { expr: { kind: "read", read: { kind: "flag", feature: "foo" } }, alias: "Foo on" },
+        { expr: { kind: "read", read: { kind: "variation", feature: "foo" } } },
         {
-          read: { kind: "variable", feature: "foo", variable: "settings", path: ["limits.v2", 0] },
+          expr: {
+            kind: "read",
+            read: { kind: "variable", feature: "foo", variable: "bar", path: [] },
+          },
         },
-        { read: { kind: "variable", variable: "checkoutSettings", path: ["currency"] } },
+        {
+          expr: {
+            kind: "read",
+            read: {
+              kind: "variable",
+              feature: "foo",
+              variable: "settings",
+              path: ["limits.v2", 0],
+            },
+          },
+        },
+        {
+          expr: {
+            kind: "read",
+            read: { kind: "global", variable: "checkoutSettings", path: ["currency"] },
+          },
+        },
       ],
     });
   });
 
   it("checks the names it reads", () => {
-    const errors = (query: string) => parseFql(query, known).errors.map((error) => error.message);
-    expect(errors("SELECT feature('fooo')")).toEqual(["No feature called fooo."]);
-    expect(errors("SELECT feature('foo').baz")).toEqual([
+    expect(messages("SELECT feature('fooo')")).toEqual(["No feature called fooo."]);
+    expect(messages("SELECT feature('foo').baz")).toEqual([
       "foo has no variable called baz. It has bar, settings.",
     ]);
-    expect(errors("SELECT variable('foo')")).toEqual([
+    expect(messages("SELECT variable('foo')")).toEqual([
       "No global variable called foo. foo is a feature, read with feature('foo').",
     ]);
-    expect(errors("SELECT feature('foo').variation.x")).toEqual([
+    expect(messages("SELECT feature('foo').variation.x")).toEqual([
       "A variation is text, so nothing can follow `.variation`.",
     ]);
-    expect(errors("SELECT enabled, feature('foo')")[0]).toMatch(/^No attribute called enabled\./);
-    expect(errors("SELECT country")[0]).toMatch(/^SELECT what to read/);
-    expect(errors("FROM features\nFOR {}\nSELECT feature('foo')")[0]).toMatch(
-      /reads one thing for every row/,
-    );
+    expect(messages("SELECT feature('foo', 'qa')")[0]).toMatch(/^No environment called qa/);
+    expect(messages("SELECT enabled, feature('foo')")[0]).toMatch(/^No attribute called enabled\./);
+    expect(messages("SELECT feature(key)")[0]).toMatch(/a row per person has none/);
+    expect(messages("VARY country")[0]).toMatch(/^SELECT what to read/);
+  });
+});
+
+describe("EXAMPLES", () => {
+  it.each(
+    EXAMPLES.flatMap((group) => group.examples).map((example) => [example.title, example.query]),
+  )("%s parses", (_, query) => {
+    expect(parseFql(query, { environments: ["staging", "production"] }).errors).toEqual([]);
   });
 });
 
 describe("lexFql", () => {
   it("keeps every character, so highlighting can colour the source as it is", () => {
-    const source = "FROM features\n# a comment\nWHERE tags contains 'web'\nFOR { at: 50 }";
+    const source = "FROM features\n# a comment\nWHERE tags includes 'web'\nFOR { at: 50 }";
     expect(
       lexFql(source)
         .map((token) => token.text)

@@ -54,6 +54,8 @@ export interface EntitySummary {
   environments?: string[];
   /** Environments whose rules or overrides come from another, for `inherited:` */
   inheritedEnvironments?: string[];
+  /** Features only: what it buckets by, in words, such as `userId and deviceId` */
+  bucketBy?: string;
   variationValues?: string[];
   variableKeys?: string[];
   hasVariations?: boolean;

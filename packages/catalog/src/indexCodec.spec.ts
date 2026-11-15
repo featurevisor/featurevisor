@@ -27,6 +27,7 @@ const complete: Required<EntitySummary> = {
   references: ["segment:shared", "feature:checkout/日本語", "attribute:shared"],
   dependsOnDeprecated: true,
   environments: ["production"],
+  bucketBy: "userId and deviceId",
   variationValues: ["", "shared"],
   variableKeys: ["shared"],
   hasVariations: true,
