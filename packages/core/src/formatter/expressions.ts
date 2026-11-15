@@ -9,7 +9,7 @@ import {
   getConditionExpressions,
   type ConditionExpressionRecord,
 } from "../datasource/expressions";
-import { HOUSE_STYLE } from "./style";
+import { EXPRESSION_LAYOUT, HOUSE_STYLE } from "./style";
 
 /** The options fmt formats expressions with, or undefined when the project does not allow them */
 export function getFormatExpressionOptions(config: ProjectConfig): ExpressionOptions | undefined {
@@ -51,7 +51,7 @@ export function getExpressionTexts(
     let text = formatExpression(record.source, {
       ...options,
       root: record.path.length === record.conditionsPath.length,
-      indent: HOUSE_STYLE.indent,
+      ...EXPRESSION_LAYOUT,
     });
     if (text === undefined) continue;
     if (HOUSE_STYLE.expressions.finalNewline && text.includes("\n")) text += "\n";

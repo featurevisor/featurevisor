@@ -10,7 +10,7 @@ import { isMap, isNode, isScalar, isSeq, Scalar } from "yaml";
 import type { Document, Node, Pair } from "yaml";
 
 import { visitConditionLocations, type ConditionPath } from "../datasource/conditionLocations";
-import { HOUSE_STYLE } from "../formatter/style";
+import { EXPRESSION_LAYOUT, HOUSE_STYLE } from "../formatter/style";
 
 /**
  * Writes a definition's conditions another way, editing its YAML document so every other line
@@ -199,7 +199,7 @@ export function writeTreesAsExpressions(
       let text = treeToExpression(value as Conditions, {
         ...options,
         root,
-        indent: HOUSE_STYLE.indent,
+        ...EXPRESSION_LAYOUT,
         comments,
       });
       if (text === undefined) {
@@ -345,7 +345,7 @@ export function conditionsAsExpressions(
   const text = treeToExpression(value as Conditions, {
     ...options,
     root,
-    indent: HOUSE_STYLE.indent,
+    ...EXPRESSION_LAYOUT,
   });
   if (text !== undefined) {
     return HOUSE_STYLE.expressions.finalNewline && text.includes("\n") ? `${text}\n` : text;

@@ -35,7 +35,12 @@ rules:
       conditions: |
         markets.benelux
         or markets.dach
-        or country in ['fi', 'fr', 'it', 'es']
+        or country in [
+          'fi',
+          'fr',
+          'it',
+          'es'
+        ]
       percentage: 100
       variables:
         currency: EUR
@@ -73,7 +78,12 @@ rules:
       conditions: |
         markets.benelux
         or markets.dach
-        or country in ['fi', 'fr', 'it', 'es']
+        or country in [
+          'fi',
+          'fr',
+          'it',
+          'es'
+        ]
       percentage: 100
       variables:
         currency: EUR

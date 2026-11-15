@@ -51,7 +51,7 @@ conditions: |
 - Timestamps are text compared with `before` and `after`: `signupDate after '2026-01-01T00:00:00Z'`.
 - Patterns follow `matches` or `notMatches` as literals with flags: `account.locale matches /^(nl|be)-/i`.
 - `and`, `or` and `not` are lowercase. `not` binds tightest, then `and`, then `or`. Use parentheses when mixing `and` and `or`, since lint warns without them.
-- A comment is a whole line starting with `#`.
+- A comment is a whole line starting with `#`. Inside a list, a comment may also end a line, beside an item: `'nl', # the Netherlands`.
 - A variable always needs a comparison. `variable('maintenanceMode')` alone is a lint error.
 
 ## Missing values
@@ -83,7 +83,7 @@ Lint reports each at its file, line and column, with a hint.
 
 ## Commands
 
-- `npx featurevisor fmt` writes expressions in one style, one condition a line, in a project that allows them. It never turns a tree into an expression.
+- `npx featurevisor fmt` writes expressions in one style, one condition a line, in a project that allows them. A list of up to three items stays on its condition's line while that line fits in 80 characters. A longer list, or one with comments, takes one item a line, its comments kept above or beside their items. It never turns a tree into an expression.
 - `npx featurevisor convert --to=expressions` writes every tree that has an exact expression form as one, then each condition in its simplest form, and turns the option on. Its datafiles change shape but must evaluate the same. `--to=trees` writes every expression back as the tree it builds, with byte identical datafiles, and turns the option off. Both preview without `--apply`, and write only once a converted copy passes lint, tests and those datafile checks. `--exact` with `--to=expressions` skips simplifying, so every datafile stays byte identical. They rewrite the whole project, so show the preview and apply on the user's go ahead.
 - `npx featurevisor fmt --simplify` writes each condition in its simplest form that evaluates the same, such as a list of one condition as that condition, and joins expressions side by side into one. Datafiles change shape but evaluate the same, so show `fmt --simplify --diff` first and apply on the user's go ahead.
 - `evaluate --explain` prints conditions as expressions in a project that allows them, and `--explain --json` gives each condition's `expression` beside its tree. `diff` treats an expression and its tree as the same condition.

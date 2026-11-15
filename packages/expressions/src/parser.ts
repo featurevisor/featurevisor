@@ -86,9 +86,21 @@ function outerEnd(node: ExpressionNode): number {
   return node.outerEnd ?? node.end;
 }
 
+/** A comment the parser read, for the formatter to put back where it was written */
+export interface ParsedComment {
+  /** From its `#` to the end of its line, without trailing spaces */
+  text: string;
+  start: number;
+  end: number;
+  /** On a line of its own, rather than ending a line inside a list */
+  ownLine: boolean;
+}
+
 class Parser {
   private pos = 0;
   readonly warnings: RawIssue[] = [];
+  /** Each comment read, by where it starts, so a second look at the same place adds none */
+  readonly comments = new Map<number, ParsedComment>();
   private readonly maxDepth: number;
   /** The last leaf parsed, to explain what may have been meant after it. */
   private lastLeaf?: ExpressionLeafNode;
@@ -140,16 +152,23 @@ class Parser {
     return true;
   }
 
-  /** Spaces, line breaks and whole line comments. */
-  private skipTrivia() {
+  /**
+   * Spaces, line breaks and whole line comments. Inside a list, a comment may also end a line,
+   * beside the item or bracket before it.
+   */
+  private skipTrivia(inList = false) {
     while (!this.atEnd()) {
       const character = this.peek();
       if (character === " " || character === "\t" || character === "\n" || character === "\r") {
         this.pos++;
         continue;
       }
-      if (character === "#" && this.startOfLine(this.pos)) {
+      const ownLine = character === "#" && this.startOfLine(this.pos);
+      if (character === "#" && (inList || ownLine)) {
+        const start = this.pos;
         while (!this.atEnd() && this.peek() !== "\n") this.pos++;
+        const text = this.source.slice(start, this.pos).trimEnd();
+        this.comments.set(start, { text, start, end: this.pos, ownLine });
         continue;
       }
       return;
@@ -1124,13 +1143,23 @@ class Parser {
     const start = this.pos;
     this.pos++;
     const items: ExpressionValue[] = [];
-    this.skipTrivia();
+    this.skipTrivia(true);
     if (this.peek() === "]") {
       this.pos++;
       return { type: "list", items, start, end: this.pos };
     }
     while (true) {
-      this.skipTrivia();
+      this.skipTrivia(true);
+      // as when a comment beside an item takes the rest of the line
+      if (this.atEnd()) {
+        this.fail(
+          "expression_unclosed_list",
+          "Missing `]`.",
+          start,
+          start + 1,
+          "Close the list opened here.",
+        );
+      }
       if (this.peek() === "]") {
         this.fail(
           "expression_trailing_comma",
@@ -1149,7 +1178,7 @@ class Parser {
         );
       }
       items.push(item);
-      this.skipTrivia();
+      this.skipTrivia(true);
       if (this.peek() === ",") {
         this.pos++;
         continue;
@@ -1291,7 +1320,7 @@ class Parser {
     if (character === "#") {
       this.fail(
         "expression_comment",
-        "Comments are whole lines starting with `#`.",
+        "Comments are whole lines starting with `#`, or end a line inside a list.",
         start,
         start + 1,
         "Move the comment to a line of its own.",
@@ -1353,7 +1382,10 @@ class Parser {
   }
 }
 
-export function parse(source: string, options: ExpressionOptions = {}): ExpressionParseResult {
+export function parse(
+  source: string,
+  options: ExpressionOptions = {},
+): ExpressionParseResult & { comments?: ParsedComment[] } {
   const resolve = createPositionResolver(source);
   const toError = (issue: RawIssue, severity: "error" | "warning"): ExpressionDiagnostic => ({
     code: issue.code,
@@ -1386,7 +1418,12 @@ export function parse(source: string, options: ExpressionOptions = {}): Expressi
   const parser = new Parser(source, options);
   try {
     const ast = parser.run();
-    return { ast, errors: [], warnings: parser.warnings.map((issue) => toError(issue, "warning")) };
+    return {
+      ast,
+      errors: [],
+      warnings: parser.warnings.map((issue) => toError(issue, "warning")),
+      comments: [...parser.comments.values()].sort((left, right) => left.start - right.start),
+    };
   } catch (error) {
     if (!(error instanceof ParseFailure)) throw error;
     return {
