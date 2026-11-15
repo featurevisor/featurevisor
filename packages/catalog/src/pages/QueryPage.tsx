@@ -7,6 +7,13 @@ import { fetchDatafile } from "../api";
 import { useCatalog } from "../context/CatalogContext";
 import { decodeRouteSegment, getEntityRoute } from "../entityTypes";
 import { colourExpression } from "../components/expressionTokens";
+import {
+  ExpandIcon,
+  FullViewDialog,
+  isMac,
+  useFocusOnClose,
+  useFullView,
+} from "../components/fullView";
 import { TOKEN_CLASSES } from "../components/trees";
 import { Badge, EmptyState, EntityKey, PageHeader } from "../components/ui";
 import { useCatalogIndex } from "../useCatalogIndex";
@@ -37,6 +44,9 @@ import {
   type ReportPerson,
   type ReportVary,
 } from "../query/report";
+
+/** `?view=full` opens the full view */
+const FULL_VIEW_PARAM = "view";
 
 /** Evaluations a report may run before it asks */
 const EVALUATION_LIMIT = 20000;
@@ -102,10 +112,23 @@ export function QueryPage() {
   const run = React.useCallback(
     (query: string) => {
       setRan(query);
-      setSearchParams({ q: query }, { replace: true });
+      // Keeps the rest of the URL, such as the full view
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.set("q", query);
+          return next;
+        },
+        { replace: true },
+      );
     },
     [setSearchParams],
   );
+
+  // `?view=full` shows the editor and results over the page, with room for wide reports
+  const { expanded, open, close } = useFullView(FULL_VIEW_PARAM);
+  const expandRef = React.useRef<HTMLButtonElement | null>(null);
+  useFocusOnClose(expanded, () => expandRef.current?.focus());
   // Runs as you type, once you pause
   React.useEffect(() => {
     if (draft === ran) return;
@@ -140,6 +163,14 @@ export function QueryPage() {
   if (error) return <EmptyState title="Unable to load catalog index" description={error} />;
   if (!index) return null;
   const report = parsed.report || lastGood;
+  // Shown in one place at a time, so a report evaluates once
+  const workspace = (
+    <>
+      <FqlEditor value={draft} onChange={setDraft} onRun={() => run(draft)} />
+      <Errors errors={parsed.errors} />
+      {report && <Results report={report} index={index} setKey={setKey} />}
+    </>
+  );
 
   return (
     <div className="pb-8">
@@ -148,22 +179,42 @@ export function QueryPage() {
         description="Ask the project a question in FQL: what is configured, or what people get."
       />
       <div className="space-y-4 px-6">
-        <div className="flex flex-wrap gap-2">
-          {STARTERS.map((starter) => (
-            <button
-              key={starter.title}
-              type="button"
-              onClick={() => run(starter.query)}
-              className="cursor-pointer rounded-full border border-slate-300 bg-surface px-3 py-1 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
-            >
-              {starter.title}
-            </button>
-          ))}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {STARTERS.map((starter) => (
+              <button
+                key={starter.title}
+                type="button"
+                onClick={() => run(starter.query)}
+                className="cursor-pointer rounded-full border border-slate-300 bg-surface px-3 py-1 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+              >
+                {starter.title}
+              </button>
+            ))}
+          </div>
+          <button
+            ref={expandRef}
+            type="button"
+            onClick={open}
+            aria-label="Open the query in a full view"
+            title="Full view"
+            className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-muted shadow-sm outline-none transition-colors hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary [&>svg]:h-3 [&>svg]:w-3"
+          >
+            <ExpandIcon />
+          </button>
         </div>
-        <FqlEditor value={draft} onChange={setDraft} onRun={() => run(draft)} />
-        <Errors errors={parsed.errors} />
-        {report && <Results report={report} index={index} setKey={setKey} />}
+        {!expanded && workspace}
       </div>
+      {expanded && (
+        <FullViewDialog
+          label="Query in a full view"
+          title="Query"
+          hint={`${isMac() ? "⌘" : "Ctrl"} Enter runs`}
+          onClose={close}
+        >
+          <div className="h-full space-y-4 overflow-auto p-4">{workspace}</div>
+        </FullViewDialog>
+      )}
     </div>
   );
 }
