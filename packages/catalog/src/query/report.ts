@@ -2,8 +2,11 @@ import type { Condition } from "@featurevisor/types";
 
 import type { Person } from "./engine";
 
-/** A Query report, as FQL describes it */
-export type ReportSubject = "features" | "variables";
+/**
+ * A Query report, as FQL describes it. Rows are features or global variables, or without FROM,
+ * people, with columns read from anywhere.
+ */
+export type ReportSubject = "features" | "variables" | "people";
 export type ReportLayout = "table" | "matrix";
 
 /**
@@ -15,8 +18,23 @@ export interface ReportVary {
   values: string[];
 }
 
+/** What a column of a people report reads, written as conditions read features and variables */
+export type ColumnRead =
+  | { kind: "attribute"; attribute: string }
+  | { kind: "flag"; feature: string }
+  | { kind: "variation"; feature: string }
+  | { kind: "variable"; feature?: string; variable: string; path: Array<string | number> };
+
+export interface ReportColumn {
+  read: ColumnRead;
+  /** The heading `AS` gives it */
+  alias?: string;
+}
+
 export interface Report {
   of: ReportSubject;
+  /** A people report's columns, in order */
+  columns?: ReportColumn[];
   /** A filter over each row's columns, compiled as conditions are */
   where?: Condition | Condition[];
   /** Who outcomes are for. Without one, the report is about definitions. */
@@ -47,6 +65,47 @@ export const COLUMN_LABELS: Record<string, string> = {
 
 export function columnLabel(column: string) {
   return column.startsWith("variable:") ? column.slice("variable:".length) : COLUMN_LABELS[column];
+}
+
+/** A path as conditions write it: `.currency`, `[0]`, or `['label.v2']` for keys with dots */
+export function formatPath(path: Array<string | number>) {
+  return path
+    .map((key) =>
+      typeof key === "number"
+        ? `[${key}]`
+        : /^[A-Za-z_][\w-]*$/.test(key)
+          ? `.${key}`
+          : `['${key.replace(/'/g, "\\'")}']`,
+    )
+    .join("");
+}
+
+/** The entity a read column belongs to, and what it reads from it */
+export function columnHeading(column: ReportColumn): {
+  text: string;
+  entity?: { type: "feature" | "variable"; key: string };
+  detail?: string;
+} {
+  const { read } = column;
+  const heading =
+    read.kind === "attribute"
+      ? { text: read.attribute }
+      : read.kind === "flag"
+        ? { entity: { type: "feature" as const, key: read.feature }, detail: "enabled" }
+        : read.kind === "variation"
+          ? { entity: { type: "feature" as const, key: read.feature }, detail: "variation" }
+          : read.feature
+            ? {
+                entity: { type: "feature" as const, key: read.feature },
+                detail: `${read.variable}${formatPath(read.path)}`,
+              }
+            : {
+                entity: { type: "variable" as const, key: read.variable },
+                detail: read.path.length ? formatPath(read.path).replace(/^\./, "") : "value",
+              };
+  const text =
+    column.alias ?? ("text" in heading ? heading.text : `${heading.entity.key} ${heading.detail}`);
+  return { ...heading, text };
 }
 
 export interface ReportPerson {

@@ -118,9 +118,21 @@ function formatPercent(value: number) {
   return `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
 }
 
+/** A value inside an object or array variable, as `.currency` or `[0]` reads it in conditions */
+export function valueAtPath(value: unknown, path: Array<string | number> = []): unknown {
+  return path.reduce<unknown>(
+    (current, key) =>
+      current !== null && typeof current === "object"
+        ? (current as Record<string | number, unknown>)[key]
+        : undefined,
+    value,
+  );
+}
+
 export function formatValue(value: unknown): string {
   if (value === undefined) return "";
-  if (typeof value === "string") return value;
+  // Empty text shows as such, apart from no value at all
+  if (typeof value === "string") return value === "" ? '""' : value;
   return JSON.stringify(value);
 }
 
@@ -200,20 +212,25 @@ export function featureVariableCell(
   featureKey: string,
   variableKey: string,
   person: Person,
+  path: Array<string | number> = [],
 ): Cell {
   const evaluator = evaluatorOf(datafile);
   const { context, position } = placement(person);
   const variation = variationCell(datafile, featureKey, person);
+  const read = (value: unknown) => formatValue(valueAtPath(value, path));
   const valueAt = (place: number | undefined) =>
     at(evaluator, place, () => evaluator.sdk.evaluateVariable(featureKey, variableKey, context));
   // Read the value where each variation is allocated, so every variation's value shows
   const split = variation.why.split;
   if (split && variation.why.lens === "audience") {
-    const allocation = valueAt(undefined).traffic?.allocation || [];
+    // The variation's own evaluation carries the rule's allocation, even where this bucket is off
+    const allocation =
+      at(evaluator, undefined, () => evaluator.sdk.evaluateVariation(featureKey, context)).traffic
+        ?.allocation || [];
     const values = split.map((share) => {
       const range = allocation.find((item) => item.variation === share.variation)?.range;
       const middle = range ? Math.floor((range[0] + range[1]) / 2) : undefined;
-      return { ...share, value: formatValue(valueAt(middle).variableValue) };
+      return { ...share, value: read(valueAt(middle).variableValue) };
     });
     const why = { ...variation.why, split: values };
     if (new Set(values.map((share) => share.value)).size === 1) {
@@ -227,7 +244,7 @@ export function featureVariableCell(
   }
   const evaluation = valueAt(position);
   return {
-    text: formatValue(evaluation.variableValue),
+    text: read(evaluation.variableValue),
     tone: "value",
     why: {
       ...variation.why,
@@ -242,6 +259,7 @@ export function globalVariableCell(
   datafile: DatafileContent,
   variableKey: string,
   person: Person,
+  path: Array<string | number> = [],
 ): Cell {
   const evaluator = evaluatorOf(datafile);
   const { context, position } = placement(person);
@@ -249,7 +267,7 @@ export function globalVariableCell(
     evaluator.sdk.evaluateVariable(variableKey, context),
   );
   return {
-    text: formatValue(evaluation.variableValue),
+    text: formatValue(valueAtPath(evaluation.variableValue, path)),
     tone: "value",
     why: { lens: "exact", reason: evaluation.reason, overrideKey: evaluation.variableOverrideKey },
   };
@@ -291,6 +309,12 @@ export function getComparedValues(
       walk(feature.conditions);
       (feature.traffic || []).forEach((traffic) => walk(traffic.conditions ?? traffic.segments));
       (feature.force || []).forEach((force) => walk(force.conditions ?? force.segments));
+      // a variation's variables can differ by condition too
+      for (const variation of feature.variations || []) {
+        for (const overrides of Object.values(variation.variableOverrides || {})) {
+          overrides.forEach((override) => walk(override.conditions ?? override.segments));
+        }
+      }
     };
     const walk = (conditions: unknown): void => {
       if (typeof conditions === "string") {

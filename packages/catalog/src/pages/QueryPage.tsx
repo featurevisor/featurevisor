@@ -16,6 +16,7 @@ import {
   ANY_OTHER,
   featureVariableCell,
   flagCell,
+  formatValue,
   getComparedValues,
   globalVariableCell,
   lensOf,
@@ -24,12 +25,15 @@ import {
   type Person,
   type Why,
 } from "../query/engine";
-import { CLAUSES, lexFql, parseFql, type FqlError } from "../query/fql";
+import { clauseStarts, lexFql, parseFql, type FqlError, type FqlProject } from "../query/fql";
 import {
+  columnHeading,
   columnLabel,
   DEFINITION_COLUMNS,
   peopleOf,
+  type ColumnRead,
   type Report,
+  type ReportColumn,
   type ReportPerson,
   type ReportVary,
 } from "../query/report";
@@ -44,6 +48,20 @@ const STARTERS: Array<{ title: string; query: string }> = [
   {
     title: "What one person gets",
     query: "FROM features\nFOR { userId: 'user-1', country: 'nl' }\nSELECT enabled, variation",
+  },
+  {
+    title: "Columns from anywhere",
+    query: [
+      "FOR {}",
+      "VARY country",
+      "SELECT",
+      "  country,",
+      "  feature('foo') AS 'Foo',",
+      "  feature('foo').variation,",
+      "  feature('foo').bar,",
+      "  feature('allowSignup').variation,",
+      "  variable('checkoutSettings').currency",
+    ].join("\n"),
   },
   {
     title: "Experiments by country",
@@ -95,7 +113,25 @@ export function QueryPage() {
     return () => clearTimeout(timer);
   }, [draft, ran, run]);
 
-  const parsed = React.useMemo(() => parseFql(ran, { environments }), [ran, environments]);
+  // Names the query may read, checked once the index loads
+  const project = React.useMemo<FqlProject>(
+    () =>
+      index
+        ? {
+            environments,
+            features: Object.fromEntries(
+              (index.entities.feature || []).map((entity) => [
+                entity.key,
+                entity.variableKeys || [],
+              ]),
+            ),
+            variables: (index.entities.variable || []).map((entity) => entity.key),
+            attributes: (index.entities.attribute || []).map((entity) => entity.key),
+          }
+        : { environments },
+    [index, environments],
+  );
+  const parsed = React.useMemo(() => parseFql(ran, project), [ran, project]);
   const [lastGood, setLastGood] = React.useState<Report | undefined>(parsed.report);
   React.useEffect(() => {
     if (parsed.report) setLastGood(parsed.report);
@@ -150,30 +186,27 @@ function highlight(source: string): Array<{ text: string; className?: string }> 
     });
     expression = undefined;
   };
-  let depth = 0;
-  for (const token of tokens) {
-    if (token.type === "punctuation" && "([{".includes(token.text)) depth++;
-    if (token.type === "punctuation" && ")]}".includes(token.text)) depth--;
-    const clause =
-      depth === 0 &&
-      token.type === "keyword" &&
-      (CLAUSES as readonly string[]).includes(token.text);
+  const starts = clauseStarts(tokens);
+  for (const [index, token] of tokens.entries()) {
+    const clause = starts.has(index);
     if (expression && !clause) continue;
     if (clause) flushExpression(token.start);
     const className =
       token.type === "keyword"
         ? KEYWORD_CLASS
-        : token.type === "comment"
-          ? TOKEN_CLASSES.comment
-          : token.type === "string"
-            ? TOKEN_CLASSES.string
-            : token.type === "number" || ["true", "false", "null"].includes(token.text)
-              ? TOKEN_CLASSES.constant
-              : token.type === "operator"
-                ? TOKEN_CLASSES.operator
-                : token.type === "punctuation"
-                  ? TOKEN_CLASSES.punctuation
-                  : undefined;
+        : token.type === "word" && tokens[index + 1]?.text === "("
+          ? TOKEN_CLASSES.call
+          : token.type === "comment"
+            ? TOKEN_CLASSES.comment
+            : token.type === "string"
+              ? TOKEN_CLASSES.string
+              : token.type === "number" || ["true", "false", "null"].includes(token.text)
+                ? TOKEN_CLASSES.constant
+                : token.type === "operator"
+                  ? TOKEN_CLASSES.operator
+                  : token.type === "punctuation"
+                    ? TOKEN_CLASSES.punctuation
+                    : undefined;
     segments.push({ text: token.text, className });
     // A WHERE clause is a condition expression, coloured as conditions are
     if (clause && token.text === "WHERE") expression = { start: token.start + token.text.length };
@@ -366,10 +399,20 @@ interface OutcomeRow {
 }
 
 function Results(props: { report: Report; index: CatalogIndex; setKey?: string }) {
+  return props.report.of === "people" ? (
+    <PeopleResults report={props.report} setKey={props.setKey} />
+  ) : (
+    <EntityResults {...props} />
+  );
+}
+
+function EntityResults(props: { report: Report; index: CatalogIndex; setKey?: string }) {
   const { index, setKey } = props;
   const entities = React.useMemo(() => selectEntities(props.report, index), [props.report, index]);
   const { datafiles, error } = useDatafiles(props.report, setKey);
   const [why, setWhy] = React.useState<{ title: string; cell: Cell } | null>(null);
+  // A new report has new cells, so an open explanation would be about the old one
+  React.useEffect(() => setWhy(null), [props.report]);
 
   // Vary by what the selected rows' conditions compare, or every condition's when none narrow
   const report = React.useMemo(() => {
@@ -479,6 +522,328 @@ function Results(props: { report: Report; index: CatalogIndex; setKey?: string }
       )}
     </div>
   );
+}
+
+/** One row of a people report: a person in an environment, a cell per read column */
+interface PeopleRow {
+  person: ReportPerson;
+  environment: string | null;
+  cells: Array<Cell | undefined>;
+}
+
+function readCell(datafile: DatafileContent, read: ColumnRead, person: Person): Cell | undefined {
+  if (read.kind === "flag") return flagCell(datafile, read.feature, person);
+  if (read.kind === "variation") return variationCell(datafile, read.feature, person);
+  if (read.kind === "variable")
+    return read.feature
+      ? featureVariableCell(datafile, read.feature, read.variable, person, read.path)
+      : globalVariableCell(datafile, read.variable, person, read.path);
+  return undefined;
+}
+
+/** The feature a read evaluates, which decides its lens and what varying it follows */
+function featureOf(read: ColumnRead) {
+  return read.kind === "attribute" || (read.kind === "variable" && !read.feature)
+    ? undefined
+    : read.feature;
+}
+
+function PeopleResults(props: { report: Report; setKey?: string }) {
+  const { datafiles, error } = useDatafiles(props.report, props.setKey);
+  const [why, setWhy] = React.useState<{ title: string; cell: Cell } | null>(null);
+  // A new report has new cells, so an open explanation would be about the old one
+  React.useEffect(() => setWhy(null), [props.report]);
+
+  // Vary by what the columns' features and global variables compare
+  const report = React.useMemo(() => {
+    if (!datafiles) return props.report;
+    const loaded = [...datafiles.values()];
+    const reads = (props.report.columns || []).map((column) => column.read);
+    const features = [...new Set(reads.map(featureOf).filter(Boolean) as string[])];
+    const variables = [
+      ...new Set(
+        reads.flatMap((read) => (read.kind === "variable" && !read.feature ? [read.variable] : [])),
+      ),
+    ];
+    const vary = resolveVary(
+      props.report.vary,
+      getComparedValues(loaded, { features, variables }),
+      bucketAttributes(loaded, features),
+    );
+    return { ...props.report, vary };
+  }, [props.report, datafiles]);
+
+  if (error) return <EmptyState title="No datafiles to evaluate with" description={error} />;
+  if (!datafiles) return <p className="text-sm text-muted">Loading datafiles…</p>;
+
+  const people = peopleOf(report.person, report.vary);
+  const environments = [...datafiles.keys()];
+  const selected = report.columns || [];
+  // Rows are named by the attributes SELECT names, or else by the ones varied
+  const columns: ReportColumn[] = selected.some((column) => column.read.kind === "attribute")
+    ? selected
+    : [
+        ...report.vary.map((vary) => ({
+          read: { kind: "attribute" as const, attribute: vary.attribute },
+        })),
+        ...selected,
+      ];
+  const reads = columns.filter((column) => column.read.kind !== "attribute").length;
+  const evaluations = reads * people.length * environments.length;
+  if (evaluations > EVALUATION_LIMIT) {
+    return (
+      <EmptyState
+        title={`${evaluations.toLocaleString()} evaluations is more than this prototype runs at once`}
+        description="Narrow the report with fewer values, columns or environments."
+      />
+    );
+  }
+
+  const rows: PeopleRow[] = people.flatMap((person) =>
+    environments.map((environment) => ({
+      person,
+      environment,
+      cells: columns.map((column) =>
+        readCell(datafiles.get(environment)!, column.read, person.person),
+      ),
+    })),
+  );
+  const lenses = new Set(
+    rows.flatMap((row) =>
+      columns.flatMap((column) => {
+        const feature = featureOf(column.read);
+        return feature ? [lensOf(datafiles.get(row.environment)!, feature, row.person.person)] : [];
+      }),
+    ),
+  );
+
+  return (
+    <div className="space-y-3">
+      <Summary
+        noun="column"
+        count={evaluations}
+        entities={reads}
+        people={people.length}
+        environments={environments.length}
+        lenses={lenses}
+        markdown={() => peopleMarkdown(columns, rows, environments)}
+      />
+      <PeopleTable
+        columns={columns}
+        rows={rows}
+        people={people}
+        environments={environments}
+        matrix={report.as === "matrix"}
+        setKey={props.setKey}
+        onWhy={(title, cell) => setWhy({ title, cell })}
+      />
+      {why && (
+        <WhyPanel
+          title={why.title}
+          why={why.cell.why}
+          cell={why.cell}
+          onClose={() => setWhy(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ColumnHeading(props: { column: ReportColumn; setKey?: string }) {
+  const heading = columnHeading(props.column);
+  if (props.column.alias !== undefined || !heading.entity) return <>{heading.text}</>;
+  return (
+    <>
+      <Link
+        to={getEntityRoute(heading.entity.type, heading.entity.key, props.setKey)}
+        className="font-medium text-text hover:underline"
+      >
+        <EntityKey value={heading.entity.key} />
+      </Link>
+      <span className="ml-1.5 font-normal text-faint">{heading.detail}</span>
+    </>
+  );
+}
+
+const headingClass = (column: ReportColumn) =>
+  column.read.kind === "attribute" || column.alias !== undefined
+    ? thClass
+    : `${thBase} whitespace-nowrap`;
+
+/**
+ * A row per person, columns in SELECT's order. In a matrix with several environments, each read
+ * column splits into one per environment, otherwise an Environment column comes before the reads.
+ */
+function PeopleTable(props: {
+  columns: ReportColumn[];
+  rows: PeopleRow[];
+  people: ReportPerson[];
+  environments: Array<string | null>;
+  matrix: boolean;
+  setKey?: string;
+  onWhy: (title: string, cell: Cell) => void;
+}) {
+  const { columns, environments } = props;
+  const variations = variationsOf(props.rows);
+  const named = columns.some((column) => column.read.kind === "attribute");
+  const many = environments.length > 1;
+  const split = props.matrix && many;
+  const firstRead = columns.findIndex((column) => column.read.kind !== "attribute");
+  const byPerson = new Map(
+    props.rows.map((row) => [`${row.person.label}\u0000${row.environment}`, row]),
+  );
+  const sticky = "sticky left-0 bg-surface";
+
+  const attributeCell = (person: ReportPerson, column: ReportColumn, first: boolean) => {
+    const value =
+      column.read.kind === "attribute" ? formatValue(person.person[column.read.attribute]) : "";
+    return (
+      <td className={`${tdClass} ${first ? sticky : ""} font-mono text-xs`}>
+        {value || <span className="text-faint">—</span>}
+      </td>
+    );
+  };
+  const readCellView = (row: PeopleRow | undefined, index: number) => {
+    const cell = row?.cells[index];
+    return (
+      cell && (
+        <CellView
+          cell={cell}
+          variations={variations}
+          onClick={() =>
+            props.onWhy(
+              `${columnHeading(columns[index]).text} · ${row.person.label}${row.environment ? ` · ${row.environment}` : ""}`,
+              cell,
+            )
+          }
+        />
+      )
+    );
+  };
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr>
+            {!named && (
+              <th className={`${thClass} ${sticky}`} rowSpan={split ? 2 : 1}>
+                Person
+              </th>
+            )}
+            {columns.map((column, index) => (
+              <React.Fragment key={index}>
+                {!split && many && index === firstRead && <th className={thClass}>Environment</th>}
+                <th
+                  className={`${headingClass(column)} ${named && index === 0 ? sticky : ""}`}
+                  rowSpan={split && column.read.kind === "attribute" ? 2 : 1}
+                  colSpan={split && column.read.kind !== "attribute" ? environments.length : 1}
+                >
+                  <ColumnHeading column={column} setKey={props.setKey} />
+                </th>
+              </React.Fragment>
+            ))}
+          </tr>
+          {split && (
+            <tr>
+              {columns.flatMap((column, index) =>
+                column.read.kind === "attribute"
+                  ? []
+                  : environments.map((environment) => (
+                      <th
+                        key={`${index}:${environment}`}
+                        className={`${thBase} whitespace-nowrap font-medium`}
+                      >
+                        {environment}
+                      </th>
+                    )),
+              )}
+            </tr>
+          )}
+        </thead>
+        <tbody>
+          {split
+            ? props.people.map((person) => (
+                <tr key={person.label} className="hover:bg-elevated/60">
+                  {!named && (
+                    <td className={`${tdClass} ${sticky} font-mono text-xs`}>{person.label}</td>
+                  )}
+                  {columns.map((column, index) =>
+                    column.read.kind === "attribute" ? (
+                      <React.Fragment key={index}>
+                        {attributeCell(person, column, index === 0)}
+                      </React.Fragment>
+                    ) : (
+                      environments.map((environment) => (
+                        <td key={`${index}:${environment}`} className={tdClass}>
+                          {readCellView(byPerson.get(`${person.label}\u0000${environment}`), index)}
+                        </td>
+                      ))
+                    ),
+                  )}
+                </tr>
+              ))
+            : props.rows.map((row, rowIndex) => (
+                <tr key={rowIndex} className="hover:bg-elevated/60">
+                  {!named && (
+                    <td className={`${tdClass} ${sticky} font-mono text-xs`}>{row.person.label}</td>
+                  )}
+                  {columns.map((column, index) => (
+                    <React.Fragment key={index}>
+                      {many && index === firstRead && (
+                        <td className={`${tdClass} text-xs`}>{row.environment}</td>
+                      )}
+                      {column.read.kind === "attribute" ? (
+                        attributeCell(row.person, column, index === 0)
+                      ) : (
+                        <td className={tdClass}>{readCellView(row, index)}</td>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tr>
+              ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function peopleMarkdown(
+  columns: ReportColumn[],
+  rows: PeopleRow[],
+  environments: Array<string | null>,
+) {
+  const named = columns.some((column) => column.read.kind === "attribute");
+  const firstRead = columns.findIndex((column) => column.read.kind !== "attribute");
+  const many = environments.length > 1;
+  const line = (cells: string[]) => `| ${cells.join(" | ")} |`;
+  const shape = (person: string, environment: string, cells: string[]) => {
+    const all = [...cells];
+    if (many) all.splice(firstRead, 0, environment);
+    return named ? all : [person, ...all];
+  };
+  const header = shape(
+    "Person",
+    "Environment",
+    columns.map((column) => columnHeading(column).text),
+  );
+  return [
+    line(header),
+    line(header.map(() => "---")),
+    ...rows.map((row) =>
+      line(
+        shape(
+          row.person.label,
+          row.environment ?? "",
+          columns.map((column, index) =>
+            column.read.kind === "attribute"
+              ? formatValue(row.person.person[column.read.attribute])
+              : (row.cells[index]?.text ?? ""),
+          ),
+        ),
+      ),
+    ),
+  ].join("\n");
 }
 
 function evaluateCell(
@@ -599,21 +964,22 @@ function CellView(props: { cell: Cell; onClick: () => void; variations: string[]
   );
 }
 
-function variationsOf(rows: OutcomeRow[]) {
+function variationsOf(rows: Array<{ cells: Record<string, Cell> | Array<Cell | undefined> }>) {
   return [
     ...new Set(
       rows.flatMap(
         (row) =>
           Object.values(row.cells)
-            .map((cell) => cell.variation)
+            .map((cell) => cell?.variation)
             .filter(Boolean) as string[],
       ),
     ),
   ];
 }
 
-const thClass =
-  "border-b border-border px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-faint";
+/** A heading cell. Headings that show keys keep their case, the rest are small capitals. */
+const thBase = "border-b border-border px-3 py-2 text-left text-[11px] font-semibold text-faint";
+const thClass = `${thBase} uppercase tracking-wider`;
 const tdClass = "border-b border-border px-3 py-2 align-top";
 /** The first column holds keys, kept wide enough that they break only at dots */
 const keyClass = "min-w-[12rem]";
@@ -736,7 +1102,7 @@ function MatrixTable(props: {
             {props.entities.map((entity) => (
               <th
                 key={entity.key}
-                className={`${thClass} normal-case tracking-normal`}
+                className={`${thBase} whitespace-nowrap`}
                 colSpan={props.environments.length}
               >
                 <EntityLink report={props.report} entity={entity} setKey={props.setKey} />
@@ -750,7 +1116,7 @@ function MatrixTable(props: {
                 props.environments.map((environment) => (
                   <th
                     key={`${entity.key}:${environment}`}
-                    className={`${thClass} normal-case tracking-normal font-medium`}
+                    className={`${thBase} whitespace-nowrap font-medium`}
                   >
                     {environment}
                   </th>
