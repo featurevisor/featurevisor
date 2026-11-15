@@ -2,7 +2,7 @@ import type { Conditions } from "@featurevisor/types";
 
 import { compile } from "./compile.js";
 import { expandConditions } from "./expand.js";
-import { parse } from "./parser.js";
+import { parse, type ParsedComment } from "./parser.js";
 import { print, printValue, printWithNotes, sameBuilt } from "./print.js";
 import type {
   ExpressionLogicNode,
@@ -21,36 +21,19 @@ export interface ExpressionFormatOptions extends ExpressionOptions {
    */
   root?: boolean;
   /**
-   * Most items a condition keeps on one line in its list, such as `country in ['nl', 'de']`.
-   * A list with more is written one item a line. Defaults to 3.
+   * Most items a list keeps on its condition's line, as `country in ['nl', 'de']` does. A list
+   * with more is written one item a line. Defaults to 3.
    */
-  listItems?: number;
+  listItemsOnOneLine?: number;
   /**
    * The longest a condition's line may be with its list on it, counting the indent and the
-   * `and`, `or` or `not` before it. Past this, its list is written one item a line, however
+   * `and`, `or` or `not` before it. Past this, the list is written one item a line, however
    * few items it holds. Defaults to 80.
    */
-  width?: number;
+  listLineWidth?: number;
 }
 
 type ListValue = Extract<ExpressionValue, { type: "list" }>;
-
-/** Comment lines above one item, or above the closing bracket */
-interface CommentLines {
-  lines: string[];
-  /** The author left a blank line before them */
-  blank: boolean;
-}
-
-/** The comments inside a list, where the author wrote them */
-interface ListComments {
-  /** Ending the line of the opening bracket */
-  open?: string;
-  /** Lines above each item, then above the closing bracket */
-  above: CommentLines[];
-  /** Ending each item's line, after its comma */
-  beside: (string | undefined)[];
-}
 
 /** The list a condition compares with, as `country in [...]` does */
 function listOf(node: ExpressionNode): ListValue | undefined {
@@ -59,52 +42,52 @@ function listOf(node: ExpressionNode): ListValue | undefined {
   return value?.type === "list" ? value : undefined;
 }
 
+const BLANK_LINE = /\n[ \t]*\n/;
+
 /**
- * The comments in a list, read from the space between its brackets and items, where nothing
- * but commas, spaces and comments can be. Undefined for one it cannot place.
+ * A list one item a line, `opening` and its bracket on the first line. Each comment stays where
+ * it was written: ending the line of the bracket or item before it, or on a line of its own
+ * above the item or bracket after it, with a blank line before it where the author left one.
+ * Undefined when two comments end lines between the same two items, which share one line.
  */
-function readListComments(source: string, list: ListValue): ListComments | undefined {
-  const bounds = [
-    list.start + 1,
-    ...list.items.flatMap((item) => [item.start, item.end]),
-    list.end - 1,
-  ];
-  const comments: ListComments = { above: [], beside: [] };
-  for (let gap = 0; gap <= list.items.length; gap++) {
-    const [first, ...rest] = source.slice(bounds[2 * gap], bounds[2 * gap + 1]).split("\n");
-    // the first line goes on from the bracket or item before the gap
-    const beside = first.includes("#") ? first.slice(first.indexOf("#")).trimEnd() : undefined;
-    if (gap === 0) comments.open = beside;
-    else comments.beside[gap - 1] = beside;
-
-    const above: CommentLines = { lines: [], blank: false };
-    for (const line of rest) {
-      const text = line.trim();
-      if (text.startsWith("#")) above.lines.push(text);
-      else if (text === "" && above.lines.length === 0) above.blank = true;
-      // a comment after a comma written at the start of a line has nothing to sit beside
-      else if (text.includes("#")) return undefined;
+function listLines(
+  source: string,
+  list: ListValue,
+  items: string[],
+  comments: ParsedComment[],
+  opening: string,
+  pad: string,
+  inner: string,
+): string[] | undefined {
+  const lines = [`${opening}[`];
+  let next = 0;
+  /** The comments before `end`, in the gap that starts at `from` */
+  const place = (from: number, end: number): boolean => {
+    let previous = from;
+    let ownLines = 0;
+    while (next < comments.length && comments[next].start < end) {
+      const comment = comments[next++];
+      if (comment.ownLine) {
+        // a blank line the author left before a run of comment lines, but never right after `[`
+        const gap = source.slice(previous, comment.start);
+        if (ownLines === 0 && lines.length > 1 && BLANK_LINE.test(gap)) lines.push("");
+        lines.push(inner + comment.text);
+        ownLines++;
+      } else if (previous === from) lines[lines.length - 1] += ` ${comment.text}`;
+      else return false;
+      previous = comment.end;
     }
-    comments.above.push(above);
-  }
-  return comments;
-}
+    return true;
+  };
 
-interface Comment {
-  start: number;
-  text: string;
-}
-
-/** Whole line comments, as the parser reads them: lines starting with `#` after spaces. */
-function findComments(source: string): Comment[] {
-  const comments: Comment[] = [];
-  let offset = 0;
-  for (const line of source.split("\n")) {
-    const text = line.trim();
-    if (text.startsWith("#")) comments.push({ start: offset + line.indexOf("#"), text });
-    offset += line.length + 1;
+  let from = list.start + 1;
+  for (const [index, item] of list.items.entries()) {
+    if (!place(from, item.start)) return undefined;
+    lines.push(`${inner}${items[index]}${index < items.length - 1 ? "," : ""}`);
+    from = item.end;
   }
-  return comments;
+  if (!place(from, list.end)) return undefined;
+  return [...lines, `${pad}]`];
 }
 
 function outer(node: ExpressionNode): { start: number; end: number } {
@@ -124,41 +107,40 @@ function isGroup(node: ExpressionNode): node is ExpressionLogicNode {
 function layOut(
   source: string,
   ast: ExpressionNode,
+  comments: ParsedComment[],
   options: ExpressionFormatOptions,
 ): string | undefined {
-  const comments = findComments(source);
   const unit = " ".repeat(options.indent ?? 2);
   const lines: string[] = [];
   let next = 0;
 
   /** The comments between `from` and `start` above the line at `pad`, or false for one before `from` */
   const above = (from: number, start: number, pad: string, blankable: boolean): boolean => {
-    const before: Comment[] = [];
+    const before: ParsedComment[] = [];
     while (next < comments.length && comments[next].start < start) {
       if (comments[next].start < from) return false;
       before.push(comments[next++]);
     }
     const gapEnd = before.length ? before[0].start : start;
-    if (blankable && /\n[ \t]*\n/.test(source.slice(from, gapEnd))) lines.push("");
+    if (blankable && BLANK_LINE.test(source.slice(from, gapEnd))) lines.push("");
     lines.push(...before.map((comment) => pad + comment.text));
     return true;
   };
 
   /**
-   * One condition's lines, starting at `pad` after `lead`. A list stays on the condition's line
-   * when it has no comments, holds at most `listItems` items and the line fits `width`.
-   * Otherwise it takes one item a line, with each comment above or beside its item as written.
+   * One condition's lines, starting at `pad` after `lead`. Its list stays on the line with no
+   * comments and at most `listItemsOnOneLine` items, while the line fits `listLineWidth`.
+   * Otherwise the list takes one item a line.
    */
   const condition = (node: ExpressionNode, pad: string, lead: string): string[] | undefined => {
     const span = outer(node);
     const list = listOf(node);
-    // a comment inside a condition has a line of its own only inside its list
-    let commentLines = 0;
+    // a comment inside a condition has a place of its own only in its list
+    const inList: ParsedComment[] = [];
     while (next < comments.length && comments[next].start < span.end) {
-      const at = comments[next].start;
-      if (!list || at < list.start || at >= list.end) return undefined;
-      commentLines++;
-      next++;
+      const comment = comments[next++];
+      if (!list || comment.start < list.start || comment.start >= list.end) return undefined;
+      inList.push(comment);
     }
     const result = compile(source.slice(span.start, span.end), { ...options, root: false });
     if (result.errors.length || result.conditions === undefined) return undefined;
@@ -167,38 +149,19 @@ function layOut(
     const line = `${pad}${lead}${text}`;
     if (!list) return [line];
 
-    const leaf = result.conditions as unknown as { value?: unknown };
-    const values = Array.isArray(leaf.value) ? leaf.value.map(printValue) : [];
-    const listText = `[${values.join(", ")}]`;
-    // a comment with nowhere to sit leaves the expression as written
-    const notes = readListComments(source, list);
-    if (!notes) return undefined;
-    const placed = notes.above.reduce((sum, above) => sum + above.lines.length, 0);
-    if (placed !== commentLines) return undefined;
-    const commented = placed > 0 || notes.open !== undefined || notes.beside.some(Boolean);
-    if (values.some((value) => value === undefined) || !text.endsWith(listText)) {
-      return commented ? undefined : [line];
-    }
-    const fits = values.length <= (options.listItems ?? 3) && line.length <= (options.width ?? 80);
-    if (!commented && (fits || values.length === 0)) return [line];
-
-    const inner = pad + unit;
-    const written = [
-      `${pad}${lead}${text.slice(0, -listText.length)}[${notes.open ? ` ${notes.open}` : ""}`,
-    ];
-    const commentsAbove = (above: CommentLines, first: boolean) => {
-      if (above.blank && !first && above.lines.length > 0) written.push("");
-      written.push(...above.lines.map((comment) => inner + comment));
-    };
-    values.forEach((value, index) => {
-      commentsAbove(notes.above[index], index === 0);
-      const comma = index < values.length - 1 ? "," : "";
-      const beside = notes.beside[index];
-      written.push(`${inner}${value}${comma}${beside ? ` ${beside}` : ""}`);
-    });
-    commentsAbove(notes.above[values.length], values.length === 0);
-    written.push(`${pad}]`);
-    return written;
+    // the condition reads a list, so its leaf holds the list's values
+    const items = (result.conditions as { value: unknown[] }).value.map(
+      (value) => printValue(value)!,
+    );
+    const fits =
+      items.length <= (options.listItemsOnOneLine ?? 3) &&
+      (items.length === 0 || line.length <= (options.listLineWidth ?? 80));
+    if (fits && inList.length === 0) return [line];
+    // print writes the list last, after the subject and operator
+    const listText = `[${items.join(", ")}]`;
+    if (!text.endsWith(listText)) return undefined;
+    const opening = `${pad}${lead}${text.slice(0, -listText.length)}`;
+    return listLines(source, list, items, inList, opening, pad, pad + unit);
   };
 
   /** A group's operands, each starting a line at `depth` */
@@ -245,9 +208,9 @@ function layOut(
  * conditions go between its parentheses, indented a level. Whole line comments stay above the
  * condition below them, with any blank line the author wrote before them.
  *
- * A condition's list stays on its line with at most `listItems` items, 3 by default, while the
- * line fits `width`, 80 by default. Otherwise, or when the list holds comments, it is written one
- * item a line, each comment above or beside its item as written.
+ * A condition's list stays on its line with at most `listItemsOnOneLine` items, 3 by default,
+ * while the line fits `listLineWidth`, 80 by default. Otherwise, or when the list holds
+ * comments, it is written one item a line, each comment above or beside its item as written.
  *
  * Undefined when the expression should stay as written: it has an error, a comment sits
  * anywhere but above a condition or in a list, or the result would read back to anything but
@@ -258,12 +221,12 @@ export function formatExpression(
   options: ExpressionFormatOptions = {},
 ): string | undefined {
   const root = options.root ?? true;
-  const { ast, errors, comments } = parse(source, options);
+  const { ast, errors, comments = [] } = parse(source, options);
   if (!ast || errors.length) return undefined;
   const compiled = compile(source, { ...options, root });
   if (compiled.errors.length || compiled.conditions === undefined) return undefined;
 
-  const text = layOut(source, ast, options);
+  const text = layOut(source, ast, comments, options);
   if (text === undefined) return undefined;
 
   const read = compile(text, { ...options, root });
@@ -271,7 +234,8 @@ export function formatExpression(
     return undefined;
   }
   // every comment kept, in its order, as the tree check cannot tell
-  if (JSON.stringify(parse(text, options).comments) !== JSON.stringify(comments)) return undefined;
+  const texts = (read: ParsedComment[] = []) => JSON.stringify(read.map((comment) => comment.text));
+  if (texts(parse(text, options).comments) !== texts(comments)) return undefined;
   return text;
 }
 

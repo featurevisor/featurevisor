@@ -86,11 +86,21 @@ function outerEnd(node: ExpressionNode): number {
   return node.outerEnd ?? node.end;
 }
 
+/** A comment the parser read, for the formatter to put back where it was written */
+export interface ParsedComment {
+  /** From its `#` to the end of its line, without trailing spaces */
+  text: string;
+  start: number;
+  end: number;
+  /** On a line of its own, rather than ending a line inside a list */
+  ownLine: boolean;
+}
+
 class Parser {
   private pos = 0;
   readonly warnings: RawIssue[] = [];
-  /** Each comment skipped, by where it starts, so a second look at the same place adds none */
-  readonly comments = new Map<number, string>();
+  /** Each comment read, by where it starts, so a second look at the same place adds none */
+  readonly comments = new Map<number, ParsedComment>();
   private readonly maxDepth: number;
   /** The last leaf parsed, to explain what may have been meant after it. */
   private lastLeaf?: ExpressionLeafNode;
@@ -153,10 +163,12 @@ class Parser {
         this.pos++;
         continue;
       }
-      if (character === "#" && (inList || this.startOfLine(this.pos))) {
+      const ownLine = character === "#" && this.startOfLine(this.pos);
+      if (character === "#" && (inList || ownLine)) {
         const start = this.pos;
         while (!this.atEnd() && this.peek() !== "\n") this.pos++;
-        this.comments.set(start, this.source.slice(start, this.pos).trimEnd());
+        const text = this.source.slice(start, this.pos).trimEnd();
+        this.comments.set(start, { text, start, end: this.pos, ownLine });
         continue;
       }
       return;
@@ -1370,7 +1382,10 @@ class Parser {
   }
 }
 
-export function parse(source: string, options: ExpressionOptions = {}): ExpressionParseResult {
+export function parse(
+  source: string,
+  options: ExpressionOptions = {},
+): ExpressionParseResult & { comments?: ParsedComment[] } {
   const resolve = createPositionResolver(source);
   const toError = (issue: RawIssue, severity: "error" | "warning"): ExpressionDiagnostic => ({
     code: issue.code,
@@ -1407,9 +1422,7 @@ export function parse(source: string, options: ExpressionOptions = {}): Expressi
       ast,
       errors: [],
       warnings: parser.warnings.map((issue) => toError(issue, "warning")),
-      comments: [...parser.comments]
-        .sort(([left], [right]) => left - right)
-        .map(([, text]) => text),
+      comments: [...parser.comments.values()].sort((left, right) => left.start - right.start),
     };
   } catch (error) {
     if (!(error instanceof ParseFailure)) throw error;

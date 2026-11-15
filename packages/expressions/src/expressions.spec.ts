@@ -364,7 +364,7 @@ describe("comments and positions", () => {
       "]",
     ].join("\n");
     expect(tree(source)).toEqual({ attribute: "country", operator: "in", value: ["nl", "#be"] });
-    expect(parse(source).comments).toEqual([
+    expect(parse(source).comments?.map((comment) => comment.text)).toEqual([
       "# where we sell",
       "# Benelux",
       "# the Netherlands",

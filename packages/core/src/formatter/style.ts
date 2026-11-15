@@ -70,16 +70,16 @@ export const HOUSE_STYLE = {
     /** End an expression over several lines with a line break, which YAML writes as `|` */
     finalNewline: true,
     /**
-     * Most items a condition keeps on one line in its list, such as `country in ['nl', 'de']`.
-     * A list with more, or with comments, is written one item a line.
+     * Most items a list keeps on its condition's line, as `country in ['nl', 'de']` does. A list
+     * with more, or with comments, is written one item a line.
      */
-    listItems: 3,
+    listItemsOnOneLine: 3,
     /**
      * The longest a condition's line may be with its list on it, counting the indent and the
-     * `and`, `or` or `not` before it, but not the file's own indent. Past this, its list is
+     * `and`, `or` or `not` before it, but not the file's own indent. Past this, the list is
      * written one item a line, however few items it holds.
      */
-    width: 80,
+    listLineWidth: 80,
   },
 
   /**
@@ -279,6 +279,6 @@ export const HOUSE_STYLE = {
 /** How every writer lays expressions out: fmt, convert and promote alike */
 export const EXPRESSION_LAYOUT = {
   indent: HOUSE_STYLE.indent,
-  listItems: HOUSE_STYLE.expressions.listItems,
-  width: HOUSE_STYLE.expressions.width,
+  listItemsOnOneLine: HOUSE_STYLE.expressions.listItemsOnOneLine,
+  listLineWidth: HOUSE_STYLE.expressions.listLineWidth,
 };

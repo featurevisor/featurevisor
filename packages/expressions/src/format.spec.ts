@@ -108,8 +108,12 @@ describe("formatExpression", () => {
     );
   });
 
-  it("leaves a list as written when one of its comments has no item to sit beside", () => {
-    expect(formatExpression("plan in [\n'pro'\n, # after a comma alone\n'team']")).toBeUndefined();
+  it("puts a comment after a comma beside the item before it, and leaves two as written", () => {
+    expect(formatExpression("plan in [\n'pro'\n, # after a comma alone\n'team']")).toBe(
+      ["plan in [", "  'pro', # after a comma alone", "  'team'", "]"].join("\n"),
+    );
+    // two comments ending lines between the same two items would share one line
+    expect(formatExpression("plan in [\n'pro' # one\n, # two\n'team']")).toBeUndefined();
   });
 
   it("puts a group's conditions between its parentheses, indented a level", () => {
