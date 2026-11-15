@@ -11,7 +11,6 @@ import {
   formatValue,
   getComparedValues,
   globalVariableCell,
-  lensOf,
   rolloutOf,
   variationCell,
   type Cell,
@@ -33,6 +32,7 @@ import {
   type ReportColumn,
   type ReportPerson,
   type ReportVary,
+  type ReportWhere,
   type Subject,
 } from "./report";
 
@@ -172,6 +172,24 @@ function resolveVary(vary: ReportVary[], compared: Map<string, unknown[]>, bucke
   return resolved;
 }
 
+/**
+ * WHERE's parts that compare properties alone: the whole of it, or those an `and` joins. They
+ * pick rows before anyone is evaluated, so VARY finds values only in the rows a report keeps.
+ */
+function propertyParts(where: ReportWhere): unknown[] {
+  const properties = (conditions: unknown): boolean => {
+    if (typeof conditions === "string") return conditions === "*";
+    if (Array.isArray(conditions)) return conditions.every(properties);
+    if (!conditions || typeof conditions !== "object") return true;
+    const leaf = conditions as Record<string, unknown>;
+    if (typeof leaf.attribute === "string")
+      return !where.reads[leaf.attribute] && propertyOf(leaf.attribute) !== undefined;
+    return ["and", "or", "not"].every((key) => !(key in leaf) || properties(leaf[key]));
+  };
+  if (properties(where.conditions)) return [where.conditions];
+  return Array.isArray(where.conditions) ? where.conditions.filter(properties) : [];
+}
+
 const EMPTY: ResultValue = { text: "", raw: undefined };
 
 function propertyValue(raw: unknown, type: PropertyType): ResultValue {
@@ -212,22 +230,20 @@ export function runReport(input: RunInput): Result {
   const evaluating = report.person !== undefined;
   const perPerson = report.subjects.length === 0;
 
-  // Rows' entities, filtered first when WHERE compares their properties alone
+  // Rows' entities, filtered first by what WHERE compares of their properties alone
   let entities: Array<RowPlace["entity"]> = perPerson
     ? [undefined]
     : report.subjects.flatMap((subject) =>
         (index.entities[subject] || []).map((summary) => ({ subject, summary })),
       );
   const where = report.where;
-  const whereEarly =
-    where &&
-    !perPerson &&
-    Object.keys(where.reads).length === 0 &&
-    where.names.every((name) => propertyOf(name) !== undefined);
-  if (where && whereEarly) {
+  const early = where && !perPerson ? propertyParts(where) : [];
+  // When every part compares properties, nothing is left to check once people are evaluated
+  const whereEarly = Boolean(where) && early.length === 1 && early[0] === where!.conditions;
+  if (early.length) {
     entities = entities.filter((entity) =>
       allConditionsAreMatched(
-        where.conditions as never,
+        early as never,
         rowContext(entity!.summary, entity!.subject, clock) as never,
       ),
     );
@@ -251,10 +267,12 @@ export function runReport(input: RunInput): Result {
       entities.flatMap((entity) => (entity?.subject === subject ? [entity.summary.key] : []));
     const features = [...new Set([...literal("feature"), ...own("feature")])];
     const variables = [...new Set([...literal("variable"), ...own("variable")])];
+    // Features they require bucket rollouts too, so their bucketing makes no rows either
+    const walked = new Set<string>();
     vary = resolveVary(
       report.vary,
-      getComparedValues(loaded, { features, variables }),
-      bucketAttributes(loaded, features),
+      getComparedValues(loaded, { features, variables }, walked),
+      bucketAttributes(loaded, [...walked]),
     );
   }
   const people: Array<ReportPerson | undefined> = evaluating
@@ -376,7 +394,7 @@ export function runReport(input: RunInput): Result {
           : read.kind === "variable"
             ? featureVariableCell(datafile, key, read.variable, who, read.path)
             : globalVariableCell(datafile, key, who, read.path);
-    lenses.add(global ? "exact" : lensOf(datafile, key, who));
+    lenses.add(cell.why.lens);
     if (expr.kind === "read") return { text: cell.text, raw: cell.value, cell };
     if (expr.detail === "rollout") {
       const share = rolloutOf(cell);

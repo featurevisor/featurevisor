@@ -5,7 +5,14 @@ import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-r
 
 import { useCatalog } from "../context/CatalogContext";
 import { TestReportSummary } from "../components/testReport";
-import { decodeRouteSegment, entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
+import {
+  decodeRouteSegment,
+  entityLabels,
+  entityPathToType,
+  getBasePath,
+  getEntityRoute,
+} from "../entityTypes";
+import { searchToFql } from "../query/fromSearch";
 import type { CatalogEntityType, CatalogIndex, EntityPath, EntitySummary } from "../types";
 import {
   AuthorAvatar,
@@ -976,6 +983,10 @@ function SearchControls(props: {
   );
 }
 
+/** The lists FQL reads, which open as a report with their search as WHERE */
+type QuerySubject = "feature" | "variable" | "segment" | "attribute";
+const QUERY_TYPES = new Set<CatalogEntityType>(["feature", "variable", "segment", "attribute"]);
+
 export function ListPage() {
   const { manifest } = useCatalog();
   const { entityPath, setKey } = useParams();
@@ -1153,6 +1164,22 @@ export function ListPage() {
           {filtered.length !== index.entities[type].length && visible.length < filtered.length
             ? ` (${filtered.length} matches)`
             : ""}
+          {QUERY_TYPES.has(type) && (
+            <>
+              {" · "}
+              <Link
+                to={`${getBasePath(setKey && decodeRouteSegment(setKey))}/query?${new URLSearchParams(
+                  {
+                    q: searchToFql(type as QuerySubject, query),
+                  },
+                )}`}
+                className="font-medium text-primary hover:underline"
+                title="This list as an FQL report, its search written as conditions"
+              >
+                Open in Query
+              </Link>
+            </>
+          )}
         </p>
 
         {hasHiddenEntities && (

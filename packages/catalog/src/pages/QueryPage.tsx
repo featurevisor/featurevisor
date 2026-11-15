@@ -2,7 +2,7 @@ import * as React from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { DatafileContent } from "@featurevisor/types";
 
-import { fetchDatafile } from "../api";
+import { fetchDatafile, fetchEntityDetail } from "../api";
 import { useCatalog } from "../context/CatalogContext";
 import { decodeRouteSegment, getEntityRoute } from "../entityTypes";
 import { colourExpression } from "../components/expressionTokens";
@@ -48,6 +48,53 @@ import {
 
 /** `?view=full` opens the full view */
 const FULL_VIEW_PARAM = "view";
+
+/** Scenarios FOR offers as people, at most this many, read once the index loads */
+const SCENARIO_PEOPLE = 40;
+
+type ScenarioPerson = NonNullable<CompletionSource["scenarios"]>[number];
+
+/** Test scenarios' people: each scenario's context, and its place in the rollout */
+function useScenarioPeople(index: CatalogIndex | undefined, setKey: string | undefined) {
+  const [people, setPeople] = React.useState<ScenarioPerson[]>([]);
+  React.useEffect(() => {
+    const keys = (index?.entities.test || [])
+      .filter((entity) => entity.testKind === "scenario")
+      .slice(0, SCENARIO_PEOPLE)
+      .map((entity) => entity.key);
+    if (!keys.length) return;
+    let current = true;
+    Promise.all(
+      keys.map((key) =>
+        fetchEntityDetail("test", key, setKey)
+          .then((detail): ScenarioPerson | undefined => {
+            const test = detail.entity as {
+              assertions?: Array<{
+                context?: Record<string, unknown>;
+                at?: number;
+                description?: string;
+              }>;
+            };
+            const first = test.assertions?.find((assertion) => assertion.context);
+            if (!first?.context) return undefined;
+            return {
+              key,
+              description: first.description,
+              context: first.context,
+              at: typeof first.at === "number" ? first.at : undefined,
+            };
+          })
+          .catch(() => undefined),
+      ),
+    ).then((found) => {
+      if (current) setPeople(found.filter((item): item is ScenarioPerson => Boolean(item)));
+    });
+    return () => {
+      current = false;
+    };
+  }, [index, setKey]);
+  return people;
+}
 
 export function QueryPage() {
   const { setKey: encodedSetKey } = useParams();
@@ -116,6 +163,7 @@ export function QueryPage() {
     [index, environments],
   );
   const parsed = React.useMemo(() => parseFql(ran, project), [ran, project]);
+  const scenarios = useScenarioPeople(index, setKey);
   // Names the editor completes
   const completions = React.useMemo<CompletionSource>(() => {
     const entities = index?.entities;
@@ -138,8 +186,9 @@ export function QueryPage() {
       })),
       tags: [...new Set(definitions.flatMap((entity) => entity.tags || []))].sort(),
       owners: [...new Set(definitions.flatMap((entity) => entity.owners || []))].sort(),
+      scenarios,
     };
-  }, [index, environments]);
+  }, [index, environments, scenarios]);
   // Examples name this project's own features, teams and attributes
   const exampleGroups = React.useMemo(() => {
     const entities = index?.entities;
@@ -698,7 +747,7 @@ function Summary(props: { result: Result }) {
         : "Audience: a share of everyone matching each row, as rollouts give it"
       : lenses.has("person")
         ? "One person: the exact answer for each row's person"
-        : "Exact: global variables have no rollouts";
+        : "Exact: everyone matching each row gets the same value";
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
@@ -962,14 +1011,17 @@ function CellView(props: { cell: Cell; onClick: () => void; variations: string[]
         {cell.text || "—"}
       </span>
     );
+  // A value read at one place in a rollout says so, and Why says how to read one person's
+  const varies = cell.why.depends?.length;
   return (
     <button
       type="button"
       onClick={props.onClick}
       className="cursor-pointer rounded text-left outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      title="Why?"
+      title={varies ? `Varies with ${cell.why.depends!.join(", ")}. Why?` : "Why?"}
     >
       {body}
+      {varies ? <span className="ml-1.5 text-[11px] font-medium text-faint">varies</span> : null}
     </button>
   );
 }
@@ -982,12 +1034,14 @@ function WhyPanel(props: { title: string; cell: Cell; why: Why; onClose: () => v
     [
       "Lens",
       why.lens === "audience"
-        ? `Everyone matching this row. Without ${why.bucketBy || "what it buckets by"}, which this feature buckets by, a rollout reads as the share it enables.`
+        ? why.depends?.length && !why.bucketBy
+          ? "Everyone matching this row, who fall in different places of the rollouts it depends on."
+          : `Everyone matching this row. Without ${why.bucketBy || "what it buckets by"}, which this feature buckets by, a rollout reads as the share it enables.`
         : why.lens === "person"
           ? why.at !== undefined
             ? `One person, placed at ${why.at}% of the rollout.`
             : `One person, bucketed by their ${why.bucketBy || "own attributes"}.`
-          : "Exact. Global variable overrides have no rollouts.",
+          : "Exact. Everyone matching this row gets this value.",
     ],
     ["Reason", <code key="reason">{why.reason}</code>],
   ];
@@ -1036,6 +1090,24 @@ function WhyPanel(props: { title: string; cell: Cell; why: Why; onClose: () => v
   }
   if (why.overrideKey)
     facts.push(["Matched override", <code key="override">{why.overrideKey}</code>]);
+  if (why.depends?.length) {
+    const features = why.depends;
+    facts.push([
+      "Varies with",
+      <span key="depends">
+        {features.map((feature, at) => (
+          <React.Fragment key={feature}>
+            {at > 0 ? ", " : null}
+            <code>{feature}</code>
+          </React.Fragment>
+        ))}
+        . This is the value at one place in{" "}
+        {features.length === 1 ? "its rollout" : "their rollouts"}. Write <code>AT</code>, such as{" "}
+        <code>AT 75</code>, or a person with what{" "}
+        {features.length === 1 ? "it buckets" : "they bucket"} by, to read one person.
+      </span>,
+    ]);
+  }
 
   return (
     <div

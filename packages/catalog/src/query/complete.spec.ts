@@ -12,6 +12,14 @@ const project: CompletionSource = {
   attributes: [{ key: "country" }, { key: "device" }, { key: "userId" }],
   tags: ["web", "checkout"],
   owners: ["growth-team"],
+  scenarios: [
+    {
+      key: "scenarios/writer",
+      description: "A writer",
+      context: { userId: "writer", permissions: ["read", "admin"], "plan.tier": "it's paid" },
+      at: 50,
+    },
+  ],
 };
 
 /** The completion at `|` */
@@ -42,16 +50,17 @@ describe("completeFql", () => {
       "FROM",
       "WHERE",
       "FOR",
+      "AT",
       "VARY",
       "ENVIRONMENT",
       "SELECT",
       "GROUP BY",
-      "SORT BY",
+      "ORDER BY",
       "LIMIT",
       "AS TABLE",
       "AS MATRIX",
     ]);
-    expect(choose("so|", "SORT BY")).toBe("SORT BY ");
+    expect(choose("or|", "ORDER BY")).toBe("ORDER BY ");
     expect(labels("FROM features\nSELECT key\n|")).not.toContain("SELECT");
     expect(labels("FROM |")).toEqual(["features", "variables", "segments", "attributes"]);
     expect(labels("FROM features, |")).toEqual(["variables", "segments", "attributes"]);
@@ -100,15 +109,15 @@ describe("completeFql", () => {
     const heading = complete("SELECT feature('foo') |")!.items[0];
     expect(heading).toMatchObject({ label: "AS '…'", insert: "AS ''", cursor: 4 });
     expect(labels("SELECT feature('foo') AS |")).toEqual(["TABLE", "MATRIX"]);
-    expect(labels("FROM features\nSORT BY owner |").slice(0, 2)).toEqual(["DESC", "ASC"]);
-    expect(labels("FROM features\nGROUP BY owner\nSORT BY c|")).toContain("count()");
+    expect(labels("FROM features\nORDER BY owner |").slice(0, 2)).toEqual(["DESC", "ASC"]);
+    expect(labels("FROM features\nGROUP BY owner\nORDER BY c|")).toContain("count()");
   });
 
   it("offers attributes, environments, people and limits where clauses take them", () => {
     expect(labels("VARY |")).toEqual(["*", "country", "device", "userId"]);
     expect(labels("VARY country, d|")).toEqual(["device"]);
     expect(labels("ENVIRONMENT staging, |")).toEqual(["*", "staging", "production"]);
-    expect(labels("FOR |")).toEqual(["{}", "{ … }"]);
+    expect(labels("FOR |")).toEqual(["{}", "{ … }", "scenarios/writer"]);
     expect(choose("FOR { country: 'nl', dev|", "device")).toBe("FOR { country: 'nl', device: ");
     expect(labels("FROM features\nLIMIT |")).toEqual(["10", "20", "50", "100"]);
   });
@@ -149,8 +158,19 @@ describe("completeFql", () => {
       "FROM features\nWHERE tags includes 'web'",
     );
     expect(labels("FROM features\nWHERE archived == true |")).toEqual(
-      expect.arrayContaining(["and", "or", "SELECT", "SORT BY"]),
+      expect.arrayContaining(["and", "or", "SELECT", "ORDER BY"]),
     );
+  });
+
+  it("offers test scenarios as people, with their place in the rollout", () => {
+    expect(labels("FROM features\nFOR |")).toEqual(["{}", "{ … }", "scenarios/writer"]);
+    expect(choose("FROM features\nFOR |", "scenarios/writer")).toBe(
+      "FROM features\nFOR { userId: 'writer', permissions: ['read', 'admin'], 'plan.tier': 'it\\'s paid' }\nAT 50",
+    );
+    expect(choose("FROM features\nAT 20\nFOR |", "scenarios/writer")).toBe(
+      "FROM features\nAT 20\nFOR { userId: 'writer', permissions: ['read', 'admin'], 'plan.tier': 'it\\'s paid' }",
+    );
+    expect(labels("FROM features\nAT |")).toEqual(["0", "25", "50", "75", "100"]);
   });
 
   it("offers nothing where it has no names to give", () => {

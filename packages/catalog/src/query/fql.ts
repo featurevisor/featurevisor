@@ -2,6 +2,7 @@ import { compile } from "@featurevisor/expressions";
 import type { Condition } from "@featurevisor/types";
 
 import { ANY_OTHER, type Person } from "./engine";
+import { filterToCondition } from "./fromSearch";
 import {
   DETAILS,
   PROPERTIES,
@@ -28,10 +29,11 @@ import {
  *   FROM features
  *   WHERE tags includes 'checkout' and rollout(feature(key)) < 100
  *   FOR { country: 'nl' }
+ *   AT 20
  *   VARY country, device ['mobile', OTHER]
  *   ENVIRONMENT staging, production
  *   SELECT key, owner, feature(key), feature(key).variation, feature(key).label
- *   SORT BY owner, key DESC
+ *   ORDER BY owner, key DESC
  *   LIMIT 20
  *   AS MATRIX
  *
@@ -41,18 +43,21 @@ import {
  * a second argument. `rollout()`, `rule()`, `reason()` and `override()` read what an evaluation
  * says beside its answer, and `count()` counts the rows GROUP BY gathers.
  *
- * Without FROM, each row is a person, one per combination FOR and VARY give.
+ * AT places everyone in every rollout at a position from 0 to 100, as test specs write `at`, and
+ * several positions make a row each. Without FROM, each row is a person, one per combination FOR,
+ * AT and VARY give.
  */
 
 export const CLAUSES = [
   "FROM",
   "WHERE",
   "FOR",
+  "AT",
   "VARY",
   "ENVIRONMENT",
   "SELECT",
   "GROUP",
-  "SORT",
+  "ORDER",
   "LIMIT",
   "AS",
 ] as const;
@@ -534,6 +539,21 @@ function parseWhere(text: string, offset: number): { where: ReportWhere; reads: 
   let substituted = "";
   let copied = 0;
   const tokens = lexFql(text);
+  // A list's filter, as `tag:web`, is a condition here
+  for (const [index, token] of tokens.entries()) {
+    const colon = tokens[index + 1];
+    if (token.type !== "word" || colon?.text !== ":") continue;
+    if (colon.start !== token.start + token.text.length) continue;
+    const value = /^[^\s()]+/.exec(text.slice(colon.start + 1))?.[0];
+    if (!value) continue;
+    const condition = filterToCondition(token.text, value.replace(/^"|"$/g, ""));
+    throw new Failure(
+      condition
+        ? `${token.text}:${value} is a list's filter. Here it is a condition: ${condition}.`
+        : `${token.text}:${value} is a list's filter, and FQL has no property for it.`,
+      offset + token.start,
+    );
+  }
   for (const [index, token] of tokens.entries()) {
     if (token.start < copied || token.type !== "word" || !CALLS.includes(token.text)) continue;
     if (tokens[index + 1]?.text !== "(") continue;
@@ -604,7 +624,20 @@ export function parseFql(
   const errors: FqlError[] = [];
   const fail = (message: string, offset: number) =>
     errors.push({ message, ...position(source, offset) });
-  const clauses = clausesOf(source, lexFql(source));
+  const tokens = lexFql(source);
+  const clauses = clausesOf(source, tokens);
+
+  // SORT BY is a natural guess at ORDER BY, so it says what to write
+  const sort = tokens.find(
+    (token, index) =>
+      token.type === "word" &&
+      token.text === "SORT" &&
+      tokens.slice(index + 1).find((next) => next.type !== "space")?.text === "BY",
+  );
+  if (sort) {
+    fail("Rows are ordered with ORDER BY, such as ORDER BY key.", sort.start);
+    return { errors };
+  }
 
   const firstText = source.replace(/^(\s|#[^\n]*)*/, "");
   const firstOffset = source.length - firstText.length;
@@ -631,6 +664,7 @@ export function parseFql(
   let sorted: Array<{ item: Located & { alias?: string }; descending: boolean }> = [];
   let whereReads: Located[] = [];
   let person: Person | undefined;
+  let place: number | undefined;
   let varied = false;
   let matrixOffset: number | undefined;
 
@@ -661,7 +695,30 @@ export function parseFql(
         const value = literals.value();
         if (!value || typeof value !== "object" || Array.isArray(value))
           throw new Failure("FOR takes a person, such as { country: 'nl' }.", clause.textStart);
+        if ("at" in value) {
+          const at = (value as Person).at;
+          throw new Failure(
+            `A place in the rollout is a clause of its own, as test specs write it: AT ${typeof at === "number" ? at : 50}.`,
+            clause.textStart + Math.max(0, clause.text.search(/\bat\b/)),
+          );
+        }
         person = value as Person;
+      } else if (clause.keyword === "AT") {
+        const positions = literals.items(() => {
+          const offset = literals.here();
+          const value = literals.value();
+          if (typeof value !== "number" || value < 0 || value > 100)
+            throw new Failure(
+              "AT takes a place in the rollout from 0 to 100, such as AT 50.",
+              offset,
+            );
+          return value;
+        });
+        if (positions.length === 1) place = positions[0];
+        else {
+          varied = true;
+          report.vary.push({ attribute: "at", values: [...new Set(positions)] });
+        }
       } else if (clause.keyword === "VARY") {
         varied = true;
         while (!literals.done()) {
@@ -669,7 +726,13 @@ export function parseFql(
             literals.expect("*");
             report.vary.push({ attribute: "*", values: [] });
           } else {
+            const offset = literals.here();
             const attribute = literals.word();
+            if (attribute === "at")
+              throw new Failure(
+                "Places in the rollout are a clause of their own, a row each: AT 10, 50, 90.",
+                offset,
+              );
             const values = literals.peek() === "[" ? literals.list(true) : [];
             report.vary.push({ attribute, values } satisfies ReportVary);
           }
@@ -696,7 +759,7 @@ export function parseFql(
       } else if (clause.keyword === "GROUP") {
         literals.keyword("BY");
         grouped = literals.items(() => literals.expr());
-      } else if (clause.keyword === "SORT") {
+      } else if (clause.keyword === "ORDER") {
         literals.keyword("BY");
         sorted = literals.items(() => {
           // A heading in quotes names a SELECT column
@@ -737,6 +800,10 @@ export function parseFql(
     }
   }
   if (errors.length) return { errors };
+  // One AT position joins the person, and several make a row each, after VARY's own
+  if (place !== undefined) person = { ...(person || {}), at: place };
+  const positions = report.vary.findIndex((vary) => vary.attribute === "at");
+  if (positions >= 0) report.vary.push(...report.vary.splice(positions, 1));
 
   const people = report.subjects.length === 0;
   // Reading what someone gets needs someone: FOR's person, or everyone when it says none
@@ -758,7 +825,7 @@ export function parseFql(
   const isAttribute = (name: string) => (attributes ? attributes.includes(name) : evaluating);
 
   /** Checks an expression's names against the rows and the project */
-  const check = (item: Located, place: "SELECT" | "GROUP BY" | "SORT" | "WHERE") => {
+  const check = (item: Located, place: "SELECT" | "GROUP BY" | "ORDER BY" | "WHERE") => {
     const { expr } = item;
     if (expr.kind === "count") {
       if (place === "GROUP BY")
@@ -917,7 +984,7 @@ export function parseFql(
     }
   }
 
-  // SORT names a column by its heading, or by an expression of its own
+  // ORDER BY names a column by its heading, or by an expression of its own
   for (const { item, descending } of sorted) {
     const byHeading = report.columns.find(
       (column) =>
@@ -927,7 +994,7 @@ export function parseFql(
     );
     if (item.alias !== undefined && !byHeading) {
       fail(
-        `No column headed ${item.alias}. SORT names a heading AS gives, or an expression.`,
+        `No column headed ${item.alias}. ORDER BY names a heading AS gives, or an expression.`,
         item.offset,
       );
       continue;
@@ -938,12 +1005,12 @@ export function parseFql(
     }
     if (report.group.length || counting) {
       if (item.expr.kind !== "count" && !groupTexts.has(exprText(item.expr)))
-        fail(`SORT a grouped report by what GROUP BY names, or by count().`, item.offset);
+        fail(`ORDER a grouped report by what GROUP BY names, or by count().`, item.offset);
     } else if (item.expr.kind === "count") {
-      fail("count() counts groups, so it sorts a report with GROUP BY.", item.offset);
+      fail("count() counts groups, so it orders a report with GROUP BY.", item.offset);
       continue;
     } else {
-      check(item, "SORT");
+      check(item, "ORDER BY");
     }
     report.sort.push({ column: { expr: item.expr }, descending });
   }

@@ -22,7 +22,7 @@ describe("parseFql", () => {
         "VARY device ['mobile', 'desktop', OTHER], country",
         "ENVIRONMENT *",
         "SELECT key, feature(key), feature(key).variation AS 'Variation'",
-        "SORT BY owner DESC, key",
+        "ORDER BY owner DESC, key",
         "LIMIT 10",
         "AS MATRIX",
       ].join("\n"),
@@ -53,6 +53,47 @@ describe("parseFql", () => {
       as: "matrix",
     });
     expect(report?.where).toBeDefined();
+  });
+
+  it("places everyone in every rollout with AT, a row each for several places", () => {
+    expect(parseFql("FROM features\nFOR { country: 'de' }\nAT 20", project).report).toMatchObject({
+      person: { country: "de", at: 20 },
+      vary: [],
+    });
+    expect(
+      parseFql("AT 10, 90\nVARY country ['nl']\nSELECT feature('foo')", project).report?.vary,
+    ).toEqual([
+      { attribute: "country", values: ["nl"] },
+      { attribute: "at", values: [10, 90] },
+    ]);
+    expect(messages("FROM features\nAT 120")).toEqual([
+      "AT takes a place in the rollout from 0 to 100, such as AT 50.",
+    ]);
+    expect(messages("FROM features\nFOR { country: 'de', at: 20 }")).toEqual([
+      "A place in the rollout is a clause of its own, as test specs write it: AT 20.",
+    ]);
+    expect(messages("VARY at [10, 90]\nSELECT feature('foo')")).toEqual([
+      "Places in the rollout are a clause of their own, a row each: AT 10, 50, 90.",
+    ]);
+  });
+
+  it("orders with ORDER BY, and says so for SORT BY", () => {
+    expect(parseFql("FROM features\nORDER BY key DESC", project).report?.sort).toEqual([
+      { column: { expr: { kind: "property", name: "key" } }, descending: true },
+    ]);
+    expect(messages("FROM features\nSORT BY key")).toEqual([
+      "Rows are ordered with ORDER BY, such as ORDER BY key.",
+    ]);
+  });
+
+  it("writes a list's filter in WHERE as the condition it means", () => {
+    expect(messages("FROM features\nWHERE tag:web")).toEqual([
+      "tag:web is a list's filter. Here it is a condition: tags includes 'web'.",
+    ]);
+    expect(messages("FROM features\nWHERE uses:netherlands")).toEqual([
+      "uses:netherlands is a list's filter, and FQL has no property for it.",
+    ]);
+    expect(messages("FROM features\nWHERE description == 'a:b'")).toEqual([]);
   });
 
   it("lists definitions without anyone to evaluate for", () => {
@@ -146,8 +187,8 @@ describe("parseFql", () => {
     expect(messages("FROM features\nSELECT key, count()\nGROUP BY owner")).toEqual([
       "key is not in GROUP BY. SELECT what GROUP BY names, and count().",
     ]);
-    expect(messages("FROM features\nSELECT key\nSORT BY count()")).toEqual([
-      "count() counts groups, so it sorts a report with GROUP BY.",
+    expect(messages("FROM features\nSELECT key\nORDER BY count()")).toEqual([
+      "count() counts groups, so it orders a report with GROUP BY.",
     ]);
     expect(messages("FROM features\nSELECT key\nAS MATRIX")[0]).toMatch(/needs a read/);
     expect(messages("FROM features\nLIMIT 0")[0]).toMatch(/LIMIT takes/);
@@ -290,7 +331,7 @@ describe("examplesFor", () => {
 
 describe("lexFql", () => {
   it("keeps every character, so highlighting can colour the source as it is", () => {
-    const source = "FROM features\n# a comment\nWHERE tags includes 'web'\nFOR { at: 50 }";
+    const source = "FROM features\n# a comment\nWHERE tags includes 'web'\nAT 50";
     expect(
       lexFql(source)
         .map((token) => token.text)

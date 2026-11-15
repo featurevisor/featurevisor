@@ -50,12 +50,20 @@ export interface Why {
    * The answer's share is its own rule's share of theirs.
    */
   requires?: Array<{ feature: string; variation?: string; percentage: number }>;
+  /**
+   * Features a variable's value changes with, by where someone falls in their rollouts, when the
+   * person cannot be placed in them. The value shown is one place's. AT, or what those features
+   * bucket by, reads one person's.
+   */
+  depends?: string[];
 }
 
 interface Evaluator {
   sdk: Featurevisor;
   /** Where the next evaluation sits in the rollout, or undefined for the person's own bucket */
   position?: number;
+  /** Where single features sit instead, to read a required feature's rollout apart */
+  positions?: Record<string, number>;
 }
 
 const evaluators = new WeakMap<DatafileContent, Evaluator>();
@@ -71,7 +79,8 @@ function evaluatorOf(datafile: DatafileContent): Evaluator {
       modules: [
         {
           name: "catalog-query",
-          bucketValue: ({ bucketValue }) => created.position ?? bucketValue,
+          bucketValue: ({ featureKey, bucketValue }) =>
+            created.positions?.[featureKey] ?? created.position ?? bucketValue,
         },
       ],
     });
@@ -88,6 +97,20 @@ function at<T>(evaluator: Evaluator, position: number | undefined, evaluate: () 
     return evaluate();
   } finally {
     evaluator.position = previous;
+  }
+}
+
+function apart<T>(
+  evaluator: Evaluator,
+  positions: Record<string, number> | undefined,
+  evaluate: () => T,
+): T {
+  const previous = evaluator.positions;
+  evaluator.positions = positions;
+  try {
+    return evaluate();
+  } finally {
+    evaluator.positions = previous;
   }
 }
 
@@ -175,9 +198,8 @@ export function rolloutOf(cell: Cell): number {
  */
 const AUDIENCE_POSITION = 0;
 
-/** The features and variations a feature's conditions require, from its own and its rule's */
-function requiredOf(datafile: DatafileContent, featureKey: string, ruleKey?: string) {
-  const feature = datafile.features?.[featureKey];
+/** The features and variations conditions require, through segments, each once */
+function requiredIn(datafile: DatafileContent, conditionsList: unknown[]) {
   const found = new Map<string, { feature: string; variation?: string }>();
   const seen = new Set<string>();
   const walk = (conditions: unknown): void => {
@@ -203,11 +225,69 @@ function requiredOf(datafile: DatafileContent, featureKey: string, ruleKey?: str
     }
     for (const key of ["and", "or", "not"]) walk(leaf[key]);
   };
-  if (!feature) return [];
-  walk(feature.conditions);
-  const rule = (feature.traffic || []).find((traffic) => traffic.key === ruleKey);
-  if (rule) walk(rule.conditions ?? rule.segments);
+  conditionsList.forEach(walk);
   return [...found.values()];
+}
+
+/** The features and variations a feature's conditions require, from its own and its rule's */
+function requiredOf(datafile: DatafileContent, featureKey: string, ruleKey?: string) {
+  const feature = datafile.features?.[featureKey];
+  if (!feature) return [];
+  const rule = (feature.traffic || []).find((traffic) => traffic.key === ruleKey);
+  return requiredIn(datafile, [feature.conditions, rule && (rule.conditions ?? rule.segments)]);
+}
+
+/** A place inside each stretch of a feature's rollout its rules and allocations cut */
+function placesIn(datafile: DatafileContent, featureKey: string): number[] {
+  const cuts = new Set([0, MAX_BUCKETED_NUMBER]);
+  for (const traffic of datafile.features?.[featureKey]?.traffic || []) {
+    cuts.add(traffic.percentage);
+    for (const { range } of traffic.allocation || []) range.forEach((cut) => cuts.add(cut));
+  }
+  const sorted = [...cuts]
+    .filter((cut) => cut >= 0 && cut <= MAX_BUCKETED_NUMBER)
+    .sort((a, b) => a - b);
+  return sorted.slice(1).map((end, index) => Math.floor((sorted[index] + end) / 2));
+}
+
+/**
+ * The required features a value changes with, for a person who cannot be placed in their
+ * rollouts: each read at a place in every stretch of its rollout, the rest left as they were.
+ */
+function dependsOn(
+  datafile: DatafileContent,
+  person: Person,
+  required: string[],
+  value: unknown,
+  read: (positions: Record<string, number>) => unknown,
+): string[] {
+  if (placement(person).position !== undefined) return [];
+  const same = (other: unknown) => JSON.stringify(other) === JSON.stringify(value);
+  return [...new Set(required)].filter(
+    (key) =>
+      datafile.features?.[key] &&
+      lensOf(datafile, key, person) === "audience" &&
+      placesIn(datafile, key).some((place) => !same(read({ [key]: place }))),
+  );
+}
+
+/** Features a feature variable's overrides require, in its variations and its rules */
+function variableRequires(datafile: DatafileContent, featureKey: string, variableKey: string) {
+  const feature = datafile.features?.[featureKey];
+  const conditions: unknown[] = [];
+  for (const variation of feature?.variations || []) {
+    for (const override of variation.variableOverrides?.[variableKey] || [])
+      conditions.push(override.conditions ?? override.segments);
+  }
+  for (const traffic of feature?.traffic || []) {
+    const overrides = (traffic as { variableOverrides?: Record<string, unknown[]> })
+      .variableOverrides?.[variableKey];
+    for (const override of (overrides || []) as Array<Record<string, unknown>>)
+      conditions.push(override.conditions ?? override.segments);
+  }
+  return requiredIn(datafile, conditions)
+    .map((item) => item.feature)
+    .filter((key) => key !== featureKey);
 }
 
 /**
@@ -355,6 +435,7 @@ export function featureVariableCell(
 
   const valueAt = (place: number | undefined) =>
     at(evaluator, place, () => evaluator.sdk.evaluateVariable(featureKey, variableKey, context));
+  const required = variableRequires(datafile, featureKey, variableKey);
   // Read the value where each variation is allocated, so every variation's value shows
   const split = variation.why.split;
   if (split && variation.why.lens === "audience") {
@@ -362,11 +443,16 @@ export function featureVariableCell(
     const allocation =
       at(evaluator, AUDIENCE_POSITION, () => evaluator.sdk.evaluateVariation(featureKey, context))
         .traffic?.allocation || [];
+    const depends = new Set<string>();
     const values = split.map((share) => {
       const range = allocation.find((item) => item.variation === share.variation)?.range;
       const middle = range ? Math.floor((range[0] + range[1]) / 2) : undefined;
       const evaluated = valueAt(middle);
       const raw = valueAtPath(evaluated.variableValue, path);
+      // The variation stays where it is while a feature its overrides require moves
+      dependsOn(datafile, person, required, raw, (positions) =>
+        valueAtPath(apart(evaluator, positions, () => valueAt(middle)).variableValue, path),
+      ).forEach((key) => depends.add(key));
       return { ...share, raw, value: formatValue(raw), overrideKey: evaluated.variableOverrideKey };
     });
     // An override every variation's value came from is the answer's own
@@ -377,6 +463,7 @@ export function featureVariableCell(
       ...(overrides.size === 1 && values[0].overrideKey
         ? { overrideKey: values[0].overrideKey }
         : {}),
+      ...(depends.size ? { depends: [...depends] } : {}),
     };
     if (new Set(values.map((share) => share.value)).size === 1) {
       return { text: values[0].value, tone: "value", value: values[0].raw, why };
@@ -390,19 +477,26 @@ export function featureVariableCell(
   }
   const evaluation = valueAt(position);
   const value = valueAtPath(evaluation.variableValue, path);
+  const depends = dependsOn(datafile, person, required, value, (positions) =>
+    valueAtPath(apart(evaluator, positions, () => valueAt(position)).variableValue, path),
+  );
   return {
     text: formatValue(value),
     tone: "value",
     value,
     why: {
       ...variation.why,
+      ...(depends.length ? { lens: "audience" as const, depends } : {}),
       reason: evaluation.reason,
       overrideKey: evaluation.variableOverrideKey,
     },
   };
 }
 
-/** A global variable's value. Overrides have no rollouts, so the answer is exact for everyone. */
+/**
+ * A global variable's value. Overrides have no rollouts, so the answer is exact for everyone,
+ * unless an override requires a feature the person cannot be placed in.
+ */
 export function globalVariableCell(
   datafile: DatafileContent,
   variableKey: string,
@@ -411,15 +505,36 @@ export function globalVariableCell(
 ): Cell {
   const evaluator = evaluatorOf(datafile);
   const { context, position } = placement(person);
-  const evaluation = at(evaluator, position, () =>
-    evaluator.sdk.evaluateVariable(variableKey, context),
-  );
+  const read = () =>
+    at(evaluator, position, () => evaluator.sdk.evaluateVariable(variableKey, context));
+  const evaluation = read();
   const value = valueAtPath(evaluation.variableValue, path);
+  // Overrides that require a feature change with where someone falls in its rollout
+  const variable = datafile.variables?.[variableKey] as
+    | { conditions?: unknown; overrides?: Array<{ conditions?: unknown }> }
+    | undefined;
+  const required = requiredIn(datafile, [
+    variable?.conditions,
+    ...(variable?.overrides || []).map((override) => override.conditions),
+  ]).map((item) => item.feature);
+  const depends = dependsOn(datafile, person, required, value, (positions) =>
+    valueAtPath(apart(evaluator, positions, read).variableValue, path),
+  );
+  // Placed in every rollout it follows, by AT or by what they bucket by, it is one person's
+  const followed = [...new Set(required)].filter((key) => datafile.features?.[key]);
+  const placed =
+    followed.length > 0 && followed.every((key) => lensOf(datafile, key, person) === "person");
   return {
     text: formatValue(value),
     tone: "value",
     value,
-    why: { lens: "exact", reason: evaluation.reason, overrideKey: evaluation.variableOverrideKey },
+    why: {
+      lens: depends.length ? "audience" : placed ? "person" : "exact",
+      reason: evaluation.reason,
+      overrideKey: evaluation.variableOverrideKey,
+      ...(placed && typeof person.at === "number" ? { at: person.at } : {}),
+      ...(depends.length ? { depends } : {}),
+    },
   };
 }
 
@@ -441,6 +556,8 @@ const EXACT_OPERATORS = ["equals", "notEquals", "in", "notIn"];
 export function getComparedValues(
   datafiles: DatafileContent[],
   only?: { features?: string[]; variables?: string[] },
+  /** Collects every feature walked: those named, and those their conditions require */
+  walked?: Set<string>,
 ): Map<string, unknown[]> {
   const found = new Map<string, Map<string, unknown>>();
   const add = (attribute: string, value: unknown) => {
@@ -457,6 +574,7 @@ export function getComparedValues(
       const feature = datafile.features?.[key];
       if (!feature || visitedFeatures.has(key)) return;
       visitedFeatures.add(key);
+      walked?.add(key);
       walk(feature.conditions);
       (feature.traffic || []).forEach((traffic) => walk(traffic.conditions ?? traffic.segments));
       (feature.force || []).forEach((force) => walk(force.conditions ?? force.segments));

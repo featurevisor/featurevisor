@@ -17,6 +17,13 @@ export interface CompletionSource {
   attributes: Array<{ key: string; description?: string }>;
   tags: string[];
   owners: string[];
+  /** Test scenarios, each a person to read for, as their spec writes it */
+  scenarios?: Array<{
+    key: string;
+    description?: string;
+    context: Record<string, unknown>;
+    at?: number;
+  }>;
 }
 
 export type CompletionKind =
@@ -63,6 +70,10 @@ const CLAUSE_ITEMS: Array<{ clause: string; item: CompletionItem }> = [
     item: { label: "FOR", insert: "FOR ", detail: "who it is for", kind: "keyword" },
   },
   {
+    clause: "AT",
+    item: { label: "AT", insert: "AT ", detail: "a place in every rollout", kind: "keyword" },
+  },
+  {
     clause: "VARY",
     item: { label: "VARY", insert: "VARY ", detail: "a row per value", kind: "keyword" },
   },
@@ -89,8 +100,8 @@ const CLAUSE_ITEMS: Array<{ clause: string; item: CompletionItem }> = [
     },
   },
   {
-    clause: "SORT",
-    item: { label: "SORT BY", insert: "SORT BY ", detail: "order rows", kind: "keyword" },
+    clause: "ORDER",
+    item: { label: "ORDER BY", insert: "ORDER BY ", detail: "order rows", kind: "keyword" },
   },
   {
     clause: "LIMIT",
@@ -158,6 +169,26 @@ const PROPERTY_WORDS: Record<string, string[]> = {
   deadlineStatus: ["overdue", "today", "upcoming", "later", "done"],
   type: ["boolean", "string", "integer", "double", "array", "object", "json", "semver", "date"],
 };
+
+/** A value as FQL writes it: text in single quotes, keys bare where they can be */
+export function fqlValue(value: unknown): string {
+  if (typeof value === "string") return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+  if (Array.isArray(value)) return `[${value.map(fqlValue).join(", ")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).filter(
+      ([, item]) => item !== undefined,
+    );
+    if (!entries.length) return "{}";
+    return `{ ${entries
+      .map(
+        ([key, item]) =>
+          `${/^[A-Za-z_][\w-]*$/.test(key) ? key : fqlValue(key)}: ${fqlValue(item)}`,
+      )
+      .join(", ")} }`;
+  }
+  if (value === undefined) return "null";
+  return String(value);
+}
 
 const significant = (token: FqlToken) => !["space", "newline", "comment"].includes(token.type);
 
@@ -548,10 +579,10 @@ export function completeFql(
       );
     return result(clauseKeywords());
   }
-  if (clause === "SELECT" || clause === "GROUP" || clause === "SORT") {
-    if (listStart("SELECT", "GROUP", "SORT", "BY")) {
+  if (clause === "SELECT" || clause === "GROUP" || clause === "ORDER") {
+    if (listStart("SELECT", "GROUP", "ORDER", "BY")) {
       const count =
-        clause === "SELECT" || (clause === "SORT" && grouped)
+        clause === "SELECT" || (clause === "ORDER" && grouped)
           ? [
               {
                 label: "count()",
@@ -566,7 +597,7 @@ export function completeFql(
     const after: CompletionItem[] =
       clause === "SELECT"
         ? [{ label: "AS '…'", insert: "AS ''", cursor: 4, detail: "a heading", kind: "keyword" }]
-        : clause === "SORT"
+        : clause === "ORDER"
           ? [
               {
                 label: "DESC",
@@ -620,7 +651,28 @@ export function completeFql(
           kind: "value",
           chain: true,
         },
+        // A test scenario's person, and its place in the rollout when it has one
+        ...(project.scenarios || []).map((scenario) => ({
+          label: scenario.key,
+          insert: `${fqlValue(scenario.context)}${
+            scenario.at !== undefined && !used.has("AT") ? `\nAT ${scenario.at}` : ""
+          }`,
+          detail: scenario.description || "test scenario",
+          kind: "value" as const,
+        })),
       ]);
+    return result(clauseKeywords());
+  }
+  if (clause === "AT") {
+    if (listStart("AT"))
+      return result(
+        ["0", "25", "50", "75", "100"].map((value) => ({
+          label: value,
+          insert: value,
+          detail: "a place from 0 to 100",
+          kind: "value" as const,
+        })),
+      );
     return result(clauseKeywords());
   }
   if (clause === "LIMIT") {

@@ -149,14 +149,14 @@ function run(query: string) {
 
 describe("runReport, definitions", () => {
   it("lists properties, bucketBy among them, sorted naturally with blanks last", () => {
-    expect(run("FROM features\nSELECT key, owner, bucketBy\nSORT BY owner, key DESC").rows).toEqual(
-      [
-        "pricing | growth-team | userId",
-        "legacy | growth-team | userId",
-        "checkout | growth-team | userId",
-        "search | platform-team | deviceId",
-      ],
-    );
+    expect(
+      run("FROM features\nSELECT key, owner, bucketBy\nORDER BY owner, key DESC").rows,
+    ).toEqual([
+      "pricing | growth-team | userId",
+      "legacy | growth-team | userId",
+      "checkout | growth-team | userId",
+      "search | platform-team | deviceId",
+    ]);
   });
 
   it("leads with the key when SELECT leaves it out, and reads metadata", () => {
@@ -186,10 +186,10 @@ describe("runReport, definitions", () => {
   it("knows deadlines, overdue first, and when things changed", () => {
     expect(
       run(
-        "FROM features\nWHERE deadline exists\nSELECT deadlineStatus, deadlineType\nSORT BY deadlineStatus",
+        "FROM features\nWHERE deadline exists\nSELECT deadlineStatus, deadlineType\nORDER BY deadlineStatus",
       ).rows,
     ).toEqual(["checkout | overdue | remove", "legacy | later | review"]);
-    expect(run("FROM features\nSELECT updatedBy\nSORT BY updated DESC\nLIMIT 1").rows).toEqual([
+    expect(run("FROM features\nSELECT updatedBy\nORDER BY updated DESC\nLIMIT 1").rows).toEqual([
       "search | Bo",
     ]);
   });
@@ -240,7 +240,7 @@ describe("runReport, what people get", () => {
 
   it("sorts a flag by how much of its audience it is on for", () => {
     expect(
-      run("FROM features\nENVIRONMENT production\nSELECT feature(key)\nSORT BY feature(key) DESC")
+      run("FROM features\nENVIRONMENT production\nSELECT feature(key)\nORDER BY feature(key) DESC")
         .rows,
     ).toEqual(["search | On", "pricing | On", "checkout | 50%", "legacy | Off"]);
   });
@@ -277,7 +277,7 @@ describe("runReport, what people get", () => {
   it("varies a rollout position, and keeps numbers and true or false as written", () => {
     expect(
       run(
-        "VARY at [10, 90]\nFOR { country: 'de' }\nENVIRONMENT production\nSELECT at, feature('checkout')",
+        "AT 10, 90\nFOR { country: 'de' }\nENVIRONMENT production\nSELECT at, feature('checkout')",
       ),
     ).toMatchObject({ rows: ["10 | On", "90 | Off"] });
     const compared = getComparedValues([
@@ -300,6 +300,57 @@ describe("runReport, what people get", () => {
     ]);
     expect(compared.get("loggedIn")).toEqual([true]);
     expect(compared.get("seats")).toEqual([10, 50]);
+  });
+
+  it("picks rows by their properties before VARY finds values", () => {
+    // checkout compares country, search compares nothing, so only search's own rows remain
+    expect(
+      run(
+        "FROM features\nWHERE key == 'search' and country != 'de'\nVARY country\nSELECT feature(key)",
+      ).rows,
+    ).toEqual(["search | (any other) | On"]);
+  });
+
+  it("leaves out of VARY * what the features a report requires bucket by", () => {
+    const required = datafile({
+      pricing: {
+        ...pricing,
+        force: [
+          {
+            conditions: JSON.stringify([
+              { attribute: "userId", operator: "equals", value: "qa-user-1" },
+            ]),
+            variation: "treatment",
+          },
+        ],
+      },
+    });
+    const supportEmail = required.variables!.supportEmail as unknown as {
+      overrides: unknown[];
+    };
+    supportEmail.overrides.push({
+      key: "treated",
+      value: "vip@example.com",
+      conditions: JSON.stringify([{ feature: "pricing", variation: "treatment" }]),
+    });
+    const { report } = parseFql("FROM variables\nVARY *\nSELECT variable(key)", project);
+    const result = runReport({
+      report: report!,
+      index,
+      datafiles: new Map([
+        ["staging", required],
+        ["production", required],
+      ]),
+      hasEnvironments: true,
+      clock,
+    });
+    expect(result.columns.map((column) => column.heading.text)).toEqual([
+      "key",
+      "country",
+      "value",
+    ]);
+    // An audience falls on both sides of pricing's split, which the value says it varies with
+    expect(result.lenses.has("audience")).toBe(true);
   });
 
   it("makes a row per person, filtered by what they get", () => {

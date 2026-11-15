@@ -65,7 +65,7 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
         {
           title: "Features and their owners",
           about: "Every feature with its owner, tags and what it buckets by",
-          query: lines("FROM features", "SELECT key, owner, tags, bucketBy", "SORT BY owner, key"),
+          query: lines("FROM features", "SELECT key, owner, tags, bucketBy", "ORDER BY owner, key"),
         },
         ...optional(
           owner && {
@@ -75,7 +75,7 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
               "FROM features, variables, segments",
               `WHERE owners includes ${quote(owner)}`,
               "SELECT kind, key, description",
-              "SORT BY kind, key",
+              "ORDER BY kind, key",
             ),
           },
         ),
@@ -116,7 +116,7 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
             "FROM features, variables",
             "WHERE deadlineStatus in ['overdue', 'today', 'upcoming', 'later']",
             "SELECT kind, key, owner, deadlineType, deadline, deadlineStatus",
-            "SORT BY deadlineStatus, deadline",
+            "ORDER BY deadlineStatus, deadline",
           ),
         },
         {
@@ -135,7 +135,7 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
           query: lines(
             "FROM features, variables, segments",
             "SELECT kind, key, updatedBy, updated",
-            "SORT BY updated DESC",
+            "ORDER BY updated DESC",
             "LIMIT 10",
           ),
         },
@@ -162,7 +162,7 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
             "WHERE rollout(feature(key)) > 0 and rollout(feature(key)) < 100",
             "ENVIRONMENT production",
             "SELECT key, owner, rollout(feature(key)) AS 'Rollout'",
-            "SORT BY 'Rollout' DESC",
+            "ORDER BY 'Rollout' DESC",
           ),
         },
         {
@@ -267,6 +267,18 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
           ),
         },
         ...optional(
+          (experiment || feature) && {
+            title: "Places in a rollout",
+            about: "What someone at each place gets, as test specs write at",
+            query: lines(
+              "AT 10, 50, 90",
+              `SELECT feature(${quote((experiment || feature)!.key)})${
+                experiment ? `, feature(${quote(experiment.key)}).variation` : ""
+              }`,
+            ),
+          },
+        ),
+        ...optional(
           attribute &&
             (feature || experiment || variable) && {
               title: "Columns from anywhere",
@@ -312,5 +324,5 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
 export const FIRST_QUERY = lines(
   "FROM features",
   "SELECT key, owner, tags, bucketBy",
-  "SORT BY owner, key",
+  "ORDER BY owner, key",
 );

@@ -1,6 +1,6 @@
 import type { DatafileContent } from "@featurevisor/types";
 
-import { featureVariableCell, flagCell, variationCell } from "./engine";
+import { featureVariableCell, flagCell, globalVariableCell, variationCell } from "./engine";
 
 const everyone = (percentage: number, allocation?: unknown[]) => [
   {
@@ -36,8 +36,40 @@ const datafile = {
         { variation: "treatment", range: [1000, 2000] },
       ]),
     },
+    // Its variations split evenly, and an override requires chat, which is half on
+    button: {
+      bucketBy: "userId",
+      variations: [
+        { value: "control", weight: 50 },
+        { value: "treatment", weight: 50 },
+      ],
+      variablesSchema: { max: { type: "integer", defaultValue: 5 } },
+      traffic: [
+        {
+          ...everyone(100, [
+            { variation: "control", range: [0, 50000] },
+            { variation: "treatment", range: [50000, 100000] },
+          ])[0],
+          variableOverrides: {
+            max: [{ key: "chatting", conditions: JSON.stringify([{ feature: "chat" }]), value: 8 }],
+          },
+        },
+      ],
+    },
   },
-  variables: {},
+  variables: {
+    supportEmail: {
+      type: "string",
+      defaultValue: "help@example.com",
+      overrides: [
+        {
+          key: "treated",
+          value: "vip@example.com",
+          conditions: JSON.stringify([{ feature: "trial", variation: "treatment" }]),
+        },
+      ],
+    },
+  },
 } as unknown as DatafileContent;
 
 describe("the audience lens", () => {
@@ -94,6 +126,23 @@ describe("the audience lens", () => {
       tone: "partial",
       why: { percentage: 50, requires: [{ feature: "chat", percentage: 50 }] },
     });
+  });
+
+  it("says when a variable's value changes with where someone falls in a required rollout", () => {
+    expect(globalVariableCell(datafile, "supportEmail", {}).why).toMatchObject({
+      lens: "audience",
+      depends: ["trial"],
+    });
+    expect(featureVariableCell(datafile, "button", "max", {}).why.depends).toEqual(["chat"]);
+    // One place in every rollout, or a person bucketed in it, is one exact answer
+    expect(globalVariableCell(datafile, "supportEmail", { at: 1.5 })).toMatchObject({
+      text: "vip@example.com",
+      why: { lens: "person", at: 1.5 },
+    });
+    expect(globalVariableCell(datafile, "supportEmail", { at: 50 }).text).toBe("help@example.com");
+    expect(globalVariableCell(datafile, "supportEmail", { userId: "user-1" }).why.depends).toBe(
+      undefined,
+    );
   });
 
   it("gives one person their own answer, at their own bucket", () => {
