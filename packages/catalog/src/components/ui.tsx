@@ -549,6 +549,7 @@ function Sidebar(props: { setKey?: string }) {
         ]
       : []),
     { to: `${basePath}/history`, label: "History", end: false },
+    { to: `${basePath}/query`, label: "Query", end: false },
   ];
 
   return (
@@ -635,6 +636,10 @@ export async function getSetSwitchPath(pathname: string, nextSetKey: string) {
 
   if (pathname.match(/^\/sets\/[^/]+\/deadlines$/)) {
     return `/sets/${encodedSetKey}/deadlines`;
+  }
+
+  if (pathname.match(/^\/sets\/[^/]+\/query$/)) {
+    return `/sets/${encodedSetKey}/query`;
   }
 
   const detailMatch = pathname.match(/^\/sets\/[^/]+\/([^/]+)\/([^/]+)(\/.*)?$/);

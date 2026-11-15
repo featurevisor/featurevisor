@@ -6,6 +6,8 @@ import type {
   HistoryPage,
 } from "./types";
 import { encodeDataPath, getDataBasePath } from "./entityTypes";
+import { getDatafileName } from "./queryData";
+import type { DatafileContent } from "@featurevisor/types";
 import { decodeCatalogIndex } from "./indexCodec";
 import { getCatalogBasePath } from "./basePath";
 import {
@@ -233,6 +235,17 @@ export function peekEntityDetail(type: CatalogEntityType, key: string, setKey?: 
 /** Warm the cache, for example when a link is hovered, ignoring failures. */
 export function prefetchEntityDetail(type: CatalogEntityType, key: string, setKey?: string) {
   fetchEntityDetail(type, key, setKey).catch(() => undefined);
+}
+
+/** The whole project's datafile for an environment, or null without environments, for Query */
+export function fetchDatafile(environment: string | null, setKey?: string) {
+  const url = getDataUrl(`${getDataBasePath(setKey)}/${getDatafileName(environment)}`);
+  if (storage) {
+    const resolution = resolveData(url);
+    if (!resolution) return Promise.reject(new CatalogNotFoundError(url));
+    return cachedJson<DatafileContent>(resolution.blockURL);
+  }
+  return cachedJson<DatafileContent>(url);
 }
 
 export function fetchHistoryPage(path: string, page: number) {

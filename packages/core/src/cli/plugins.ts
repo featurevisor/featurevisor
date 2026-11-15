@@ -22,6 +22,7 @@ import { convertPlugin } from "../convert";
 import { getProjectSetExecutions } from "../sets";
 import { getTestInputFingerprint, getTestInputStatePaths } from "../tester/provenance";
 import {
+  getCatalogDatafiles,
   getCatalogTargetMemberships,
   reloadCatalogProject,
   resolveCatalogOverrideValue,
@@ -35,6 +36,7 @@ const catalogRuntime = {
   getTestInputStatePaths,
   getProjectSetExecutions,
   getCatalogTargetMemberships,
+  getCatalogDatafiles,
   reloadCatalogProject,
   resolveOverrideValue: resolveCatalogOverrideValue,
 };

@@ -1,10 +1,10 @@
 import * as path from "path";
 import { gzipSync } from "zlib";
 
-import type { Target } from "@featurevisor/types";
+import type { DatafileContent, Target } from "@featurevisor/types";
 
 import { buildTargetDatafile } from "./builder/buildProject";
-import { resolveVariableOverrideValue } from "./builder/buildDatafile";
+import { buildDatafile, resolveVariableOverrideValue } from "./builder/buildDatafile";
 import { convertDatafileToSchemaV2, SCHEMA_V2 } from "./builder/schemaV2";
 import { CONFIG_MODULE_NAME, getProjectConfig, type ProjectConfig } from "./config";
 import { Datasource } from "./datasource";
@@ -102,6 +102,33 @@ export async function getCatalogTargetMemberships(
   }
 
   return memberships;
+}
+
+/**
+ * The whole project's datafile for each environment, as `featurevisor evaluate` builds it without
+ * a Target, for the Catalog to evaluate features and global variables with the real SDK. Built
+ * from the saved allocation state, which this never writes.
+ */
+export async function getCatalogDatafiles(
+  projectConfig: ProjectConfig,
+  datasource: Datasource,
+): Promise<Array<{ environment: string | null; datafile: DatafileContent }>> {
+  const environments: Array<string | false> = Array.isArray(projectConfig.environments)
+    ? projectConfig.environments
+    : [false];
+  const datafiles: Array<{ environment: string | null; datafile: DatafileContent }> = [];
+  for (const environment of environments) {
+    datafiles.push({
+      environment: environment === false ? null : environment,
+      datafile: await buildDatafile(
+        projectConfig,
+        datasource,
+        { revision: "catalog", environment },
+        await datasource.readState(environment),
+      ),
+    });
+  }
+  return datafiles;
 }
 
 export async function reloadCatalogProject(rootDirectoryPath: string) {

@@ -45,6 +45,7 @@ import {
   groupAuthoredReferences,
   type AuthoredReference,
 } from "../dependencyReferences";
+import { getDatafileName } from "../queryData";
 import { encodeCatalogIndex } from "../indexCodec";
 import {
   encodeDeadline,
@@ -107,6 +108,11 @@ export interface CatalogRuntime {
   ) => Promise<{ projectConfig: any; datasource: any }>;
   /** Apply one authored global override to a value, using the builder's own semantics. */
   resolveOverrideValue?: (variable: any, override: any, baseValue: any) => any;
+  /** The whole project's datafile per environment, which the Query page evaluates with. */
+  getCatalogDatafiles?: (
+    projectConfig: any,
+    datasource: any,
+  ) => Promise<Array<{ environment: string | null; datafile: unknown }>>;
 }
 
 export interface CatalogTargetMembership {
@@ -2641,6 +2647,19 @@ async function buildSetCatalog(
     path.join(outputDirectoryPath, "index.json"),
     context.compactStorage ? encodeCatalogIndex(index) : index,
   );
+
+  // Datafiles for the Query page, built by Core, each its own content addressed document
+  if (context.runtime.getCatalogDatafiles) {
+    const datafilesStartedAt = context.progress.step("Writing datafiles");
+    const datafiles = await context.runtime.getCatalogDatafiles(projectConfig, datasource);
+    for (const { environment, datafile } of datafiles) {
+      await context.writer.write(
+        path.join(outputDirectoryPath, getDatafileName(environment)),
+        datafile,
+      );
+    }
+    context.progress.done(datafilesStartedAt, `(${pluralize(datafiles.length, "datafile")})`);
+  }
   context.progress.done(setStartedAt);
 
   return index;
