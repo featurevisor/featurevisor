@@ -6,7 +6,6 @@ import type { DatafileContent } from "@featurevisor/types";
 import { fetchDatafile, fetchEntityDetail } from "../api";
 import { useCatalog } from "../context/CatalogContext";
 import { decodeRouteSegment, getEntityRoute } from "../entityTypes";
-import { colourExpression } from "../components/expressionTokens";
 import {
   ExpandIcon,
   FullViewDialog,
@@ -28,16 +27,11 @@ import {
   type CompletionSource,
 } from "../query/complete";
 import { FIRST_QUERY, examplesFor, type ExampleGroup, type ExampleSource } from "../query/examples";
-import {
-  CALLS,
-  clauseStarts,
-  lexFql,
-  parseFql,
-  type FqlError,
-  type FqlProject,
-} from "../query/fql";
+import { parseFql, type FqlError, type FqlProject } from "../query/fql";
 import { queryHash, queryOf, searchWithoutQuery } from "../query/link";
 import { evaluates, type Report } from "../query/report";
+import { QueryCheatSheet } from "./QueryCheatSheet";
+import { highlight } from "./queryHighlight";
 import {
   EVALUATION_LIMIT,
   datafileEnvironments,
@@ -113,6 +107,9 @@ export function QueryPage() {
   const written = queryOf(location) ?? FIRST_QUERY;
   const [draft, setDraft] = React.useState(written);
   const [ran, setRan] = React.useState(written);
+  // The cheat sheet, and what to give focus back to once it closes
+  const [helping, setHelping] = React.useState(false);
+  const helpOpener = React.useRef<HTMLElement | null>(null);
   useDocumentTitle("Query", setKey);
 
   // A link or Back changes the URL, which the editor then shows. The URL also echoes what the
@@ -269,6 +266,24 @@ export function QueryPage() {
     run(query);
   };
   const examples = <ExamplesMenu groups={exampleGroups} onChoose={choose} />;
+  const closeHelp = () => {
+    setHelping(false);
+    requestAnimationFrame(() => helpOpener.current?.focus());
+  };
+  const help = (
+    <button
+      type="button"
+      onClick={(event) => {
+        helpOpener.current = event.currentTarget;
+        setHelping(true);
+      }}
+      aria-label="Open the FQL cheat sheet"
+      title="Cheat sheet"
+      className={`${TOOL_BUTTON_CLASS} text-xs font-semibold`}
+    >
+      ?
+    </button>
+  );
 
   return (
     <div className="pb-8">
@@ -279,16 +294,19 @@ export function QueryPage() {
       <div className="space-y-4 px-6">
         <div className="flex items-center justify-between gap-3">
           {examples}
-          <button
-            ref={expandRef}
-            type="button"
-            onClick={open}
-            aria-label="Open the query in a full view"
-            title="Full view"
-            className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-muted shadow-sm outline-none transition-colors hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary [&>svg]:h-3 [&>svg]:w-3"
-          >
-            <ExpandIcon />
-          </button>
+          <div className="flex items-center gap-2">
+            {help}
+            <button
+              ref={expandRef}
+              type="button"
+              onClick={open}
+              aria-label="Open the query in a full view"
+              title="Full view"
+              className={`${TOOL_BUTTON_CLASS} [&>svg]:h-3 [&>svg]:w-3`}
+            >
+              <ExpandIcon />
+            </button>
+          </div>
         </div>
         {!expanded && workspace}
       </div>
@@ -300,16 +318,31 @@ export function QueryPage() {
           onClose={close}
         >
           <div className="h-full space-y-4 overflow-auto p-4">
-            {examples}
+            <div className="flex items-center justify-between gap-3">
+              {examples}
+              {help}
+            </div>
             {workspace}
           </div>
         </FullViewDialog>
+      )}
+      {helping && (
+        <QueryCheatSheet
+          onClose={closeHelp}
+          onTry={(query) => {
+            closeHelp();
+            choose(query);
+          }}
+        />
       )}
     </div>
   );
 }
 
-/** Questions ready to run, by what they are about */
+/** The small square buttons beside Examples, for the cheat sheet and the full view */
+const TOOL_BUTTON_CLASS =
+  "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-muted shadow-sm outline-none transition-colors hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary";
+
 /** How tall the Examples menu grows, and how far it keeps from the window's edges */
 const MENU_HEIGHT = 448;
 const MENU_WIDTH = 352;
@@ -341,6 +374,7 @@ function menuPlace(button: HTMLElement) {
       };
 }
 
+/** Questions ready to run, by what they are about */
 function ExamplesMenu(props: { groups: ExampleGroup[]; onChoose: (query: string) => void }) {
   const [open, setOpen] = React.useState(false);
   const buttonRef = React.useRef<HTMLButtonElement | null>(null);
@@ -432,62 +466,6 @@ function ExamplesMenu(props: { groups: ExampleGroup[]; onChoose: (query: string)
         )}
     </div>
   );
-}
-
-const KEYWORD_CLASS = "font-bold text-text";
-
-/** FQL coloured as the Catalog colours conditions, with clause keywords in bold */
-function highlight(source: string): Array<{ text: string; className?: string }> {
-  const segments: Array<{ text: string; className?: string }> = [];
-  const tokens = lexFql(source);
-  let expression: { start: number } | undefined;
-  const flushExpression = (end: number) => {
-    if (!expression) return;
-    const lines = colourExpression(source.slice(expression.start, end));
-    lines.forEach((line, index) => {
-      if (index > 0) segments.push({ text: "\n" });
-      const words = line.filter((token) => token.text.trim() !== "");
-      for (const token of line) {
-        // FQL's own calls, such as rollout(), and the row's key inside a read, are not segments
-        const at = words.indexOf(token);
-        const type =
-          CALLS.includes(token.text) && words[at + 1]?.text === "("
-            ? "call"
-            : token.text === "key" && words[at - 1]?.text === "("
-              ? "name"
-              : token.type;
-        segments.push({ text: token.text, className: TOKEN_CLASSES[type] || undefined });
-      }
-    });
-    expression = undefined;
-  };
-  const starts = clauseStarts(tokens);
-  for (const [index, token] of tokens.entries()) {
-    const clause = starts.has(index);
-    if (expression && !clause) continue;
-    if (clause) flushExpression(token.start);
-    const className =
-      token.type === "keyword"
-        ? KEYWORD_CLASS
-        : token.type === "word" && tokens[index + 1]?.text === "("
-          ? TOKEN_CLASSES.call
-          : token.type === "comment"
-            ? TOKEN_CLASSES.comment
-            : token.type === "string"
-              ? TOKEN_CLASSES.string
-              : token.type === "number" || ["true", "false", "null"].includes(token.text)
-                ? TOKEN_CLASSES.constant
-                : token.type === "operator"
-                  ? TOKEN_CLASSES.operator
-                  : token.type === "punctuation"
-                    ? TOKEN_CLASSES.punctuation
-                    : undefined;
-    segments.push({ text: token.text, className });
-    // A WHERE clause is a condition expression, coloured as conditions are
-    if (clause && token.text === "WHERE") expression = { start: token.start + token.text.length };
-  }
-  flushExpression(source.length);
-  return segments;
 }
 
 const EDITOR_TEXT =

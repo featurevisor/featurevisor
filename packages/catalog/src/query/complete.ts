@@ -127,7 +127,8 @@ const CLAUSE_ITEMS: Array<{ clause: string; item: CompletionItem }> = [
   },
 ];
 
-const OPERATORS: Record<PropertyType, Array<[string, string]>> = {
+/** WHERE's operators for each type of property, each with what it asks */
+export const OPERATORS: Record<PropertyType, Array<[string, string]>> = {
   text: [
     ["==", "equals"],
     ["!=", "does not equal"],

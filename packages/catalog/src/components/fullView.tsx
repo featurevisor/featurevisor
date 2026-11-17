@@ -78,6 +78,8 @@ export function FullViewDialog(props: {
   subtitle?: React.ReactNode;
   /** Quiet help beside the close button, such as how to move around */
   hint?: React.ReactNode;
+  /** What the close button says to assistive technology */
+  closeLabel?: string;
   onClose: () => void;
   children: React.ReactNode;
 }) {
@@ -94,7 +96,11 @@ export function FullViewDialog(props: {
     const overflow = root.style.overflow;
     root.style.overflow = "hidden";
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") closeLatest.current();
+      if (event.key !== "Escape") return;
+      // One dialog can open over another, such as a cheat sheet over the full view, and Escape
+      // closes the one on top
+      const open = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+      if (open[open.length - 1] === dialogRef.current) closeLatest.current();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -153,7 +159,7 @@ export function FullViewDialog(props: {
               ref={closeRef}
               type="button"
               onClick={onClose}
-              aria-label="Close the full view"
+              aria-label={props.closeLabel ?? "Close the full view"}
               title="Close (Esc)"
               className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface text-muted shadow-sm outline-none transition-colors hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary"
             >
