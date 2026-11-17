@@ -520,6 +520,8 @@ function Sidebar(props: { setKey?: string }) {
     end: boolean;
     counted?: boolean;
     count?: number;
+    /** A word beside the label, such as Beta for a page still settling */
+    badge?: string;
   }> = [
     { to: basePath || "/", label: "Overview", end: true },
     ...entityPaths.map((entityPath) => {
@@ -549,7 +551,7 @@ function Sidebar(props: { setKey?: string }) {
         ]
       : []),
     { to: `${basePath}/history`, label: "History", end: false },
-    { to: `${basePath}/query`, label: "Query", end: false },
+    { to: `${basePath}/query`, label: "Query", end: false, badge: "Beta" },
   ];
 
   return (
@@ -574,6 +576,11 @@ function Sidebar(props: { setKey?: string }) {
                 {item.count}
               </span>
             )}
+            {item.badge && (
+              <span className="rounded bg-black/5 px-1 text-[10px] font-semibold uppercase leading-4 tracking-wide">
+                {item.badge}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -595,6 +602,11 @@ function Sidebar(props: { setKey?: string }) {
               {item.counted && (
                 <span className="min-w-7 rounded-full bg-slate-100 px-2 py-0.5 text-center text-xs font-semibold tabular-nums text-slate-600 group-aria-[current=page]:bg-white/15 group-aria-[current=page]:text-white">
                   {typeof item.count === "number" ? item.count : "-"}
+                </span>
+              )}
+              {item.badge && (
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-3 tracking-wide text-slate-600 group-aria-[current=page]:bg-white/15 group-aria-[current=page]:text-white">
+                  {item.badge}
                 </span>
               )}
             </NavLink>

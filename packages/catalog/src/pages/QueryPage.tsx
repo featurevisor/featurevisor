@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { DatafileContent } from "@featurevisor/types";
 
@@ -292,18 +293,66 @@ export function QueryPage() {
 }
 
 /** Questions ready to run, by what they are about */
+/** How tall the Examples menu grows, and how far it keeps from the window's edges */
+const MENU_HEIGHT = 448;
+const MENU_WIDTH = 352;
+const MENU_MARGIN = 12;
+
+/**
+ * Where the Examples menu sits: below its button, or above it when there is more room there,
+ * as tall as the room allows. It is placed over the page, since the page's card clips what
+ * leaves it, and a short report would cut the menu off.
+ */
+function menuPlace(button: HTMLElement) {
+  const rect = button.getBoundingClientRect();
+  const gap = 6;
+  const below = window.innerHeight - rect.bottom - gap - MENU_MARGIN;
+  const above = rect.top - gap - MENU_MARGIN;
+  const width = Math.min(MENU_WIDTH, document.documentElement.clientWidth - 2 * MENU_MARGIN);
+  const left = Math.max(
+    MENU_MARGIN,
+    Math.min(rect.left, document.documentElement.clientWidth - width - MENU_MARGIN),
+  );
+  const downward = below >= Math.min(MENU_HEIGHT, 240) || below >= above;
+  return downward
+    ? { left, width, top: rect.bottom + gap, maxHeight: Math.min(MENU_HEIGHT, below) }
+    : {
+        left,
+        width,
+        bottom: window.innerHeight - rect.top + gap,
+        maxHeight: Math.min(MENU_HEIGHT, above),
+      };
+}
+
 function ExamplesMenu(props: { groups: ExampleGroup[]; onChoose: (query: string) => void }) {
   const [open, setOpen] = React.useState(false);
-  const boxRef = React.useRef<HTMLDivElement | null>(null);
+  const buttonRef = React.useRef<HTMLButtonElement | null>(null);
+  const menuRef = React.useRef<HTMLDivElement | null>(null);
+  const [place, setPlace] = React.useState<React.CSSProperties>();
+
+  React.useLayoutEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const follow = () => buttonRef.current && setPlace(menuPlace(buttonRef.current));
+    follow();
+    // It follows its button as the page or the full view scrolls, and as the window resizes
+    window.addEventListener("resize", follow);
+    window.addEventListener("scroll", follow, true);
+    return () => {
+      window.removeEventListener("resize", follow);
+      window.removeEventListener("scroll", follow, true);
+    };
+  }, [open]);
+
   React.useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent | KeyboardEvent) => {
-      if (
-        event instanceof KeyboardEvent
-          ? event.key === "Escape"
-          : !boxRef.current?.contains(event.target as Node)
-      ) {
-        if (event instanceof KeyboardEvent) event.stopPropagation();
+      const inside = (target: EventTarget | null) =>
+        buttonRef.current?.contains(target as Node) || menuRef.current?.contains(target as Node);
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !inside(event.target)) {
+        if (event instanceof KeyboardEvent) {
+          event.stopPropagation();
+          buttonRef.current?.focus();
+        }
         setOpen(false);
       }
     };
@@ -316,8 +365,9 @@ function ExamplesMenu(props: { groups: ExampleGroup[]; onChoose: (query: string)
   }, [open]);
 
   return (
-    <div ref={boxRef} className="relative">
+    <div>
       <button
+        ref={buttonRef}
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
@@ -329,35 +379,40 @@ function ExamplesMenu(props: { groups: ExampleGroup[]; onChoose: (query: string)
           ▾
         </span>
       </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute left-0 top-full z-40 mt-1.5 max-h-[28rem] w-[22rem] max-w-[calc(100vw-3rem)] overflow-auto rounded-xl border border-border bg-surface py-1.5 shadow-xl"
-        >
-          {props.groups.map((group) => (
-            <div key={group.section} className="py-1">
-              <div className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-faint">
-                {group.section}
+      {open &&
+        place &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            style={place}
+            className="fixed z-[60] overflow-auto rounded-xl border border-border bg-surface py-1.5 shadow-xl"
+          >
+            {props.groups.map((group) => (
+              <div key={group.section} className="py-1">
+                <div className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-faint">
+                  {group.section}
+                </div>
+                {group.examples.map((example) => (
+                  <button
+                    key={example.title}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setOpen(false);
+                      props.onChoose(example.query);
+                    }}
+                    className="block w-full cursor-pointer px-3 py-1.5 text-left hover:bg-elevated focus-visible:bg-elevated focus-visible:outline-none"
+                  >
+                    <span className="block text-sm font-medium text-text">{example.title}</span>
+                    <span className="block text-xs text-muted">{example.about}</span>
+                  </button>
+                ))}
               </div>
-              {group.examples.map((example) => (
-                <button
-                  key={example.title}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setOpen(false);
-                    props.onChoose(example.query);
-                  }}
-                  className="block w-full cursor-pointer px-3 py-1.5 text-left hover:bg-elevated focus-visible:bg-elevated focus-visible:outline-none"
-                >
-                  <span className="block text-sm font-medium text-text">{example.title}</span>
-                  <span className="block text-xs text-muted">{example.about}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
