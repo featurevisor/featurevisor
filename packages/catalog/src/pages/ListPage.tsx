@@ -13,6 +13,7 @@ import {
   getEntityRoute,
 } from "../entityTypes";
 import { searchToFql } from "../query/fromSearch";
+import { queryHref } from "../query/link";
 import type { CatalogEntityType, CatalogIndex, EntityPath, EntitySummary } from "../types";
 import {
   AuthorAvatar,
@@ -1168,11 +1169,10 @@ export function ListPage() {
             <>
               {" · "}
               <Link
-                to={`${getBasePath(setKey && decodeRouteSegment(setKey))}/query?${new URLSearchParams(
-                  {
-                    q: searchToFql(type as QuerySubject, query),
-                  },
-                )}`}
+                to={queryHref(
+                  getBasePath(setKey && decodeRouteSegment(setKey)),
+                  searchToFql(type as QuerySubject, query),
+                )}
                 className="font-medium text-primary hover:underline"
                 title="This list as an FQL report, its search written as conditions"
               >

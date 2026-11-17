@@ -1,6 +1,6 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { DatafileContent } from "@featurevisor/types";
 
 import { fetchDatafile, fetchEntityDetail } from "../api";
@@ -36,6 +36,7 @@ import {
   type FqlError,
   type FqlProject,
 } from "../query/fql";
+import { queryHash, queryOf, searchWithoutQuery } from "../query/link";
 import { evaluates, type Report } from "../query/report";
 import {
   EVALUATION_LIMIT,
@@ -102,12 +103,14 @@ export function QueryPage() {
   const setKey = encodedSetKey && decodeRouteSegment(encodedSetKey);
   const { manifest } = useCatalog();
   const { index, error } = useCatalogIndex(setKey);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const environments = React.useMemo(
     () => manifest.projectConfig.environments || [],
     [manifest.projectConfig.environments],
   );
-  const written = searchParams.get("q") ?? FIRST_QUERY;
+  // The query lives after `#`, so a long one is never cut off on its way to a server
+  const written = queryOf(location) ?? FIRST_QUERY;
   const [draft, setDraft] = React.useState(written);
   const [ran, setRan] = React.useState(written);
   useDocumentTitle("Query", setKey);
@@ -118,21 +121,25 @@ export function QueryPage() {
     setRan(written);
   }, [written]);
 
+  const where = React.useRef(location);
+  where.current = location;
   const run = React.useCallback(
     (query: string) => {
       setRan(query);
-      // Keeps the rest of the URL, such as the full view
-      setSearchParams(
-        (current) => {
-          const next = new URLSearchParams(current);
-          next.set("q", query);
-          return next;
-        },
+      // Keeps the rest of the URL, such as the full view, and moves an older link's `?q=`
+      const { pathname, search } = where.current;
+      navigate(
+        { pathname, search: searchWithoutQuery(search), hash: queryHash(query) },
         { replace: true },
       );
     },
-    [setSearchParams],
+    [navigate],
   );
+
+  // An older link's `?q=` moves after `#` as the page opens
+  React.useEffect(() => {
+    if (new URLSearchParams(location.search).has("q")) run(written);
+  }, [location.search, run, written]);
 
   // `?view=full` shows the editor and results over the page, with room for wide reports
   const { expanded, open, close } = useFullView(FULL_VIEW_PARAM);

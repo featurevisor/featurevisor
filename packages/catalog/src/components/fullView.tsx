@@ -13,19 +13,33 @@ export const FULL_VIEW_VALUE = "full";
  * URL, so a link to it opens it for whoever follows the link.
  */
 export function useFullView(param: string) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
   const expanded = searchParams.get(param) === FULL_VIEW_VALUE;
   const openedHere =
     (location.state as { openedFullView?: string } | null)?.openedFullView === param;
 
+  // The fragment stays, since a page such as Query keeps its state there
+  const go = React.useCallback(
+    (next: URLSearchParams, options: { replace?: boolean; state?: unknown }) =>
+      navigate(
+        {
+          pathname: location.pathname,
+          search: next.toString() ? `?${next}` : "",
+          hash: location.hash,
+        },
+        options,
+      ),
+    [location.hash, location.pathname, navigate],
+  );
+
   // Opening adds a history entry, so Back closes it, as it would any page
   const open = React.useCallback(() => {
     const next = new URLSearchParams(searchParams);
     next.set(param, FULL_VIEW_VALUE);
-    setSearchParams(next, { state: { openedFullView: param } });
-  }, [param, searchParams, setSearchParams]);
+    go(next, { state: { openedFullView: param } });
+  }, [go, param, searchParams]);
 
   // Closing returns to the entry it was opened from. Arriving through a link, or once the entry
   // was replaced since, there is none to return to, so it takes the full view out of the URL.
@@ -36,8 +50,8 @@ export function useFullView(param: string) {
     }
     const next = new URLSearchParams(searchParams);
     next.delete(param);
-    setSearchParams(next, { replace: true });
-  }, [openedHere, navigate, param, searchParams, setSearchParams]);
+    go(next, { replace: true });
+  }, [openedHere, navigate, go, param, searchParams]);
 
   return { expanded, open, close };
 }

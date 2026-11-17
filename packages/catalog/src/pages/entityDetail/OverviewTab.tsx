@@ -18,6 +18,7 @@ import {
   OverviewSection,
 } from "../../components/ui";
 import { ConditionTree } from "../../components/trees";
+import { queryHref } from "../../query/link";
 import { whoGetsThisQuery } from "../../query/report";
 import {
   SchemaPropertiesOverview,
@@ -1046,7 +1047,7 @@ function WhoGetsThis(props: { type: "feature" | "variable"; entityKey: string; s
   return (
     <div className="-mb-3 flex justify-end">
       <Link
-        to={`${getBasePath(props.setKey)}/query?${new URLSearchParams({ q: query })}`}
+        to={queryHref(getBasePath(props.setKey), query)}
         className="text-xs font-medium text-primary hover:underline"
       >
         Who gets this?
