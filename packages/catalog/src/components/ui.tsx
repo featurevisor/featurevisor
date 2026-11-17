@@ -551,11 +551,11 @@ function Sidebar(props: { setKey?: string }) {
           },
         ]
       : []),
-    { to: `${basePath}/history`, label: "History", end: false },
     // Query is in beta, so only a Catalog run or exported `--with-query` links it
     ...(manifest.query
       ? [{ to: `${basePath}/query`, label: "Query", end: false, badge: "Beta" }]
       : []),
+    { to: `${basePath}/history`, label: "History", end: false },
   ];
 
   return (
