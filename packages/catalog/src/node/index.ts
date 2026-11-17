@@ -149,6 +149,11 @@ export interface CatalogExportOptions {
   changedPaths?: string[];
   /** Branch for source and edit links, instead of discovering it from Git. */
   branch?: string;
+  /**
+   * Link the Query page, in beta, from the sidebar, lists and Overviews. The page answers at
+   * `/query` either way, for anyone who visits it.
+   */
+  query?: boolean;
 }
 
 export interface CatalogServeOptions {
@@ -162,6 +167,8 @@ export interface CatalogServeOptions {
   testReport?: string;
   /** Branch for source and edit links, instead of discovering it from Git. */
   branch?: string;
+  /** Link the Query page, in beta, as `CatalogExportOptions.query` does */
+  query?: boolean;
 }
 
 export interface CatalogServerHandle {
@@ -2901,6 +2908,7 @@ export async function exportCatalog(
       schemaVersion: CATALOG_SCHEMA_VERSION,
       generatedAt: new Date().toISOString(),
       router: options.browserRouter === false ? "hash" : "browser",
+      ...(options.query ? { query: true } : {}),
       sets: projectConfig.sets,
       setKeys: projectConfig.sets ? sortSetKeys(executions.map((execution) => execution.set)) : [],
       projectConfig: {
@@ -3168,6 +3176,7 @@ export async function serveCatalog(
       copyAssets: options.copyAssets,
       testReport: options.testReport,
       branch: options.branch,
+      query: options.query,
     });
   }
 
@@ -3445,6 +3454,11 @@ export function createCatalogApi(runtime: CatalogRuntime) {
   };
 }
 
+/** `--with-query` links the Query page, in beta, from the sidebar, lists and Overviews */
+function withQuery(parsed: CatalogPluginParsedOptions): boolean {
+  return Boolean(parsed.withQuery || parsed["with-query"]);
+}
+
 function shouldCopyAssets(parsed: CatalogPluginParsedOptions) {
   return parsed.assets !== false && parsed.noAssets !== true && parsed["no-assets"] !== true;
 }
@@ -3521,6 +3535,7 @@ export async function startCatalogDevMode(
     testReport: parsed.testReport || parsed["test-report"],
     devSession,
     compactStorage: true,
+    query: withQuery(parsed),
     ...getCatalogSerializationOptions(parsed),
   });
   const server = await api.serveCatalog(rootDirectoryPath, projectConfig, datasource, {
@@ -3657,6 +3672,7 @@ export async function startCatalogDevMode(
         devSession: nextDevSession,
         changedPaths: configChanged || gitChanged || testsChanged ? undefined : changedPaths,
         compactStorage: true,
+        query: withQuery(parsed),
         ...getCatalogSerializationOptions(parsed),
       });
       devSession = nextDevSession;
@@ -3748,6 +3764,7 @@ export function createCatalogPlugin(
           testReport: parsed.testReport || parsed["test-report"],
           compactStorage: true,
           branch: parsed.branch,
+          query: withQuery(parsed),
           ...getCatalogSerializationOptions(parsed),
         });
       }
@@ -3761,6 +3778,7 @@ export function createCatalogPlugin(
           copyAssets: shouldCopyAssets(parsed),
           testReport: parsed.testReport || parsed["test-report"],
           branch: parsed.branch,
+          query: withQuery(parsed),
         });
       }
     },
@@ -3776,6 +3794,10 @@ export function createCatalogPlugin(
       {
         command: "catalog serve",
         description: "Serve the generated Catalog locally",
+      },
+      {
+        command: "catalog --with-query",
+        description: "Link the Query page, in beta, from the Catalog's sidebar and lists",
       },
     ],
   };

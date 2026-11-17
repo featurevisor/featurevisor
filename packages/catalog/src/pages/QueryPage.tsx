@@ -289,6 +289,12 @@ export function QueryPage() {
     <div className="pb-8">
       <PageHeader
         title="Query"
+        // In beta, which a visit straight to /query sees too, without the sidebar's badge
+        titleAction={
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-3 tracking-wide text-slate-600">
+            Beta
+          </span>
+        }
         description="Ask the project a question in FQL: what is defined, who owns it, and what people get."
       />
       <div className="space-y-4 px-6">

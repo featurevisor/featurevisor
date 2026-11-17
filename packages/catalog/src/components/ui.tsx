@@ -504,6 +504,7 @@ function withEmptyState(className: string, state: { isActive: boolean }, count?:
 
 function Sidebar(props: { setKey?: string }) {
   const { index } = useCatalogIndex(props.setKey);
+  const { manifest } = useCatalog();
   const basePath = getBasePath(props.setKey);
   const mobileNavRef = React.useRef<HTMLElement | null>(null);
   const mobileFade = useScrollFade(mobileNavRef);
@@ -551,7 +552,10 @@ function Sidebar(props: { setKey?: string }) {
         ]
       : []),
     { to: `${basePath}/history`, label: "History", end: false },
-    { to: `${basePath}/query`, label: "Query", end: false, badge: "Beta" },
+    // Query is in beta, so only a Catalog run or exported `--with-query` links it
+    ...(manifest.query
+      ? [{ to: `${basePath}/query`, label: "Query", end: false, badge: "Beta" }]
+      : []),
   ];
 
   return (

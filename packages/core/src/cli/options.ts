@@ -86,6 +86,10 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     assets: { type: "boolean", description: "copy Catalog UI assets" },
     noAssets: { type: "boolean", description: "skip copying Catalog UI assets" },
     hashRouter: { type: "boolean", description: "use hash based browser routes" },
+    withQuery: {
+      type: "boolean",
+      description: "link the Query page, in beta, from the sidebar and lists",
+    },
     testReport: {
       type: "string",
       description: "show results from a `featurevisor test --json` report file",

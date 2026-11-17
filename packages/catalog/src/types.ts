@@ -98,6 +98,11 @@ export interface CatalogManifest {
   schemaVersion: string;
   generatedAt: string;
   router?: "hash" | "browser";
+  /**
+   * Exported with `--with-query`: the Query page, in beta, is linked from the sidebar, lists and
+   * Overviews. Without it, the page still answers at `/query` for anyone who visits it.
+   */
+  query?: boolean;
   storage?: CatalogStorageDescriptor;
   sets: boolean;
   setKeys: string[];

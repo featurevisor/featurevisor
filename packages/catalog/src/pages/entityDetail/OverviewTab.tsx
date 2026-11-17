@@ -68,7 +68,8 @@ export function OverviewTab() {
 
   return (
     <div className="space-y-6">
-      {(detail.type === "feature" || detail.type === "variable") && (
+      {/* A ready Query report, linked only where the Catalog offers Query, in beta */}
+      {manifest.query && (detail.type === "feature" || detail.type === "variable") && (
         <WhoGetsThis type={detail.type} entityKey={detail.key} setKey={setKey} />
       )}
       <EntityOverviewMeta detail={detail} entity={entity} setKey={setKey} />

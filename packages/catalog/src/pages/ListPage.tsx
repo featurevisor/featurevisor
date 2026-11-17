@@ -1184,7 +1184,7 @@ export function ListPage() {
           {filtered.length !== index.entities[type].length && visible.length < filtered.length
             ? ` (${filtered.length} matches)`
             : ""}
-          {QUERY_TYPES.has(type) && (
+          {manifest.query && QUERY_TYPES.has(type) && (
             <>
               {" · "}
               <Link

@@ -1984,6 +1984,26 @@ describe("catalog export", () => {
     expect(index.entities.feature[0]).toMatchObject({ environmentsDiffer: true });
   });
 
+  it("records --with-query in the manifest, and leaves it out otherwise", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-query-"));
+    const read = () =>
+      JSON.parse(fs.readFileSync(path.join(root, "catalog", "data", "manifest.json"), "utf8"));
+    const options = { copyAssets: false, compactStorage: false };
+    await exportCatalog(
+      createRuntime(),
+      root,
+      createProjectConfig(root),
+      createDatasource(),
+      options,
+    );
+    expect(read().query).toBeUndefined();
+    await exportCatalog(createRuntime(), root, createProjectConfig(root), createDatasource(), {
+      ...options,
+      query: true,
+    });
+    expect(read().query).toBe(true);
+  });
+
   it("exports what an environment inherits, without counting usage twice", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-"));
     const inheritEnvironments = { development: { from: "staging" } };
