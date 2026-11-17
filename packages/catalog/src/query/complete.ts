@@ -66,8 +66,13 @@ const CLAUSE_ITEMS: Array<{ clause: string; item: CompletionItem }> = [
     item: { label: "WHERE", insert: "WHERE ", detail: "filter rows", kind: "keyword" },
   },
   {
-    clause: "FOR",
-    item: { label: "FOR", insert: "FOR ", detail: "who it is for", kind: "keyword" },
+    clause: "CONTEXT",
+    item: {
+      label: "CONTEXT",
+      insert: "CONTEXT ",
+      detail: "the person's attributes",
+      kind: "keyword",
+    },
   },
   {
     clause: "AT",
@@ -527,10 +532,10 @@ export function completeFql(
     }
   }
 
-  // A person's attributes, as keys of FOR's object
+  // A person's attributes, as keys of CONTEXT's object
   if (
     innermost?.text === "{" &&
-    clause === "FOR" &&
+    clause === "CONTEXT" &&
     (previous?.text === "{" || previous?.text === ",")
   ) {
     return result(
@@ -640,8 +645,8 @@ export function completeFql(
       ]);
     return result(clauseKeywords());
   }
-  if (clause === "FOR") {
-    if (previous?.text === "FOR")
+  if (clause === "CONTEXT") {
+    if (previous?.text === "CONTEXT")
       return result([
         { label: "{}", insert: "{}", detail: "everyone, as audiences", kind: "value" },
         {
@@ -700,7 +705,7 @@ export function completeFql(
         ...properties(),
         ...reads(),
         ...details(),
-        ...(used.has("VARY") || used.has("FOR") ? attributes : []),
+        ...(used.has("VARY") || used.has("CONTEXT") ? attributes : []),
       ]);
     }
     if (previous?.type === "word") {

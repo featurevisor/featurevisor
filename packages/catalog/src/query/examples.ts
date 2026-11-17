@@ -262,7 +262,7 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
           about: "Every feature for user-1, and its variation",
           query: lines(
             "FROM features",
-            "FOR { userId: 'user-1' }",
+            "CONTEXT { userId: 'user-1' }",
             "SELECT key, feature(key), feature(key).variation",
           ),
         },

@@ -18,7 +18,7 @@ describe("parseFql", () => {
         "# Where is foo on?",
         "FROM features",
         "WHERE key == 'foo' and not archived == true",
-        "FOR { userId: 'user-1', country: 'nl' }",
+        "CONTEXT { userId: 'user-1', country: 'nl' }",
         "VARY device ['mobile', 'desktop', OTHER], country",
         "ENVIRONMENT *",
         "SELECT key, feature(key), feature(key).variation AS 'Variation'",
@@ -56,7 +56,9 @@ describe("parseFql", () => {
   });
 
   it("places everyone in every rollout with AT, a row each for several places", () => {
-    expect(parseFql("FROM features\nFOR { country: 'de' }\nAT 20", project).report).toMatchObject({
+    expect(
+      parseFql("FROM features\nCONTEXT { country: 'de' }\nAT 20", project).report,
+    ).toMatchObject({
       person: { country: "de", at: 20 },
       vary: [],
     });
@@ -69,11 +71,23 @@ describe("parseFql", () => {
     expect(messages("FROM features\nAT 120")).toEqual([
       "AT takes a place in the rollout from 0 to 100, such as AT 50.",
     ]);
-    expect(messages("FROM features\nFOR { country: 'de', at: 20 }")).toEqual([
+    expect(messages("FROM features\nCONTEXT { country: 'de', at: 20 }")).toEqual([
       "A place in the rollout is a clause of its own, as test specs write it: AT 20.",
     ]);
     expect(messages("VARY at [10, 90]\nSELECT feature('foo')")).toEqual([
       "Places in the rollout are a clause of their own, a row each: AT 10, 50, 90.",
+    ]);
+  });
+
+  it("takes a person with CONTEXT, and says so for FOR", () => {
+    expect(parseFql("FROM features\nCONTEXT { country: 'nl' }", project).report?.person).toEqual({
+      country: "nl",
+    });
+    expect(messages("FROM features\nFOR { country: 'nl' }")).toEqual([
+      "A person's attributes are written with CONTEXT, as the SDK and test specs name them, such as CONTEXT { country: 'nl' }.",
+    ]);
+    expect(messages("FROM features\nCONTEXT 'nl'")).toEqual([
+      "CONTEXT takes a person's attributes, such as { country: 'nl' }.",
     ]);
   });
 

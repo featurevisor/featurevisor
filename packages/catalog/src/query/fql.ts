@@ -28,7 +28,7 @@ import {
  *
  *   FROM features
  *   WHERE tags includes 'checkout' and rollout(feature(key)) < 100
- *   FOR { country: 'nl' }
+ *   CONTEXT { country: 'nl' }
  *   AT 20
  *   VARY country, device ['mobile', OTHER]
  *   ENVIRONMENT staging, production
@@ -44,14 +44,14 @@ import {
  * says beside its answer, and `count()` counts the rows GROUP BY gathers.
  *
  * AT places everyone in every rollout at a position from 0 to 100, as test specs write `at`, and
- * several positions make a row each. Without FROM, each row is a person, one per combination FOR,
+ * several positions make a row each. Without FROM, each row is a person, one per combination CONTEXT,
  * AT and VARY give.
  */
 
 export const CLAUSES = [
   "FROM",
   "WHERE",
-  "FOR",
+  "CONTEXT",
   "AT",
   "VARY",
   "ENVIRONMENT",
@@ -627,6 +627,16 @@ export function parseFql(
   const tokens = lexFql(source);
   const clauses = clausesOf(source, tokens);
 
+  // FOR is a natural guess at CONTEXT, so it says what to write
+  const forClause = tokens.find((token) => token.type === "word" && token.text === "FOR");
+  if (forClause) {
+    fail(
+      "A person's attributes are written with CONTEXT, as the SDK and test specs name them, such as CONTEXT { country: 'nl' }.",
+      forClause.start,
+    );
+    return { errors };
+  }
+
   // SORT BY is a natural guess at ORDER BY, so it says what to write
   const sort = tokens.find(
     (token, index) =>
@@ -691,10 +701,13 @@ export function parseFql(
         const parsed = parseWhere(clause.text, clause.textStart);
         report.where = parsed.where;
         whereReads = parsed.reads;
-      } else if (clause.keyword === "FOR") {
+      } else if (clause.keyword === "CONTEXT") {
         const value = literals.value();
         if (!value || typeof value !== "object" || Array.isArray(value))
-          throw new Failure("FOR takes a person, such as { country: 'nl' }.", clause.textStart);
+          throw new Failure(
+            "CONTEXT takes a person's attributes, such as { country: 'nl' }.",
+            clause.textStart,
+          );
         if ("at" in value) {
           const at = (value as Person).at;
           throw new Failure(
@@ -806,7 +819,7 @@ export function parseFql(
   if (positions >= 0) report.vary.push(...report.vary.splice(positions, 1));
 
   const people = report.subjects.length === 0;
-  // Reading what someone gets needs someone: FOR's person, or everyone when it says none
+  // Reading what someone gets needs someone: CONTEXT's person, or everyone when it says none
   const reads = [
     ...(selected || []),
     ...grouped,

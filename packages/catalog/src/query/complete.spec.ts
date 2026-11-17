@@ -49,7 +49,7 @@ describe("completeFql", () => {
     expect(labels("|")).toEqual([
       "FROM",
       "WHERE",
-      "FOR",
+      "CONTEXT",
       "AT",
       "VARY",
       "ENVIRONMENT",
@@ -117,8 +117,10 @@ describe("completeFql", () => {
     expect(labels("VARY |")).toEqual(["*", "country", "device", "userId"]);
     expect(labels("VARY country, d|")).toEqual(["device"]);
     expect(labels("ENVIRONMENT staging, |")).toEqual(["*", "staging", "production"]);
-    expect(labels("FOR |")).toEqual(["{}", "{ … }", "scenarios/writer"]);
-    expect(choose("FOR { country: 'nl', dev|", "device")).toBe("FOR { country: 'nl', device: ");
+    expect(labels("CONTEXT |")).toEqual(["{}", "{ … }", "scenarios/writer"]);
+    expect(choose("CONTEXT { country: 'nl', dev|", "device")).toBe(
+      "CONTEXT { country: 'nl', device: ",
+    );
     expect(labels("FROM features\nLIMIT |")).toEqual(["10", "20", "50", "100"]);
   });
 
@@ -163,17 +165,17 @@ describe("completeFql", () => {
   });
 
   it("offers test scenarios as people, with their place in the rollout", () => {
-    expect(labels("FROM features\nFOR |")).toEqual(["{}", "{ … }", "scenarios/writer"]);
-    expect(choose("FROM features\nFOR |", "scenarios/writer")).toBe(
-      "FROM features\nFOR { userId: 'writer', permissions: ['read', 'admin'], 'plan.tier': 'it\\'s paid' }\nAT 50",
+    expect(labels("FROM features\nCONTEXT |")).toEqual(["{}", "{ … }", "scenarios/writer"]);
+    expect(choose("FROM features\nCONTEXT |", "scenarios/writer")).toBe(
+      "FROM features\nCONTEXT { userId: 'writer', permissions: ['read', 'admin'], 'plan.tier': 'it\\'s paid' }\nAT 50",
     );
-    expect(choose("FROM features\nAT 20\nFOR |", "scenarios/writer")).toBe(
-      "FROM features\nAT 20\nFOR { userId: 'writer', permissions: ['read', 'admin'], 'plan.tier': 'it\\'s paid' }",
+    expect(choose("FROM features\nAT 20\nCONTEXT |", "scenarios/writer")).toBe(
+      "FROM features\nAT 20\nCONTEXT { userId: 'writer', permissions: ['read', 'admin'], 'plan.tier': 'it\\'s paid' }",
     );
     expect(labels("FROM features\nAT |")).toEqual(["0", "25", "50", "75", "100"]);
   });
 
   it("offers nothing where it has no names to give", () => {
-    expect(labels("FOR { country: '|")).toEqual([]);
+    expect(labels("CONTEXT { country: '|")).toEqual([]);
   });
 });

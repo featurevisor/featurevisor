@@ -51,7 +51,7 @@ import {
 /** `?view=full` opens the full view */
 const FULL_VIEW_PARAM = "view";
 
-/** Scenarios FOR offers as people, at most this many, read once the index loads */
+/** Scenarios CONTEXT offers as people, at most this many, read once the index loads */
 const SCENARIO_PEOPLE = 40;
 
 type ScenarioPerson = NonNullable<CompletionSource["scenarios"]>[number];

@@ -196,7 +196,7 @@ describe("runReport, definitions", () => {
 });
 
 describe("runReport, what people get", () => {
-  it("reads each row's own feature, for everyone when FOR says nobody", () => {
+  it("reads each row's own feature, for everyone when CONTEXT says nobody", () => {
     const { headings, rows } = run("FROM features\nENVIRONMENT production\nSELECT feature(key)");
     expect(headings).toEqual(["key", "enabled"]);
     expect(rows).toEqual(["checkout | 50%", "search | On", "legacy | Off", "pricing | On"]);
@@ -277,7 +277,7 @@ describe("runReport, what people get", () => {
   it("varies a rollout position, and keeps numbers and true or false as written", () => {
     expect(
       run(
-        "AT 10, 90\nFOR { country: 'de' }\nENVIRONMENT production\nSELECT at, feature('checkout')",
+        "AT 10, 90\nCONTEXT { country: 'de' }\nENVIRONMENT production\nSELECT at, feature('checkout')",
       ),
     ).toMatchObject({ rows: ["10 | On", "90 | Off"] });
     const compared = getComparedValues([
