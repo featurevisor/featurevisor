@@ -4,6 +4,7 @@ import http from "http";
 import * as path from "path";
 import type {
   Attribute,
+  BucketBy,
   ComposeReference,
   HistoryEntry,
   ParsedFeature,
@@ -45,6 +46,8 @@ import {
   groupAuthoredReferences,
   type AuthoredReference,
 } from "../dependencyReferences";
+import { describeBucketBy } from "../bucketBy";
+import { getDatafileName } from "../queryData";
 import { encodeCatalogIndex } from "../indexCodec";
 import {
   encodeDeadline,
@@ -107,6 +110,11 @@ export interface CatalogRuntime {
   ) => Promise<{ projectConfig: any; datasource: any }>;
   /** Apply one authored global override to a value, using the builder's own semantics. */
   resolveOverrideValue?: (variable: any, override: any, baseValue: any) => any;
+  /** The whole project's datafile per environment, which the Query page evaluates with. */
+  getCatalogDatafiles?: (
+    projectConfig: any,
+    datasource: any,
+  ) => Promise<Array<{ environment: string | null; datafile: unknown }>>;
 }
 
 export interface CatalogTargetMembership {
@@ -142,6 +150,11 @@ export interface CatalogExportOptions {
   changedPaths?: string[];
   /** Branch for source and edit links, instead of discovering it from Git. */
   branch?: string;
+  /**
+   * Link the Query page, in beta, from the sidebar, lists and Overviews. The page answers at
+   * `/query` either way, for anyone who visits it.
+   */
+  query?: boolean;
 }
 
 export interface CatalogServeOptions {
@@ -155,6 +168,8 @@ export interface CatalogServeOptions {
   testReport?: string;
   /** Branch for source and edit links, instead of discovering it from Git. */
   branch?: string;
+  /** Link the Query page, in beta, as `CatalogExportOptions.query` does */
+  query?: boolean;
 }
 
 export interface CatalogServerHandle {
@@ -2520,6 +2535,10 @@ async function buildSetCatalog(
             plan.type === "feature" || plan.type === "variable"
               ? getInheritedEnvironments(entity, projectConfig.inheritEnvironments)
               : undefined,
+          bucketBy:
+            plan.type === "feature"
+              ? describeBucketBy((entity as { bucketBy?: BucketBy }).bucketBy)
+              : undefined,
           variationValues: plan.type === "feature" ? getFeatureVariationValues(entity) : undefined,
           variableKeys: plan.type === "feature" ? getFeatureVariableKeys(entity) : undefined,
           hasVariations: plan.type === "feature" ? Boolean(entity.variations?.length) : undefined,
@@ -2641,6 +2660,19 @@ async function buildSetCatalog(
     path.join(outputDirectoryPath, "index.json"),
     context.compactStorage ? encodeCatalogIndex(index) : index,
   );
+
+  // Datafiles for the Query page, built by Core, each its own content addressed document
+  if (context.runtime.getCatalogDatafiles) {
+    const datafilesStartedAt = context.progress.step("Writing datafiles");
+    const datafiles = await context.runtime.getCatalogDatafiles(projectConfig, datasource);
+    for (const { environment, datafile } of datafiles) {
+      await context.writer.write(
+        path.join(outputDirectoryPath, getDatafileName(environment)),
+        datafile,
+      );
+    }
+    context.progress.done(datafilesStartedAt, `(${pluralize(datafiles.length, "datafile")})`);
+  }
   context.progress.done(setStartedAt);
 
   return index;
@@ -2869,6 +2901,7 @@ export async function exportCatalog(
       schemaVersion: CATALOG_SCHEMA_VERSION,
       generatedAt: new Date().toISOString(),
       router: options.browserRouter === false ? "hash" : "browser",
+      ...(options.query ? { query: true } : {}),
       sets: projectConfig.sets,
       setKeys: projectConfig.sets ? sortSetKeys(executions.map((execution) => execution.set)) : [],
       projectConfig: {
@@ -3136,6 +3169,7 @@ export async function serveCatalog(
       copyAssets: options.copyAssets,
       testReport: options.testReport,
       branch: options.branch,
+      query: options.query,
     });
   }
 
@@ -3413,6 +3447,11 @@ export function createCatalogApi(runtime: CatalogRuntime) {
   };
 }
 
+/** `--with-query` links the Query page, in beta, from the sidebar, lists and Overviews */
+function withQuery(parsed: CatalogPluginParsedOptions): boolean {
+  return Boolean(parsed.withQuery || parsed["with-query"]);
+}
+
 function shouldCopyAssets(parsed: CatalogPluginParsedOptions) {
   return parsed.assets !== false && parsed.noAssets !== true && parsed["no-assets"] !== true;
 }
@@ -3489,6 +3528,7 @@ export async function startCatalogDevMode(
     testReport: parsed.testReport || parsed["test-report"],
     devSession,
     compactStorage: true,
+    query: withQuery(parsed),
     ...getCatalogSerializationOptions(parsed),
   });
   const server = await api.serveCatalog(rootDirectoryPath, projectConfig, datasource, {
@@ -3625,6 +3665,7 @@ export async function startCatalogDevMode(
         devSession: nextDevSession,
         changedPaths: configChanged || gitChanged || testsChanged ? undefined : changedPaths,
         compactStorage: true,
+        query: withQuery(parsed),
         ...getCatalogSerializationOptions(parsed),
       });
       devSession = nextDevSession;
@@ -3716,6 +3757,7 @@ export function createCatalogPlugin(
           testReport: parsed.testReport || parsed["test-report"],
           compactStorage: true,
           branch: parsed.branch,
+          query: withQuery(parsed),
           ...getCatalogSerializationOptions(parsed),
         });
       }
@@ -3729,6 +3771,7 @@ export function createCatalogPlugin(
           copyAssets: shouldCopyAssets(parsed),
           testReport: parsed.testReport || parsed["test-report"],
           branch: parsed.branch,
+          query: withQuery(parsed),
         });
       }
     },
@@ -3744,6 +3787,10 @@ export function createCatalogPlugin(
       {
         command: "catalog serve",
         description: "Serve the generated Catalog locally",
+      },
+      {
+        command: "catalog --with-query",
+        description: "Link the Query page, in beta, from the Catalog's sidebar and lists",
       },
     ],
   };

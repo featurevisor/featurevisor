@@ -504,6 +504,7 @@ function withEmptyState(className: string, state: { isActive: boolean }, count?:
 
 function Sidebar(props: { setKey?: string }) {
   const { index } = useCatalogIndex(props.setKey);
+  const { manifest } = useCatalog();
   const basePath = getBasePath(props.setKey);
   const mobileNavRef = React.useRef<HTMLElement | null>(null);
   const mobileFade = useScrollFade(mobileNavRef);
@@ -520,6 +521,8 @@ function Sidebar(props: { setKey?: string }) {
     end: boolean;
     counted?: boolean;
     count?: number;
+    /** A word beside the label, such as Beta for a page still settling */
+    badge?: string;
   }> = [
     { to: basePath || "/", label: "Overview", end: true },
     ...entityPaths.map((entityPath) => {
@@ -548,6 +551,10 @@ function Sidebar(props: { setKey?: string }) {
           },
         ]
       : []),
+    // Query is in beta, so only a Catalog run or exported `--with-query` links it
+    ...(manifest.query
+      ? [{ to: `${basePath}/query`, label: "Query", end: false, badge: "Beta" }]
+      : []),
     { to: `${basePath}/history`, label: "History", end: false },
   ];
 
@@ -573,6 +580,11 @@ function Sidebar(props: { setKey?: string }) {
                 {item.count}
               </span>
             )}
+            {item.badge && (
+              <span className="rounded bg-black/5 px-1 text-[10px] font-semibold uppercase leading-4 tracking-wide">
+                {item.badge}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -594,6 +606,11 @@ function Sidebar(props: { setKey?: string }) {
               {item.counted && (
                 <span className="min-w-7 rounded-full bg-slate-100 px-2 py-0.5 text-center text-xs font-semibold tabular-nums text-slate-600 group-aria-[current=page]:bg-white/15 group-aria-[current=page]:text-white">
                   {typeof item.count === "number" ? item.count : "-"}
+                </span>
+              )}
+              {item.badge && (
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-3 tracking-wide text-slate-600 group-aria-[current=page]:bg-white/15 group-aria-[current=page]:text-white">
+                  {item.badge}
                 </span>
               )}
             </NavLink>
@@ -635,6 +652,10 @@ export async function getSetSwitchPath(pathname: string, nextSetKey: string) {
 
   if (pathname.match(/^\/sets\/[^/]+\/deadlines$/)) {
     return `/sets/${encodedSetKey}/deadlines`;
+  }
+
+  if (pathname.match(/^\/sets\/[^/]+\/query$/)) {
+    return `/sets/${encodedSetKey}/query`;
   }
 
   const detailMatch = pathname.match(/^\/sets\/[^/]+\/([^/]+)\/([^/]+)(\/.*)?$/);
@@ -1092,22 +1113,26 @@ export function Tabs(props: {
   );
 }
 
+/**
+ * Where a long key may wrap: after a dot, dash, underscore or slash, and before a capital that
+ * starts a word, so `expressCheckoutForReturningCustomers` breaks between its words rather than
+ * inside one. Anywhere else stays a last resort.
+ */
+const KEY_BREAKS = /([./_-])|([a-z0-9])(?=[A-Z])/g;
+
+/** A key's parts between its break points, without lookbehind, which older Safari cannot parse */
+function keyParts(key: string): string[] {
+  return key.replace(KEY_BREAKS, "$1$2\u0000").split("\u0000").filter(Boolean);
+}
+
 export function EntityKey(props: { value: string; className?: string }) {
   return (
     <span
       className={["inline leading-snug [overflow-wrap:anywhere]", props.className || ""].join(" ")}
     >
-      {props.value.split(".").flatMap((part, index, parts) => {
-        const nodes: React.ReactNode[] = [part];
-        if (index < parts.length - 1) {
-          nodes.push(
-            <React.Fragment key={`dot-${index}`}>
-              .<wbr />
-            </React.Fragment>,
-          );
-        }
-        return nodes;
-      })}
+      {keyParts(props.value).flatMap((part, index) =>
+        index === 0 ? [part] : [<wbr key={index} />, part],
+      )}
     </span>
   );
 }

@@ -186,6 +186,7 @@ Every CLI command is local and safe to run without asking, `fmt` included, excep
 | `npx featurevisor generate-code --language typescript --out-dir ./src`                    | Typed bindings for applications                                      |
 | `npx featurevisor build --no-state-files`                                                 | Build datafiles without touching state                               |
 | `npx featurevisor catalog`                                                                | Browsable read-only project UI with live reload                      |
+| `npx featurevisor catalog --with-query`                                                   | The same, with the Query page for FQL reports, in beta               |
 
 **Prefer the CLI to reading YAML by hand** for questions such as "what uses segment X?" or "why is this feature off for me?". Its `--json` output is authoritative and parseable. Repeatable `--target=<target>` options evaluate, test or list against specific target datafiles. Full reference: [cli.md](references/cli.md). Question playbook: [querying.md](references/querying.md).
 
@@ -215,6 +216,7 @@ Read the matching file in full **before** authoring or debugging in that area. D
 | Write specs, checks and scenarios, read reports                                                             | [testing.md](references/testing.md)                                                                           |
 | Any CLI command and its options                                                                             | [cli.md](references/cli.md)                                                                                   |
 | Answer questions about a project, debug an evaluation, browse the Catalog                                   | [querying.md](references/querying.md)                                                                         |
+| Write FQL reports on the Catalog's Query page, in beta, with `--with-query`                                 | [catalog-query.md](references/catalog-query.md)                                                               |
 | JavaScript or TypeScript SDK in any runtime                                                                 | [sdk-javascript.md](references/sdk-javascript.md)                                                             |
 | React or React Native                                                                                       | [sdk-react.md](references/sdk-react.md)                                                                       |
 | Vue                                                                                                         | [sdk-vue.md](references/sdk-vue.md)                                                                           |
@@ -298,6 +300,8 @@ Run `npx featurevisor evaluate --feature=<key> --context='{…}' --explain` rath
 ### Visual review with the Catalog
 
 `npx featurevisor catalog` serves a read-only UI of the whole project at `http://127.0.0.1:3000` and reloads on every saved change. For sessions with several changes, or users who prefer not to read YAML, start it once in the background and open the URL in your browser tool if you have one, or give it to the user. Use `--port=<n>` if 3000 is taken.
+
+For questions across the whole project as a table, such as what is rolling out, what differs between environments or what several people get, run it with `--with-query` and write an FQL report on its **Query** page, in beta. A report lives in its link (`/query#q=…`), which answers at `/query` even without the flag, so hand the user the link. Read [catalog-query.md](references/catalog-query.md) first.
 
 ### Upgrades
 

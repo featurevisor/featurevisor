@@ -1,6 +1,8 @@
 import * as React from "react";
 import { useLocation, useNavigationType } from "react-router-dom";
 
+import { isQueryHash } from "../query/link";
+
 /**
  * New pages start at the top, and Back or Forward returns to where you were. The
  * Catalog uses a plain router, which does not restore scroll positions itself.
@@ -28,8 +30,9 @@ export function ScrollRestoration() {
     const pathnameChanged = previousPathname.current !== location.pathname;
     previousPathname.current = location.pathname;
 
-    // Anchors scroll themselves; filter and search changes keep the reader where they are.
-    if (location.hash || !pathnameChanged) return;
+    // Anchors scroll themselves; filter and search changes keep the reader where they are. A
+    // fragment that holds a query is no anchor, so the Query page opens at the top.
+    if ((location.hash && !isQueryHash(location.hash)) || !pathnameChanged) return;
 
     if (navigationType !== "POP") {
       window.scrollTo(0, 0);

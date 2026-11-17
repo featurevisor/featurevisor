@@ -101,7 +101,7 @@ function ConditionViewToggle(props: {
 }
 
 // The website's expression colours, in palette steps the dark theme remaps, so they read in both
-const TOKEN_CLASSES: Record<ExpressionTokenType, string> = {
+export const TOKEN_CLASSES: Record<ExpressionTokenType, string> = {
   name: "text-text",
   segment: "rounded bg-slate-100 px-1 text-text ring-1 ring-inset ring-slate-300",
   logic: "font-semibold text-violet-800",

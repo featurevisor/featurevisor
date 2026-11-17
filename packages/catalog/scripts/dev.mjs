@@ -18,6 +18,8 @@ function getArg(name, fallback) {
 const project = path.resolve(packageRoot, getArg("project", "../../examples/example-1"));
 const port = getArg("port", "3000");
 const testReport = getArg("test-report", undefined);
+// Links the Query page, in beta, as `featurevisor catalog --with-query` does
+const withQuery = process.argv.slice(2).includes("--with-query");
 // A separate --out-dir lets several example projects be previewed side by side.
 const publicDir = path.resolve(packageRoot, getArg("out-dir", ".catalog-dev"));
 const ignoredProjectEntries = new Set([
@@ -38,6 +40,7 @@ function getExportArgs() {
     publicDir,
     "--no-assets",
     ...(testReport ? [`--test-report=${path.resolve(process.cwd(), testReport)}`] : []),
+    ...(withQuery ? ["--with-query"] : []),
   ];
 }
 

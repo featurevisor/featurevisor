@@ -232,6 +232,20 @@ describe("Catalog entity surfaces", () => {
     expect(html).not.toContain(">Groups<");
   });
 
+  it("links Query, in beta, only from a Catalog run with --with-query", () => {
+    const shell = (query?: boolean) =>
+      renderToStaticMarkup(
+        <MemoryRouter initialEntries={["/features"]}>
+          <CatalogProvider initialManifest={{ ...manifest, ...(query ? { query } : {}) }}>
+            <AppShell>Content</AppShell>
+          </CatalogProvider>
+        </MemoryRouter>,
+      );
+    expect(shell()).not.toContain('href="/query"');
+    expect(shell(true)).toContain('href="/query"');
+    expect(shell(true)).toContain(">Beta<");
+  });
+
   it("names a watch mode refresh to the second and a static export to the minute", () => {
     // The visible text only, since the tooltip always carries the full timestamp.
     const footer = (props: { live?: boolean; dev?: boolean }) =>

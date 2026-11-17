@@ -5,7 +5,15 @@ import { Link, Navigate, useLocation, useParams, useSearchParams } from "react-r
 
 import { useCatalog } from "../context/CatalogContext";
 import { TestReportSummary } from "../components/testReport";
-import { decodeRouteSegment, entityLabels, entityPathToType, getEntityRoute } from "../entityTypes";
+import {
+  decodeRouteSegment,
+  entityLabels,
+  entityPathToType,
+  getBasePath,
+  getEntityRoute,
+} from "../entityTypes";
+import { searchToFql } from "../query/fromSearch";
+import { queryHref } from "../query/link";
 import type { CatalogEntityType, CatalogIndex, EntityPath, EntitySummary } from "../types";
 import {
   AuthorAvatar,
@@ -39,6 +47,16 @@ import { DeadlineRowBadge, qualifierToken } from "../components/metadata";
 import { FilterMenus, type FilterChip } from "../components/filterMenus";
 
 const LIST_INITIAL_LIMIT = 1000;
+/**
+ * A row's first line: its key, and its badges at the right. When both fit, they share the line.
+ * When they do not, the badges start a line of their own under the key, wrapping as they need,
+ * so a long key is broken only when it is longer than the row itself, and then between words.
+ */
+const ROW_HEAD_CLASS =
+  "row-start-1 flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1.5";
+const ROW_KEY_CLASS = "flex min-h-6 min-w-0 flex-[1_1_auto] items-center gap-2";
+const ROW_BADGES_CLASS = "flex min-h-6 min-w-0 flex-wrap items-center gap-x-2 gap-y-1";
+
 // Rows off screen skip layout and paint until scrolled near, which keeps long lists cheap.
 const LIST_ROW_CLASS =
   "group block px-6 py-3 hover:bg-elevated [content-visibility:auto] [contain-intrinsic-size:auto_73px]";
@@ -690,11 +708,14 @@ const ListRow = React.memo(function ListRow(props: {
               environment={entity.environmentStatusEnvironment}
             />
           </div>
-          <div className="col-start-2 row-start-1 flex min-h-6 min-w-0 items-center">
-            <EntityKey value={entity.key} className="text-sm font-semibold text-primary" />
-          </div>
-          <div className="col-start-3 row-start-1 flex min-h-6 w-full items-center justify-end gap-2">
-            {trailingMeta}
+          <div className={`col-span-2 col-start-2 ${ROW_HEAD_CLASS}`}>
+            <div className={ROW_KEY_CLASS}>
+              <EntityKey
+                value={entity.key}
+                className="text-sm font-semibold text-primary [text-wrap:balance]"
+              />
+            </div>
+            <div className={ROW_BADGES_CLASS}>{trailingMeta}</div>
           </div>
           <div className="col-start-2 row-start-2 flex min-h-5 min-w-0 items-center overflow-hidden">
             <span className="min-w-0 truncate text-sm text-muted">{description}</span>
@@ -716,29 +737,32 @@ const ListRow = React.memo(function ListRow(props: {
       className={LIST_ROW_CLASS}
     >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] gap-x-3 gap-y-1">
-        <div className="col-start-1 row-start-1 flex min-h-6 min-w-0 items-center gap-2">
-          <EntityKey value={entity.key} className="text-sm font-semibold text-primary" />
-          {((type === "variable" && entity.variableType) ||
-            (type === "attribute" && entity.attributeType)) && (
-            <code
-              className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] leading-none text-slate-600"
-              title={
-                type === "variable" && entity.variableType === "json" && entity.isComposed
-                  ? DECODED_JSON_DESCRIPTION
-                  : undefined
-              }
-            >
-              {type === "variable"
-                ? formatVariableType(entity.variableType, entity.isComposed)
-                : entity.attributeFormat
-                  ? `${entity.attributeType} · ${entity.attributeFormat}`
-                  : entity.attributeType}
-            </code>
-          )}
-          {type === "variable" && entity.isComposed && <Badge>composed</Badge>}
-        </div>
-        <div className="col-start-2 row-start-1 flex min-h-6 w-full items-center justify-end gap-2">
-          {trailingMeta}
+        <div className={`col-span-2 col-start-1 ${ROW_HEAD_CLASS}`}>
+          <div className={ROW_KEY_CLASS}>
+            <EntityKey
+              value={entity.key}
+              className="text-sm font-semibold text-primary [text-wrap:balance]"
+            />
+            {((type === "variable" && entity.variableType) ||
+              (type === "attribute" && entity.attributeType)) && (
+              <code
+                className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] leading-none text-slate-600"
+                title={
+                  type === "variable" && entity.variableType === "json" && entity.isComposed
+                    ? DECODED_JSON_DESCRIPTION
+                    : undefined
+                }
+              >
+                {type === "variable"
+                  ? formatVariableType(entity.variableType, entity.isComposed)
+                  : entity.attributeFormat
+                    ? `${entity.attributeType} · ${entity.attributeFormat}`
+                    : entity.attributeType}
+              </code>
+            )}
+            {type === "variable" && entity.isComposed && <Badge>composed</Badge>}
+          </div>
+          <div className={ROW_BADGES_CLASS}>{trailingMeta}</div>
         </div>
         <div className="col-start-1 row-start-2 flex min-h-5 min-w-0 items-center overflow-hidden">
           <span className="min-w-0 truncate text-sm text-muted">{description}</span>
@@ -792,7 +816,10 @@ function TestListRow(props: {
     >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] gap-x-3 gap-y-1">
         <div className="col-start-1 row-start-1 flex min-h-6 min-w-0 items-center gap-2">
-          <EntityKey value={entity.key} className="text-sm font-semibold text-primary" />
+          <EntityKey
+            value={entity.key}
+            className="text-sm font-semibold text-primary [text-wrap:balance]"
+          />
           {kind && (
             <Badge tone={kind === "scenario" ? "accent" : "neutral"}>
               {TEST_KIND_LABELS[kind]}
@@ -976,6 +1003,10 @@ function SearchControls(props: {
   );
 }
 
+/** The lists FQL reads, which open as a report with their search as WHERE */
+type QuerySubject = "feature" | "variable" | "segment" | "attribute";
+const QUERY_TYPES = new Set<CatalogEntityType>(["feature", "variable", "segment", "attribute"]);
+
 export function ListPage() {
   const { manifest } = useCatalog();
   const { entityPath, setKey } = useParams();
@@ -1153,6 +1184,21 @@ export function ListPage() {
           {filtered.length !== index.entities[type].length && visible.length < filtered.length
             ? ` (${filtered.length} matches)`
             : ""}
+          {manifest.query && QUERY_TYPES.has(type) && (
+            <>
+              {" · "}
+              <Link
+                to={queryHref(
+                  getBasePath(setKey && decodeRouteSegment(setKey)),
+                  searchToFql(type as QuerySubject, query),
+                )}
+                className="font-medium text-primary hover:underline"
+                title="This list as an FQL report, its search written as conditions"
+              >
+                Open in Query
+              </Link>
+            </>
+          )}
         </p>
 
         {hasHiddenEntities && (

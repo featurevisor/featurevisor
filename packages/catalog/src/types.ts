@@ -54,6 +54,8 @@ export interface EntitySummary {
   environments?: string[];
   /** Environments whose rules or overrides come from another, for `inherited:` */
   inheritedEnvironments?: string[];
+  /** Features only: what it buckets by, in words, such as `userId and deviceId` */
+  bucketBy?: string;
   variationValues?: string[];
   variableKeys?: string[];
   hasVariations?: boolean;
@@ -96,6 +98,11 @@ export interface CatalogManifest {
   schemaVersion: string;
   generatedAt: string;
   router?: "hash" | "browser";
+  /**
+   * Exported with `--with-query`: the Query page, in beta, is linked from the sidebar, lists and
+   * Overviews. Without it, the page still answers at `/query` for anyone who visits it.
+   */
+  query?: boolean;
   storage?: CatalogStorageDescriptor;
   sets: boolean;
   setKeys: string[];

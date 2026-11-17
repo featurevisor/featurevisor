@@ -22,6 +22,7 @@ const fields: Record<keyof EntitySummary, Kind> = {
   dependsOnDeprecated: "boolean",
   environments: "strings",
   inheritedEnvironments: "strings",
+  bucketBy: "string",
   variationValues: "strings",
   variableKeys: "strings",
   hasVariations: "boolean",

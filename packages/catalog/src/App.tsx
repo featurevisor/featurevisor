@@ -25,12 +25,15 @@ const loadList = () => import("./pages/ListPage");
 const loadDetail = () => import("./pages/EntityDetailPage");
 const loadHistory = () => import("./pages/HistoryPage");
 const loadDeadlines = () => import("./pages/DeadlinesPage");
+// The SDK evaluates only on the Query page, so it loads with that page alone
+const loadQuery = () => import("./pages/QueryPage");
 
 const HomePage = lazyPage(loadHome, "HomePage");
 const OverviewPage = lazyPage(loadHome, "OverviewPage");
 const ListPage = lazyPage(loadList, "ListPage");
 const HistoryPage = lazyPage(loadHistory, "HistoryPage");
 const DeadlinesPage = lazyPage(loadDeadlines, "DeadlinesPage");
+const QueryPage = lazyPage(loadQuery, "QueryPage");
 const EntityDetailPage = lazyPage(loadDetail, "EntityDetailPage");
 const OverviewTab = lazyPage(loadDetail, "OverviewTab");
 const FeatureVariationsTab = lazyPage(loadDetail, "FeatureVariationsTab");
@@ -81,9 +84,11 @@ export function App(props: { manifest: CatalogManifest; live?: boolean }) {
               {EntityRoutes({ prefix: "sets/:setKey/" })}
               <Route path="sets/:setKey/history" element={<HistoryPage />} />
               <Route path="sets/:setKey/deadlines" element={<DeadlinesPage />} />
+              <Route path="sets/:setKey/query" element={<QueryPage />} />
 
               <Route path="history" element={<HistoryPage />} />
               <Route path="deadlines" element={<DeadlinesPage />} />
+              <Route path="query" element={<QueryPage />} />
               <Route path=":entityPath" element={<ListPage />} />
               {EntityRoutes()}
 

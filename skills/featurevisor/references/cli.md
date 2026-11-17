@@ -332,9 +332,10 @@ npx featurevisor catalog --port=4000
 npx featurevisor catalog export
 npx featurevisor catalog export --out-dir=./out --hash-router
 npx featurevisor catalog serve
+npx featurevisor catalog --with-query
 ```
 
-`catalog` exports, serves at `http://127.0.0.1:3000` and reloads on every saved change. When the project's remote is on GitHub, GitLab or Bitbucket, each definition has a Propose change link that opens it in the Git host's editor, which suits people who would rather not clone the repository. `catalog export` writes a static site to `catalog/` for hosting. `--hash-router` suits static hosts without a fallback to `index.html`. `--test-report=<file>` shows results from a saved `test --json` report. Set `catalogBasePath` in the configuration to host it under a path. Full docs: <https://featurevisor.com/docs/catalog/>.
+`catalog` exports, serves at `http://127.0.0.1:3000` and reloads on every saved change. When the project's remote is on GitHub, GitLab or Bitbucket, each definition has a Propose change link that opens it in the Git host's editor, which suits people who would rather not clone the repository. `catalog export` writes a static site to `catalog/` for hosting. `--hash-router` suits static hosts without a fallback to `index.html`. `--test-report=<file>` shows results from a saved `test --json` report. `--with-query` links the Query page, in beta, from the sidebar, lists and Overviews, for FQL reports ([catalog-query.md](catalog-query.md)). The page answers at `/query` without it too. Set `catalogBasePath` in the configuration to host it under a path. Full docs: <https://featurevisor.com/docs/catalog/>.
 
 ## version
 

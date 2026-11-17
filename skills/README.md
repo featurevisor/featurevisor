@@ -22,6 +22,7 @@ Then ask your agent (Claude Code, Codex, Cursor, OpenCode and others), for examp
 - "Give the checkout page one composed value with the flag, the pricing variation and the support email"
 - "Why is checkout disabled for user 9b30 in Germany?"
 - "Which features use the netherlands segment, and what breaks if I archive it?"
+- "Give me a Catalog link to every feature rolling out in production, furthest first"
 - "Write tests for pricing covering both variations, and a scenario for maintenance mode"
 - "Summarize what this branch changes in our flags"
 - "Set up a new Featurevisor project with staging and production environments"
@@ -38,6 +39,7 @@ One skill, `featurevisor`, for Featurevisor v4:
 - **Testing**: feature, segment and global variable specs, checks, standalone scenarios, matrices, targets, JSON reports and exact case reruns.
 - **Querying**: `list`, `find-usage`, `find-duplicate-segments`, `evaluate --explain`, `assess-distribution` and `diff` for answering questions without reading YAML by hand.
 - **Visual review**: the Catalog in watch mode, so changes made by prompt appear in the browser as they are saved.
+- **Catalog queries**: FQL reports on the Catalog's Query page, in beta with `--with-query`, for questions across the whole project as shareable tables, from rollouts in progress to what several users get.
 - **Applications**: the JavaScript SDK in Node.js, browsers, edge runtimes and React Native, React and Vue, typed code generation, SDKs in other languages and their spec runners, and OpenFeature providers.
 - **Recipes**: gradual rollouts, A/B and multivariate tests, kill switches, scheduled launches, early access programmes, entitlements, version gates and flag cleanup.
 - **Upgrades**: v3 to v4 and v2 to v3, for projects and applications, in an order that keeps them deployable. `migrate` rewrites a v3 project's definitions for v4.

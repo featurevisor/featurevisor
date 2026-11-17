@@ -18,6 +18,8 @@ import {
   OverviewSection,
 } from "../../components/ui";
 import { ConditionTree } from "../../components/trees";
+import { queryHref } from "../../query/link";
+import { whoGetsThisQuery } from "../../query/report";
 import {
   SchemaPropertiesOverview,
   SchemaTable,
@@ -66,6 +68,10 @@ export function OverviewTab() {
 
   return (
     <div className="space-y-6">
+      {/* A ready Query report, linked only where the Catalog offers Query, in beta */}
+      {manifest.query && (detail.type === "feature" || detail.type === "variable") && (
+        <WhoGetsThis type={detail.type} entityKey={detail.key} setKey={setKey} />
+      )}
       <EntityOverviewMeta detail={detail} entity={entity} setKey={setKey} />
 
       <DeadlinesSection metadata={entity.metadata} archived={entity.archived === true} />
@@ -1025,5 +1031,28 @@ function UsedByRow(props: { detail: EntityDetail; dependencies: EntityDependenci
         </span>
       )}
     </OverviewMetaRow>
+  );
+}
+
+/**
+ * A ready Query report for this feature or global variable: a row per value its conditions
+ * compare, a column per environment, as the product manager's "where is it on?" asks.
+ */
+function WhoGetsThis(props: { type: "feature" | "variable"; entityKey: string; setKey?: string }) {
+  const { manifest } = useCatalog();
+  const query = whoGetsThisQuery(
+    props.type,
+    props.entityKey,
+    manifest.projectConfig.environments || [],
+  );
+  return (
+    <div className="-mb-3 flex justify-end">
+      <Link
+        to={queryHref(getBasePath(props.setKey), query)}
+        className="text-xs font-medium text-primary hover:underline"
+      >
+        Who gets this?
+      </Link>
+    </div>
   );
 }

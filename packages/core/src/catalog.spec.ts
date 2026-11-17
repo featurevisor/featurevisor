@@ -4,7 +4,7 @@ import * as path from "path";
 
 import { getProjectConfig } from "./config";
 import { Datasource } from "./datasource";
-import { getCatalogTargetMemberships, reloadCatalogProject } from "./catalog";
+import { getCatalogDatafiles, getCatalogTargetMemberships, reloadCatalogProject } from "./catalog";
 import { buildTargetDatafile } from "./builder/buildProject";
 import { buildDependencyGraph } from "./datasource/dependencies";
 
@@ -40,6 +40,24 @@ describe("core: Catalog bridge", () => {
     const [size] = memberships.mixed.datafiles;
     expect(size.bytes).toBeGreaterThan(size.gzipBytes);
     expect(size.gzipBytes).toBeGreaterThan(0);
+  });
+
+  it("builds the whole project's datafile per environment for the Query page", async () => {
+    const root = path.resolve(__dirname, "../../../examples/example-1");
+    const projectConfig = getProjectConfig(root);
+    const datafiles = await getCatalogDatafiles(projectConfig, new Datasource(projectConfig, root));
+    expect(datafiles.map((item) => item.environment)).toEqual(projectConfig.environments);
+    for (const { datafile } of datafiles) {
+      expect(datafile.revision).toBe("catalog");
+      expect(Object.keys(datafile.features)).toContain("allowSignup");
+    }
+
+    // Without environments, one datafile stands for the whole project
+    const flatRoot = path.resolve(__dirname, "../../../examples/example-no-environments");
+    const flatConfig = getProjectConfig(flatRoot);
+    const flat = await getCatalogDatafiles(flatConfig, new Datasource(flatConfig, flatRoot));
+    expect(flat.map((item) => item.environment)).toEqual([null]);
+    expect(Object.keys(flat[0].datafile.features).length).toBeGreaterThan(0);
   });
 
   it("reports the segments each Target's datafile carries", async () => {
