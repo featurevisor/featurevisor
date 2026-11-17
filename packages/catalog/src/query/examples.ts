@@ -184,7 +184,7 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
             "WHERE differs == true",
             "ENVIRONMENT staging, production",
             "SELECT feature(key)",
-            "AS MATRIX",
+            "AS MATRIX BY ENVIRONMENT",
           ),
         },
         {
@@ -207,7 +207,7 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
               "VARY *",
               "ENVIRONMENT *",
               "SELECT feature(key)",
-              "AS MATRIX",
+              "AS MATRIX BY ENVIRONMENT",
             ),
           },
         ),
@@ -235,7 +235,7 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
               "WHERE variations notEmpty",
               `VARY ${attribute}`,
               "SELECT feature(key).variation",
-              "AS MATRIX",
+              "AS MATRIX BY ENVIRONMENT",
             ),
           },
         ),
@@ -255,10 +255,10 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
       ],
     },
     {
-      section: "People",
+      section: "Contexts",
       examples: [
         {
-          title: "What one person gets",
+          title: "What one user gets",
           about: "Every feature for user-1, and its variation",
           query: lines(
             "FROM features",
@@ -310,7 +310,7 @@ export function examplesFor(source: ExampleSource): ExampleGroup[] {
               "FROM variables",
               `VARY ${attribute}`,
               "SELECT variable(key)",
-              "AS MATRIX",
+              "AS MATRIX BY ENVIRONMENT",
             ),
           },
         ),

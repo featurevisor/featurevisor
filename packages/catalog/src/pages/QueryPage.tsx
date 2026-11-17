@@ -798,15 +798,15 @@ function Summary(props: { result: Result }) {
   const lens = !result.evaluations
     ? undefined
     : lenses.has("audience")
-      ? lenses.has("person")
-        ? "Mixed: some cells describe audiences, others one person"
+      ? lenses.has("context")
+        ? "Mixed: some cells describe audiences, others one context"
         : "Audience: a share of everyone matching each row, as rollouts give it"
-      : lenses.has("person")
-        ? "One person: the exact answer for each row's person"
+      : lenses.has("context")
+        ? "One context: the exact answer for each row's context"
         : "Exact: everyone matching each row gets the same value";
-  // Some answers are one person's and some are shares: say what CONTEXT lacks for the rest
+  // Some answers are one context's and some are shares: say what CONTEXT lacks for the rest
   const missing =
-    lenses.has("audience") && lenses.has("person") && result.missing.length
+    lenses.has("audience") && lenses.has("context") && result.missing.length
       ? result.missing
       : undefined;
 
@@ -845,7 +845,7 @@ function Summary(props: { result: Result }) {
           Some features bucket by <CodeList items={missing} />, which CONTEXT does not give, so they
           read as shares. Add{" "}
           {missing.length === 1 && !/ (and|or) /.test(missing[0]) ? "it" : "them"} to CONTEXT for
-          one person's answer everywhere.
+          one context's answer everywhere.
         </p>
       )}
     </div>
@@ -986,7 +986,7 @@ function variationsOf(result: Result) {
 
 /**
  * The report's rows, columns in SELECT's order after whatever says what each row is about. In a
- * matrix, each read column splits into one per environment, or with BY PERSON one per person.
+ * matrix, each read column splits into one per environment, or with BY CONTEXT one per context.
  */
 function ResultTable(props: {
   result: Result;
@@ -995,7 +995,7 @@ function ResultTable(props: {
 }) {
   const { result } = props;
   const variations = variationsOf(result);
-  // A matrix splits each read into a column for each environment, or with BY PERSON each person
+  // A matrix splits each read into a column for each environment, or with BY CONTEXT each context
   const split = result.matrix && result.across.length > 1;
   const headingClass = (column: ResultColumn) =>
     column.heading.entity && column.column.alias === undefined
@@ -1104,7 +1104,7 @@ function CellView(props: { cell: Cell; onClick: () => void; variations: string[]
         {cell.text || "—"}
       </span>
     );
-  // A value read at one place in a rollout says so, and Why says how to read one person's
+  // A value read at one place in a rollout says so, and Why says how to read one context's
   const varies = cell.why.depends?.length;
   return (
     <button
@@ -1132,10 +1132,10 @@ function WhyPanel(props: { title: string; cell: Cell; why: Why; onClose: () => v
           : why.missing && why.bucketBy && why.missing !== why.bucketBy
             ? `Everyone matching this row. Without ${why.missing}, part of what this feature buckets by (${why.bucketBy}), a rollout reads as the share it enables.`
             : `Everyone matching this row. Without ${why.bucketBy || "what it buckets by"}, which this feature buckets by, a rollout reads as the share it enables.`
-        : why.lens === "person"
+        : why.lens === "context"
           ? why.at !== undefined
-            ? `One person, placed at ${why.at}% of the rollout.`
-            : `One person, bucketed by their ${why.bucketBy || "own attributes"}.`
+            ? `One context, placed at ${why.at}% of the rollout.`
+            : `One context, bucketed by its ${why.bucketBy || "own attributes"}.`
           : "Exact. Everyone matching this row gets this value.",
     ],
     ["Reason", <code key="reason">{why.reason}</code>],
@@ -1198,8 +1198,8 @@ function WhyPanel(props: { title: string; cell: Cell; why: Why; onClose: () => v
         ))}
         . This is the value at one place in{" "}
         {features.length === 1 ? "its rollout" : "their rollouts"}. Write <code>AT</code>, such as{" "}
-        <code>AT 75</code>, or a person with what{" "}
-        {features.length === 1 ? "it buckets" : "they bucket"} by, to read one person.
+        <code>AT 75</code>, or a context with what{" "}
+        {features.length === 1 ? "it buckets" : "they bucket"} by, to read one context's.
       </span>,
     ]);
   }

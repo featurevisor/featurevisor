@@ -73,12 +73,12 @@ function Rows(props: { rows: Array<[string, React.ReactNode]>; plain?: boolean }
 const CLAUSES: Array<[string, React.ReactNode]> = [
   [
     "FROM features, variables",
-    "What each row is: features, variables, segments or attributes. Left out, each row is a person.",
+    "What each row is: features, variables, segments or attributes. Left out, each row is a context.",
   ],
   ["WHERE tags includes 'web'", "Keeps the rows that match, written as conditions are."],
   [
     "CONTEXT { country: 'nl', plan: 'pro' }",
-    "The person every read is for. With what a feature buckets by, such as userId, its answer is theirs exactly, and without it a share. Left out, everyone.",
+    "The attributes every read is evaluated with. With what a feature buckets by, such as userId, its answer is exact, and without it a share. Left out, everyone.",
   ],
   [
     "AT 50",
@@ -90,7 +90,11 @@ const CLAUSES: Array<[string, React.ReactNode]> = [
   ],
   [
     "VARY [{ country: 'nl', city: 'amsterdam' }, OTHER]",
-    "A row per person written out, so only real combinations are read, where VARY country, city crosses every value with every other.",
+    "A row per context written out, so only real combinations are read, where VARY country, city crosses every value with every other.",
+  ],
+  [
+    "VARY [{ city: 'amsterdam' } AS 'Amsterdam', OTHER AS 'Elsewhere']",
+    "AS names a context, shown in place of its attributes in its column and across a matrix.",
   ],
   [
     "ENVIRONMENT staging, production",
@@ -100,8 +104,14 @@ const CLAUSES: Array<[string, React.ReactNode]> = [
   ["GROUP BY owner", "Gathers rows, and SELECT count() counts each group."],
   ["ORDER BY owner, key DESC", "Orders the rows, ASC or DESC."],
   ["LIMIT 10", "Shows the first rows only."],
-  ["AS MATRIX", "Puts environments across the top."],
-  ["AS MATRIX BY PERSON", "Puts each person across the top instead, a row per feature."],
+  [
+    "AS MATRIX BY ENVIRONMENT",
+    "Puts each environment across the top, a row per feature and context.",
+  ],
+  [
+    "AS MATRIX BY CONTEXT",
+    "Puts each context CONTEXT, VARY and AT make across the top, a row per feature. Needs FROM.",
+  ],
   ["# A note to self", "A line that starts with # is a comment."],
 ];
 
@@ -139,10 +149,11 @@ const VALUES: Array<[string, React.ReactNode]> = [
 
 /** What a cell says, written as cells show it */
 const CELLS: Array<[string, React.ReactNode]> = [
-  ["On, Off", "On or off for everyone in the row, or for its one person."],
+  ["On, Off", "On or off for everyone in the row, or for its one context."],
   ["25%", "On for that share of the row's audience."],
   ["control 50% · treatment 50%", "How the audience splits, as shares of the whole row."],
   ["control: Buy · treatment: Buy now", "A variable whose value differs by variation."],
+  ["Next day 50%", "A variable's value for the share a rollout turns on. The rest get it off."],
   ["support@example.com varies", "A value read at one place in a rollout it changes with."],
   ["None", "On, with no variation."],
 ];
@@ -150,13 +161,16 @@ const CELLS: Array<[string, React.ReactNode]> = [
 /** The line above the results names how cells read */
 const LENSES: Array<[string, React.ReactNode]> = [
   ["Audience", "Everyone matching each row, so rollouts read as shares."],
-  ["One person", "CONTEXT has what each feature buckets by, or the report has AT."],
+  ["One context", "CONTEXT has what each feature buckets by, or the report has AT."],
   ["Mixed", "Some of each, and the line under it names what CONTEXT lacks."],
   ["Exact", "Everyone matching each row gets the same value."],
 ];
 
 /** What trips people up, and how FQL settles it */
 const GOOD_TO_KNOW: React.ReactNode[] = [
+  <>
+    A context is whatever the attributes describe: a user, a device, an organization or a service.
+  </>,
   <>
     <Code>WHERE feature(key)</Code> is true only when fully on. Compare{" "}
     <Code>rollout(feature(key))</Code> for partial rollouts.
@@ -167,13 +181,13 @@ const GOOD_TO_KNOW: React.ReactNode[] = [
     48 rows.
   </>,
   <>
-    Several attributes in VARY cross every value with every other. A list of people reads only the
+    Several attributes in VARY cross every value with every other. A list of contexts reads only the
     combinations written.
   </>,
   <>
     Without SELECT, rows show <Code>key</Code>, <Code>description</Code>, <Code>owner</Code> and{" "}
     <Code>tags</Code>, or the row's own read when the report evaluates. Without FROM, SELECT is
-    needed and bare names are the person's attributes.
+    needed and bare names are the context's attributes.
   </>,
   <>
     <Code>GROUP BY tags</Code> counts a list once per item, a read groups by its answer, and groups
@@ -183,7 +197,7 @@ const GOOD_TO_KNOW: React.ReactNode[] = [
     ORDER BY sorts a flag by its share, <Code>deadlineStatus</Code> by urgency and text naturally,
     blanks last.
   </>,
-  <>A report runs up to 20,000 evaluations: rows × people × environments × reads.</>,
+  <>A report runs up to 20,000 evaluations: rows × contexts × environments × reads.</>,
   <>
     The query lives in the link after <Code>#</Code>, so Copy link shares the report, and Copy as
     Markdown copies its table.
@@ -211,7 +225,7 @@ export const CHEAT_SHEET_EXAMPLES: Array<{ title: string; query: string }> = [
     ].join("\n"),
   },
   {
-    title: "What one person gets",
+    title: "What one user gets",
     query: [
       "FROM features",
       "CONTEXT { userId: 'user-1' }",
@@ -230,7 +244,7 @@ export const CHEAT_SHEET_EXAMPLES: Array<{ title: string; query: string }> = [
       "WHERE differs == true",
       "ENVIRONMENT *",
       "SELECT feature(key)",
-      "AS MATRIX",
+      "AS MATRIX BY ENVIRONMENT",
     ].join("\n"),
   },
   {
@@ -243,15 +257,17 @@ export const CHEAT_SHEET_EXAMPLES: Array<{ title: string; query: string }> = [
   },
   {
     title: "Every global variable, for each audience",
-    query: ["FROM variables", "VARY *", "SELECT variable(key)", "AS MATRIX"].join("\n"),
+    query: ["FROM variables", "VARY *", "SELECT variable(key)", "AS MATRIX BY ENVIRONMENT"].join(
+      "\n",
+    ),
   },
   {
-    title: "Three people side by side",
+    title: "Three users side by side",
     query: [
       "FROM features",
       "VARY [{ userId: 'user-1' }, { userId: 'user-2' }, { userId: 'user-3' }]",
       "SELECT feature(key)",
-      "AS MATRIX BY PERSON",
+      "AS MATRIX BY CONTEXT",
     ].join("\n"),
   },
 ];
@@ -399,7 +415,7 @@ export function QueryCheatSheet(props: { onClose: () => void; onTry: (query: str
             title="Properties"
             about={
               <>
-                What FROM's rows have, for SELECT, WHERE, GROUP BY and ORDER BY. A row per person
+                What FROM's rows have, for SELECT, WHERE, GROUP BY and ORDER BY. A row per context
                 has its attributes instead, and <Code>metadata.jira</Code> reads anything in a
                 definition's metadata.
               </>

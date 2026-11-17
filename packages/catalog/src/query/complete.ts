@@ -17,7 +17,7 @@ export interface CompletionSource {
   attributes: Array<{ key: string; description?: string }>;
   tags: string[];
   owners: string[];
-  /** Test scenarios, each a person to read for, as their spec writes it */
+  /** Test scenarios, each a context to read for, as their spec writes it */
   scenarios?: Array<{
     key: string;
     description?: string;
@@ -70,7 +70,7 @@ const CLAUSE_ITEMS: Array<{ clause: string; item: CompletionItem }> = [
     item: {
       label: "CONTEXT",
       insert: "CONTEXT ",
-      detail: "the person's attributes",
+      detail: "the attributes to evaluate with",
       kind: "keyword",
     },
   },
@@ -80,7 +80,7 @@ const CLAUSE_ITEMS: Array<{ clause: string; item: CompletionItem }> = [
   },
   {
     clause: "VARY",
-    item: { label: "VARY", insert: "VARY ", detail: "a row per value", kind: "keyword" },
+    item: { label: "VARY", insert: "VARY ", detail: "a row per value or context", kind: "keyword" },
   },
   {
     clause: "ENVIRONMENT",
@@ -119,21 +119,27 @@ const CLAUSE_ITEMS: Array<{ clause: string; item: CompletionItem }> = [
   {
     clause: "AS",
     item: {
-      label: "AS MATRIX",
-      insert: "AS MATRIX",
-      detail: "environments across the top",
+      label: "AS MATRIX BY ENVIRONMENT",
+      insert: "AS MATRIX BY ENVIRONMENT",
+      detail: "each environment across the top",
       kind: "keyword",
     },
   },
   {
     clause: "AS",
     item: {
-      label: "AS MATRIX BY PERSON",
-      insert: "AS MATRIX BY PERSON",
-      detail: "each person across the top",
+      label: "AS MATRIX BY CONTEXT",
+      insert: "AS MATRIX BY CONTEXT",
+      detail: "each context across the top",
       kind: "keyword",
     },
   },
+];
+
+/** What a matrix puts across the top, after `BY` */
+const ACROSS: Array<[string, string]> = [
+  ["ENVIRONMENT", "each environment across the top"],
+  ["CONTEXT", "each context across the top"],
 ];
 
 /** WHERE's operators for each type of property, each with what it asks */
@@ -542,7 +548,7 @@ export function completeFql(
     }
   }
 
-  // A person's attributes, as keys of CONTEXT's object or of a person in VARY's list
+  // Attributes, as keys of CONTEXT's object or of a context in VARY's list
   if (
     innermost?.text === "{" &&
     (clause === "CONTEXT" || clause === "VARY") &&
@@ -562,22 +568,42 @@ export function completeFql(
   if (previous?.text === "AS" && innermost === undefined) {
     return result([
       { label: "TABLE", insert: "TABLE", detail: "layout", kind: "keyword" },
-      { label: "MATRIX", insert: "MATRIX", detail: "environments across the top", kind: "keyword" },
-      {
-        label: "MATRIX BY PERSON",
-        insert: "MATRIX BY PERSON",
-        detail: "each person across the top",
-        kind: "keyword",
-      },
+      ...ACROSS.map(([word, detail]) => ({
+        label: `MATRIX BY ${word}`,
+        insert: `MATRIX BY ${word}`,
+        detail,
+        kind: "keyword" as const,
+      })),
     ]);
   }
   // After a matrix, what goes across it
   if (clause === "AS" && innermost === undefined && previous?.text === "MATRIX") {
+    return result(
+      ACROSS.map(([word, detail]) => ({
+        label: `BY ${word}`,
+        insert: `BY ${word}`,
+        detail,
+        kind: "keyword" as const,
+      })),
+    );
+  }
+  if (clause === "AS" && innermost === undefined && previous?.text === "BY") {
+    return result(
+      ACROSS.map(([word, detail]) => ({ label: word, insert: word, detail, kind: "keyword" })),
+    );
+  }
+  // A context in VARY's list, named for its column
+  if (
+    clause === "VARY" &&
+    innermost?.text === "[" &&
+    (previous?.text === "}" || previous?.text === "OTHER")
+  ) {
     return result([
       {
-        label: "BY PERSON",
-        insert: "BY PERSON",
-        detail: "each person across the top",
+        label: "AS '…'",
+        insert: "AS ''",
+        cursor: 4,
+        detail: "a name for its column",
         kind: "keyword",
       },
     ]);
@@ -654,7 +680,7 @@ export function completeFql(
         {
           label: "[{ … }]",
           insert: "[{ ",
-          detail: "people, each a combination",
+          detail: "contexts, each a combination",
           kind: "value",
           chain: true,
         },
@@ -686,11 +712,11 @@ export function completeFql(
         {
           label: "{ … }",
           insert: "{ ",
-          detail: "a person's attributes",
+          detail: "attributes",
           kind: "value",
           chain: true,
         },
-        // A test scenario's person, and its place in the rollout when it has one
+        // A test scenario's context, and its place in the rollout when it has one
         ...(project.scenarios || []).map((scenario) => ({
           label: scenario.key,
           insert: `${fqlValue(scenario.context)}${
@@ -732,7 +758,7 @@ export function completeFql(
         : project.attributes.map((attribute) => ({
             label: attribute.key,
             insert: attribute.key,
-            detail: "the person's attribute",
+            detail: "an attribute",
             kind: "attribute" as const,
           }));
       return result([

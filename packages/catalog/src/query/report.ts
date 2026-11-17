@@ -43,6 +43,8 @@ export interface ReportVary {
    * varying each attribute would cross every value with every other. Its attribute is "".
    */
   people?: Array<Record<string, unknown> | typeof ANY_OTHER>;
+  /** Names `AS` gives the people, one per person, for those it names */
+  labels?: Array<string | undefined>;
 }
 
 /** The attributes a VARY sets: its own, or every key its people name, in the order they appear */
@@ -116,8 +118,8 @@ export interface Report {
   sort: ReportSort[];
   limit?: number;
   as: ReportLayout;
-  /** What a matrix puts across the top: environments, or with `BY PERSON`, each person */
-  across?: "environment" | "person";
+  /** What a matrix puts across the top: `BY ENVIRONMENT` each environment, `BY CONTEXT` each context */
+  across?: "environment" | "context";
 }
 
 /** Whether a report reads what someone gets, so it needs datafiles and people */
@@ -215,45 +217,64 @@ export interface ReportPerson {
   values: Record<string, unknown>;
   label: string;
   person: Person;
+  /** For each VARY list whose people `AS` names, this context's name in it, by its place in VARY */
+  names?: Record<number, string>;
+  /** CONTEXT's alone, with nothing varied, so a row's title leaves it out */
+  base?: true;
 }
 
-/** The people a report evaluates for: the person, or one per combination of the values varied */
+const joined = (label: string, part: string) => (label ? `${label} · ${part}` : part);
+
+/** How one varied value reads in a context's name: `at 50` for a place in the rollout */
+const partOf = (attribute: string, value: unknown) =>
+  attribute === "at" ? `at ${formatValue(value)}` : formatValue(value);
+
+/** The contexts a report evaluates for: CONTEXT's, or one per combination of the values varied */
 export function peopleOf(person: Person | undefined, vary: ReportVary[]): ReportPerson[] {
   if (!person) return [];
-  let rows: ReportPerson[] = [{ values: {}, label: "Person", person }];
-  for (const item of vary) {
+  let rows: ReportPerson[] = [{ values: {}, label: "", person }];
+  vary.forEach((item, place) => {
     const { attribute, values } = item;
     if (item.people) {
-      // Each person written out, and OTHER as everyone the others do not name
+      // Each context written out, and OTHER as everyone the others do not name
       const keys = varyAttributes(item);
+      const named = Boolean(item.labels?.some((label) => label !== undefined));
       rows = rows.flatMap((row) =>
-        item.people!.map((entry) => {
+        item.people!.map((entry, index) => {
           const own =
             entry === ANY_OTHER ? Object.fromEntries(keys.map((key) => [key, ANY_OTHER])) : entry;
-          const varied = { ...row.values, ...own };
-          // OTHER reads once, rather than once for every key the others name
+          // AS names it, and OTHER reads once rather than once for every key the others name
           const part =
-            entry === ANY_OTHER ? ANY_OTHER : Object.values(own).map(formatValue).join(" · ");
+            item.labels?.[index] ??
+            (entry === ANY_OTHER ? ANY_OTHER : Object.values(own).map(formatValue).join(" · "));
           return {
-            values: varied,
-            label: row.label === "Person" ? part : `${row.label} · ${part}`,
+            values: { ...row.values, ...own },
+            label: joined(row.label, part),
             person: { ...row.person, ...own },
+            ...(named
+              ? { names: { ...row.names, [place]: part } }
+              : row.names
+                ? { names: row.names }
+                : {}),
           };
         }),
       );
-      continue;
+      return;
     }
-    if (values.length === 0) continue;
+    if (values.length === 0) return;
     rows = rows.flatMap((row) =>
-      values.map((value) => {
-        const varied = { ...row.values, [attribute]: value };
-        return {
-          values: varied,
-          label: Object.values(varied).map(formatValue).join(" · "),
-          person: { ...row.person, [attribute]: value },
-        };
-      }),
+      values.map((value) => ({
+        values: { ...row.values, [attribute]: value },
+        label: joined(row.label, partOf(attribute, value)),
+        person: { ...row.person, [attribute]: value },
+        ...(row.names ? { names: row.names } : {}),
+      })),
     );
+  });
+  // Nothing varied: CONTEXT's own attributes name it, or everyone without any
+  if (rows.length === 1 && rows[0].label === "") {
+    const parts = Object.entries(person).map(([key, value]) => partOf(key, value));
+    rows[0] = { ...rows[0], label: parts.join(" · ") || "everyone", base: true };
   }
   return rows;
 }
@@ -270,7 +291,7 @@ export function whoGetsThisQuery(
     "VARY *",
     ...(environments.length ? [`ENVIRONMENT ${environments.join(", ")}`] : []),
     `SELECT ${type === "feature" ? "feature(key)" : "variable(key)"}`,
-    "AS MATRIX",
+    "AS MATRIX BY ENVIRONMENT",
   ].join("\n");
 }
 

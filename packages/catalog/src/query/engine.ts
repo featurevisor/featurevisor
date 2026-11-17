@@ -14,7 +14,7 @@ import type { BucketBy, Context, DatafileContent } from "@featurevisor/types";
 /** A person: attribute values, plus `at`, a rollout position from 0 to 100 as in test specs */
 export type Person = Record<string, unknown>;
 
-export type Lens = "audience" | "person";
+export type Lens = "audience" | "context";
 
 export type CellTone = "on" | "off" | "partial" | "value" | "none";
 
@@ -156,8 +156,8 @@ function describeBucketBy(bucketBy: BucketBy | undefined): string | undefined {
 /** Whether a feature's answer for this person is theirs alone, or their audience's */
 export function lensOf(datafile: DatafileContent, featureKey: string, person: Person): Lens {
   const { context, position } = placement(person);
-  if (position !== undefined) return "person";
-  return knowsBucket(context, datafile.features[featureKey]?.bucketBy) ? "person" : "audience";
+  if (position !== undefined) return "context";
+  return knowsBucket(context, datafile.features[featureKey]?.bucketBy) ? "context" : "audience";
 }
 
 const percent = (value: number) => Math.round((value / MAX_BUCKETED_NUMBER) * 1000) / 10;
@@ -386,7 +386,7 @@ export function flagCell(
   }
   // One person, placed in this feature's rollout, but perhaps not in a feature it requires that
   // buckets by something else, which the answer then changes with
-  if (lens === "person") {
+  if (lens === "context") {
     const depends = dependsOn(
       datafile,
       person,
@@ -519,11 +519,35 @@ export function featureVariableCell(
       why,
     };
   }
-  const evaluation = valueAt(position);
+  // An audience reads where the enabled share starts, as its flag does, so a rule partly on shows
+  // the value that share gets rather than wherever an absent userId happens to fall
+  const audience = variation.why.lens === "audience";
+  const place = audience ? AUDIENCE_POSITION : position;
+  const evaluation = valueAt(place);
   const value = valueAtPath(evaluation.variableValue, path);
   const depends = dependsOn(datafile, person, required, value, (positions) =>
-    valueAtPath(apart(evaluator, positions, () => valueAt(position)).variableValue, path),
+    valueAtPath(apart(evaluator, positions, () => valueAt(place)).variableValue, path),
   );
+  // Partly on, the rest of the audience gets the feature off, and its variable as that leaves it
+  const share = variation.why.percentage;
+  if (audience && share !== undefined && share > 0 && share < 100) {
+    const rest = valueAtPath(valueAt(MAX_BUCKETED_NUMBER).variableValue, path);
+    if (formatValue(rest) !== formatValue(value)) {
+      return {
+        text: `${formatValue(value) || "None"} ${formatPercent(share)}`,
+        tone: "partial",
+        value: null,
+        why: {
+          ...variation.why,
+          ...(depends.length
+            ? { depends: [...new Set([...(variation.why.depends || []), ...depends])] }
+            : {}),
+          reason: evaluation.reason,
+          overrideKey: evaluation.variableOverrideKey,
+        },
+      };
+    }
+  }
   return {
     text: formatValue(value),
     tone: "value",
@@ -572,13 +596,13 @@ export function globalVariableCell(
   // Placed in every rollout it follows, by AT or by what they bucket by, it is one person's
   const followed = [...new Set(required)].filter((key) => datafile.features?.[key]);
   const placed =
-    followed.length > 0 && followed.every((key) => lensOf(datafile, key, person) === "person");
+    followed.length > 0 && followed.every((key) => lensOf(datafile, key, person) === "context");
   return {
     text: formatValue(value),
     tone: "value",
     value,
     why: {
-      lens: depends.length ? "audience" : placed ? "person" : "exact",
+      lens: depends.length ? "audience" : placed ? "context" : "exact",
       reason: evaluation.reason,
       overrideKey: evaluation.variableOverrideKey,
       ...(placed && typeof person.at === "number" ? { at: person.at } : {}),

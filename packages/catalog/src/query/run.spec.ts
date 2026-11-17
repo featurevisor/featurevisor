@@ -260,7 +260,7 @@ describe("runReport, what people get", () => {
 
   it("varies people into a matrix, environments across the top", () => {
     const { headings, rows } = run(
-      "FROM features\nWHERE key == 'checkout'\nVARY country ['nl', OTHER]\nENVIRONMENT staging, production\nSELECT feature(key)\nAS MATRIX",
+      "FROM features\nWHERE key == 'checkout'\nVARY country ['nl', OTHER]\nENVIRONMENT staging, production\nSELECT feature(key)\nAS MATRIX BY ENVIRONMENT",
     );
     expect(headings).toEqual(["key", "country", "enabled"]);
     expect(rows).toEqual(["checkout | nl | On / On", "checkout | (any other) | On / 50%"]);
@@ -353,7 +353,7 @@ describe("runReport, what people get", () => {
     expect(result.lenses.has("audience")).toBe(true);
   });
 
-  it("evaluates only the people written out, OTHER as everyone else", () => {
+  it("evaluates only the contexts written out, OTHER as everyone else", () => {
     const { result, headings, rows } = run(
       [
         "FROM features",
@@ -372,7 +372,7 @@ describe("runReport, what people get", () => {
     expect(result.evaluations).toBe(3);
   });
 
-  it("puts each person across the top of a matrix BY PERSON, a row per environment", () => {
+  it("puts each context across the top of a matrix BY CONTEXT, a row per environment", () => {
     const { result, headings, rows } = run(
       [
         "FROM features",
@@ -380,13 +380,13 @@ describe("runReport, what people get", () => {
         "VARY [{ country: 'nl' }, { country: 'de' }]",
         "ENVIRONMENT staging, production",
         "SELECT feature(key)",
-        "AS MATRIX BY PERSON",
+        "AS MATRIX BY CONTEXT",
       ].join("\n"),
     );
-    expect(result).toMatchObject({ across: ["nl", "de"], acrossKind: "person" });
-    // OTHER is named once across the top, whatever the people name
+    expect(result).toMatchObject({ across: ["nl", "de"], acrossKind: "context" });
+    // OTHER is named once across the top, whatever the contexts name
     const other = run(
-      "FROM features\nWHERE key == 'checkout'\nVARY [{ country: 'nl', plan: 'pro' }, OTHER]\nSELECT feature(key)\nAS MATRIX BY PERSON",
+      "FROM features\nWHERE key == 'checkout'\nVARY [{ country: 'nl', plan: 'pro' }, OTHER]\nSELECT feature(key)\nAS MATRIX BY CONTEXT",
     );
     expect(other.result.across).toEqual(["nl · pro", "(any other)"]);
     expect(headings).toEqual(["key", "environment", "enabled"]);
@@ -396,6 +396,61 @@ describe("runReport, what people get", () => {
       "legacy | staging | On / On",
       "legacy | production | Off / Off",
     ]);
+  });
+
+  it("shows the names AS gives contexts, in a column of their own and across a matrix", () => {
+    const list =
+      "VARY [{ country: 'nl', plan: 'pro' } AS 'Dutch pros', { country: 'de' }, OTHER AS 'Elsewhere']";
+    const table = run(
+      [
+        "FROM features",
+        "WHERE key == 'checkout'",
+        list,
+        "ENVIRONMENT production",
+        "SELECT feature(key)",
+      ].join("\n"),
+    );
+    expect(table.headings).toEqual(["key", "context", "enabled"]);
+    expect(table.rows).toEqual([
+      "checkout | Dutch pros | On",
+      "checkout | de | 50%",
+      "checkout | Elsewhere | 50%",
+    ]);
+    // An attribute varied beside the list keeps its own column
+    expect(
+      run(
+        [
+          "FROM features",
+          "WHERE key == 'checkout'",
+          list,
+          "VARY device ['mobile']",
+          "ENVIRONMENT production",
+          "SELECT feature(key)",
+        ].join("\n"),
+      ).headings,
+    ).toEqual(["key", "context", "device", "enabled"]);
+    const matrix = run(
+      [
+        "FROM features",
+        "WHERE key == 'checkout'",
+        list,
+        "ENVIRONMENT production",
+        "SELECT feature(key)",
+        "AS MATRIX BY CONTEXT",
+      ].join("\n"),
+    );
+    expect(matrix.result.across).toEqual(["Dutch pros", "de", "Elsewhere"]);
+    expect(matrix.rows).toEqual(["checkout | On / 50% / 50%"]);
+  });
+
+  it("names places in the rollout as at, and a single context by its attributes", () => {
+    expect(
+      run(
+        "FROM features\nWHERE key == 'checkout'\nENVIRONMENT production\nAT 10, 90\nSELECT feature(key)\nAS MATRIX BY CONTEXT",
+      ).result.across,
+    ).toEqual(["at 10", "at 90"]);
+    expect(run("CONTEXT { country: 'nl' }\nSELECT feature('checkout')").rows).toEqual(["nl | On"]);
+    expect(run("SELECT feature('checkout')").rows).toEqual(["everyone | 50%"]);
   });
 
   it("makes a row per person, filtered by what they get", () => {

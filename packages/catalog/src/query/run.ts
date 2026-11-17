@@ -45,6 +45,12 @@ import {
 /** Evaluations a report may run before it asks for a narrower one */
 export const EVALUATION_LIMIT = 20000;
 
+/**
+ * The automatic column naming each row's context, in a report without FROM that names nothing
+ * else, and with `:` and a VARY list's place, the names its AS gives. No attribute is written so.
+ */
+const CONTEXT_COLUMN = "@context";
+
 /** Rows `VARY *` grows into at most, so a matrix stays readable */
 const AUTOMATIC_ROWS = 48;
 
@@ -68,7 +74,7 @@ export interface ResultValue {
 export interface ResultColumn {
   column: ReportColumn;
   heading: Heading;
-  /** In a matrix, a value for each of what goes across the top: environments, or people */
+  /** In a matrix, a value for each of what goes across the top: environments, or contexts */
   spread: boolean;
   /** The report added it, so every row says what it is about */
   automatic?: boolean;
@@ -88,10 +94,10 @@ export interface ResultRow {
 export interface Result {
   columns: ResultColumn[];
   rows: ResultRow[];
-  /** What goes across a matrix's top: its environments, or with BY PERSON each person's label */
+  /** What goes across a matrix's top: its environments, or with BY CONTEXT each context's name */
   across: Array<string | null>;
   /** Which of the two goes across */
-  acrossKind?: "environment" | "person";
+  acrossKind?: "environment" | "context";
   matrix: boolean;
   /** Rows before LIMIT */
   total: number;
@@ -100,7 +106,7 @@ export interface Result {
   tooMany?: number;
   lenses: Set<Lens | "exact">;
   /**
-   * What the people lack of what read features bucket by, such as `deviceId`, so those features
+   * What the contexts lack of what read features bucket by, such as `deviceId`, so those features
    * read as shares where the rest are exact
    */
   missing: string[];
@@ -297,12 +303,12 @@ export function runReport(input: RunInput): Result {
       : [null]
     : [null];
   const matrix = report.as === "matrix" && evaluating;
-  const acrossPeople = matrix && report.across === "person";
-  // A read spreads across the top: across people every read does, and across environments only a
-  // read without an environment of its own
+  const acrossContexts = matrix && report.across === "context";
+  // A read spreads across the top: across contexts every read does, and across environments only
+  // a read without an environment of its own
   const spreads = (column: ReportColumn) => {
     const read = readOf(column.expr);
-    return read !== undefined && (acrossPeople || read.environment === undefined);
+    return read !== undefined && (acrossContexts || read.environment === undefined);
   };
   const grouped =
     report.group.length > 0 || report.columns.some((column) => column.expr.kind === "count");
@@ -321,19 +327,30 @@ export function runReport(input: RunInput): Result {
       addAutomatic({ expr: { kind: "property", name: "environment" } });
   } else {
     if (!perPerson && !named("key")) addAutomatic({ expr: { kind: "property", name: "key" } });
-    // A matrix BY PERSON names each person across the top instead
-    if (!acrossPeople) {
-      for (const name of vary.flatMap(varyAttributes)) {
-        if (!named(name)) addAutomatic({ expr: { kind: "property", name } });
-      }
+    // A matrix BY CONTEXT names each context across the top instead, and a list whose contexts
+    // AS names shows those names in a column of its own rather than their attributes
+    if (!acrossContexts) {
+      vary.forEach((item, place) => {
+        if (item.labels)
+          addAutomatic({ expr: { kind: "property", name: `${CONTEXT_COLUMN}:${place}` } });
+        else
+          for (const name of varyAttributes(item)) {
+            if (!named(name)) addAutomatic({ expr: { kind: "property", name } });
+          }
+      });
     }
     if (
       perPerson &&
       columns.length === 0 &&
       !report.columns.some((column) => column.expr.kind === "property")
     )
-      addAutomatic({ expr: { kind: "property", name: "person" } });
-    if (evaluating && (!matrix || acrossPeople) && environments.length > 1 && !named("environment"))
+      addAutomatic({ expr: { kind: "property", name: CONTEXT_COLUMN } });
+    if (
+      evaluating &&
+      (!matrix || acrossContexts) &&
+      environments.length > 1 &&
+      !named("environment")
+    )
       addAutomatic({ expr: { kind: "property", name: "environment" } });
   }
   columns.push(...report.columns);
@@ -348,15 +365,17 @@ export function runReport(input: RunInput): Result {
     columns: columns.map((column) => ({
       column,
       heading:
-        automatic.has(column) && column.expr.kind === "property" && column.expr.name === "person"
-          ? { text: "Person" }
+        automatic.has(column) &&
+        column.expr.kind === "property" &&
+        column.expr.name.startsWith(CONTEXT_COLUMN)
+          ? { text: "context" }
           : columnHeading(column),
       spread: matrix && spreads(column),
       automatic: automatic.has(column) || undefined,
     })),
     rows,
-    across: !matrix ? [] : acrossPeople ? people.map((person) => person.label) : environments,
-    acrossKind: matrix ? (acrossPeople ? "person" : "environment") : undefined,
+    across: !matrix ? [] : acrossContexts ? people.map((person) => person.label) : environments,
+    acrossKind: matrix ? (acrossContexts ? "context" : "environment") : undefined,
     matrix,
     total,
     evaluations,
@@ -374,7 +393,12 @@ export function runReport(input: RunInput): Result {
     if (expr.kind === "count") return EMPTY;
     if (expr.kind === "property") {
       const { name } = expr;
-      if (name === "person" && person && !entity) return { text: person.label, raw: person.label };
+      if (name === CONTEXT_COLUMN && person && !entity)
+        return { text: person.label, raw: person.label };
+      if (name.startsWith(`${CONTEXT_COLUMN}:`) && person) {
+        const label = person.names?.[Number(name.slice(CONTEXT_COLUMN.length + 1))];
+        return label === undefined ? EMPTY : { text: label, raw: label };
+      }
       if (name === "environment" && evaluating)
         return { text: place.environment ?? "", raw: place.environment };
       if (entity) {
@@ -463,7 +487,7 @@ export function runReport(input: RunInput): Result {
   const describe = (place: RowPlace) =>
     [
       place.entity?.summary.key,
-      place.person && place.person.label !== "Person" ? place.person.label : undefined,
+      place.person && !place.person.base ? place.person.label : undefined,
       place.environment,
     ]
       .filter(Boolean)
@@ -541,11 +565,11 @@ export function runReport(input: RunInput): Result {
       );
     }
   } else if (matrix) {
-    // Each entity and person a row with environments across the top, or with BY PERSON, each
-    // entity and environment a row with people across the top
+    // Each entity and context a row with environments across the top, or with BY CONTEXT, each
+    // entity and environment a row with contexts across the top
     const byRow = new Map<string, Evaluated[]>();
     for (const row of evaluated) {
-      const id = acrossPeople
+      const id = acrossContexts
         ? idOf({ ...row, person: undefined })
         : idOf({ ...row, environment: null });
       byRow.set(id, [...(byRow.get(id) || []), row]);
@@ -557,15 +581,15 @@ export function runReport(input: RunInput): Result {
         return {
           id,
           entity: first.entity,
-          person: acrossPeople ? undefined : first.person,
-          environment: acrossPeople && evaluating ? first.environment : undefined,
+          person: acrossContexts ? undefined : first.person,
+          environment: acrossContexts && evaluating ? first.environment : undefined,
           values: columns.map((column) => {
             const text = exprText(column.expr);
             return spreads(column)
               ? group.map((row) => row.values.get(text) ?? EMPTY)
               : (first.values.get(text) ?? EMPTY);
           }),
-          title: acrossPeople
+          title: acrossContexts
             ? describe({ ...first, person: undefined })
             : describe({ ...first, environment: null }),
           sortValues: sortValue(first.values),

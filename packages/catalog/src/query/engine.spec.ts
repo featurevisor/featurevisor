@@ -43,6 +43,12 @@ const datafile = {
       conditions: JSON.stringify([{ feature: "devices" }]),
       traffic: everyone(100),
     },
+    // Half on, with a message for that half alone
+    promo: {
+      bucketBy: "userId",
+      variablesSchema: { message: { type: "string", defaultValue: "" } },
+      traffic: [{ ...everyone(50)[0], variables: { message: "Next day" } }],
+    },
     // Bucketed by a user and their organization together
     both: { bucketBy: ["userId", "organizationId"], traffic: everyone(30) },
     // Its variations split evenly, and an override requires chat, which is half on
@@ -92,6 +98,18 @@ describe("the audience lens", () => {
     expect(featureVariableCell(datafile, "trial", "label", {}).text).toBe(
       "control: Buy · treatment: Buy now",
     );
+  });
+
+  it("reads a variable where its rule's share is on, and says the share", () => {
+    expect(featureVariableCell(datafile, "promo", "message", {})).toMatchObject({
+      text: "Next day 50%",
+      tone: "partial",
+      value: null,
+      why: { lens: "audience", percentage: 50 },
+    });
+    // One context gets one answer, whichever side of the rollout it falls on
+    expect(featureVariableCell(datafile, "promo", "message", { at: 10 }).text).toBe("Next day");
+    expect(featureVariableCell(datafile, "promo", "message", { at: 90 }).text).toBe("");
   });
 
   it("names the override every variation's value came from", () => {
@@ -146,7 +164,7 @@ describe("the audience lens", () => {
     // One place in every rollout, or a person bucketed in it, is one exact answer
     expect(globalVariableCell(datafile, "supportEmail", { at: 1.5 })).toMatchObject({
       text: "vip@example.com",
-      why: { lens: "person", at: 1.5 },
+      why: { lens: "context", at: 1.5 },
     });
     expect(globalVariableCell(datafile, "supportEmail", { at: 50 }).text).toBe("help@example.com");
     expect(globalVariableCell(datafile, "supportEmail", { userId: "user-1" }).why.depends).toBe(
@@ -158,7 +176,7 @@ describe("the audience lens", () => {
     for (const userId of ["user-1", "user-2", "user-3", "user-4"]) {
       const cell = flagCell(datafile, "chat", { userId });
       expect(["On", "Off"]).toContain(cell.text);
-      expect(cell.why).toMatchObject({ lens: "person", bucketBy: "userId" });
+      expect(cell.why).toMatchObject({ lens: "context", bucketBy: "userId" });
       expect(cell.why.depends).toBe(undefined);
     }
   });
@@ -169,7 +187,7 @@ describe("the audience lens", () => {
       why: { lens: "audience", bucketBy: "userId and organizationId", missing: "organizationId" },
     });
     expect(flagCell(datafile, "both", { userId: "user-1", organizationId: "org-1" }).why.lens).toBe(
-      "person",
+      "context",
     );
   });
 
@@ -181,7 +199,7 @@ describe("the audience lens", () => {
     });
     // With deviceId too, it is exact
     const placed = flagCell(datafile, "gated", { userId: "user-1", deviceId: "device-1" });
-    expect(placed.why.lens).toBe("person");
+    expect(placed.why.lens).toBe("context");
     expect(placed.why.depends).toBe(undefined);
   });
 

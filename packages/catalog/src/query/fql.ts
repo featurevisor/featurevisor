@@ -1,7 +1,7 @@
 import { compile } from "@featurevisor/expressions";
 import type { Condition } from "@featurevisor/types";
 
-import { ANY_OTHER, type Person } from "./engine";
+import { ANY_OTHER, formatValue, type Person } from "./engine";
 import { filterToCondition } from "./fromSearch";
 import {
   DETAILS,
@@ -36,7 +36,7 @@ import {
  *   SELECT key, owner, feature(key), feature(key).variation, feature(key).label
  *   ORDER BY owner, key DESC
  *   LIMIT 20
- *   AS MATRIX
+ *   AS MATRIX BY ENVIRONMENT
  *
  * A bare name is a property of the row, such as `owner` or `bucketBy`. A call reads what someone
  * gets, as conditions read it: `feature('foo')`, its `.variation` or a variable, or
@@ -45,8 +45,8 @@ import {
  * says beside its answer, and `count()` counts the rows GROUP BY gathers.
  *
  * AT places everyone in every rollout at a position from 0 to 100, as test specs write `at`, and
- * several positions make a row each. Without FROM, each row is a person, one per combination CONTEXT,
- * AT and VARY give.
+ * several positions make a row each. Without FROM, each row is a context, one per combination
+ * CONTEXT, AT and VARY give. A matrix puts each environment or each context across the top.
  */
 
 export const CLAUSES = [
@@ -63,16 +63,7 @@ export const CLAUSES = [
   "AS",
 ] as const;
 type ClauseKeyword = (typeof CLAUSES)[number];
-const KEYWORDS = new Set<string>([
-  ...CLAUSES,
-  "TABLE",
-  "MATRIX",
-  "PERSON",
-  "OTHER",
-  "BY",
-  "ASC",
-  "DESC",
-]);
+const KEYWORDS = new Set<string>([...CLAUSES, "TABLE", "MATRIX", "OTHER", "BY", "ASC", "DESC"]);
 
 /** Calls a column can make, each reading what someone gets or counting rows */
 export const READ_CALLS = ["feature", "variable"];
@@ -153,7 +144,8 @@ interface Clause {
 
 /**
  * The tokens that start a clause: its keyword, outside brackets and braces. `AS` starts one only
- * before `TABLE` or `MATRIX`, and otherwise heads a column.
+ * before `TABLE` or `MATRIX`, and otherwise heads a column or names a context. After `BY`, as in
+ * `AS MATRIX BY CONTEXT`, a clause's keyword says what goes across instead.
  */
 export function clauseStarts(tokens: FqlToken[]): Set<number> {
   const starts = new Set<number>();
@@ -163,6 +155,11 @@ export function clauseStarts(tokens: FqlToken[]): Set<number> {
     if (token.type === "punctuation" && ")]}".includes(token.text)) depth--;
     if (depth !== 0 || token.type !== "keyword") return;
     if (!(CLAUSES as readonly string[]).includes(token.text)) return;
+    const previous = tokens
+      .slice(0, index)
+      .reverse()
+      .find((item) => !["space", "newline", "comment"].includes(item.type));
+    if (previous?.text === "BY") return;
     if (token.text === "AS") {
       const next = tokens
         .slice(index + 1)
@@ -641,7 +638,7 @@ export function parseFql(
   const forClause = tokens.find((token) => token.type === "word" && token.text === "FOR");
   if (forClause) {
     fail(
-      "A person's attributes are written with CONTEXT, as the SDK and test specs name them, such as CONTEXT { country: 'nl' }.",
+      "Attributes are written with CONTEXT, as the SDK and test specs name them, such as CONTEXT { country: 'nl' }.",
       forClause.start,
     );
     return { errors };
@@ -663,7 +660,7 @@ export function parseFql(
   const firstOffset = source.length - firstText.length;
   if (!clauses.length || clauses[0].start !== firstOffset) {
     fail(
-      "Start with a clause, such as FROM features, or SELECT feature('key') for a row per person.",
+      "Start with a clause, such as FROM features, or SELECT feature('key') for a row per context.",
       firstOffset,
     );
     return { errors };
@@ -702,7 +699,7 @@ export function parseFql(
           const subject = SUBJECTS[name];
           if (!subject)
             throw new Failure(
-              "FROM reads features, variables, segments or attributes. Leave it out for a row per person.",
+              "FROM reads features, variables, segments or attributes. Leave it out for a row per context.",
               clause.textStart + clause.text.indexOf(name),
             );
           if (!report.subjects.includes(subject)) report.subjects.push(subject);
@@ -715,7 +712,7 @@ export function parseFql(
         const value = literals.value();
         if (!value || typeof value !== "object" || Array.isArray(value))
           throw new Failure(
-            "CONTEXT takes a person's attributes, such as { country: 'nl' }.",
+            "CONTEXT takes attributes, such as { country: 'nl' }.",
             clause.textStart,
           );
         if ("at" in value) {
@@ -749,31 +746,78 @@ export function parseFql(
             literals.expect("*");
             report.vary.push({ attribute: "*", values: [] });
           } else if (literals.peek() === "[") {
-            // People written out, each a combination, rather than every value crossed
+            // Contexts written out, each a combination, rather than every value crossed, and
+            // each perhaps named with AS for its column
             const offset = literals.here();
-            const people = literals.list(true);
+            literals.expect("[");
+            const people: NonNullable<ReportVary["people"]> = [];
+            const labels: Array<string | undefined> = [];
+            const labelOffsets: number[] = [];
+            while (literals.peek() !== "]") {
+              const at = literals.here();
+              const entry = literals.value(true);
+              if (entry !== ANY_OTHER) {
+                if (!entry || typeof entry !== "object" || Array.isArray(entry))
+                  throw new Failure(
+                    "A list in VARY holds contexts, such as [{ country: 'nl', city: 'amsterdam' }, OTHER].",
+                    at,
+                  );
+                if ("at" in entry)
+                  throw new Failure(
+                    "Places in the rollout are a clause of their own, a row each: AT 10, 50, 90.",
+                    at,
+                  );
+              }
+              let label: string | undefined;
+              if (literals.keyword("AS")) {
+                const labelAt = literals.here();
+                const name = literals.peek() === "'" ? literals.value() : undefined;
+                if (typeof name !== "string" || !name.trim())
+                  throw new Failure(
+                    "AS names a context with text, such as { city: 'amsterdam' } AS 'Amsterdam'.",
+                    labelAt,
+                  );
+                label = name;
+                labelOffsets[people.length] = labelAt;
+              }
+              people.push(entry as NonNullable<ReportVary["people"]>[number]);
+              labels.push(label);
+              if (literals.peek() !== ",") break;
+              literals.expect(",");
+            }
+            literals.expect("]");
             if (!people.length)
               throw new Failure(
-                "VARY's list of people is empty. Add one, such as [{ country: 'nl', city: 'amsterdam' }].",
+                "VARY's list of contexts is empty. Add one, such as [{ country: 'nl', city: 'amsterdam' }].",
                 offset,
               );
-            for (const person of people) {
-              if (person === ANY_OTHER) continue;
-              if (!person || typeof person !== "object" || Array.isArray(person))
-                throw new Failure(
-                  "A list in VARY holds people, such as [{ country: 'nl', city: 'amsterdam' }, OTHER].",
-                  offset,
-                );
-              if ("at" in person)
-                throw new Failure(
-                  "Places in the rollout are a clause of their own, a row each: AT 10, 50, 90.",
-                  offset,
-                );
+            // Each context needs a name of its own, for its column and its rows
+            if (labels.some((label) => label !== undefined)) {
+              const names = people.map(
+                (entry, index) =>
+                  labels[index] ??
+                  (entry === ANY_OTHER
+                    ? ANY_OTHER
+                    : Object.values(entry as Record<string, unknown>)
+                        .map(formatValue)
+                        .join(" · ")),
+              );
+              names.forEach((name, index) => {
+                const first = names.indexOf(name);
+                if (first === index) return;
+                const named = labels[index] !== undefined ? index : first;
+                if (labels[named] !== undefined)
+                  throw new Failure(
+                    `Two contexts are called '${name}'. Give each a name of its own.`,
+                    labelOffsets[named],
+                  );
+              });
             }
             report.vary.push({
               attribute: "",
               values: [],
-              people: people as NonNullable<ReportVary["people"]>,
+              people,
+              ...(labels.some((label) => label !== undefined) ? { labels } : {}),
             });
           } else {
             const offset = literals.here();
@@ -835,16 +879,20 @@ export function parseFql(
         if (literals.word() === "MATRIX") {
           report.as = "matrix";
           matrixOffset = clause.start;
-          // Environments go across the top, or each person with BY PERSON
-          if (literals.keyword("BY")) {
-            const offset = literals.here();
-            if (literals.word() !== "PERSON")
-              throw new Failure(
-                "AS MATRIX BY PERSON puts each person across the top. Without BY, environments go across.",
-                offset,
-              );
-            report.across = "person";
-          }
+          // What goes across the top is always written: each environment, or each context
+          const across =
+            "AS MATRIX says what goes across the top: AS MATRIX BY ENVIRONMENT, or AS MATRIX BY CONTEXT for each context CONTEXT, VARY and AT make.";
+          if (!literals.keyword("BY")) throw new Failure(across, clause.start);
+          const offset = literals.here();
+          const word = literals.done() ? "" : literals.word();
+          if (word === "ENVIRONMENT") report.across = "environment";
+          else if (word === "CONTEXT") report.across = "context";
+          else if (word === "PERSON")
+            throw new Failure(
+              "Each context goes across the top with AS MATRIX BY CONTEXT, whoever or whatever it stands for.",
+              offset,
+            );
+          else throw new Failure(across, offset);
         }
       }
       // WHERE's text is a condition expression, compiled whole above
@@ -953,7 +1001,7 @@ export function parseFql(
       const subject: Subject = global ? "variable" : "feature";
       if (people)
         fail(
-          `key names each row's own key, and a row per person has none. Name one, such as ${global ? "variable" : "feature"}('checkout').`,
+          `key names each row's own key, and a row per context has none. Name one, such as ${global ? "variable" : "feature"}('checkout').`,
           item.keyOffset ?? item.offset,
         );
       else if (!report.subjects.includes(subject))
@@ -1083,9 +1131,9 @@ export function parseFql(
       );
     else if (report.group.length || counting)
       fail("AS MATRIX cannot show groups. Leave out one or the other.", matrixOffset!);
-    else if (report.across === "person" && people)
+    else if (report.across === "context" && people)
       fail(
-        "AS MATRIX BY PERSON puts each person across the top, so it needs FROM for its rows, such as FROM features.",
+        "AS MATRIX BY CONTEXT puts each context across the top, so it needs FROM for its rows, such as FROM features.",
         matrixOffset!,
       );
   }

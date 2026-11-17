@@ -10,6 +10,7 @@ const project = {
 };
 
 const messages = (query: string) => parseFql(query, project).errors.map((error) => error.message);
+const errorsOf = (query: string) => parseFql(query, project).errors;
 
 describe("parseFql", () => {
   it("reads every clause", () => {
@@ -24,7 +25,7 @@ describe("parseFql", () => {
         "SELECT key, feature(key), feature(key).variation AS 'Variation'",
         "ORDER BY owner DESC, key",
         "LIMIT 10",
-        "AS MATRIX",
+        "AS MATRIX BY ENVIRONMENT",
       ].join("\n"),
       project,
     );
@@ -79,13 +80,14 @@ describe("parseFql", () => {
     ]);
   });
 
-  it("varies people written out, each a combination, and puts them across a matrix", () => {
+  it("varies contexts written out, each a combination, and puts them across a matrix", () => {
     const { report, errors } = parseFql(
       [
         "FROM features",
+        "CONTEXT { userId: 'user-1' }",
         "VARY [{ country: 'nl', city: 'amsterdam' }, { country: 'gb', city: 'london' }, OTHER]",
         "SELECT feature(key)",
-        "AS MATRIX BY PERSON",
+        "AS MATRIX BY CONTEXT",
       ].join("\n"),
       project,
     );
@@ -102,30 +104,88 @@ describe("parseFql", () => {
         },
       ],
       as: "matrix",
-      across: "person",
+      across: "context",
     });
-    expect(messages("FROM features\nVARY []")[0]).toMatch(/list of people is empty/);
-    expect(messages("FROM features\nVARY ['nl']")[0]).toMatch(/holds people/);
+    expect(report!.vary[0].labels).toBeUndefined();
+    expect(messages("FROM features\nVARY []")[0]).toMatch(/list of contexts is empty/);
+    expect(messages("FROM features\nVARY ['nl']")[0]).toMatch(/holds contexts/);
     expect(messages("FROM features\nVARY [{ country: 'nl', at: 10 }]")[0]).toMatch(/AT 10, 50, 90/);
-    expect(messages("FROM features\nSELECT feature(key)\nAS MATRIX BY country")).toEqual([
-      "AS MATRIX BY PERSON puts each person across the top. Without BY, environments go across.",
-    ]);
     expect(
-      messages("VARY [{ country: 'nl' }]\nSELECT feature('foo')\nAS MATRIX BY PERSON"),
+      messages("VARY [{ country: 'nl' }]\nSELECT feature('foo')\nAS MATRIX BY CONTEXT"),
     ).toEqual([
-      "AS MATRIX BY PERSON puts each person across the top, so it needs FROM for its rows, such as FROM features.",
+      "AS MATRIX BY CONTEXT puts each context across the top, so it needs FROM for its rows, such as FROM features.",
     ]);
   });
 
-  it("takes a person with CONTEXT, and says so for FOR", () => {
+  it("names contexts in a VARY list with AS, each once", () => {
+    const { report, errors } = parseFql(
+      [
+        "FROM features",
+        "VARY [",
+        "  { country: 'nl', city: 'amsterdam' } AS 'Amsterdam',",
+        "  { country: 'gb', city: 'london' },",
+        "  OTHER AS 'Elsewhere'",
+        "]",
+        "SELECT feature(key)",
+      ].join("\n"),
+      project,
+    );
+    expect(errors).toEqual([]);
+    expect(report!.vary[0]).toMatchObject({
+      people: [
+        { country: "nl", city: "amsterdam" },
+        { country: "gb", city: "london" },
+        "(any other)",
+      ],
+      labels: ["Amsterdam", undefined, "Elsewhere"],
+    });
+    expect(messages("FROM features\nVARY [{ country: 'nl' } AS nl]")).toEqual([
+      "AS names a context with text, such as { city: 'amsterdam' } AS 'Amsterdam'.",
+    ]);
+    expect(
+      errorsOf("FROM features\nVARY [{ country: 'nl' } AS 'Home', { country: 'de' } AS 'Home']"),
+    ).toEqual([
+      {
+        message: "Two contexts are called 'Home'. Give each a name of its own.",
+        line: 2,
+        column: 57,
+      },
+    ]);
+    // A name another context already goes by is taken too
+    expect(messages("FROM features\nVARY [{ country: 'nl' } AS 'de', { country: 'de' }]")).toEqual([
+      "Two contexts are called 'de'. Give each a name of its own.",
+    ]);
+  });
+
+  it("says what a matrix puts across the top, every time", () => {
+    const across = (layout: string) =>
+      parseFql(`FROM features\nSELECT feature(key)\n${layout}`, project).report?.across;
+    expect(across("AS MATRIX BY ENVIRONMENT")).toBe("environment");
+    expect(across("AS MATRIX BY CONTEXT")).toBe("context");
+    const says =
+      "AS MATRIX says what goes across the top: AS MATRIX BY ENVIRONMENT, or AS MATRIX BY CONTEXT for each context CONTEXT, VARY and AT make.";
+    expect(messages("FROM features\nSELECT feature(key)\nAS MATRIX")).toEqual([says]);
+    expect(messages("FROM features\nSELECT feature(key)\nAS MATRIX BY country")).toEqual([says]);
+    expect(messages("FROM features\nSELECT feature(key)\nAS MATRIX BY PERSON")).toEqual([
+      "Each context goes across the top with AS MATRIX BY CONTEXT, whoever or whatever it stands for.",
+    ]);
+    // BY CONTEXT and BY ENVIRONMENT say what goes across, rather than starting a clause
+    expect(
+      messages(
+        "FROM features\nCONTEXT { userId: 'user-1' }\nENVIRONMENT *\nSELECT feature(key)\nAS MATRIX BY CONTEXT",
+      ),
+    ).toEqual([]);
+  });
+
+  it("takes a context with CONTEXT, and says so for FOR", () => {
     expect(parseFql("FROM features\nCONTEXT { country: 'nl' }", project).report?.person).toEqual({
       country: "nl",
     });
     expect(messages("FROM features\nFOR { country: 'nl' }")).toEqual([
-      "A person's attributes are written with CONTEXT, as the SDK and test specs name them, such as CONTEXT { country: 'nl' }.",
+      "Attributes are written with CONTEXT, as the SDK and test specs name them, such as CONTEXT { country: 'nl' }.",
     ]);
     expect(messages("FROM features\nCONTEXT 'nl'")).toEqual([
-      "CONTEXT takes a person's attributes, such as { country: 'nl' }.",
+      "CONTEXT takes attributes, such as { country: 'nl' }.",
     ]);
   });
 
@@ -242,7 +302,9 @@ describe("parseFql", () => {
     expect(messages("FROM features\nSELECT key\nORDER BY count()")).toEqual([
       "count() counts groups, so it orders a report with GROUP BY.",
     ]);
-    expect(messages("FROM features\nSELECT key\nAS MATRIX")[0]).toMatch(/needs a read/);
+    expect(messages("FROM features\nSELECT key\nAS MATRIX BY ENVIRONMENT")[0]).toMatch(
+      /needs a read/,
+    );
     expect(messages("FROM features\nLIMIT 0")[0]).toMatch(/LIMIT takes/);
     expect(messages("FROM features\nSELECT rollout(variable('checkoutSettings'))")[0]).toMatch(
       /rollout\(\) reads/,
@@ -251,7 +313,7 @@ describe("parseFql", () => {
 });
 
 describe("parseFql without FROM", () => {
-  it("makes a row per person, with columns read from anywhere", () => {
+  it("makes a row per context, with columns read from anywhere", () => {
     const { report, errors } = parseFql(
       [
         "VARY country",
@@ -262,7 +324,7 @@ describe("parseFql without FROM", () => {
         "  feature('foo').bar,",
         "  feature('foo').settings['limits.v2'][0],",
         "  variable('checkoutSettings').currency",
-        "AS MATRIX",
+        "AS MATRIX BY ENVIRONMENT",
       ].join("\n"),
       project,
     );
@@ -315,7 +377,7 @@ describe("parseFql without FROM", () => {
     ]);
     expect(messages("SELECT feature('foo', 'qa')")[0]).toMatch(/^No environment called qa/);
     expect(messages("SELECT enabled, feature('foo')")[0]).toMatch(/^No attribute called enabled\./);
-    expect(messages("SELECT feature(key)")[0]).toMatch(/a row per person has none/);
+    expect(messages("SELECT feature(key)")[0]).toMatch(/a row per context has none/);
     expect(messages("VARY country")[0]).toMatch(/^SELECT what to read/);
   });
 });

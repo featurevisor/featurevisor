@@ -58,8 +58,8 @@ describe("completeFql", () => {
       "ORDER BY",
       "LIMIT",
       "AS TABLE",
-      "AS MATRIX",
-      "AS MATRIX BY PERSON",
+      "AS MATRIX BY ENVIRONMENT",
+      "AS MATRIX BY CONTEXT",
     ]);
     expect(choose("or|", "ORDER BY")).toBe("ORDER BY ");
     expect(labels("FROM features\nSELECT key\n|")).not.toContain("SELECT");
@@ -109,16 +109,31 @@ describe("completeFql", () => {
   it("offers a heading after a column, and a direction after a sort", () => {
     const heading = complete("SELECT feature('foo') |")!.items[0];
     expect(heading).toMatchObject({ label: "AS '…'", insert: "AS ''", cursor: 4 });
-    expect(labels("SELECT feature('foo') AS |")).toEqual(["TABLE", "MATRIX", "MATRIX BY PERSON"]);
-    expect(labels("FROM features\nSELECT feature(key)\nAS MATRIX |")).toEqual(["BY PERSON"]);
+    expect(labels("SELECT feature('foo') AS |")).toEqual([
+      "TABLE",
+      "MATRIX BY ENVIRONMENT",
+      "MATRIX BY CONTEXT",
+    ]);
+    expect(labels("FROM features\nSELECT feature(key)\nAS MATRIX |")).toEqual([
+      "BY ENVIRONMENT",
+      "BY CONTEXT",
+    ]);
+    expect(labels("FROM features\nSELECT feature(key)\nAS MATRIX BY C|")).toEqual(["CONTEXT"]);
     expect(labels("FROM features\nORDER BY owner |").slice(0, 2)).toEqual(["DESC", "ASC"]);
     expect(labels("FROM features\nGROUP BY owner\nORDER BY c|")).toContain("count()");
   });
 
-  it("offers attributes, environments, people and limits where clauses take them", () => {
+  it("offers attributes, environments, contexts and limits where clauses take them", () => {
     expect(labels("VARY |")).toEqual(["*", "[{ … }]", "country", "device", "userId"]);
     // A person in VARY's list takes attribute keys, as CONTEXT's does
     expect(choose("VARY [{ country: 'nl', dev|", "device")).toBe("VARY [{ country: 'nl', device: ");
+    // A context in the list takes a name for its column
+    expect(complete("VARY [{ country: 'nl' } |")!.items[0]).toMatchObject({
+      label: "AS '…'",
+      insert: "AS ''",
+      cursor: 4,
+    });
+    expect(labels("VARY [{ country: 'nl' }, OTHER |")).toEqual(["AS '…'"]);
     expect(labels("VARY country, d|")).toEqual(["device"]);
     expect(labels("ENVIRONMENT staging, |")).toEqual(["*", "staging", "production"]);
     expect(labels("CONTEXT |")).toEqual(["{}", "{ … }", "scenarios/writer"]);
@@ -168,7 +183,7 @@ describe("completeFql", () => {
     );
   });
 
-  it("offers test scenarios as people, with their place in the rollout", () => {
+  it("offers test scenarios as contexts, with their place in the rollout", () => {
     expect(labels("FROM features\nCONTEXT |")).toEqual(["{}", "{ … }", "scenarios/writer"]);
     expect(choose("FROM features\nCONTEXT |", "scenarios/writer")).toBe(
       "FROM features\nCONTEXT { userId: 'writer', permissions: ['read', 'admin'], 'plan.tier': 'it\\'s paid' }\nAT 50",
