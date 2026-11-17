@@ -115,8 +115,12 @@ export function QueryPage() {
   const [ran, setRan] = React.useState(written);
   useDocumentTitle("Query", setKey);
 
-  // A link or Back changes the URL, which the editor then shows
+  // A link or Back changes the URL, which the editor then shows. The URL also echoes what the
+  // editor ran, a moment later, and copying that back could replace what was typed since and
+  // move the caret to the end, so the page skips the query it wrote itself.
+  const echo = React.useRef<string | null>(null);
   React.useEffect(() => {
+    if (written === echo.current) return;
     setDraft(written);
     setRan(written);
   }, [written]);
@@ -126,6 +130,7 @@ export function QueryPage() {
   const run = React.useCallback(
     (query: string) => {
       setRan(query);
+      echo.current = query;
       // Keeps the rest of the URL, such as the full view, and moves an older link's `?q=`
       const { pathname, search } = where.current;
       navigate(
@@ -258,7 +263,12 @@ export function QueryPage() {
       {report && <Results report={report} index={index} setKey={setKey} />}
     </>
   );
-  const examples = <ExamplesMenu groups={exampleGroups} onChoose={run} />;
+  // An example replaces what is typed, and runs at once
+  const choose = (query: string) => {
+    setDraft(query);
+    run(query);
+  };
+  const examples = <ExamplesMenu groups={exampleGroups} onChoose={choose} />;
 
   return (
     <div className="pb-8">
