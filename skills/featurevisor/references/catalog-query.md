@@ -24,6 +24,15 @@ http://127.0.0.1:3000/query#q=FROM+features%0AWHERE+tags+includes+%27web%27
 
 Encode it as form parameters, with `new URLSearchParams({ q: query }).toString()` in JavaScript or `urllib.parse.urlencode({"q": query})` in Python: spaces become `+` and new lines `%0A`. Under a Set it is `/sets/<set>/query#q=…`. With `--hash-router` the route sits in the fragment too, as `#/query#q=…`. When a question is better answered as a table, give the user such a link rather than pasting rows: they see live results, can sort and change them, and **Copy as Markdown** gives them the table for a pull request.
 
+## Using the page
+
+- **Writing.** The editor runs a report 400 milliseconds after typing stops, or at once with Cmd+Enter (Ctrl+Enter elsewhere). Ctrl+Space offers what fits at the caret: clauses, properties, reads, feature and variable keys, environments, attributes, operators for a property's type, values from the project, and test scenarios after CONTEXT.
+- **Errors** list under the editor as "Line 2, column 13:" with a sentence saying what to write instead. The last good result stays below them.
+- **Examples**, above the editor, holds ready questions that name the project's own team, attribute, experiment and feature. **?** opens a cheat sheet of the whole language, with examples to try. The button beside it opens a full view for wide reports.
+- **Results** start with a line such as "12 rows, 36 evaluations · Audience", then the table. Keys link to their pages. Any evaluated cell opens a Why panel. **Copy link** and **Copy as Markdown** take the report away.
+
+With a browser tool, open a report's link, wait for that line, then read the table or the errors. Without one, give the user the link.
+
 ## When to use FQL, and when the CLI
 
 | Need                                                           | Use                                          |
@@ -52,19 +61,21 @@ SELECT key, owner, feature(key), feature(key).variation
 
 Keywords are capitals. `FROM` comes first, the rest in any order, one a line by habit. A line starting with `#` is a comment.
 
-| Clause                                   | Does                                                                                                                                        |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FROM features, variables`               | A row per feature, global variable, segment or attribute. Several kinds make one list, told apart by `kind`. Left out, each row is a person |
-| `WHERE tags includes 'web'`              | Keeps rows that match, written as conditions are, with `and`, `or`, `not` and brackets                                                      |
-| `CONTEXT { country: 'nl', plan: 'pro' }` | The person every read is for. Left out, everyone                                                                                            |
-| `AT 50`, `AT 10, 50, 90`                 | Places them at that point of every rollout, as test specs write `at`. Several make a row each                                               |
-| `VARY country ['nl', 'de', OTHER]`       | A row per value. May repeat, and rows multiply                                                                                              |
-| `ENVIRONMENT staging, production`        | Where to read, or `*` for all. Left out, the last environment configured                                                                    |
-| `SELECT key, owner AS team`              | Columns, each with a heading `AS` gives it, quoted or one word                                                                              |
-| `GROUP BY owner`                         | Gathers rows, and `SELECT owner, count()` counts each group                                                                                 |
-| `ORDER BY owner, key DESC`               | Orders rows, `ASC` or `DESC`, by any property, read, detail or heading                                                                      |
-| `LIMIT 10`                               | The first rows only, after ordering                                                                                                         |
-| `AS MATRIX`                              | Environments across the top, a column each under every read                                                                                 |
+| Clause                                               | Does                                                                                                                                        |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FROM features, variables`                           | A row per feature, global variable, segment or attribute. Several kinds make one list, told apart by `kind`. Left out, each row is a person |
+| `WHERE tags includes 'web'`                          | Keeps rows that match, written as conditions are, with `and`, `or`, `not` and brackets                                                      |
+| `CONTEXT { country: 'nl', plan: 'pro' }`             | The person every read is for. Left out, everyone                                                                                            |
+| `AT 50`, `AT 10, 50, 90`                             | Places them at that point of every rollout, as test specs write `at`. Several make a row each                                               |
+| `VARY country ['nl', 'de', OTHER]`                   | A row per value. May repeat, and rows multiply                                                                                              |
+| `VARY [{ country: 'nl', city: 'amsterdam' }, OTHER]` | A row per person written out, each a combination, so only real combinations are evaluated                                                   |
+| `ENVIRONMENT staging, production`                    | Where to read, or `*` for all. Left out, the last environment configured                                                                    |
+| `SELECT key, owner AS team`                          | Columns, each with a heading `AS` gives it, quoted or one word                                                                              |
+| `GROUP BY owner`                                     | Gathers rows, and `SELECT owner, count()` counts each group                                                                                 |
+| `ORDER BY owner, key DESC`                           | Orders rows, `ASC` or `DESC`, by any property, read, detail or heading                                                                      |
+| `LIMIT 10`                                           | The first rows only, after ordering                                                                                                         |
+| `AS MATRIX`                                          | Environments across the top, a column each under every read                                                                                 |
+| `AS MATRIX BY PERSON`                                | Each person across the top instead, a row per feature and environment                                                                       |
 
 `SORT BY`, `FOR` and `at` inside CONTEXT or VARY are errors that say what to write: `ORDER BY`, `CONTEXT` and `AT`.
 
@@ -105,6 +116,22 @@ AT puts a person at the same place in every rollout at once, as test specs do. R
 
 **VARY** finds values itself when given none: `VARY country` takes the values the read features' conditions compare with `equals`, `notEquals`, `in` and `notIn`, through segments and required features, then adds `(any other)`. Range operators such as `semverGreaterThanOrEquals` make no rows, so name such values yourself: `VARY appVersion ['5.1.0', OTHER]`. `VARY *` does every attribute those conditions compare, except what the features bucket by, and stops before 48 rows. `VARY userId ['user-1', 'user-2']` makes a row per named user, each bucketed as an application buckets them. Values keep their type, so numbers and true or false compare as written.
 
+**Combinations that belong together.** Several attributes in VARY, as `VARY country, city` or two VARY clauses, cross every value with every other, so London turns up in the Netherlands. When attributes depend on each other, write the people out instead:
+
+```fql
+FROM features
+VARY [
+  { country: 'nl', city: 'amsterdam' },
+  { country: 'nl', city: 'rotterdam' },
+  { country: 'gb', city: 'london' },
+  OTHER
+]
+SELECT feature(key)
+AS MATRIX BY PERSON
+```
+
+Each object is a person laid over CONTEXT, with a column for each key, and only these people are evaluated, which also keeps a report under the evaluation limit where a full cross would not be. `OTHER` is everyone the list does not name, with every key set to a value no condition mentions. A people list still crosses with other VARY clauses, such as `VARY plan ['pro', 'free']`. `AS MATRIX BY PERSON` puts each person across the top, here a row per feature with a column for each place, and needs FROM for its rows. Without a list, a WHERE can keep only real pairs, as `WHERE (country == 'nl' and city in ['amsterdam', 'rotterdam']) or (country == 'gb' and city == 'london')`, though the full cross is still evaluated first.
+
 Completions after CONTEXT offer the project's test scenarios. Choosing one writes its context, and AT with its place.
 
 ## WHERE
@@ -120,6 +147,19 @@ WHERE is a condition expression over the row's properties, the person's attribut
 | Dates         | `deadline before '2027-01-01'` | `before` `after` `exists` `notExists`                                                    |
 
 A read alone, `WHERE feature(key)`, means on for everyone in the row. Under the audience lens a share is neither true nor false, so compare `rollout(feature(key))` for partial rollouts. Comparisons of properties pick rows before anything is evaluated, which keeps large projects fast and makes VARY find values only in the rows kept. A list page's filter such as `tag:web` is not FQL: the error gives the condition it means, here `tags includes 'web'`.
+
+## Columns and rows
+
+Without SELECT, a report shows `key`, `description`, `owner` and `tags`, with `kind` first for several kinds. When it evaluates, through CONTEXT, VARY, AT or a read elsewhere, it shows `key` and the row's own read instead. Whatever SELECT says, a report leads with what each row is about: `key`, each varied attribute in VARY's order, and `environment` when several environments make rows. A heading names a read, as `checkout enabled` or `pricing variation`, and `feature(key)` is headed `enabled`.
+
+Without FROM, each row is a person, one for each combination CONTEXT, AT and VARY give, and SELECT is needed. Bare names are the person's attributes there, `key` is an error since a person has none, and reads name their keys, as `feature('checkout')`.
+
+## Grouping, ordering and the matrix
+
+- **GROUP BY** gathers rows by one or more columns, and `count()` counts each group. SELECT names only what GROUP BY names, and `count()`. A list counts once per item, so totals can pass the rows. A read groups by its answer: On, Off and each share. With several environments, `environment` becomes a group of its own. Groups sort by count, most first, unless ORDER BY says otherwise, and `SELECT count()` alone counts every row WHERE keeps.
+- **ORDER BY** takes properties, reads, details, `count()` in a grouped report, or a heading `AS` gave, quoted. Each sorts as it reads best: a flag by its share, `deadlineStatus` by urgency, `status` by how far it reached, `kind` as feature, variable, segment, attribute, numbers and dates by size, text naturally so `item-2` comes before `item-10`, a list by its first item. Blanks come last either way. A column need not be selected, except in a grouped report.
+- **AS MATRIX** puts environments across the top, a column for each under every read. A read with an environment of its own, as `rollout(feature(key, 'production')) AS 'Live'`, stays one column. A matrix needs a read and cannot group. **AS MATRIX BY PERSON** puts each person across the top instead, a column per person under every read, and needs FROM.
+- **LIMIT** comes after ordering, and the summary says how many there were, as "10 of 42 rows".
 
 ## Properties
 
@@ -281,6 +321,15 @@ SELECT userId, feature('checkout'), feature('pricing').variation, variable('supp
 
 A report without FROM has a row per person and columns read from anywhere, which is how FQL joins features and variables: the person is what they share. There is no JOIN keyword.
 
+**Several people side by side, every feature a row**
+
+```fql
+FROM features
+VARY [{ userId: 'user-1' }, { userId: 'user-2' }, { userId: 'user-3', country: 'de' }]
+SELECT feature(key)
+AS MATRIX BY PERSON
+```
+
 **Each place in a rollout**
 
 ```fql
@@ -326,9 +375,31 @@ SELECT key, variable(key), override(variable(key))
 | `control 50% · treatment 50%`       | How the audience splits, as shares of the whole row        |
 | `control: Buy · treatment: Buy now` | A variable whose value differs by variation                |
 | `… varies`                          | A value read at one place in a rollout it changes with     |
+| None                                | On, with no variation                                      |
+| `""`                                | Empty text, apart from no value at all                     |
 | A dash                              | Nothing to show, such as a feature not in that environment |
 
 Clicking any evaluated cell opens a **Why** panel: the lens, the reason, the matched rule or override, the share, a split, what the answer requires and what it varies with.
+
+## Common errors
+
+Each error points at its line and column, and most say what to write instead.
+
+| Written                                           | What to do                                                                                                                                      |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SELECT enabled`, `variation`, `value`            | Read it: `feature(key)`, `feature(key).variation`, `variable(key)`                                                                              |
+| `SORT BY`, `FOR`, `at` in CONTEXT or VARY         | Write `ORDER BY`, `CONTEXT`, `AT`                                                                                                               |
+| Double quotes                                     | Text uses single quotes, as in conditions                                                                                                       |
+| `WHERE archived`                                  | A bare name alone names a segment. Compare it: `archived == true`                                                                               |
+| `WHERE tag:web`                                   | A list's filter. Write the condition the error gives: `tags includes 'web'`                                                                     |
+| `feature(key)` without FROM features              | Name a key, as `feature('checkout')`, or add `FROM features`                                                                                    |
+| `rollout()` of a variation or variable            | `rollout()` takes a flag read, as `rollout(feature(key))`                                                                                       |
+| `rule()` of a global variable                     | Global variables have overrides: `override(variable(key))`                                                                                      |
+| A column beside `count()`                         | Add it to GROUP BY, or select `count()` alone                                                                                                   |
+| `AS MATRIX` with GROUP BY, or with no read        | A matrix shows reads across environments or people, and cannot group                                                                            |
+| `AS MATRIX BY PERSON` without FROM                | Add FROM for its rows                                                                                                                           |
+| No feature called `x`, or `x` has no variable `y` | Check the key against the project. A feature's missing variable lists the ones it has, and a global variable read as a feature is named as such |
+| Too many evaluations                              | Narrow it with WHERE, fewer VARY values, columns or environments                                                                                |
 
 ## Limits and gotchas
 
