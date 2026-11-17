@@ -5,7 +5,12 @@ import { TOKEN_CLASSES } from "../components/trees";
 /** A highlighted piece of FQL: its text, and the class that colours it */
 export type FqlSegment = { text: string; className?: string };
 
-export const KEYWORD_CLASS = "font-bold text-text";
+/**
+ * Clause keywords, in the violet family of `and`, `or` and `not`, so FQL's own words share one hue
+ * beside the sky of text, the rose of calls and the amber of numbers. A shade stronger than theirs,
+ * so on a dark page they stand apart from the near white of names.
+ */
+export const KEYWORD_CLASS = "font-bold text-violet-700 dark:text-violet-400";
 
 /** FQL coloured as the Catalog colours conditions, with clause keywords in bold */
 export function highlight(source: string): FqlSegment[] {

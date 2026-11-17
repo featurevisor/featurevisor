@@ -31,7 +31,7 @@ import { parseFql, type FqlError, type FqlProject } from "../query/fql";
 import { queryHash, queryOf, searchWithoutQuery } from "../query/link";
 import { evaluates, type Report } from "../query/report";
 import { QueryCheatSheet } from "./QueryCheatSheet";
-import { highlight } from "./queryHighlight";
+import { KEYWORD_CLASS, highlight } from "./queryHighlight";
 import {
   EVALUATION_LIMIT,
   datafileEnvironments,
@@ -473,7 +473,7 @@ const EDITOR_TEXT =
 
 /** How each kind of completion shows its label, as the editor colours the same words */
 const COMPLETION_CLASSES: Record<CompletionKind, string> = {
-  keyword: "font-bold text-text",
+  keyword: KEYWORD_CLASS,
   feature: "text-text",
   variable: "text-text",
   attribute: "text-text",
