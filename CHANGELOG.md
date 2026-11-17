@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.11.0](https://github.com/featurevisor/featurevisor/compare/v4.10.0...v4.11.0) (2026-11-17)
+
+### Features
+
+* listing entities in catalog by querying ([#445](https://github.com/featurevisor/featurevisor/issues/445)) ([125e253](https://github.com/featurevisor/featurevisor/commit/125e253a823abe37bc25fce0bd8d35550d51b72e))
+
+
 ## [4.10.0](https://github.com/featurevisor/featurevisor/compare/v4.9.0...v4.10.0) (2026-11-15)
 
 ### Features
