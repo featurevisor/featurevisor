@@ -144,8 +144,8 @@ interface Clause {
 
 /**
  * The tokens that start a clause: its keyword, outside brackets and braces. `AS` starts one only
- * before `TABLE` or `MATRIX`, and otherwise heads a column or names a context. After `BY`, as in
- * `AS MATRIX BY CONTEXT`, a clause's keyword says what goes across instead.
+ * before `TABLE` or `MATRIX`, and otherwise heads a column or names a context. After `MATRIX BY`,
+ * as in `AS MATRIX BY CONTEXT`, a clause's keyword says what goes across instead.
  */
 export function clauseStarts(tokens: FqlToken[]): Set<number> {
   const starts = new Set<number>();
@@ -155,11 +155,12 @@ export function clauseStarts(tokens: FqlToken[]): Set<number> {
     if (token.type === "punctuation" && ")]}".includes(token.text)) depth--;
     if (depth !== 0 || token.type !== "keyword") return;
     if (!(CLAUSES as readonly string[]).includes(token.text)) return;
-    const previous = tokens
+    // `AS MATRIX BY CONTEXT` and `BY ENVIRONMENT` say what goes across, rather than start a clause
+    const [by, matrix] = tokens
       .slice(0, index)
       .reverse()
-      .find((item) => !["space", "newline", "comment"].includes(item.type));
-    if (previous?.text === "BY") return;
+      .filter((item) => !["space", "newline", "comment"].includes(item.type));
+    if (by?.text === "BY" && matrix?.text === "MATRIX") return;
     if (token.text === "AS") {
       const next = tokens
         .slice(index + 1)

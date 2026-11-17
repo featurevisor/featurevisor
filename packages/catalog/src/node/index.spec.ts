@@ -18,6 +18,7 @@ import {
 } from ".";
 import { getCatalogInputWatchPaths, watchCatalogInputs } from "./watch";
 import { decodeCatalogIndex } from "../indexCodec";
+import { getDatafileName } from "../queryData";
 import { getEntityDependencies, getNearestOwners } from "../dependencyIndex";
 import { searchCatalog } from "../searchModel";
 import { resolveCatalogStorage, readCatalogStorageEntry } from "../storage";
@@ -27,6 +28,19 @@ jest.mock("./watch", () => ({
   ...jest.requireActual("./watch"),
   watchCatalogInputs: jest.fn(),
 }));
+
+/** The first file called `name` under a directory, for exports whose layout a test need not know */
+function findFile(directory: string, name: string): string {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const full = path.join(directory, entry.name);
+    if (entry.isFile() && entry.name === name) return full;
+    if (entry.isDirectory()) {
+      const found = findFile(full, name);
+      if (found) return found;
+    }
+  }
+  return "";
+}
 
 function createProjectConfig(root: string, sets = false) {
   return {
@@ -2002,6 +2016,26 @@ describe("catalog export", () => {
       query: true,
     });
     expect(read().query).toBe(true);
+  });
+
+  it("writes the datafiles Core builds beside the index, for the Query page", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-catalog-datafiles-"));
+    const runtime: CatalogRuntime = {
+      ...createRuntime(),
+      getCatalogDatafiles: async () => [
+        { environment: "staging", datafile: { revision: "catalog", features: { checkout: {} } } },
+        { environment: "eu west", datafile: { revision: "catalog", features: {} } },
+      ],
+    };
+    await exportCatalog(runtime, root, createProjectConfig(root), createDatasource(), {
+      copyAssets: false,
+      compactStorage: false,
+    });
+    const index = findFile(path.join(root, "catalog", "data"), "index.json");
+    const read = (name: string) =>
+      JSON.parse(fs.readFileSync(path.join(path.dirname(index), getDatafileName(name)), "utf8"));
+    expect(read("staging")).toEqual({ revision: "catalog", features: { checkout: {} } });
+    expect(read("eu west")).toEqual({ revision: "catalog", features: {} });
   });
 
   it("exports what an environment inherits, without counting usage twice", async () => {

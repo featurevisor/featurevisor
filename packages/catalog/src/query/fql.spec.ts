@@ -169,6 +169,8 @@ describe("parseFql", () => {
     expect(messages("FROM features\nSELECT feature(key)\nAS MATRIX BY PERSON")).toEqual([
       "Each context goes across the top with AS MATRIX BY CONTEXT, whoever or whatever it stands for.",
     ]);
+    // Only after MATRIX BY: an unfinished ORDER BY leaves the next clause its own
+    expect(messages("FROM features\nORDER BY\nLIMIT 10")).toEqual(["Expected a name."]);
     // BY CONTEXT and BY ENVIRONMENT say what goes across, rather than starting a clause
     expect(
       messages(

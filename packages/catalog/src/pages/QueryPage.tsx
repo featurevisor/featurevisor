@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { DatafileContent } from "@featurevisor/types";
 
-import { fetchDatafile, fetchEntityDetail } from "../api";
+import { CatalogNotFoundError, fetchDatafile, fetchEntityDetail } from "../api";
 import { useCatalog } from "../context/CatalogContext";
 import { decodeRouteSegment, getEntityRoute } from "../entityTypes";
 import {
@@ -113,11 +113,12 @@ export function QueryPage() {
   useDocumentTitle("Query", setKey);
 
   // A link or Back changes the URL, which the editor then shows. The URL also echoes what the
-  // editor ran, a moment later, and copying that back could replace what was typed since and
-  // move the caret to the end, so the page skips the query it wrote itself.
-  const echo = React.useRef<string | null>(null);
+  // editor ran, and copying that back could replace what was typed since and move the caret to
+  // the end, so the page skips a query it is already showing the results of.
+  const shown = React.useRef(ran);
+  shown.current = ran;
   React.useEffect(() => {
-    if (written === echo.current) return;
+    if (written === shown.current) return;
     setDraft(written);
     setRan(written);
   }, [written]);
@@ -127,7 +128,7 @@ export function QueryPage() {
   const run = React.useCallback(
     (query: string) => {
       setRan(query);
-      echo.current = query;
+      shown.current = query;
       // Keeps the rest of the URL, such as the full view, and moves an older link's `?q=`
       const { pathname, search } = where.current;
       navigate(
@@ -711,12 +712,15 @@ function useDatafiles(wanted: Array<string | null>, setKey?: string) {
             datafiles: new Map(wanted.map((environment, index) => [environment, loaded[index]])),
           });
       })
-      .catch(() => {
+      .catch((reason) => {
         if (active)
           setState({
             key,
+            // Only a missing file means an older export, and anything else may pass on a retry
             error:
-              "This Catalog was exported without datafiles. Export it again with this version to evaluate.",
+              reason instanceof CatalogNotFoundError
+                ? "This Catalog was exported without datafiles. Export it again with this version to evaluate."
+                : "The datafiles did not load. Reload the page to try again.",
           });
       });
     return () => {
@@ -746,7 +750,7 @@ function Results(props: { report: Report; index: CatalogIndex; setKey?: string }
   // A new report has new cells, so an open explanation would be about the old one
   React.useEffect(() => setWhy(null), [report]);
 
-  if (error) return <EmptyState title="No datafiles to evaluate with" description={error} />;
+  if (error) return <EmptyState title="Unable to evaluate" description={error} />;
   if (!result) return <p className="text-sm text-muted">Loading datafiles…</p>;
   if (result.tooMany) {
     return (
@@ -1239,9 +1243,11 @@ function WhyPanel(props: { title: string; cell: Cell; why: Why; onClose: () => v
 /** The rows as a Markdown table, what goes across a matrix's top each a column of its own */
 function toMarkdown(result: Result) {
   const escape = (text: string) => text.replace(/\|/g, "\\|").replace(/\n/g, " ");
+  // Split as the table splits: only when more than one environment or context goes across
+  const split = result.matrix && result.across.length > 1;
   const headings = result.columns.flatMap((column) =>
-    column.spread && result.matrix
-      ? result.across.map((label) => `${column.heading.text} (${label})`)
+    column.spread && split
+      ? result.across.map((label) => `${column.heading.text} (${label ?? "none"})`)
       : [column.heading.text],
   );
   const line = (cells: string[]) => `| ${cells.map(escape).join(" | ")} |`;

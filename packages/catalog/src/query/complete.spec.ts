@@ -134,6 +134,10 @@ describe("completeFql", () => {
       cursor: 4,
     });
     expect(labels("VARY [{ country: 'nl' }, OTHER |")).toEqual(["AS '…'"]);
+    expect(labels("VARY [{ country: 'nl' }, OTHER] , [{ plan: 'pro' } |")).toEqual(["AS '…'"]);
+    // An attribute's values, and lists inside a context, take no names
+    expect(labels("VARY country ['nl', OTHER |")).toEqual([]);
+    expect(labels("VARY [{ tags: ['web'] |")).toEqual([]);
     expect(labels("VARY country, d|")).toEqual(["device"]);
     expect(labels("ENVIRONMENT staging, |")).toEqual(["*", "staging", "production"]);
     expect(labels("CONTEXT |")).toEqual(["{}", "{ … }", "scenarios/writer"]);

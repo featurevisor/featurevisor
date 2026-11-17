@@ -2,6 +2,8 @@ import { createFeaturevisor, MAX_BUCKETED_NUMBER } from "@featurevisor/sdk";
 import type { Evaluation, Featurevisor } from "@featurevisor/sdk";
 import type { BucketBy, Context, DatafileContent } from "@featurevisor/types";
 
+import { describeBucketBy } from "../bucketBy";
+
 /**
  * Evaluates features and global variables for the Query page with the real SDK, against the
  * datafiles the export holds, so a report says exactly what an application would get.
@@ -144,13 +146,6 @@ function missingOf(context: Context, bucketBy: BucketBy | undefined): string | u
   }
   // One of them is enough
   return bucketBy.or.every(lacks) ? bucketBy.or.join(" or ") : undefined;
-}
-
-function describeBucketBy(bucketBy: BucketBy | undefined): string | undefined {
-  if (bucketBy === undefined) return undefined;
-  if (typeof bucketBy === "string") return bucketBy;
-  if (Array.isArray(bucketBy)) return bucketBy.join(" and ");
-  return bucketBy.or.join(" or ");
 }
 
 /** Whether a feature's answer for this person is theirs alone, or their audience's */

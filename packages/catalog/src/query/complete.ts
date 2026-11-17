@@ -295,7 +295,7 @@ export function completeFql(
   const previous = sig[sig.length - 1];
 
   // Where the caret sits: inside which brackets, each with the call it opens, and in which clause
-  const brackets: Array<{ text: string; call?: string }> = [];
+  const brackets: Array<{ text: string; call?: string; after?: string }> = [];
   sig.forEach((token, index) => {
     if (token.type !== "punctuation") return;
     if ("([{".includes(token.text))
@@ -303,6 +303,8 @@ export function completeFql(
         text: token.text,
         call:
           token.text === "(" && sig[index - 1]?.type === "word" ? sig[index - 1].text : undefined,
+        // What it follows, which tells VARY's list of contexts from an attribute's values
+        after: sig[index - 1]?.text,
       });
     else if (")]}".includes(token.text)) brackets.pop();
   });
@@ -592,10 +594,13 @@ export function completeFql(
       ACROSS.map(([word, detail]) => ({ label: word, insert: word, detail, kind: "keyword" })),
     );
   }
-  // A context in VARY's list, named for its column
+  // A context in VARY's list, named for its column. An attribute's values, as in
+  // `VARY country ['nl', OTHER]`, take no names.
   if (
     clause === "VARY" &&
     innermost?.text === "[" &&
+    brackets.length === 1 &&
+    (innermost.after === "VARY" || innermost.after === ",") &&
     (previous?.text === "}" || previous?.text === "OTHER")
   ) {
     return result([

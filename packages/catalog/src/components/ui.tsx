@@ -1118,16 +1118,21 @@ export function Tabs(props: {
  * starts a word, so `expressCheckoutForReturningCustomers` breaks between its words rather than
  * inside one. Anywhere else stays a last resort.
  */
-const KEY_BREAKS = /(?<=[./_-])|(?<=[a-z0-9])(?=[A-Z])/;
+const KEY_BREAKS = /([./_-])|([a-z0-9])(?=[A-Z])/g;
+
+/** A key's parts between its break points, without lookbehind, which older Safari cannot parse */
+function keyParts(key: string): string[] {
+  return key.replace(KEY_BREAKS, "$1$2\u0000").split("\u0000").filter(Boolean);
+}
 
 export function EntityKey(props: { value: string; className?: string }) {
   return (
     <span
       className={["inline leading-snug [overflow-wrap:anywhere]", props.className || ""].join(" ")}
     >
-      {props.value
-        .split(KEY_BREAKS)
-        .flatMap((part, index) => (index === 0 ? [part] : [<wbr key={index} />, part]))}
+      {keyParts(props.value).flatMap((part, index) =>
+        index === 0 ? [part] : [<wbr key={index} />, part],
+      )}
     </span>
   );
 }

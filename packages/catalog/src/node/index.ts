@@ -46,6 +46,7 @@ import {
   groupAuthoredReferences,
   type AuthoredReference,
 } from "../dependencyReferences";
+import { describeBucketBy } from "../bucketBy";
 import { getDatafileName } from "../queryData";
 import { encodeCatalogIndex } from "../indexCodec";
 import {
@@ -960,14 +961,6 @@ function toSearchableScalar(value: unknown): string | undefined {
   }
 
   return undefined;
-}
-
-/** What a feature buckets by, in words: `userId`, `userId and deviceId` or `userId or deviceId` */
-function describeBucketBy(bucketBy: BucketBy | undefined): string | undefined {
-  if (bucketBy === undefined) return undefined;
-  if (typeof bucketBy === "string") return bucketBy;
-  if (Array.isArray(bucketBy)) return bucketBy.join(" and ");
-  return Array.isArray(bucketBy.or) ? bucketBy.or.join(" or ") : undefined;
 }
 
 function getFeatureVariationValues(feature: ParsedFeature) {
