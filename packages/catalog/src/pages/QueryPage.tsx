@@ -798,36 +798,65 @@ function Summary(props: { result: Result }) {
       : lenses.has("person")
         ? "One person: the exact answer for each row's person"
         : "Exact: everyone matching each row gets the same value";
+  // Some answers are one person's and some are shares: say what CONTEXT lacks for the rest
+  const missing =
+    lenses.has("audience") && lenses.has("person") && result.missing.length
+      ? result.missing
+      : undefined;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-      <span>
-        {shown}
-        {result.evaluations ? `, ${result.evaluations.toLocaleString()} evaluations` : ""}
-        {lens && (
-          <>
-            {" "}
-            · <span className="font-medium text-text">{lens}</span>
-          </>
-        )}
-      </span>
-      <span className="flex gap-3">
-        <button
-          type="button"
-          className="cursor-pointer font-medium text-muted hover:text-text"
-          onClick={() => copy("link", window.location.href)}
-        >
-          {copied === "link" ? "Copied" : "Copy link"}
-        </button>
-        <button
-          type="button"
-          className="cursor-pointer font-medium text-muted hover:text-text"
-          onClick={() => copy("markdown", toMarkdown(result))}
-        >
-          {copied === "markdown" ? "Copied" : "Copy as Markdown"}
-        </button>
-      </span>
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+        <span>
+          {shown}
+          {result.evaluations ? `, ${result.evaluations.toLocaleString()} evaluations` : ""}
+          {lens && (
+            <>
+              {" "}
+              · <span className="font-medium text-text">{lens}</span>
+            </>
+          )}
+        </span>
+        <span className="flex gap-3">
+          <button
+            type="button"
+            className="cursor-pointer font-medium text-muted hover:text-text"
+            onClick={() => copy("link", window.location.href)}
+          >
+            {copied === "link" ? "Copied" : "Copy link"}
+          </button>
+          <button
+            type="button"
+            className="cursor-pointer font-medium text-muted hover:text-text"
+            onClick={() => copy("markdown", toMarkdown(result))}
+          >
+            {copied === "markdown" ? "Copied" : "Copy as Markdown"}
+          </button>
+        </span>
+      </div>
+      {missing && (
+        <p className="text-xs text-muted">
+          Some features bucket by <CodeList items={missing} />, which CONTEXT does not give, so they
+          read as shares. Add{" "}
+          {missing.length === 1 && !/ (and|or) /.test(missing[0]) ? "it" : "them"} to CONTEXT for
+          one person's answer everywhere.
+        </p>
+      )}
     </div>
+  );
+}
+
+/** Names in code, joined as a sentence joins them: `a`, `b` and `c` */
+function CodeList(props: { items: string[] }) {
+  return (
+    <>
+      {props.items.map((item, index) => (
+        <React.Fragment key={item}>
+          {index === 0 ? "" : index === props.items.length - 1 ? " and " : ", "}
+          <code className="font-mono text-text">{item}</code>
+        </React.Fragment>
+      ))}
+    </>
   );
 }
 
@@ -1091,9 +1120,11 @@ function WhyPanel(props: { title: string; cell: Cell; why: Why; onClose: () => v
     [
       "Lens",
       why.lens === "audience"
-        ? why.depends?.length && !why.bucketBy
+        ? why.depends?.length
           ? "Everyone matching this row, who fall in different places of the rollouts it depends on."
-          : `Everyone matching this row. Without ${why.bucketBy || "what it buckets by"}, which this feature buckets by, a rollout reads as the share it enables.`
+          : why.missing && why.bucketBy && why.missing !== why.bucketBy
+            ? `Everyone matching this row. Without ${why.missing}, part of what this feature buckets by (${why.bucketBy}), a rollout reads as the share it enables.`
+            : `Everyone matching this row. Without ${why.bucketBy || "what it buckets by"}, which this feature buckets by, a rollout reads as the share it enables.`
         : why.lens === "person"
           ? why.at !== undefined
             ? `One person, placed at ${why.at}% of the rollout.`

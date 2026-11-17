@@ -96,6 +96,11 @@ export interface Result {
   /** More evaluations than the page runs at once, so no rows */
   tooMany?: number;
   lenses: Set<Lens | "exact">;
+  /**
+   * What the people lack of what read features bucket by, such as `deviceId`, so those features
+   * read as shares where the rest are exact
+   */
+  missing: string[];
   people: number;
 }
 
@@ -341,12 +346,14 @@ export function runReport(input: RunInput): Result {
     total,
     evaluations,
     lenses: new Set(),
+    missing: [],
     people: people.length,
     ...extra,
   });
   if (evaluations > EVALUATION_LIMIT) return result([], 0, { tooMany: evaluations });
 
   const lenses = new Set<Lens | "exact">();
+  const missing = new Set<string>();
   const valueOf = (expr: Expr, place: RowPlace): ResultValue => {
     const { entity, person } = place;
     if (expr.kind === "count") return EMPTY;
@@ -395,6 +402,7 @@ export function runReport(input: RunInput): Result {
             ? featureVariableCell(datafile, key, read.variable, who, read.path)
             : globalVariableCell(datafile, key, who, read.path);
     lenses.add(cell.why.lens);
+    if (cell.why.lens === "audience" && cell.why.missing) missing.add(cell.why.missing);
     if (expr.kind === "read") return { text: cell.text, raw: cell.value, cell };
     if (expr.detail === "rollout") {
       const share = rolloutOf(cell);
@@ -588,7 +596,7 @@ export function runReport(input: RunInput): Result {
       title,
     })),
     total,
-    { lenses },
+    { lenses, missing: [...missing].sort() },
   );
 }
 

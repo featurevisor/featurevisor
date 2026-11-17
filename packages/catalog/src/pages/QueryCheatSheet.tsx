@@ -69,7 +69,10 @@ const CLAUSES: Array<[string, React.ReactNode]> = [
     "What each row is: features, variables, segments or attributes. Left out, each row is a person.",
   ],
   ["WHERE tags includes 'web'", "Keeps the rows that match, written as conditions are."],
-  ["CONTEXT { country: 'nl', plan: 'pro' }", "The person every read is for. Left out, everyone."],
+  [
+    "CONTEXT { country: 'nl', plan: 'pro' }",
+    "The person every read is for. With what a feature buckets by, such as userId, its answer is theirs exactly, and without it a share. Left out, everyone.",
+  ],
   [
     "AT 50",
     "Places them in every rollout, as test specs write at. AT 10, 90 makes a row for each place.",

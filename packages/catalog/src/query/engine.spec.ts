@@ -36,6 +36,15 @@ const datafile = {
         { variation: "treatment", range: [1000, 2000] },
       ]),
     },
+    // Bucketed by devices, and a feature for users that requires it
+    devices: { bucketBy: "deviceId", traffic: everyone(50) },
+    gated: {
+      bucketBy: "userId",
+      conditions: JSON.stringify([{ feature: "devices" }]),
+      traffic: everyone(100),
+    },
+    // Bucketed by a user and their organization together
+    both: { bucketBy: ["userId", "organizationId"], traffic: everyone(30) },
     // Its variations split evenly, and an override requires chat, which is half on
     button: {
       bucketBy: "userId",
@@ -143,6 +152,37 @@ describe("the audience lens", () => {
     expect(globalVariableCell(datafile, "supportEmail", { userId: "user-1" }).why.depends).toBe(
       undefined,
     );
+  });
+
+  it("is one person's exact answer once the context has what the feature buckets by", () => {
+    for (const userId of ["user-1", "user-2", "user-3", "user-4"]) {
+      const cell = flagCell(datafile, "chat", { userId });
+      expect(["On", "Off"]).toContain(cell.text);
+      expect(cell.why).toMatchObject({ lens: "person", bucketBy: "userId" });
+      expect(cell.why.depends).toBe(undefined);
+    }
+  });
+
+  it("says what the context lacks, naming only the missing part", () => {
+    expect(flagCell(datafile, "both", { userId: "user-1" })).toMatchObject({
+      text: "30%",
+      why: { lens: "audience", bucketBy: "userId and organizationId", missing: "organizationId" },
+    });
+    expect(flagCell(datafile, "both", { userId: "user-1", organizationId: "org-1" }).why.lens).toBe(
+      "person",
+    );
+  });
+
+  it("says one person's answer varies with a required feature the context cannot place them in", () => {
+    // Placed in gated's rollout by userId, but not in devices', which buckets by deviceId
+    expect(flagCell(datafile, "gated", { userId: "user-1" }).why).toMatchObject({
+      lens: "audience",
+      depends: ["devices"],
+    });
+    // With deviceId too, it is exact
+    const placed = flagCell(datafile, "gated", { userId: "user-1", deviceId: "device-1" });
+    expect(placed.why.lens).toBe("person");
+    expect(placed.why.depends).toBe(undefined);
   });
 
   it("gives one person their own answer, at their own bucket", () => {

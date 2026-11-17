@@ -45,6 +45,8 @@ export interface Why {
   at?: number;
   /** What the feature buckets by, such as `userId`, which places one person in its rollout */
   bucketBy?: string;
+  /** What the person lacks of it, such as `organizationId` of `userId and organizationId` */
+  missing?: string;
   /**
    * Features its conditions require that are partly on for this audience, each with that share.
    * The answer's share is its own rule's share of theirs.
@@ -129,6 +131,19 @@ function knowsBucket(context: Context, bucketBy: BucketBy | undefined): boolean 
   if (typeof bucketBy === "string") return has(bucketBy);
   if (Array.isArray(bucketBy)) return bucketBy.every(has);
   return bucketBy.or.some(has);
+}
+
+/** What a context lacks of what a feature buckets by, in the words its bucketBy uses */
+function missingOf(context: Context, bucketBy: BucketBy | undefined): string | undefined {
+  if (bucketBy === undefined) return undefined;
+  const lacks = (attribute: string) => context[attribute] === undefined;
+  if (typeof bucketBy === "string") return lacks(bucketBy) ? bucketBy : undefined;
+  if (Array.isArray(bucketBy)) {
+    const missing = bucketBy.filter(lacks);
+    return missing.length ? missing.join(" and ") : undefined;
+  }
+  // One of them is enough
+  return bucketBy.or.every(lacks) ? bucketBy.or.join(" or ") : undefined;
 }
 
 function describeBucketBy(bucketBy: BucketBy | undefined): string | undefined {
@@ -339,6 +354,8 @@ export function flagCell(
     forced: evaluation.reason === "forced" || undefined,
     at: typeof person.at === "number" ? person.at : undefined,
     bucketBy: describeBucketBy(datafile.features[featureKey]?.bucketBy),
+    missing:
+      lens === "audience" ? missingOf(context, datafile.features[featureKey]?.bucketBy) : undefined,
   };
   const traffic = evaluation.traffic;
   // A rule decides the audience's share with its percentage, unless it turns the feature on or off
@@ -367,7 +384,34 @@ export function flagCell(
     if (share <= 0) return off(why);
     return { text: formatPercent(share), tone: "partial", value: null, why };
   }
+  // One person, placed in this feature's rollout, but perhaps not in a feature it requires that
+  // buckets by something else, which the answer then changes with
+  if (lens === "person") {
+    const depends = dependsOn(
+      datafile,
+      person,
+      featuresRequiredBy(datafile, featureKey),
+      evaluation.enabled,
+      (positions) =>
+        apart(evaluator, positions, () =>
+          at(evaluator, position, () => evaluator.sdk.evaluateFlag(featureKey, context)),
+        ).enabled,
+    );
+    if (depends.length) Object.assign(why, { lens: "audience", depends });
+  }
   return evaluation.enabled ? on(why) : off(why);
+}
+
+/** Features a feature requires anywhere: in its own conditions or in any of its rules' */
+function featuresRequiredBy(datafile: DatafileContent, featureKey: string): string[] {
+  const feature = datafile.features?.[featureKey];
+  if (!feature) return [];
+  return requiredIn(datafile, [
+    feature.conditions,
+    ...(feature.traffic || []).map((traffic) => traffic.conditions ?? traffic.segments),
+  ])
+    .map((item) => item.feature)
+    .filter((key) => key !== featureKey);
 }
 
 /** The variation the person gets, or the audience's split between variations */
@@ -486,7 +530,12 @@ export function featureVariableCell(
     value,
     why: {
       ...variation.why,
-      ...(depends.length ? { lens: "audience" as const, depends } : {}),
+      ...(depends.length
+        ? {
+            lens: "audience" as const,
+            depends: [...new Set([...(variation.why.depends || []), ...depends])],
+          }
+        : {}),
       reason: evaluation.reason,
       overrideKey: evaluation.variableOverrideKey,
     },
