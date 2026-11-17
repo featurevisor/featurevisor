@@ -79,6 +79,44 @@ describe("parseFql", () => {
     ]);
   });
 
+  it("varies people written out, each a combination, and puts them across a matrix", () => {
+    const { report, errors } = parseFql(
+      [
+        "FROM features",
+        "VARY [{ country: 'nl', city: 'amsterdam' }, { country: 'gb', city: 'london' }, OTHER]",
+        "SELECT feature(key)",
+        "AS MATRIX BY PERSON",
+      ].join("\n"),
+      project,
+    );
+    expect(errors).toEqual([]);
+    expect(report).toMatchObject({
+      vary: [
+        {
+          attribute: "",
+          people: [
+            { country: "nl", city: "amsterdam" },
+            { country: "gb", city: "london" },
+            "(any other)",
+          ],
+        },
+      ],
+      as: "matrix",
+      across: "person",
+    });
+    expect(messages("FROM features\nVARY []")[0]).toMatch(/list of people is empty/);
+    expect(messages("FROM features\nVARY ['nl']")[0]).toMatch(/holds people/);
+    expect(messages("FROM features\nVARY [{ country: 'nl', at: 10 }]")[0]).toMatch(/AT 10, 50, 90/);
+    expect(messages("FROM features\nSELECT feature(key)\nAS MATRIX BY country")).toEqual([
+      "AS MATRIX BY PERSON puts each person across the top. Without BY, environments go across.",
+    ]);
+    expect(
+      messages("VARY [{ country: 'nl' }]\nSELECT feature('foo')\nAS MATRIX BY PERSON"),
+    ).toEqual([
+      "AS MATRIX BY PERSON puts each person across the top, so it needs FROM for its rows, such as FROM features.",
+    ]);
+  });
+
   it("takes a person with CONTEXT, and says so for FOR", () => {
     expect(parseFql("FROM features\nCONTEXT { country: 'nl' }", project).report?.person).toEqual({
       country: "nl",

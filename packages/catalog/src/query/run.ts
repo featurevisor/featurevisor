@@ -34,6 +34,7 @@ import {
   type ReportVary,
   type ReportWhere,
   type Subject,
+  varyAttributes,
 } from "./report";
 
 /**
@@ -67,8 +68,8 @@ export interface ResultValue {
 export interface ResultColumn {
   column: ReportColumn;
   heading: Heading;
-  /** In a matrix, a value per environment */
-  byEnvironment: boolean;
+  /** In a matrix, a value for each of what goes across the top: environments, or people */
+  spread: boolean;
   /** The report added it, so every row says what it is about */
   automatic?: boolean;
 }
@@ -78,7 +79,7 @@ export interface ResultRow {
   entity?: { subject: Subject; summary: EntitySummary };
   person?: ReportPerson;
   environment?: string | null;
-  /** One per column, or one per environment for a matrix column */
+  /** One per column, or one for each of what goes across the top, for a matrix column */
   values: Array<ResultValue | ResultValue[]>;
   /** What the row is, for the Why panel's title */
   title: string;
@@ -87,8 +88,10 @@ export interface ResultRow {
 export interface Result {
   columns: ResultColumn[];
   rows: ResultRow[];
-  /** A matrix's environments, across the top */
-  environments: Array<string | null>;
+  /** What goes across a matrix's top: its environments, or with BY PERSON each person's label */
+  across: Array<string | null>;
+  /** Which of the two goes across */
+  acrossKind?: "environment" | "person";
   matrix: boolean;
   /** Rows before LIMIT */
   total: number;
@@ -153,8 +156,13 @@ function bucketAttributes(datafiles: DatafileContent[], features: string[]) {
  */
 function resolveVary(vary: ReportVary[], compared: Map<string, unknown[]>, bucketBy: Set<string>) {
   const resolved: ReportVary[] = [];
-  const named = new Set(vary.map((item) => item.attribute));
+  const named = new Set(vary.flatMap(varyAttributes));
   for (const item of vary) {
+    if (item.people) {
+      // People written out stay as written
+      resolved.push(item);
+      continue;
+    }
     if (item.attribute !== "*") {
       resolved.push({
         attribute: item.attribute,
@@ -289,6 +297,13 @@ export function runReport(input: RunInput): Result {
       : [null]
     : [null];
   const matrix = report.as === "matrix" && evaluating;
+  const acrossPeople = matrix && report.across === "person";
+  // A read spreads across the top: across people every read does, and across environments only a
+  // read without an environment of its own
+  const spreads = (column: ReportColumn) => {
+    const read = readOf(column.expr);
+    return read !== undefined && (acrossPeople || read.environment === undefined);
+  };
   const grouped =
     report.group.length > 0 || report.columns.some((column) => column.expr.kind === "count");
 
@@ -306,9 +321,11 @@ export function runReport(input: RunInput): Result {
       addAutomatic({ expr: { kind: "property", name: "environment" } });
   } else {
     if (!perPerson && !named("key")) addAutomatic({ expr: { kind: "property", name: "key" } });
-    for (const item of vary) {
-      if (!named(item.attribute))
-        addAutomatic({ expr: { kind: "property", name: item.attribute } });
+    // A matrix BY PERSON names each person across the top instead
+    if (!acrossPeople) {
+      for (const name of vary.flatMap(varyAttributes)) {
+        if (!named(name)) addAutomatic({ expr: { kind: "property", name } });
+      }
     }
     if (
       perPerson &&
@@ -316,7 +333,7 @@ export function runReport(input: RunInput): Result {
       !report.columns.some((column) => column.expr.kind === "property")
     )
       addAutomatic({ expr: { kind: "property", name: "person" } });
-    if (evaluating && !matrix && environments.length > 1 && !named("environment"))
+    if (evaluating && (!matrix || acrossPeople) && environments.length > 1 && !named("environment"))
       addAutomatic({ expr: { kind: "property", name: "environment" } });
   }
   columns.push(...report.columns);
@@ -334,14 +351,12 @@ export function runReport(input: RunInput): Result {
         automatic.has(column) && column.expr.kind === "property" && column.expr.name === "person"
           ? { text: "Person" }
           : columnHeading(column),
-      byEnvironment:
-        matrix &&
-        readOf(column.expr) !== undefined &&
-        readOf(column.expr)!.environment === undefined,
+      spread: matrix && spreads(column),
       automatic: automatic.has(column) || undefined,
     })),
     rows,
-    environments: matrix ? environments : [],
+    across: !matrix ? [] : acrossPeople ? people.map((person) => person.label) : environments,
+    acrossKind: matrix ? (acrossPeople ? "person" : "environment") : undefined,
     matrix,
     total,
     evaluations,
@@ -526,10 +541,13 @@ export function runReport(input: RunInput): Result {
       );
     }
   } else if (matrix) {
-    // Each entity and person a row, each read's environments across the top
+    // Each entity and person a row with environments across the top, or with BY PERSON, each
+    // entity and environment a row with people across the top
     const byRow = new Map<string, Evaluated[]>();
     for (const row of evaluated) {
-      const id = idOf({ ...row, environment: null });
+      const id = acrossPeople
+        ? idOf({ ...row, person: undefined })
+        : idOf({ ...row, environment: null });
       byRow.set(id, [...(byRow.get(id) || []), row]);
     }
     rows = [...byRow.entries()]
@@ -539,16 +557,17 @@ export function runReport(input: RunInput): Result {
         return {
           id,
           entity: first.entity,
-          person: first.person,
+          person: acrossPeople ? undefined : first.person,
+          environment: acrossPeople && evaluating ? first.environment : undefined,
           values: columns.map((column) => {
             const text = exprText(column.expr);
-            const byEnvironment =
-              readOf(column.expr) && readOf(column.expr)!.environment === undefined;
-            return byEnvironment
+            return spreads(column)
               ? group.map((row) => row.values.get(text) ?? EMPTY)
               : (first.values.get(text) ?? EMPTY);
           }),
-          title: describe({ ...first, environment: null }),
+          title: acrossPeople
+            ? describe({ ...first, person: undefined })
+            : describe({ ...first, environment: null }),
           sortValues: sortValue(first.values),
         };
       });

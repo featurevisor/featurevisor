@@ -986,7 +986,7 @@ function variationsOf(result: Result) {
 
 /**
  * The report's rows, columns in SELECT's order after whatever says what each row is about. In a
- * matrix with several environments, each read column splits into one per environment.
+ * matrix, each read column splits into one per environment, or with BY PERSON one per person.
  */
 function ResultTable(props: {
   result: Result;
@@ -995,7 +995,8 @@ function ResultTable(props: {
 }) {
   const { result } = props;
   const variations = variationsOf(result);
-  const split = result.matrix && result.environments.length > 1;
+  // A matrix splits each read into a column for each environment, or with BY PERSON each person
+  const split = result.matrix && result.across.length > 1;
   const headingClass = (column: ResultColumn) =>
     column.heading.entity && column.column.alias === undefined
       ? `${thBase} whitespace-nowrap`
@@ -1028,8 +1029,8 @@ function ResultTable(props: {
               <th
                 key={index}
                 className={`${headingClass(column)} ${index === 0 ? sticky : ""}`}
-                rowSpan={split && !column.byEnvironment ? 2 : 1}
-                colSpan={split && column.byEnvironment ? result.environments.length : 1}
+                rowSpan={split && !column.spread ? 2 : 1}
+                colSpan={split && column.spread ? result.across.length : 1}
               >
                 <Heading column={column} setKey={props.setKey} />
               </th>
@@ -1038,13 +1039,13 @@ function ResultTable(props: {
           {split && (
             <tr>
               {result.columns.flatMap((column, index) =>
-                column.byEnvironment
-                  ? result.environments.map((environment) => (
+                column.spread
+                  ? result.across.map((label) => (
                       <th
-                        key={`${index}:${environment}`}
+                        key={`${index}:${label}`}
                         className={`${thBase} whitespace-nowrap font-medium`}
                       >
-                        {environment}
+                        {label}
                       </th>
                     ))
                   : [],
@@ -1060,7 +1061,7 @@ function ResultTable(props: {
                 if (Array.isArray(value)) {
                   return value.map((item, at) => (
                     <td key={`${index}:${at}`} className={tdClass}>
-                      {cell(row, column, item, result.environments[at])}
+                      {cell(row, column, item, result.across[at])}
                     </td>
                   ));
                 }
@@ -1235,12 +1236,12 @@ function WhyPanel(props: { title: string; cell: Cell; why: Why; onClose: () => v
   );
 }
 
-/** The rows as a Markdown table, a matrix's environments each a column of their own */
+/** The rows as a Markdown table, what goes across a matrix's top each a column of its own */
 function toMarkdown(result: Result) {
   const escape = (text: string) => text.replace(/\|/g, "\\|").replace(/\n/g, " ");
   const headings = result.columns.flatMap((column) =>
-    column.byEnvironment && result.matrix
-      ? result.environments.map((environment) => `${column.heading.text} (${environment})`)
+    column.spread && result.matrix
+      ? result.across.map((label) => `${column.heading.text} (${label})`)
       : [column.heading.text],
   );
   const line = (cells: string[]) => `| ${cells.map(escape).join(" | ")} |`;

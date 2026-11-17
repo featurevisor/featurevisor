@@ -9,7 +9,7 @@ import {
 } from "../metadata";
 import type { EntitySummary } from "../types";
 
-import { formatValue, type Person } from "./engine";
+import { ANY_OTHER, formatValue, type Person } from "./engine";
 
 /**
  * A Query report, as FQL describes it. Rows are definitions, features, global variables,
@@ -37,6 +37,22 @@ export interface ReportVary {
   attribute: string;
   /** As written, so numbers and true or false stay what conditions compare */
   values: unknown[];
+  /**
+   * People written out, each a combination of attributes, such as `{ country: 'nl', city:
+   * 'amsterdam' }`, or `OTHER` for everyone else. Only these combinations are evaluated, where
+   * varying each attribute would cross every value with every other. Its attribute is "".
+   */
+  people?: Array<Record<string, unknown> | typeof ANY_OTHER>;
+}
+
+/** The attributes a VARY sets: its own, or every key its people name, in the order they appear */
+export function varyAttributes(vary: ReportVary): string[] {
+  if (!vary.people) return [vary.attribute];
+  const keys = new Set<string>();
+  for (const person of vary.people) {
+    if (person !== ANY_OTHER) Object.keys(person).forEach((key) => keys.add(key));
+  }
+  return [...keys];
 }
 
 /** `key` written bare inside a read, as in `feature(key)`: the row's own key */
@@ -100,6 +116,8 @@ export interface Report {
   sort: ReportSort[];
   limit?: number;
   as: ReportLayout;
+  /** What a matrix puts across the top: environments, or with `BY PERSON`, each person */
+  across?: "environment" | "person";
 }
 
 /** Whether a report reads what someone gets, so it needs datafiles and people */
@@ -203,7 +221,28 @@ export interface ReportPerson {
 export function peopleOf(person: Person | undefined, vary: ReportVary[]): ReportPerson[] {
   if (!person) return [];
   let rows: ReportPerson[] = [{ values: {}, label: "Person", person }];
-  for (const { attribute, values } of vary) {
+  for (const item of vary) {
+    const { attribute, values } = item;
+    if (item.people) {
+      // Each person written out, and OTHER as everyone the others do not name
+      const keys = varyAttributes(item);
+      rows = rows.flatMap((row) =>
+        item.people!.map((entry) => {
+          const own =
+            entry === ANY_OTHER ? Object.fromEntries(keys.map((key) => [key, ANY_OTHER])) : entry;
+          const varied = { ...row.values, ...own };
+          // OTHER reads once, rather than once for every key the others name
+          const part =
+            entry === ANY_OTHER ? ANY_OTHER : Object.values(own).map(formatValue).join(" · ");
+          return {
+            values: varied,
+            label: row.label === "Person" ? part : `${row.label} · ${part}`,
+            person: { ...row.person, ...own },
+          };
+        }),
+      );
+      continue;
+    }
     if (values.length === 0) continue;
     rows = rows.flatMap((row) =>
       values.map((value) => {

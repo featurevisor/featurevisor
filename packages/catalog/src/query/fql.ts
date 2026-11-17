@@ -21,6 +21,7 @@ import {
   type ReportVary,
   type ReportWhere,
   type Subject,
+  varyAttributes,
 } from "./report";
 
 /**
@@ -62,7 +63,16 @@ export const CLAUSES = [
   "AS",
 ] as const;
 type ClauseKeyword = (typeof CLAUSES)[number];
-const KEYWORDS = new Set<string>([...CLAUSES, "TABLE", "MATRIX", "OTHER", "BY", "ASC", "DESC"]);
+const KEYWORDS = new Set<string>([
+  ...CLAUSES,
+  "TABLE",
+  "MATRIX",
+  "PERSON",
+  "OTHER",
+  "BY",
+  "ASC",
+  "DESC",
+]);
 
 /** Calls a column can make, each reading what someone gets or counting rows */
 export const READ_CALLS = ["feature", "variable"];
@@ -738,6 +748,33 @@ export function parseFql(
           if (literals.peek() === "*") {
             literals.expect("*");
             report.vary.push({ attribute: "*", values: [] });
+          } else if (literals.peek() === "[") {
+            // People written out, each a combination, rather than every value crossed
+            const offset = literals.here();
+            const people = literals.list(true);
+            if (!people.length)
+              throw new Failure(
+                "VARY's list of people is empty. Add one, such as [{ country: 'nl', city: 'amsterdam' }].",
+                offset,
+              );
+            for (const person of people) {
+              if (person === ANY_OTHER) continue;
+              if (!person || typeof person !== "object" || Array.isArray(person))
+                throw new Failure(
+                  "A list in VARY holds people, such as [{ country: 'nl', city: 'amsterdam' }, OTHER].",
+                  offset,
+                );
+              if ("at" in person)
+                throw new Failure(
+                  "Places in the rollout are a clause of their own, a row each: AT 10, 50, 90.",
+                  offset,
+                );
+            }
+            report.vary.push({
+              attribute: "",
+              values: [],
+              people: people as NonNullable<ReportVary["people"]>,
+            });
           } else {
             const offset = literals.here();
             const attribute = literals.word();
@@ -798,6 +835,16 @@ export function parseFql(
         if (literals.word() === "MATRIX") {
           report.as = "matrix";
           matrixOffset = clause.start;
+          // Environments go across the top, or each person with BY PERSON
+          if (literals.keyword("BY")) {
+            const offset = literals.here();
+            if (literals.word() !== "PERSON")
+              throw new Failure(
+                "AS MATRIX BY PERSON puts each person across the top. Without BY, environments go across.",
+                offset,
+              );
+            report.across = "person";
+          }
         }
       }
       // WHERE's text is a condition expression, compiled whole above
@@ -833,7 +880,7 @@ export function parseFql(
   const attributes = project.attributes && [
     ...project.attributes,
     ...Object.keys(report.person || {}),
-    ...report.vary.map((vary) => vary.attribute),
+    ...report.vary.flatMap(varyAttributes),
   ];
   const isAttribute = (name: string) => (attributes ? attributes.includes(name) : evaluating);
 
@@ -1036,6 +1083,11 @@ export function parseFql(
       );
     else if (report.group.length || counting)
       fail("AS MATRIX cannot show groups. Leave out one or the other.", matrixOffset!);
+    else if (report.across === "person" && people)
+      fail(
+        "AS MATRIX BY PERSON puts each person across the top, so it needs FROM for its rows, such as FROM features.",
+        matrixOffset!,
+      );
   }
 
   return errors.length ? { errors } : { report, errors };

@@ -353,6 +353,51 @@ describe("runReport, what people get", () => {
     expect(result.lenses.has("audience")).toBe(true);
   });
 
+  it("evaluates only the people written out, OTHER as everyone else", () => {
+    const { result, headings, rows } = run(
+      [
+        "FROM features",
+        "WHERE key == 'checkout'",
+        "VARY [{ country: 'nl', plan: 'pro' }, { country: 'de' }, OTHER]",
+        "ENVIRONMENT production",
+        "SELECT feature(key)",
+      ].join("\n"),
+    );
+    expect(headings).toEqual(["key", "country", "plan", "enabled"]);
+    expect(rows).toEqual([
+      "checkout | nl | pro | On",
+      "checkout | de |  | 50%",
+      "checkout | (any other) | (any other) | 50%",
+    ]);
+    expect(result.evaluations).toBe(3);
+  });
+
+  it("puts each person across the top of a matrix BY PERSON, a row per environment", () => {
+    const { result, headings, rows } = run(
+      [
+        "FROM features",
+        "WHERE key in ['checkout', 'legacy']",
+        "VARY [{ country: 'nl' }, { country: 'de' }]",
+        "ENVIRONMENT staging, production",
+        "SELECT feature(key)",
+        "AS MATRIX BY PERSON",
+      ].join("\n"),
+    );
+    expect(result).toMatchObject({ across: ["nl", "de"], acrossKind: "person" });
+    // OTHER is named once across the top, whatever the people name
+    const other = run(
+      "FROM features\nWHERE key == 'checkout'\nVARY [{ country: 'nl', plan: 'pro' }, OTHER]\nSELECT feature(key)\nAS MATRIX BY PERSON",
+    );
+    expect(other.result.across).toEqual(["nl · pro", "(any other)"]);
+    expect(headings).toEqual(["key", "environment", "enabled"]);
+    expect(rows).toEqual([
+      "checkout | staging | On / On",
+      "checkout | production | On / 50%",
+      "legacy | staging | On / On",
+      "legacy | production | Off / Off",
+    ]);
+  });
+
   it("makes a row per person, filtered by what they get", () => {
     const query =
       "VARY country ['nl', 'de']\nENVIRONMENT production\nSELECT country, feature('checkout'), variable('supportEmail')";

@@ -44,8 +44,11 @@ function Section(props: { title: string; about?: React.ReactNode; children: Reac
   );
 }
 
-/** FQL on the left, what it does on the right, or one above the other on a phone */
-function Rows(props: { rows: Array<[string, React.ReactNode]> }) {
+/**
+ * FQL on the left, what it does on the right, or one above the other on a phone. Plain rows show
+ * words as the page shows them rather than as FQL.
+ */
+function Rows(props: { rows: Array<[string, React.ReactNode]>; plain?: boolean }) {
   return (
     <dl className="divide-y divide-border overflow-hidden rounded-lg border border-border">
       {props.rows.map(([code, text]) => (
@@ -54,7 +57,11 @@ function Rows(props: { rows: Array<[string, React.ReactNode]> }) {
           className="grid gap-1 px-3 py-2 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] sm:gap-4"
         >
           <dt className="min-w-0">
-            <Code>{code}</Code>
+            {props.plain ? (
+              <span className="font-mono text-xs leading-5 text-text">{code}</span>
+            ) : (
+              <Code>{code}</Code>
+            )}
           </dt>
           <dd className="text-sm text-muted">{text}</dd>
         </div>
@@ -82,6 +89,10 @@ const CLAUSES: Array<[string, React.ReactNode]> = [
     "A row per value. Alone, VARY country takes the values conditions compare, and VARY * every attribute.",
   ],
   [
+    "VARY [{ country: 'nl', city: 'amsterdam' }, OTHER]",
+    "A row per person written out, so only real combinations are read, where VARY country, city crosses every value with every other.",
+  ],
+  [
     "ENVIRONMENT staging, production",
     "Where to read, or * for all. Left out, the last environment configured.",
   ],
@@ -90,6 +101,7 @@ const CLAUSES: Array<[string, React.ReactNode]> = [
   ["ORDER BY owner, key DESC", "Orders the rows, ASC or DESC."],
   ["LIMIT 10", "Shows the first rows only."],
   ["AS MATRIX", "Puts environments across the top."],
+  ["AS MATRIX BY PERSON", "Puts each person across the top instead, a row per feature."],
   ["# A note to self", "A line that starts with # is a comment."],
 ];
 
@@ -123,6 +135,59 @@ const VALUES: Array<[string, React.ReactNode]> = [
   ["['nl', 'de']", "A list."],
   ["{ country: 'nl', account: { seats: 60 } }", "An object, its keys bare or in quotes."],
   ["VARY country ['nl', OTHER]", "OTHER, in a VARY list, is everyone the conditions do not name."],
+];
+
+/** What a cell says, written as cells show it */
+const CELLS: Array<[string, React.ReactNode]> = [
+  ["On, Off", "On or off for everyone in the row, or for its one person."],
+  ["25%", "On for that share of the row's audience."],
+  ["control 50% · treatment 50%", "How the audience splits, as shares of the whole row."],
+  ["control: Buy · treatment: Buy now", "A variable whose value differs by variation."],
+  ["support@example.com varies", "A value read at one place in a rollout it changes with."],
+  ["None", "On, with no variation."],
+];
+
+/** The line above the results names how cells read */
+const LENSES: Array<[string, React.ReactNode]> = [
+  ["Audience", "Everyone matching each row, so rollouts read as shares."],
+  ["One person", "CONTEXT has what each feature buckets by, or the report has AT."],
+  ["Mixed", "Some of each, and the line under it names what CONTEXT lacks."],
+  ["Exact", "Everyone matching each row gets the same value."],
+];
+
+/** What trips people up, and how FQL settles it */
+const GOOD_TO_KNOW: React.ReactNode[] = [
+  <>
+    <Code>WHERE feature(key)</Code> is true only when fully on. Compare{" "}
+    <Code>rollout(feature(key))</Code> for partial rollouts.
+  </>,
+  <>
+    Alone, <Code>VARY country</Code> takes the values conditions compare exactly. Name range values,
+    such as versions, yourself. <Code>VARY *</Code> skips what features bucket by and stops before
+    48 rows.
+  </>,
+  <>
+    Several attributes in VARY cross every value with every other. A list of people reads only the
+    combinations written.
+  </>,
+  <>
+    Without SELECT, rows show <Code>key</Code>, <Code>description</Code>, <Code>owner</Code> and{" "}
+    <Code>tags</Code>, or the row's own read when the report evaluates. Without FROM, SELECT is
+    needed and bare names are the person's attributes.
+  </>,
+  <>
+    <Code>GROUP BY tags</Code> counts a list once per item, a read groups by its answer, and groups
+    sort by count unless ORDER BY says otherwise.
+  </>,
+  <>
+    ORDER BY sorts a flag by its share, <Code>deadlineStatus</Code> by urgency and text naturally,
+    blanks last.
+  </>,
+  <>A report runs up to 20,000 evaluations: rows × people × environments × reads.</>,
+  <>
+    The query lives in the link after <Code>#</Code>, so Copy link shares the report, and Copy as
+    Markdown copies its table.
+  </>,
 ];
 
 /** Each type of property, a comparison to show it, and the words a heading calls it */
@@ -179,6 +244,15 @@ export const CHEAT_SHEET_EXAMPLES: Array<{ title: string; query: string }> = [
   {
     title: "Every global variable, for each audience",
     query: ["FROM variables", "VARY *", "SELECT variable(key)", "AS MATRIX"].join("\n"),
+  },
+  {
+    title: "Three people side by side",
+    query: [
+      "FROM features",
+      "VARY [{ userId: 'user-1' }, { userId: 'user-2' }, { userId: 'user-3' }]",
+      "SELECT feature(key)",
+      "AS MATRIX BY PERSON",
+    ].join("\n"),
   },
 ];
 
@@ -269,6 +343,32 @@ export function QueryCheatSheet(props: { onClose: () => void; onTry: (query: str
             </Section>
             <Section title="Values" about="Written as conditions write them.">
               <Rows rows={VALUES} />
+            </Section>
+          </div>
+
+          <div className="grid gap-8 lg:grid-cols-2">
+            <div className="space-y-8">
+              <Section
+                title="Reading results"
+                about="Click any evaluated cell for its Why: the rule, the reason, the share and what it depends on."
+              >
+                <Rows rows={CELLS} plain />
+              </Section>
+              <Section title="Lenses" about="The line above the results says how its cells read.">
+                <Rows rows={LENSES} plain />
+              </Section>
+            </div>
+            <Section title="Good to know">
+              <ul className="space-y-2 rounded-lg border border-border px-4 py-3 text-sm text-muted">
+                {GOOD_TO_KNOW.map((item, index) => (
+                  <li key={index} className="flex gap-2">
+                    <span aria-hidden="true" className="text-faint">
+                      ·
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </Section>
           </div>
 

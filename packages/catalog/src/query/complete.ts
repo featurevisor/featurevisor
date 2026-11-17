@@ -125,6 +125,15 @@ const CLAUSE_ITEMS: Array<{ clause: string; item: CompletionItem }> = [
       kind: "keyword",
     },
   },
+  {
+    clause: "AS",
+    item: {
+      label: "AS MATRIX BY PERSON",
+      insert: "AS MATRIX BY PERSON",
+      detail: "each person across the top",
+      kind: "keyword",
+    },
+  },
 ];
 
 /** WHERE's operators for each type of property, each with what it asks */
@@ -533,10 +542,10 @@ export function completeFql(
     }
   }
 
-  // A person's attributes, as keys of CONTEXT's object
+  // A person's attributes, as keys of CONTEXT's object or of a person in VARY's list
   if (
     innermost?.text === "{" &&
-    clause === "CONTEXT" &&
+    (clause === "CONTEXT" || clause === "VARY") &&
     (previous?.text === "{" || previous?.text === ",")
   ) {
     return result(
@@ -554,6 +563,23 @@ export function completeFql(
     return result([
       { label: "TABLE", insert: "TABLE", detail: "layout", kind: "keyword" },
       { label: "MATRIX", insert: "MATRIX", detail: "environments across the top", kind: "keyword" },
+      {
+        label: "MATRIX BY PERSON",
+        insert: "MATRIX BY PERSON",
+        detail: "each person across the top",
+        kind: "keyword",
+      },
+    ]);
+  }
+  // After a matrix, what goes across it
+  if (clause === "AS" && innermost === undefined && previous?.text === "MATRIX") {
+    return result([
+      {
+        label: "BY PERSON",
+        insert: "BY PERSON",
+        detail: "each person across the top",
+        kind: "keyword",
+      },
     ]);
   }
 
@@ -625,6 +651,13 @@ export function completeFql(
     if (listStart("VARY"))
       return result([
         { label: "*", insert: "*", detail: "every attribute compared", kind: "value" },
+        {
+          label: "[{ … }]",
+          insert: "[{ ",
+          detail: "people, each a combination",
+          kind: "value",
+          chain: true,
+        },
         ...project.attributes.map((attribute) => ({
           label: attribute.key,
           insert: attribute.key,

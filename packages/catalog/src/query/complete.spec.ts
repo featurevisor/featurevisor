@@ -59,6 +59,7 @@ describe("completeFql", () => {
       "LIMIT",
       "AS TABLE",
       "AS MATRIX",
+      "AS MATRIX BY PERSON",
     ]);
     expect(choose("or|", "ORDER BY")).toBe("ORDER BY ");
     expect(labels("FROM features\nSELECT key\n|")).not.toContain("SELECT");
@@ -108,13 +109,16 @@ describe("completeFql", () => {
   it("offers a heading after a column, and a direction after a sort", () => {
     const heading = complete("SELECT feature('foo') |")!.items[0];
     expect(heading).toMatchObject({ label: "AS '…'", insert: "AS ''", cursor: 4 });
-    expect(labels("SELECT feature('foo') AS |")).toEqual(["TABLE", "MATRIX"]);
+    expect(labels("SELECT feature('foo') AS |")).toEqual(["TABLE", "MATRIX", "MATRIX BY PERSON"]);
+    expect(labels("FROM features\nSELECT feature(key)\nAS MATRIX |")).toEqual(["BY PERSON"]);
     expect(labels("FROM features\nORDER BY owner |").slice(0, 2)).toEqual(["DESC", "ASC"]);
     expect(labels("FROM features\nGROUP BY owner\nORDER BY c|")).toContain("count()");
   });
 
   it("offers attributes, environments, people and limits where clauses take them", () => {
-    expect(labels("VARY |")).toEqual(["*", "country", "device", "userId"]);
+    expect(labels("VARY |")).toEqual(["*", "[{ … }]", "country", "device", "userId"]);
+    // A person in VARY's list takes attribute keys, as CONTEXT's does
+    expect(choose("VARY [{ country: 'nl', dev|", "device")).toBe("VARY [{ country: 'nl', device: ");
     expect(labels("VARY country, d|")).toEqual(["device"]);
     expect(labels("ENVIRONMENT staging, |")).toEqual(["*", "staging", "production"]);
     expect(labels("CONTEXT |")).toEqual(["{}", "{ … }", "scenarios/writer"]);
