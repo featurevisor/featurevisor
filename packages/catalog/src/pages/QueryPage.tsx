@@ -885,7 +885,7 @@ function ValueView(props: {
         to={getEntityRoute(value.link.type, value.link.key, props.setKey)}
         className="font-medium text-text hover:underline"
       >
-        <EntityKey value={value.link.key} />
+        <EntityKey value={value.link.key} className="[text-wrap:balance]" />
       </Link>
     );
   }
@@ -912,8 +912,15 @@ function ValueView(props: {
     );
   }
   if (value.type === "number") return <span className="tabular-nums">{value.text}</span>;
+  // One short word, such as an owner like `checkout-team`, is a name, so it never breaks at a hyphen
+  const word =
+    value.type === "text" && value.text.length <= 40 && !/\s/.test(value.text)
+      ? " whitespace-nowrap"
+      : "";
   return (
-    <span className={value.type === "text" ? "text-text" : "font-mono text-xs text-text"}>
+    <span
+      className={`${value.type === "text" ? "text-text" : "font-mono text-xs text-text"}${word}`}
+    >
       {value.text}
     </span>
   );
@@ -924,7 +931,7 @@ const thBase = "border-b border-border px-3 py-2 text-left text-[11px] font-semi
 const thClass = `${thBase} uppercase tracking-wider`;
 const tdClass = "border-b border-border px-3 py-2 align-top text-sm";
 const sticky = "sticky left-0 bg-surface";
-/** Keys stay wide enough that they break only at dots */
+/** Keys stay wide enough to read, and a long one breaks between its words */
 const keyClass = "min-w-[12rem]";
 const isKey = (column: ResultColumn) =>
   column.column.expr.kind === "property" && column.column.expr.name === "key";

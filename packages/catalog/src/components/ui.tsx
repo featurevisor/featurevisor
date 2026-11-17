@@ -1109,22 +1109,21 @@ export function Tabs(props: {
   );
 }
 
+/**
+ * Where a long key may wrap: after a dot, dash, underscore or slash, and before a capital that
+ * starts a word, so `expressCheckoutForReturningCustomers` breaks between its words rather than
+ * inside one. Anywhere else stays a last resort.
+ */
+const KEY_BREAKS = /(?<=[./_-])|(?<=[a-z0-9])(?=[A-Z])/;
+
 export function EntityKey(props: { value: string; className?: string }) {
   return (
     <span
       className={["inline leading-snug [overflow-wrap:anywhere]", props.className || ""].join(" ")}
     >
-      {props.value.split(".").flatMap((part, index, parts) => {
-        const nodes: React.ReactNode[] = [part];
-        if (index < parts.length - 1) {
-          nodes.push(
-            <React.Fragment key={`dot-${index}`}>
-              .<wbr />
-            </React.Fragment>,
-          );
-        }
-        return nodes;
-      })}
+      {props.value
+        .split(KEY_BREAKS)
+        .flatMap((part, index) => (index === 0 ? [part] : [<wbr key={index} />, part]))}
     </span>
   );
 }

@@ -11,7 +11,14 @@ import {
   getEntityRoute,
 } from "../entityTypes";
 import type { CatalogEntityType, EntityDetail, EntityPath } from "../types";
-import { EmptyState, OverviewChipLink, PageHeader, PageSkeleton, Tabs } from "../components/ui";
+import {
+  EmptyState,
+  EntityKey,
+  OverviewChipLink,
+  PageHeader,
+  PageSkeleton,
+  Tabs,
+} from "../components/ui";
 import { DeprecatedDependencies, LifecycleBanner } from "../components/insights";
 import { useEntityDependencies } from "../components/dependencies";
 import { useDocumentTitle } from "../useDocumentTitle";
@@ -402,7 +409,8 @@ function EntityDetailView() {
   return (
     <div>
       <PageHeader
-        title={detail.key}
+        // A long key breaks between its words, in lines of even length
+        title={<EntityKey value={detail.key} className="[text-wrap:balance]" />}
         titleAction={<CopyEntityKeyButton entityKey={detail.key} />}
         description={
           type === "test" && "scenario" in detail.entity ? "Scenario" : entityLabels[type].singular
