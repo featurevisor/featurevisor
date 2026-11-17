@@ -147,6 +147,8 @@ It serves `http://127.0.0.1:3000` in watch mode, reloading on every saved change
 2. Open the URL in your browser tool if you have one, otherwise give it to the user.
 3. Every edit you save appears there, so the user reviews changes visually instead of reading YAML diffs.
 
+With `--with-query`, the Catalog also links its **Query** page, in beta, which answers questions across the whole project as tables written in FQL: rollouts in progress, what differs between environments, what one person or several get, who owns what, and more. The page also answers at `/query` without the flag, and a report lives in its link, so you can hand the user a link to the answer. Read [catalog-query.md](catalog-query.md) before writing FQL.
+
 Its search accepts qualifiers such as `tag:web`, `in:production`, `with:variations`, `variable:colour`, `without:tests` and `archived:false`. `uses:netherlands` finds what depends on `netherlands`, directly or not, and `usedby:chatFileUpload` finds what `chatFileUpload` depends on. `npx featurevisor catalog export` builds a static site for hosting, and `--test-report=<file>` shows results from `npx featurevisor test --json` output saved to a file.
 
 When the person asking prefers the Catalog to the CLI, point them to where each answer lives ([Catalog docs](https://featurevisor.com/docs/catalog/#questions-it-answers)):
@@ -158,3 +160,4 @@ When the person asking prefers the Catalog to the CLI, point them to where each 
 | Who changed this, and when?           | its History tab                                   |
 | Is it tested?                         | its Tests tab, or `without:tests` in a list       |
 | How do I suggest a change?            | Propose change, which opens the Git host's editor |
+| Several questions as one table        | the Query page, in beta, with `--with-query`      |
