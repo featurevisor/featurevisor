@@ -46,7 +46,7 @@ export const FULL_VIEW_PARAM = "map";
  * the map as they left it. One value is for both sides, and two are for what it depends on and
  * what depends on it, as in `more=1,0`.
  */
-export const MORE_PARAM = "more";
+const MORE_PARAM = "more";
 /** Taller than this, and the map scrolls and drags inside its frame */
 const VIEWPORT_HEIGHT = 440;
 /** How much of the map the full view keeps in its frame however far it is moved */
@@ -76,6 +76,8 @@ interface MapLayout {
     column: number;
   }>;
   labels: Array<{ text: string; x: number; width: number }>;
+  /** Where lines meet each entity: its right side when one leaves it, its left when one arrives */
+  ports: Array<{ id: string; x: number; y: number }>;
 }
 
 type Side = DependencyMapSide;
@@ -102,11 +104,6 @@ export function formatRevealed(revealed: Revealed) {
   );
   if (dependencies === "0" && dependents === "0") return undefined;
   return dependencies === dependents ? dependencies : `${dependencies},${dependents}`;
-}
-
-/** A side's pills show more of it, or take it back to what it showed at first */
-function revealSide(revealed: Revealed, side: Side, more: boolean): Revealed {
-  return { ...revealed, [side]: more ? revealed[side] + 1 : 0 };
 }
 
 const EVERYTHING_REVEALED: Revealed = { dependencies: Infinity, dependents: Infinity };
@@ -199,6 +196,16 @@ function layoutMap(map: DependencyMap): MapLayout {
   for (const node of [...nodes, center]) node.x = offsets[columnOf.get(node.id)!];
   for (const pill of pills) pill.x = offsets[pill.column];
 
+  const leaves = new Set(map.edges.map((edge) => edge.from));
+  const arrives = new Set(map.edges.map((edge) => edge.to));
+  const ports = [...nodes, center].flatMap((node) => {
+    const y = node.y + node.height / 2;
+    return [
+      ...(leaves.has(node.id) ? [{ id: node.id, x: node.x + node.width, y }] : []),
+      ...(arrives.has(node.id) ? [{ id: node.id, x: node.x, y }] : []),
+    ];
+  });
+
   // Each column says how it relates, so a label stays in view wherever the map is dragged
   const labels: MapLayout["labels"] = columns.flatMap((column, columnIndex) =>
     column.side === undefined
@@ -225,6 +232,7 @@ function layoutMap(map: DependencyMap): MapLayout {
     positions: placed,
     pills,
     labels,
+    ports,
   };
 }
 
@@ -339,9 +347,8 @@ function useDragToPan(enabled: boolean) {
 
 /**
  * One entity's dependency map, undefined without an entity or when it has no dependencies and no
- * dependents, and how much of each side the reader has asked to see. That lives in the URL as
- * `?more=`, so a link shows the map as the reader left it, and moving to another entity starts
- * afresh.
+ * dependents, and ways to show more of it. What each side shows lives in the URL as `?more=`, so
+ * a link shows the map as the reader left it, and moving to another entity starts afresh.
  */
 export function useDependencyMap(detail: EntityDetail | null | undefined, setKey?: string) {
   const { index } = useCatalogIndex(setKey);
@@ -381,7 +388,14 @@ export function useDependencyMap(detail: EntityDetail | null | undefined, setKey
     [location.hash, location.pathname, location.search, navigate],
   );
 
-  return { map, revealed, setRevealed };
+  return {
+    map,
+    /** A side's pills show more of it, or take it back to what it showed at first */
+    reveal: (side: Side, more: boolean) =>
+      setRevealed({ ...revealed, [side]: more ? revealed[side] + 1 : 0 }),
+    /** The full view's control shows everything, or goes back to how the map opens */
+    revealAll: (all: boolean) => setRevealed(all ? EVERYTHING_REVEALED : NOTHING_REVEALED),
+  };
 }
 
 /**
@@ -393,11 +407,9 @@ export function useDependencyMap(detail: EntityDetail | null | undefined, setKey
 export function DependencyMapView(props: {
   map: DependencyMap;
   setKey?: string;
-  /** How many times each side has been asked to show more */
-  revealed?: Revealed;
-  onRevealedChange?: (next: Revealed) => void;
+  /** Shows more of a side, or goes back to what it showed at first */
+  onReveal?: (side: Side, more: boolean) => void;
 }) {
-  const revealed = props.revealed ?? NOTHING_REVEALED;
   const layout = React.useMemo(() => layoutMap(props.map), [props.map]);
   const expandRef = React.useRef<HTMLButtonElement | null>(null);
   const { expanded, open } = useFullView(FULL_VIEW_PARAM);
@@ -408,7 +420,7 @@ export function DependencyMapView(props: {
       map={props.map}
       layout={layout}
       setKey={props.setKey}
-      onReveal={(side, more) => props.onRevealedChange?.(revealSide(revealed, side, more))}
+      onReveal={props.onReveal}
       onExpand={open}
       expandRef={expandRef}
     />
@@ -461,7 +473,7 @@ export function DependencyMapFullView(props: {
   const tab = parseEntityPathname(location.pathname)?.tab;
   const expanded = asked && tab?.length === 1 && tab[0] === "usage";
   const { detail, failed } = useEntityDetailOf(expanded ? type : undefined, entityKey, setKey);
-  const { map, revealed, setRevealed } = useDependencyMap(detail, setKey);
+  const { map, reveal, revealAll } = useDependencyMap(detail, setKey);
 
   // The last map shown, kept while the next one loads
   const [kept, setKept] = React.useState<DependencyMap | null>(null);
@@ -496,8 +508,8 @@ export function DependencyMapFullView(props: {
         map={shownMap}
         layout={layout}
         setKey={setKey}
-        onReveal={(side, more) => setRevealed(revealSide(revealed, side, more))}
-        onRevealAll={(all) => setRevealed(all ? EVERYTHING_REVEALED : NOTHING_REVEALED)}
+        onReveal={reveal}
+        onRevealAll={revealAll}
         busy={!map}
         full
       />
@@ -577,36 +589,50 @@ function MapCanvas(props: {
     );
   }, [ref]);
 
-  // Where the entity sat in the frame when last drawn or scrolled, so it can stay there, and where
-  // the map drawn last sat on screen, so another entity's map can put that entity where it was
+  // Where the map sat when last drawn, scrolled or zoomed, from the middle of its frame, and what
+  // it showed
   const centerRef = React.useRef<HTMLDivElement | null>(null);
-  const centerSpot = React.useRef<{ x: number; y: number } | null>(null);
-  const drawn = React.useRef(layout);
-  const lastView = React.useRef<{ layout: MapLayout; left: number; top: number } | null>(null);
-  const rememberCenter = React.useCallback(() => {
+  const lastView = React.useRef<{ layout: MapLayout; x: number; y: number } | null>(null);
+  const rememberView = React.useCallback(() => {
     const element = ref.current;
-    const node = centerRef.current;
     const box = boxRef.current;
-    if (!element || !node || !box) return;
+    if (!element || !box) return;
     const frame = element.getBoundingClientRect();
-    const spot = node.getBoundingClientRect();
-    centerSpot.current = { x: spot.left - frame.left, y: spot.top - frame.top };
     const placed = box.getBoundingClientRect();
-    lastView.current = { layout: drawn.current, left: placed.left, top: placed.top };
-  }, [ref]);
+    lastView.current = {
+      layout,
+      x: placed.left - frame.left - frame.width / 2,
+      y: placed.top - frame.top - frame.height / 2,
+    };
+  }, [layout, ref]);
 
-  // Puts the entity back where it sat in the frame, as when the map changes under it
-  const keepCenter = React.useCallback(() => {
+  // Puts the entity the map is drawn around where the map before drew it, and says whether it
+  // could. The same entity, as when a side shows more or the frame changes size, goes back
+  // wherever the reader had moved it, as far from the frame's middle as it was. Another, as when
+  // one is clicked in the full view or Back returns to one, goes there only if the reader could
+  // see it, nudged as far as keeps all of it in view, since the middle of the map is wider and
+  // taller than an entity in its column.
+  const placeAsBefore = React.useCallback(() => {
     const element = ref.current;
     const node = centerRef.current;
-    const spot = centerSpot.current;
-    if (!element || !node || !spot) return;
+    const before = lastView.current;
+    const was = before?.layout.positions.get(map.center.id);
+    if (!element || !node || !before || !was) return false;
+    const moved = before.layout.center.id !== map.center.id;
+    const scale = shownZoom.current;
     const frame = element.getBoundingClientRect();
+    const x = frame.width / 2 + before.x + (was.x + was.width / 2) * scale;
+    const y = frame.height / 2 + before.y + (was.y + was.height / 2) * scale;
+    if (moved && (x < 0 || x > frame.width || y < 0 || y > frame.height)) return false;
     const box = node.getBoundingClientRect();
-    element.scrollBy(box.left - frame.left - spot.x, box.top - frame.top - spot.y);
-  }, [ref]);
-
-  const shownCenter = React.useRef(map.center.id);
+    const start = (middle: number, size: number, extent: number) =>
+      moved ? Math.min(Math.max(middle - size / 2, 8), extent - 8 - size) : middle - size / 2;
+    element.scrollBy(
+      box.left - frame.left - start(x, box.width, frame.width),
+      box.top - frame.top - start(y, box.height, frame.height),
+    );
+    return true;
+  }, [map.center.id, ref]);
 
   // Another entity's map fades in around it, while the entity itself stays as it is. Focus, lost
   // with the clicked entity, goes to the new one in the middle, so the keyboard carries on there.
@@ -696,64 +722,30 @@ function MapCanvas(props: {
       element.scrollLeft += placed.left + point.x * zoom - point.clientX;
       element.scrollTop += placed.top + point.y * zoom - point.clientY;
       // only after a zoom, since on opening the map has not been centred yet
-      rememberCenter();
+      rememberView();
     }
     measure();
-  }, [zoom, measure, rememberCenter, ref]);
+  }, [zoom, measure, rememberView, ref]);
 
-  // Opens on the entity itself. When the map changes under the same entity, as when a side shows
-  // more, the entity stays where it was, so the reader keeps their place. Another entity's map,
-  // as when one is clicked in the full view or Back returns to one, puts that entity where it sat
-  // in the map before, so the reader's eye stays on it, and opens on it when it was not in view
-  // there. It also notices when the map outgrows its frame, or the frame changes size.
+  // Opens on the entity itself, and keeps it where the map before drew it whenever it can, so the
+  // reader keeps their place and their eye stays on the entity. It also notices when the map
+  // outgrows its frame, or the frame changes size.
   React.useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
     measure();
-    const before = lastView.current;
-    drawn.current = layout;
-    const moved = shownCenter.current !== map.center.id;
-    shownCenter.current = map.center.id;
-    const was = moved ? before?.layout.positions.get(map.center.id) : undefined;
-    const scale = shownZoom.current;
-    const frame = element.getBoundingClientRect();
-    // Where the entity's middle sat on screen in the map before, if the reader could see it there
-    const spot =
-      before && was
-        ? {
-            x: before.left + (was.x + was.width / 2) * scale,
-            y: before.top + (was.y + was.height / 2) * scale,
-          }
-        : undefined;
-    const seen =
-      spot &&
-      spot.x > frame.left &&
-      spot.x < frame.right &&
-      spot.y > frame.top &&
-      spot.y < frame.bottom;
-    const node = centerRef.current;
-    if (moved && spot && seen && node) {
-      // Its middle goes where it was, nudged only as far as keeps all of it in view, since the
-      // middle of the map is wider and taller than the entity was in its column
-      const box = node.getBoundingClientRect();
-      const fit = (middle: number, size: number, start: number, end: number) =>
-        Math.min(Math.max(middle - size / 2, start + 8), end - 8 - size);
-      element.scrollBy(
-        box.left - fit(spot.x, box.width, frame.left, frame.right),
-        box.top - fit(spot.y, box.height, frame.top, frame.bottom),
-      );
-    } else if (!moved && centerSpot.current) keepCenter();
-    else centerView();
-    rememberCenter();
+    const moved = lastView.current !== null && lastView.current.layout.center.id !== map.center.id;
+    if (!placeAsBefore()) centerView();
+    rememberView();
     if (moved) arrive();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
       measure();
-      keepCenter();
+      if (placeAsBefore()) rememberView();
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [layout, map.center.id, arrive, centerView, keepCenter, measure, rememberCenter, ref]);
+  }, [layout, map.center.id, arrive, centerView, measure, placeAsBefore, rememberView, ref]);
 
   // In the full view, a pinch or Ctrl or ⌘ with the wheel zooms around the pointer, and +, −
   // and 0 zoom around the middle. A plain wheel still scrolls.
@@ -885,7 +877,7 @@ function MapCanvas(props: {
         <div
           ref={ref}
           {...handlers}
-          onScroll={rememberCenter}
+          onScroll={rememberView}
           onClick={expandOnClick}
           data-dependency-map={full ? "full" : ""}
           aria-busy={props.busy || undefined}
@@ -978,29 +970,19 @@ function MapCanvas(props: {
                         />
                       );
                     })}
-                    {/* Ports where lines meet each entity */}
-                    {layout.nodes.concat(layout.center).flatMap((node) => {
-                      const dimmed = trace && !trace.nodes.has(node.id);
-                      const ports = [];
-                      const y = node.y + node.height / 2;
-                      if (map.edges.some((edge) => edge.from === node.id)) {
-                        ports.push(node.x + node.width);
-                      }
-                      if (map.edges.some((edge) => edge.to === node.id)) ports.push(node.x);
-                      return ports.map((x) => (
-                        <circle
-                          key={`${node.id}@${x}`}
-                          cx={x}
-                          cy={y}
-                          r={3}
-                          className={[
-                            "fill-surface stroke-slate-400 transition-opacity duration-200",
-                            dimmed ? "opacity-30" : "",
-                          ].join(" ")}
-                          strokeWidth={1.5}
-                        />
-                      ));
-                    })}
+                    {layout.ports.map((port) => (
+                      <circle
+                        key={`${port.id}@${port.x}`}
+                        cx={port.x}
+                        cy={port.y}
+                        r={3}
+                        className={[
+                          "fill-surface stroke-slate-400 transition-opacity duration-200",
+                          trace && !trace.nodes.has(port.id) ? "opacity-30" : "",
+                        ].join(" ")}
+                        strokeWidth={1.5}
+                      />
+                    ))}
                   </svg>
 
                   {layout.nodes.map((node) => (

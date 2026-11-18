@@ -500,7 +500,7 @@ export function UsageTab() {
   const { index } = useCatalogIndex(setKey);
   const dependencies = useEntityDependencies(detail, setKey);
   const sections = getRelatedSections(detail, index);
-  const { map, revealed, setRevealed } = useDependencyMap(detail, setKey);
+  const { map, reveal } = useDependencyMap(detail, setKey);
   const label = entityLabels[detail.type].singular.toLowerCase();
 
   if (countUsage(detail, dependencies) === 0) {
@@ -514,12 +514,7 @@ export function UsageTab() {
           title="Dependency map"
           description={`What this ${label} depends on, to its left, and what depends on it, to its right, a column for each step away.`}
         >
-          <DependencyMapView
-            map={map}
-            setKey={setKey}
-            revealed={revealed}
-            onRevealedChange={setRevealed}
-          />
+          <DependencyMapView map={map} setKey={setKey} onReveal={reveal} />
         </UsageBlock>
       )}
       <UsedByBlock detail={detail} dependencies={dependencies} setKey={setKey} />
