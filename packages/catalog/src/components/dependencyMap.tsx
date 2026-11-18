@@ -789,6 +789,15 @@ function MapCanvas(props: {
   const hidden = map.more.dependencies + map.more.dependents;
   const grown = showsMoreThanAtFirst(map.dependencies) || showsMoreThanAtFirst(map.dependents);
   const showExpand = !full && overflows && props.onExpand;
+  // Inline, a click anywhere but an entity, a pill or a control opens the full view. A drag never
+  // ends in a click, so moving the map around does not.
+  const expandOnClick =
+    !full && props.onExpand
+      ? (event: React.MouseEvent<HTMLDivElement>) => {
+          if (event.defaultPrevented || (event.target as Element).closest("a, button")) return;
+          props.onExpand?.();
+        }
+      : undefined;
 
   // The map's own controls: in the full view, showing everything, zoom and Centre, and inline,
   // Centre and Full view once the map outgrows its frame
@@ -877,6 +886,7 @@ function MapCanvas(props: {
           ref={ref}
           {...handlers}
           onScroll={rememberCenter}
+          onClick={expandOnClick}
           data-dependency-map={full ? "full" : ""}
           aria-busy={props.busy || undefined}
           style={{
@@ -889,7 +899,13 @@ function MapCanvas(props: {
           className={[
             "overflow-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
             full ? "h-full bg-elevated/40" : "rounded-xl border border-border bg-elevated/40",
-            overflows ? (dragging ? "cursor-grabbing select-none" : "cursor-grab") : "",
+            overflows
+              ? dragging
+                ? "cursor-grabbing select-none"
+                : "cursor-grab"
+              : expandOnClick
+                ? "cursor-zoom-in"
+                : "",
           ].join(" ")}
         >
           {/* Auto margins centre a map smaller than its frame, and never clip a larger one. The

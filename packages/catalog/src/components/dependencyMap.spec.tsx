@@ -54,6 +54,10 @@ describe("dependency map view", () => {
     expect(all).toContain(">Show fewer</button>");
   });
 
+  it("opens the full view from a click on the map, as its cursor says", () => {
+    expect(render(map)).toContain("cursor-zoom-in");
+  });
+
   it("offers no way back for a side the first limits show in full", () => {
     const html = render({ ...map, more: { dependencies: 0, dependents: 0 } });
     expect(html).not.toContain("</button>");
