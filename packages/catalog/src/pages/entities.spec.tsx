@@ -992,7 +992,7 @@ describe("Catalog entity surfaces", () => {
     );
     // Each entry links its key and its location, so count distinct entities. The map above
     // the list draws them all, so only the list counts.
-    const list = html.slice(html.indexOf('data-usage-block="used-by"'));
+    const list = html.slice(html.indexOf(">Used by</h2>"));
     expect(new Set(list.match(/href="\/segments\/segment\d+"/g))).toHaveProperty("size", 12);
     expect(html).toContain("Show all 20 segments");
     expect(html).toContain('aria-label="Filter segments"');

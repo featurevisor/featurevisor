@@ -1,12 +1,18 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
 
-import { getDependencyMap, type DependencyMap, type DependencyMapNode } from "../dependencyMap";
+import {
+  getDependencyMap,
+  getRevealedLimits,
+  type DependencyMap,
+  type DependencyMapNode,
+  type DependencyMapSide,
+} from "../dependencyMap";
 import { getEntityRoute } from "../entityTypes";
 import type { EntityDetail, EntitySummary } from "../types";
 import { useCatalogIndex } from "../useCatalogIndex";
 import { typeName, useSummaryLookup } from "./dependencies";
-import { ExpandIcon, FullViewDialog, isMac, useFullView } from "./fullView";
+import { ExpandIcon, FullViewDialog, isMac, useFocusOnClose, useFullView } from "./fullView";
 
 /** Columns fit their longest key between these widths, and longer keys are cut with an ellipsis */
 const MIN_NODE_WIDTH = 152;
@@ -41,11 +47,24 @@ interface MapLayout {
   center: PlacedNode;
   nodes: PlacedNode[];
   positions: Map<string, PlacedNode>;
-  more: Array<{ side: Side; count: number; x: number; y: number; width: number; column: number }>;
+  /** Under a side's outermost column: showing what it leaves out, and going back */
+  pills: Array<{
+    side: Side;
+    label: string;
+    reveal: boolean;
+    x: number;
+    y: number;
+    width: number;
+    column: number;
+  }>;
   labels: Array<{ text: string; x: number; width: number }>;
 }
 
-type Side = "dependencies" | "dependents";
+type Side = DependencyMapSide;
+
+/** How many times the reader asked to see more on each side */
+type Revealed = Record<Side, number>;
+const NOTHING_REVEALED: Revealed = { dependencies: 0, dependents: 0 };
 
 interface MapColumn {
   nodes: DependencyMapNode[];
@@ -56,24 +75,29 @@ interface MapColumn {
 }
 
 /** Columns from the far left to the far right, each centred on the tallest one */
-function layoutMap(map: DependencyMap): MapLayout {
+function layoutMap(map: DependencyMap, revealed: Revealed): MapLayout {
   const columns: MapColumn[] = [
     ...map.dependencies.map((nodes, index) => ({ nodes, side: "dependencies" as const, index })),
   ].reverse();
   columns.push({ nodes: [map.center], index: 0 });
   map.dependents.forEach((nodes, index) => columns.push({ nodes, side: "dependents", index }));
 
-  // The outermost column on a side ends with what the map leaves out
-  const endsWithMore = (column: MapColumn) =>
-    column.side !== undefined &&
-    column.index === map[column.side].length - 1 &&
-    map.more[column.side] > 0;
+  // The outermost column on a side ends with a way to see what the map leaves out, and once
+  // some has been shown, a way back
+  const pillsOf = (column: MapColumn) => {
+    if (column.side === undefined || column.index !== map[column.side].length - 1) return [];
+    const count = map.more[column.side];
+    return [
+      ...(count > 0 ? [{ label: `Show ${count} more`, reveal: true }] : []),
+      ...(revealed[column.side] > 0 ? [{ label: "Show fewer", reveal: false }] : []),
+    ];
+  };
   const columnHeight = (column: MapColumn) =>
     column.side === undefined
       ? CENTER_HEIGHT
       : column.nodes.length * NODE_HEIGHT +
         (column.nodes.length - 1) * ROW_GAP +
-        (endsWithMore(column) ? ROW_GAP + MORE_HEIGHT : 0);
+        pillsOf(column).length * (ROW_GAP + MORE_HEIGHT);
   const tallest = Math.max(...columns.map(columnHeight));
   const top = PADDING + LABEL_HEIGHT;
   const widths = columns.map((column) =>
@@ -89,7 +113,7 @@ function layoutMap(map: DependencyMap): MapLayout {
   );
 
   const nodes: PlacedNode[] = [];
-  const more: MapLayout["more"] = [];
+  const pills: MapLayout["pills"] = [];
   let center: PlacedNode = { ...map.center, x: 0, y: 0, width: 0, height: CENTER_HEIGHT };
   const columnOf = new Map<string, number>();
   columns.forEach((column, columnIndex) => {
@@ -105,15 +129,9 @@ function layoutMap(map: DependencyMap): MapLayout {
       nodes.push({ ...node, x, y, width, height: NODE_HEIGHT });
       y += NODE_HEIGHT + ROW_GAP;
     }
-    if (endsWithMore(column)) {
-      more.push({
-        side: column.side,
-        count: map.more[column.side],
-        x,
-        y,
-        width,
-        column: columnIndex,
-      });
+    for (const pill of pillsOf(column)) {
+      pills.push({ ...pill, side: column.side, x, y, width, column: columnIndex });
+      y += MORE_HEIGHT + ROW_GAP;
     }
   });
 
@@ -134,7 +152,7 @@ function layoutMap(map: DependencyMap): MapLayout {
     widths.slice(0, index).reduce((sum, width, previous) => sum + width + gaps[previous], PADDING),
   );
   for (const node of [...nodes, center]) node.x = offsets[columnOf.get(node.id)!];
-  for (const item of more) item.x = offsets[item.column];
+  for (const pill of pills) pill.x = offsets[pill.column];
 
   // Each column says how it relates, so a label stays in view wherever the map is dragged
   const labels: MapLayout["labels"] = columns.flatMap((column, columnIndex) =>
@@ -160,7 +178,7 @@ function layoutMap(map: DependencyMap): MapLayout {
     center,
     nodes,
     positions: placed,
-    more,
+    pills,
     labels,
   };
 }
@@ -274,10 +292,31 @@ function useDragToPan(enabled: boolean) {
   return { ref, dragging, handlers };
 }
 
-/** One entity's dependency map, undefined when it has no dependencies and no dependents */
+/**
+ * One entity's dependency map, undefined when it has no dependencies and no dependents, and how
+ * much of each side the reader has asked to see. That resets for each entity.
+ */
 export function useDependencyMap(detail: EntityDetail, setKey?: string) {
   const { index } = useCatalogIndex(setKey);
-  return React.useMemo(() => getDependencyMap(detail, index), [detail, index]);
+  const entity = `${detail.type}:${detail.key}`;
+  const [asked, setAsked] = React.useState({ entity, revealed: NOTHING_REVEALED });
+  const revealed = asked.entity === entity ? asked.revealed : NOTHING_REVEALED;
+  const map = React.useMemo(
+    () =>
+      getDependencyMap(detail, index, {
+        dependencies: getRevealedLimits(revealed.dependencies),
+        dependents: getRevealedLimits(revealed.dependents),
+      }),
+    [detail, index, revealed],
+  );
+  const reveal = (side: Side, step: number) =>
+    setAsked({ entity, revealed: { ...revealed, [side]: step } });
+  return {
+    map,
+    revealed,
+    showMore: (side: Side) => reveal(side, revealed[side] + 1),
+    showFewer: (side: Side) => reveal(side, 0),
+  };
 }
 
 /**
@@ -289,28 +328,19 @@ export function useDependencyMap(detail: EntityDetail, setKey?: string) {
 export function DependencyMapView(props: {
   map: DependencyMap;
   setKey?: string;
-  /** Shows where the entities a side leaves out are listed */
-  onMore?: (side: Side) => void;
+  /** How many times each side has been asked to show more */
+  revealed?: Revealed;
+  onShowMore?: (side: Side) => void;
+  onShowFewer?: (side: Side) => void;
 }) {
-  const { onMore } = props;
-  const layout = React.useMemo(() => layoutMap(props.map), [props.map]);
+  const revealed = props.revealed ?? NOTHING_REVEALED;
+  const layout = React.useMemo(() => layoutMap(props.map, revealed), [props.map, revealed]);
   const expandRef = React.useRef<HTMLButtonElement | null>(null);
+  const reveal = (side: Side, more: boolean) =>
+    more ? props.onShowMore?.(side) : props.onShowFewer?.(side);
 
   const { expanded, open, close } = useFullView(FULL_VIEW_PARAM);
-
-  // Once closed, however that happened, focus goes back to the button that opened it, or the
-  // list a "more below" asked for comes into view
-  const pendingMore = React.useRef<Side | null>(null);
-  const wasExpanded = React.useRef(expanded);
-  React.useEffect(() => {
-    if (wasExpanded.current && !expanded) {
-      const side = pendingMore.current;
-      pendingMore.current = null;
-      if (side) onMore?.(side);
-      else expandRef.current?.focus();
-    }
-    wasExpanded.current = expanded;
-  }, [expanded, onMore]);
+  useFocusOnClose(expanded, () => expandRef.current?.focus());
 
   return (
     <>
@@ -318,7 +348,7 @@ export function DependencyMapView(props: {
         map={props.map}
         layout={layout}
         setKey={props.setKey}
-        onMore={props.onMore}
+        onReveal={reveal}
         onExpand={open}
         expandRef={expandRef}
       />
@@ -330,16 +360,7 @@ export function DependencyMapView(props: {
           hint={`Drag to move, pinch or hold ${isMac() ? "⌘" : "Ctrl"} and scroll to zoom`}
           onClose={close}
         >
-          <MapCanvas
-            map={props.map}
-            layout={layout}
-            setKey={props.setKey}
-            onMore={(side) => {
-              pendingMore.current = side;
-              close();
-            }}
-            full
-          />
+          <MapCanvas map={props.map} layout={layout} setKey={props.setKey} onReveal={reveal} full />
         </FullViewDialog>
       )}
     </>
@@ -369,7 +390,8 @@ function MapCanvas(props: {
   map: DependencyMap;
   layout: MapLayout;
   setKey?: string;
-  onMore?: (side: Side) => void;
+  /** Shows more of a side, or goes back to what it showed at first */
+  onReveal?: (side: Side, more: boolean) => void;
   /** Fills the full view, rather than sitting in the page */
   full?: boolean;
   onExpand?: () => void;
@@ -405,6 +427,18 @@ function MapCanvas(props: {
       element.scrollWidth > element.clientWidth + 1 ||
         element.scrollHeight > element.clientHeight + 1,
     );
+  }, [ref]);
+
+  // Where the entity sat in the frame when last drawn or scrolled, so it can stay there
+  const centerRef = React.useRef<HTMLDivElement | null>(null);
+  const centerSpot = React.useRef<{ x: number; y: number } | null>(null);
+  const rememberCenter = React.useCallback(() => {
+    const element = ref.current;
+    const node = centerRef.current;
+    if (!element || !node) return;
+    const frame = element.getBoundingClientRect();
+    const box = node.getBoundingClientRect();
+    centerSpot.current = { x: box.left - frame.left, y: box.top - frame.top };
   }, [ref]);
 
   const centerView = React.useCallback(
@@ -465,21 +499,32 @@ function MapCanvas(props: {
       const placed = box.getBoundingClientRect();
       element.scrollLeft += placed.left + point.x * zoom - point.clientX;
       element.scrollTop += placed.top + point.y * zoom - point.clientY;
+      // only after a zoom, since on opening the map has not been centred yet
+      rememberCenter();
     }
     measure();
-  }, [zoom, measure, ref]);
+  }, [zoom, measure, rememberCenter, ref]);
 
-  // Opens on the entity itself, and notices when the map outgrows its frame
+  // Opens on the entity itself. When the map changes under it, as when a side shows more, the
+  // entity stays where it was, so the reader keeps their place. It also notices when the map
+  // outgrows its frame.
   React.useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
     measure();
-    centerView();
+    const spot = centerSpot.current;
+    const node = centerRef.current;
+    if (spot && node) {
+      const frame = element.getBoundingClientRect();
+      const box = node.getBoundingClientRect();
+      element.scrollBy(box.left - frame.left - spot.x, box.top - frame.top - spot.y);
+    } else centerView();
+    rememberCenter();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [layout, centerView, measure, ref]);
+  }, [layout, centerView, measure, rememberCenter, ref]);
 
   // In the full view, a pinch or Ctrl or ⌘ with the wheel zooms around the pointer, and +, −
   // and 0 zoom around the middle. A plain wheel still scrolls.
@@ -519,6 +564,7 @@ function MapCanvas(props: {
         <div
           ref={ref}
           {...handlers}
+          onScroll={rememberCenter}
           data-dependency-map={props.full ? "full" : ""}
           style={{
             maxHeight: props.full ? undefined : VIEWPORT_HEIGHT,
@@ -621,6 +667,7 @@ function MapCanvas(props: {
                 ))}
 
                 <div
+                  ref={centerRef}
                   className="absolute flex flex-col justify-center rounded-lg border border-header-active bg-header-active px-3 text-header-text shadow-md"
                   style={{
                     left: layout.center.x,
@@ -636,16 +683,15 @@ function MapCanvas(props: {
                   <span className="truncate text-sm font-semibold">{layout.center.key}</span>
                 </div>
 
-                {/* The lists below the map name every entity, including those it leaves out */}
-                {layout.more.map((item) => (
+                {layout.pills.map((pill) => (
                   <button
-                    key={item.side}
+                    key={`${pill.side}:${pill.reveal}`}
                     type="button"
-                    onClick={() => props.onMore?.(item.side)}
+                    onClick={() => props.onReveal?.(pill.side, pill.reveal)}
                     className="absolute flex cursor-pointer items-center justify-center rounded-full border border-dashed border-slate-300 bg-surface text-xs font-medium text-muted outline-none hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary"
-                    style={{ left: item.x, top: item.y, width: item.width, height: MORE_HEIGHT }}
+                    style={{ left: pill.x, top: pill.y, width: pill.width, height: MORE_HEIGHT }}
                   >
-                    {item.count} more below
+                    {pill.label}
                   </button>
                 ))}
               </div>

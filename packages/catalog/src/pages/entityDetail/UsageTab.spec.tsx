@@ -176,9 +176,6 @@ describe("dependencies on the Usage tab", () => {
     // The entity itself sits in the middle, and is not a link to the page it is on
     expect(section).toContain(">discount</span>");
     expect(section).not.toContain('href="/features/discount"');
-    // The lists below can take the reader to whatever the map leaves out
-    expect(html).toContain('data-usage-block="used-by"');
-    expect(html).toContain('data-usage-block="depends-on"');
   });
 
   it("renders the map in its page when a link asks for the full view", () => {

@@ -1,4 +1,4 @@
-import { getDependencyMap } from "./dependencyMap";
+import { DEPENDENCY_MAP_LIMITS, getDependencyMap, getRevealedLimits } from "./dependencyMap";
 import type { CatalogIndex, EntityDetail } from "./types";
 
 // discount needs sidebar and buckets by userId. sidebar needs two segments, which both read
@@ -82,6 +82,22 @@ describe("dependency map", () => {
     const shallow = getDependencyMap(discount, index, { levels: 1, perColumn: 24 })!;
     expect(ids(shallow.dependencies)).toEqual([["feature:sidebar", "attribute:userId"]]);
     expect(shallow.more.dependencies).toBe(3);
+  });
+
+  it("limits each side apart, so one side can show more than the other", () => {
+    const map = getDependencyMap(discount, index, {
+      dependencies: { levels: 1, perColumn: 24 },
+      dependents: { levels: 4, perColumn: 1 },
+    })!;
+    expect(ids(map.dependencies)).toEqual([["feature:sidebar", "attribute:userId"]]);
+    expect(ids(map.dependents)).toEqual([["feature:checkout"]]);
+    expect(map.more).toEqual({ dependencies: 3, dependents: 1 });
+  });
+
+  it("shows four more columns and four times the entities each time a reader asks for more", () => {
+    expect(getRevealedLimits(0)).toEqual(DEPENDENCY_MAP_LIMITS);
+    expect(getRevealedLimits(1)).toEqual({ levels: 8, perColumn: 96 });
+    expect(getRevealedLimits(2)).toEqual({ levels: 12, perColumn: 384 });
   });
 
   it("walks dependents outwards as far as they go", () => {
