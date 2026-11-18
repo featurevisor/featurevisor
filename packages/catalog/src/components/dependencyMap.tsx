@@ -49,6 +49,8 @@ export const FULL_VIEW_PARAM = "map";
 export const MORE_PARAM = "more";
 /** Taller than this, and the map scrolls and drags inside its frame */
 const VIEWPORT_HEIGHT = 440;
+/** How much of the map the full view keeps in its frame however far it is moved */
+const FULL_VIEW_EDGE = 48;
 
 interface PlacedNode extends DependencyMapNode {
   x: number;
@@ -575,56 +577,58 @@ function MapCanvas(props: {
     );
   }, [ref]);
 
-  // Where the entity sat in the frame when last drawn or scrolled, so it can stay there
+  // Where the entity sat in the frame when last drawn or scrolled, so it can stay there, and where
+  // the map drawn last sat on screen, so another entity's map can put that entity where it was
   const centerRef = React.useRef<HTMLDivElement | null>(null);
   const centerSpot = React.useRef<{ x: number; y: number } | null>(null);
+  const drawn = React.useRef(layout);
+  const lastView = React.useRef<{ layout: MapLayout; left: number; top: number } | null>(null);
   const rememberCenter = React.useCallback(() => {
     const element = ref.current;
     const node = centerRef.current;
-    if (!element || !node) return;
+    const box = boxRef.current;
+    if (!element || !node || !box) return;
     const frame = element.getBoundingClientRect();
-    const box = node.getBoundingClientRect();
-    centerSpot.current = { x: box.left - frame.left, y: box.top - frame.top };
+    const spot = node.getBoundingClientRect();
+    centerSpot.current = { x: spot.left - frame.left, y: spot.top - frame.top };
+    const placed = box.getBoundingClientRect();
+    lastView.current = { layout: drawn.current, left: placed.left, top: placed.top };
   }, [ref]);
 
-  /** Where on screen the entity clicked in the full view sat, so its own map can come from there */
-  const arrival = React.useRef<{ x: number; y: number } | null>(null);
+  // Puts the entity back where it sat in the frame, as when the map changes under it
+  const keepCenter = React.useCallback(() => {
+    const element = ref.current;
+    const node = centerRef.current;
+    const spot = centerSpot.current;
+    if (!element || !node || !spot) return;
+    const frame = element.getBoundingClientRect();
+    const box = node.getBoundingClientRect();
+    element.scrollBy(box.left - frame.left - spot.x, box.top - frame.top - spot.y);
+  }, [ref]);
+
   const shownCenter = React.useRef(map.center.id);
 
-  const rememberArrival = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    // A click that opens a new tab or window leaves this map as it is
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-      return;
-    }
-    const box = event.currentTarget.getBoundingClientRect();
-    arrival.current = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-  };
-
-  // Another entity's map slides in from where the reader clicked that entity, settling with it in
-  // the middle, so the move reads as a step through the project. Focus, lost with the clicked
-  // entity, goes to the new one in the middle so the keyboard can carry on from there.
+  // Another entity's map fades in around it, while the entity itself stays as it is. Focus, lost
+  // with the clicked entity, goes to the new one in the middle, so the keyboard carries on there.
+  const surroundingsRef = React.useRef<HTMLDivElement | null>(null);
   const arrive = React.useCallback(() => {
-    const from = arrival.current;
-    arrival.current = null;
-    const box = boxRef.current;
     const node = centerRef.current;
-    if (!box || !node) return;
-    if (full && (!document.activeElement || document.activeElement === document.body)) {
+    const surroundings = surroundingsRef.current;
+    if (full && node && (!document.activeElement || document.activeElement === document.body)) {
       node.focus({ preventScroll: true });
     }
-    if (typeof box.animate !== "function" || prefersReducedMotion()) return;
-    const placed = node.getBoundingClientRect();
-    const dx = from ? from.x - (placed.left + placed.width / 2) : 0;
-    const dy = from ? from.y - (placed.top + placed.height / 2) : 0;
-    box.animate(
-      [
-        { transform: `translate(${dx}px, ${dy}px)`, opacity: 0.4 },
-        { transform: "translate(0, 0)", opacity: 1 },
-      ],
-      { duration: from ? 360 : 180, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-    );
+    if (!surroundings || typeof surroundings.animate !== "function" || prefersReducedMotion()) {
+      return;
+    }
+    surroundings.animate([{ opacity: 0.25 }, { opacity: 1 }], {
+      duration: 220,
+      easing: "ease-out",
+    });
   }, [full]);
 
+  // Puts the entity in the middle of the frame, as near as the map's edges allow, and a map
+  // smaller than the frame in the middle of it. The full view can scroll past the map's edges, so
+  // this works out the edges itself rather than leave them to the browser.
   const centerView = React.useCallback(
     (behavior: ScrollBehavior = "auto") => {
       const element = ref.current;
@@ -633,15 +637,23 @@ function MapCanvas(props: {
       const frame = element.getBoundingClientRect();
       const placed = box.getBoundingClientRect();
       const scale = shownZoom.current;
+      const along = (size: number, extent: number, middle: number) =>
+        extent <= size
+          ? (size - extent) / 2
+          : Math.min(0, Math.max(size - extent, size / 2 - middle));
+      const left = along(
+        element.clientWidth,
+        placed.width,
+        (layout.center.x + layout.center.width / 2) * scale,
+      );
+      const top = along(
+        element.clientHeight,
+        placed.height,
+        (layout.center.y + layout.center.height / 2) * scale,
+      );
       element.scrollBy({
-        left:
-          placed.left +
-          (layout.center.x + layout.center.width / 2) * scale -
-          (frame.left + element.clientLeft + element.clientWidth / 2),
-        top:
-          placed.top +
-          (layout.center.y + layout.center.height / 2) * scale -
-          (frame.top + element.clientTop + element.clientHeight / 2),
+        left: placed.left - (frame.left + element.clientLeft) - left,
+        top: placed.top - (frame.top + element.clientTop) - top,
         behavior,
       });
     },
@@ -689,29 +701,59 @@ function MapCanvas(props: {
     measure();
   }, [zoom, measure, rememberCenter, ref]);
 
-  // Opens on the entity itself, as does another entity's map. When the map changes under the same
-  // entity, as when a side shows more, the entity stays where it was, so the reader keeps their
-  // place. It also notices when the map outgrows its frame.
+  // Opens on the entity itself. When the map changes under the same entity, as when a side shows
+  // more, the entity stays where it was, so the reader keeps their place. Another entity's map,
+  // as when one is clicked in the full view or Back returns to one, puts that entity where it sat
+  // in the map before, so the reader's eye stays on it, and opens on it when it was not in view
+  // there. It also notices when the map outgrows its frame, or the frame changes size.
   React.useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
     measure();
+    const before = lastView.current;
+    drawn.current = layout;
     const moved = shownCenter.current !== map.center.id;
     shownCenter.current = map.center.id;
-    const spot = moved ? null : centerSpot.current;
+    const was = moved ? before?.layout.positions.get(map.center.id) : undefined;
+    const scale = shownZoom.current;
+    const frame = element.getBoundingClientRect();
+    // Where the entity's middle sat on screen in the map before, if the reader could see it there
+    const spot =
+      before && was
+        ? {
+            x: before.left + (was.x + was.width / 2) * scale,
+            y: before.top + (was.y + was.height / 2) * scale,
+          }
+        : undefined;
+    const seen =
+      spot &&
+      spot.x > frame.left &&
+      spot.x < frame.right &&
+      spot.y > frame.top &&
+      spot.y < frame.bottom;
     const node = centerRef.current;
-    if (spot && node) {
-      const frame = element.getBoundingClientRect();
+    if (moved && spot && seen && node) {
+      // Its middle goes where it was, nudged only as far as keeps all of it in view, since the
+      // middle of the map is wider and taller than the entity was in its column
       const box = node.getBoundingClientRect();
-      element.scrollBy(box.left - frame.left - spot.x, box.top - frame.top - spot.y);
-    } else centerView();
+      const fit = (middle: number, size: number, start: number, end: number) =>
+        Math.min(Math.max(middle - size / 2, start + 8), end - 8 - size);
+      element.scrollBy(
+        box.left - fit(spot.x, box.width, frame.left, frame.right),
+        box.top - fit(spot.y, box.height, frame.top, frame.bottom),
+      );
+    } else if (!moved && centerSpot.current) keepCenter();
+    else centerView();
     rememberCenter();
     if (moved) arrive();
     if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
+    const observer = new ResizeObserver(() => {
+      measure();
+      keepCenter();
+    });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [layout, map.center.id, arrive, centerView, measure, rememberCenter, ref]);
+  }, [layout, map.center.id, arrive, centerView, keepCenter, measure, rememberCenter, ref]);
 
   // In the full view, a pinch or Ctrl or ⌘ with the wheel zooms around the pointer, and +, −
   // and 0 zoom around the middle. A plain wheel still scrolls.
@@ -839,6 +881,8 @@ function MapCanvas(props: {
           aria-busy={props.busy || undefined}
           style={{
             maxHeight: full ? undefined : VIEWPORT_HEIGHT,
+            // Sizes the room around the full view's map to its frame
+            containerType: full ? "size" : undefined,
             backgroundImage: "radial-gradient(var(--mv-color-border) 1px, transparent 1px)",
             backgroundSize: "16px 16px",
           }}
@@ -848,13 +892,23 @@ function MapCanvas(props: {
             overflows ? (dragging ? "cursor-grabbing select-none" : "cursor-grab") : "",
           ].join(" ")}
         >
-          {/* Auto margins centre a map smaller than its frame, and never clip a larger one. A map
+          {/* Auto margins centre a map smaller than its frame, and never clip a larger one. The
+              full view leaves room around its map, nearly a frame each way, so the map can sit
+              anywhere in it, as when another entity's map keeps that entity where it was. A map
               still showing while the next loads dims, unless the next comes quickly. */}
           <div
             className={[
-              "flex min-h-full min-w-full transition-opacity",
+              // As wide as what it holds, so the room past the map's right edge scrolls too
+              "flex min-h-full w-max min-w-full transition-opacity",
               props.busy ? "opacity-50 delay-150 duration-300" : "duration-150",
             ].join(" ")}
+            style={
+              full
+                ? {
+                    padding: `calc(100cqh - ${FULL_VIEW_EDGE}px) calc(100cqw - ${FULL_VIEW_EDGE}px)`,
+                  }
+                : undefined
+            }
           >
             <div
               ref={boxRef}
@@ -869,88 +923,101 @@ function MapCanvas(props: {
                   transform: zoom === 1 ? undefined : `scale(${zoom})`,
                 }}
               >
-                {layout.labels.map((label) => (
-                  <div
-                    key={label.x}
-                    className="absolute text-center text-[10px] font-semibold uppercase tracking-wider text-faint"
-                    style={{ left: label.x, top: PADDING - 4, width: label.width }}
+                {/* Everything but the entity itself, which another entity's map fades in */}
+                <div ref={surroundingsRef} className="absolute inset-0">
+                  {layout.labels.map((label) => (
+                    <div
+                      key={label.x}
+                      className="absolute text-center text-[10px] font-semibold uppercase tracking-wider text-faint"
+                      style={{ left: label.x, top: PADDING - 4, width: label.width }}
+                    >
+                      {label.text}
+                    </div>
+                  ))}
+
+                  <svg
+                    aria-hidden="true"
+                    width={layout.width}
+                    height={layout.height}
+                    className="pointer-events-none absolute inset-0"
                   >
-                    {label.text}
-                  </div>
-                ))}
+                    {map.edges.map((edge) => {
+                      const from = layout.positions.get(edge.from);
+                      const to = layout.positions.get(edge.to);
+                      if (!from || !to) return null;
+                      const id = `${edge.from}>${edge.to}`;
+                      const lit = trace?.edges.has(id);
+                      return (
+                        <path
+                          key={id}
+                          d={edgePath(from, to)}
+                          fill="none"
+                          strokeWidth={lit ? 2 : 1.5}
+                          strokeLinecap="round"
+                          className={[
+                            "transition-[stroke,opacity] duration-200",
+                            lit ? "stroke-slate-500" : "stroke-slate-300",
+                            trace && !lit ? "opacity-30" : "",
+                          ].join(" ")}
+                        />
+                      );
+                    })}
+                    {/* Ports where lines meet each entity */}
+                    {layout.nodes.concat(layout.center).flatMap((node) => {
+                      const dimmed = trace && !trace.nodes.has(node.id);
+                      const ports = [];
+                      const y = node.y + node.height / 2;
+                      if (map.edges.some((edge) => edge.from === node.id)) {
+                        ports.push(node.x + node.width);
+                      }
+                      if (map.edges.some((edge) => edge.to === node.id)) ports.push(node.x);
+                      return ports.map((x) => (
+                        <circle
+                          key={`${node.id}@${x}`}
+                          cx={x}
+                          cy={y}
+                          r={3}
+                          className={[
+                            "fill-surface stroke-slate-400 transition-opacity duration-200",
+                            dimmed ? "opacity-30" : "",
+                          ].join(" ")}
+                          strokeWidth={1.5}
+                        />
+                      ));
+                    })}
+                  </svg>
 
-                <svg
-                  aria-hidden="true"
-                  width={layout.width}
-                  height={layout.height}
-                  className="pointer-events-none absolute inset-0"
-                >
-                  {map.edges.map((edge) => {
-                    const from = layout.positions.get(edge.from);
-                    const to = layout.positions.get(edge.to);
-                    if (!from || !to) return null;
-                    const id = `${edge.from}>${edge.to}`;
-                    const lit = trace?.edges.has(id);
-                    return (
-                      <path
-                        key={id}
-                        d={edgePath(from, to)}
-                        fill="none"
-                        strokeWidth={lit ? 2 : 1.5}
-                        strokeLinecap="round"
-                        className={[
-                          "transition-[stroke,opacity] duration-200",
-                          lit ? "stroke-slate-500" : "stroke-slate-300",
-                          trace && !lit ? "opacity-30" : "",
-                        ].join(" ")}
-                      />
-                    );
-                  })}
-                  {/* Ports where lines meet each entity */}
-                  {layout.nodes.concat(layout.center).flatMap((node) => {
-                    const dimmed = trace && !trace.nodes.has(node.id);
-                    const ports = [];
-                    const y = node.y + node.height / 2;
-                    if (map.edges.some((edge) => edge.from === node.id)) {
-                      ports.push(node.x + node.width);
-                    }
-                    if (map.edges.some((edge) => edge.to === node.id)) ports.push(node.x);
-                    return ports.map((x) => (
-                      <circle
-                        key={`${node.id}@${x}`}
-                        cx={x}
-                        cy={y}
-                        r={3}
-                        className={[
-                          "fill-surface stroke-slate-400 transition-opacity duration-200",
-                          dimmed ? "opacity-30" : "",
-                        ].join(" ")}
-                        strokeWidth={1.5}
-                      />
-                    ));
-                  })}
-                </svg>
-
-                {layout.nodes.map((node) => (
-                  <MapNode
-                    key={node.id}
-                    node={node}
-                    to={
-                      full
-                        ? {
-                            pathname: `${getEntityRoute(node.type, node.key, props.setKey)}/usage`,
-                            search: `?${FULL_VIEW_PARAM}=${FULL_VIEW_VALUE}`,
-                          }
-                        : getEntityRoute(node.type, node.key, props.setKey)
-                    }
-                    onOpen={full ? rememberArrival : undefined}
-                    summary={summaryOf(node)}
-                    setKey={props.setKey}
-                    dimmed={Boolean(trace && !trace.nodes.has(node.id))}
-                    lit={hovered === node.id}
-                    onHover={setHovered}
-                  />
-                ))}
+                  {layout.nodes.map((node) => (
+                    <MapNode
+                      key={node.id}
+                      node={node}
+                      to={
+                        full
+                          ? {
+                              pathname: `${getEntityRoute(node.type, node.key, props.setKey)}/usage`,
+                              search: `?${FULL_VIEW_PARAM}=${FULL_VIEW_VALUE}`,
+                            }
+                          : getEntityRoute(node.type, node.key, props.setKey)
+                      }
+                      summary={summaryOf(node)}
+                      setKey={props.setKey}
+                      dimmed={Boolean(trace && !trace.nodes.has(node.id))}
+                      lit={hovered === node.id}
+                      onHover={setHovered}
+                    />
+                  ))}
+                  {layout.pills.map((pill) => (
+                    <button
+                      key={`${pill.side}:${pill.reveal}`}
+                      type="button"
+                      onClick={() => props.onReveal?.(pill.side, pill.reveal)}
+                      className="absolute flex cursor-pointer items-center justify-center rounded-full border border-dashed border-slate-300 bg-surface text-xs font-medium text-muted outline-none hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary"
+                      style={{ left: pill.x, top: pill.y, width: pill.width, height: MORE_HEIGHT }}
+                    >
+                      {pill.label}
+                    </button>
+                  ))}
+                </div>
 
                 <div
                   ref={centerRef}
@@ -969,18 +1036,6 @@ function MapCanvas(props: {
                   </span>
                   <span className="truncate text-sm font-semibold">{layout.center.key}</span>
                 </div>
-
-                {layout.pills.map((pill) => (
-                  <button
-                    key={`${pill.side}:${pill.reveal}`}
-                    type="button"
-                    onClick={() => props.onReveal?.(pill.side, pill.reveal)}
-                    className="absolute flex cursor-pointer items-center justify-center rounded-full border border-dashed border-slate-300 bg-surface text-xs font-medium text-muted outline-none hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary"
-                    style={{ left: pill.x, top: pill.y, width: pill.width, height: MORE_HEIGHT }}
-                  >
-                    {pill.label}
-                  </button>
-                ))}
               </div>
             </div>
           </div>
@@ -1008,7 +1063,6 @@ function MapNode(props: {
   node: PlacedNode;
   /** The entity's page, or in the full view its Usage tab with its map open */
   to: To;
-  onOpen?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
   summary?: EntitySummary;
   setKey?: string;
   dimmed: boolean;
@@ -1027,7 +1081,6 @@ function MapNode(props: {
   return (
     <Link
       to={props.to}
-      onClick={props.onOpen}
       draggable={false}
       title={`${node.key}${description}`}
       onMouseEnter={point}
