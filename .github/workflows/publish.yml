@@ -17,7 +17,8 @@ jobs:
   ci:
     name: Publish
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Publishing pauses between packages and after a failure, so it needs more than the checks
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
         with:
@@ -61,13 +62,14 @@ jobs:
           npx lerna version --conventional-commits --conventional-graduate --exact --yes --no-push
 
       - name: Publish
-        # from-package publishes only versions missing from npm, so a partly failed
-        # publish can be resumed by running this workflow again.
+        # One package at a time in dependency order, a pause apart, trying again a few minutes
+        # after a failure (scripts/publish-packages.mjs). It publishes only versions missing
+        # from npm, so a job that still fails can be resumed by running it again.
         run: |
           unset NODE_AUTH_TOKEN
           rm -f .npmrc
           npm config delete always-auth 2>/dev/null || true
-          npx lerna publish from-package --no-private --yes
+          node scripts/publish-packages.mjs
 
       - name: Push back to GitHub
         run: |
