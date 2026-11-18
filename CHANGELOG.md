@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [4.12.0](https://github.com/featurevisor/featurevisor/compare/v4.11.0...v4.12.0) (2026-11-18)
+
+### Features
+
+* browsing dependencies in catalog&#x27;s map view ([#446](https://github.com/featurevisor/featurevisor/issues/446)) ([8ce9a60](https://github.com/featurevisor/featurevisor/commit/8ce9a60a39e043db43bd4aa116c98e45617bda41))
+
+
 ## [4.11.0](https://github.com/featurevisor/featurevisor/compare/v4.10.0...v4.11.0) (2026-11-17)
 
 ### Features
