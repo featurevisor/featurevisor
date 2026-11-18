@@ -517,11 +517,11 @@ function nextZoomStep(zoom: number, direction: 1 | -1) {
 const zoomStepClass =
   "flex w-6 cursor-pointer items-center justify-center outline-none hover:bg-slate-100 hover:text-text focus-visible:bg-slate-100 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent [&>svg]:h-3 [&>svg]:w-3";
 
-/** The map's own controls, smaller than the close button so they sit quietly in its corner */
+/** The map's own controls, smaller than the full view's close button so they sit quietly */
 const cornerControlClass =
   "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-muted shadow-sm outline-none transition-colors hover:border-slate-400 hover:text-text focus-visible:ring-2 focus-visible:ring-primary [&>svg]:h-3 [&>svg]:w-3";
 
-/** The map itself: its scrolling frame, what it draws, and the controls in its corner */
+/** The map itself: its scrolling frame, what it draws, and its controls */
 function MapCanvas(props: {
   map: DependencyMap;
   layout: MapLayout;
@@ -748,6 +748,86 @@ function MapCanvas(props: {
   const grown = showsMoreThanAtFirst(map.dependencies) || showsMoreThanAtFirst(map.dependents);
   const showExpand = !full && overflows && props.onExpand;
 
+  // The map's own controls: in the full view, showing everything, zoom and Centre, and inline,
+  // Centre and Full view once the map outgrows its frame
+  const controls = (
+    <>
+      {props.onRevealAll && (hidden > 0 || grown) && (
+        <button
+          type="button"
+          onClick={() => props.onRevealAll?.(hidden > 0)}
+          aria-label={
+            hidden > 0 ? `Show all ${hidden} hidden entities` : "Show the map as it opened"
+          }
+          title={hidden > 0 ? `Show everything (${hidden} more)` : "Show fewer"}
+          className={cornerControlClass}
+        >
+          {hidden > 0 ? <UnfoldIcon /> : <FoldIcon />}
+        </button>
+      )}
+      {full && (
+        <div
+          role="group"
+          aria-label="Zoom"
+          className="flex h-6 items-stretch overflow-hidden rounded-md border border-border bg-surface text-muted shadow-sm"
+        >
+          <button
+            type="button"
+            onClick={() => zoomTo(nextZoomStep(targetZoom.current, -1))}
+            disabled={zoom <= MIN_ZOOM + 0.001}
+            aria-label="Zoom out"
+            title="Zoom out (−)"
+            className={zoomStepClass}
+          >
+            <MinusIcon />
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomTo(1)}
+            aria-label={`Zoom ${percent}%, reset to 100%`}
+            title="Reset to 100% (0)"
+            className="min-w-11 cursor-pointer border-x border-border px-1.5 text-[11px] font-medium tabular-nums outline-none hover:bg-slate-100 hover:text-text focus-visible:bg-slate-100"
+          >
+            {percent}%
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomTo(nextZoomStep(targetZoom.current, 1))}
+            disabled={zoom >= MAX_ZOOM - 0.001}
+            aria-label="Zoom in"
+            title="Zoom in (+)"
+            className={zoomStepClass}
+          >
+            <PlusIcon />
+          </button>
+        </div>
+      )}
+      {overflows && (
+        <button
+          type="button"
+          onClick={() => centerView("smooth")}
+          aria-label={`Centre the map on ${map.center.key}`}
+          title="Centre"
+          className={cornerControlClass}
+        >
+          <CentreIcon />
+        </button>
+      )}
+      {showExpand && (
+        <button
+          ref={props.expandRef}
+          type="button"
+          onClick={props.onExpand}
+          aria-label="Open the map in a full view"
+          title="Full view"
+          className={cornerControlClass}
+        >
+          <ExpandIcon />
+        </button>
+      )}
+    </>
+  );
+
   return (
     <div className={full ? "h-full" : undefined}>
       <div className={`relative ${full ? "h-full" : ""}`}>
@@ -906,88 +986,19 @@ function MapCanvas(props: {
           </div>
         </div>
 
-        {/* In the frame's corner, outside what scrolls, so they stay put while the map moves */}
-        {(full || overflows) && (
-          <div className="absolute bottom-2 right-2 flex items-center gap-1">
-            {props.onRevealAll && (hidden > 0 || grown) && (
-              <button
-                type="button"
-                onClick={() => props.onRevealAll?.(hidden > 0)}
-                aria-label={
-                  hidden > 0 ? `Show all ${hidden} hidden entities` : "Show the map as it opened"
-                }
-                title={hidden > 0 ? `Show everything (${hidden} more)` : "Show fewer"}
-                className={cornerControlClass}
-              >
-                {hidden > 0 ? <UnfoldIcon /> : <FoldIcon />}
-              </button>
-            )}
-            {full && (
-              <div
-                role="group"
-                aria-label="Zoom"
-                className="flex h-6 items-stretch overflow-hidden rounded-md border border-border bg-surface text-muted shadow-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() => zoomTo(nextZoomStep(targetZoom.current, -1))}
-                  disabled={zoom <= MIN_ZOOM + 0.001}
-                  aria-label="Zoom out"
-                  title="Zoom out (−)"
-                  className={zoomStepClass}
-                >
-                  <MinusIcon />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => zoomTo(1)}
-                  aria-label={`Zoom ${percent}%, reset to 100%`}
-                  title="Reset to 100% (0)"
-                  className="min-w-11 cursor-pointer border-x border-border px-1.5 text-[11px] font-medium tabular-nums outline-none hover:bg-slate-100 hover:text-text focus-visible:bg-slate-100"
-                >
-                  {percent}%
-                </button>
-                <button
-                  type="button"
-                  onClick={() => zoomTo(nextZoomStep(targetZoom.current, 1))}
-                  disabled={zoom >= MAX_ZOOM - 0.001}
-                  aria-label="Zoom in"
-                  title="Zoom in (+)"
-                  className={zoomStepClass}
-                >
-                  <PlusIcon />
-                </button>
-              </div>
-            )}
-            {overflows && (
-              <button
-                type="button"
-                onClick={() => centerView("smooth")}
-                aria-label={`Centre the map on ${map.center.key}`}
-                title="Centre"
-                className={cornerControlClass}
-              >
-                <CentreIcon />
-              </button>
-            )}
-            {showExpand && (
-              <button
-                ref={props.expandRef}
-                type="button"
-                onClick={props.onExpand}
-                aria-label="Open the map in a full view"
-                title="Full view"
-                className={cornerControlClass}
-              >
-                <ExpandIcon />
-              </button>
-            )}
-          </div>
+        {/* In the full view they sit in its corner, outside what scrolls, so they stay put while
+            the map moves */}
+        {full && (
+          <div className="absolute bottom-2 right-2 flex items-center gap-1">{controls}</div>
         )}
       </div>
 
+      {/* Inline they sit under the frame, so entities never pass beneath them */}
       {!full && overflows && (
-        <p className="mt-1.5 text-right text-[11px] text-faint">Drag to explore</p>
+        <div className="mt-1.5 flex items-center justify-end gap-1">
+          <span className="mr-1.5 text-[11px] text-faint">Drag to explore</span>
+          {controls}
+        </div>
       )}
     </div>
   );
