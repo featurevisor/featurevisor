@@ -1,4 +1,9 @@
-import { DEPENDENCY_MAP_LIMITS, getDependencyMap, getRevealedLimits } from "./dependencyMap";
+import {
+  DEPENDENCY_MAP_LIMITS,
+  getDependencyMap,
+  getRevealedLimits,
+  showsMoreThanAtFirst,
+} from "./dependencyMap";
 import type { CatalogIndex, EntityDetail } from "./types";
 
 // discount needs sidebar and buckets by userId. sidebar needs two segments, which both read
@@ -105,6 +110,18 @@ describe("dependency map", () => {
     const all = getDependencyMap(discount, index, getRevealedLimits(Infinity))!;
     expect(all.more).toEqual({ dependencies: 0, dependents: 0 });
     expect(all.dependencies.flat()).toHaveLength(5);
+  });
+
+  it("knows when a side shows more than the first limits allow", () => {
+    const column = (size: number) =>
+      Array.from({ length: size }, (_, index) => ({
+        id: `feature:f${index}`,
+        type: "feature" as const,
+        key: `f${index}`,
+      }));
+    expect(showsMoreThanAtFirst([column(24), column(1), column(1), column(1)])).toBe(false);
+    expect(showsMoreThanAtFirst([column(25)])).toBe(true);
+    expect(showsMoreThanAtFirst([1, 2, 3, 4, 5].map(() => column(1)))).toBe(true);
   });
 
   it("walks dependents outwards as far as they go", () => {

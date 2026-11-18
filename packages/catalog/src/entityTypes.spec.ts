@@ -8,6 +8,8 @@ import {
   entityTypeToPath,
   getEntityListRoute,
   getEntityRoute,
+  isEntityPath,
+  parseEntityPathname,
 } from "./entityTypes";
 
 describe("catalog entity navigation", () => {
@@ -48,5 +50,19 @@ describe("catalog entity path encoding", () => {
   it("maps slash-namespaced keys to nested data paths", () => {
     expect(encodeDataPath("checkout/redesign")).toBe("checkout/redesign");
     expect(encodeDataPath("checkout/new design")).toBe("checkout/new%20design");
+  });
+
+  it("reads an entity page's set and tab from its pathname", () => {
+    expect(isEntityPath("features")).toBe(true);
+    expect(isEntityPath("history")).toBe(false);
+    expect(parseEntityPathname("/features/checkout")).toEqual({ set: [], tab: [] });
+    expect(parseEntityPathname("/features/checkout/usage")).toEqual({ set: [], tab: ["usage"] });
+    expect(parseEntityPathname("/sets/web/segments/countries.nl/tests")).toEqual({
+      set: ["sets", "web"],
+      tab: ["tests"],
+    });
+    expect(parseEntityPathname("/features")).toBeUndefined();
+    expect(parseEntityPathname("/sets/web")).toBeUndefined();
+    expect(parseEntityPathname("/sets/web/history")).toBeUndefined();
   });
 });

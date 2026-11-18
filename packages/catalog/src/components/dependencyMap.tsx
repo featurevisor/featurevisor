@@ -1,18 +1,28 @@
 import * as React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams, type To } from "react-router-dom";
 
+import { fetchEntityDetail, peekEntityDetail, prefetchEntityDetail } from "../api";
 import {
   getDependencyMap,
   getRevealedLimits,
+  showsMoreThanAtFirst,
   type DependencyMap,
   type DependencyMapNode,
   type DependencyMapSide,
 } from "../dependencyMap";
-import { getEntityRoute } from "../entityTypes";
-import type { EntityDetail, EntitySummary } from "../types";
+import { getEntityRoute, parseEntityPathname } from "../entityTypes";
+import type { CatalogEntityType, EntityDetail, EntitySummary } from "../types";
 import { useCatalogIndex } from "../useCatalogIndex";
 import { typeName, useSummaryLookup } from "./dependencies";
-import { ExpandIcon, FullViewDialog, isMac, useFocusOnClose, useFullView } from "./fullView";
+import {
+  ExpandIcon,
+  FULL_VIEW_VALUE,
+  FullViewDialog,
+  isMac,
+  toSearch,
+  useFocusOnClose,
+  useFullView,
+} from "./fullView";
 
 /** Columns fit their longest key between these widths, and longer keys are cut with an ellipsis */
 const MIN_NODE_WIDTH = 152;
@@ -29,8 +39,14 @@ const ROW_GAP = 12;
 const PADDING = 24;
 /** Room above the columns for the two side labels */
 const LABEL_HEIGHT = 26;
-/** `?map=full` on the Usage tab opens the full view */
+/** `?map=full` on an entity's Usage tab opens the full view */
 export const FULL_VIEW_PARAM = "map";
+/**
+ * `?more=` keeps how much the reader asked to see, as a number of asks or `all`, so a link shows
+ * the map as they left it. One value is for both sides, and two are for what it depends on and
+ * what depends on it, as in `more=1,0`.
+ */
+export const MORE_PARAM = "more";
 /** Taller than this, and the map scrolls and drags inside its frame */
 const VIEWPORT_HEIGHT = 440;
 
@@ -66,6 +82,33 @@ type Side = DependencyMapSide;
 type Revealed = Record<Side, number>;
 const NOTHING_REVEALED: Revealed = { dependencies: 0, dependents: 0 };
 
+/** Reads `?more=`. Anything it cannot read counts as nothing asked for. */
+export function parseRevealed(value: string | null): Revealed {
+  const [dependencies = "", dependents = dependencies] = (value || "").split(",");
+  const step = (text: string) => {
+    if (text === "all") return Infinity;
+    const asks = Number(text);
+    return Number.isInteger(asks) && asks > 0 ? asks : 0;
+  };
+  return { dependencies: step(dependencies), dependents: step(dependents) };
+}
+
+/** Writes `?more=`, or nothing once the map is back to how it opens */
+export function formatRevealed(revealed: Revealed) {
+  const [dependencies, dependents] = [revealed.dependencies, revealed.dependents].map((step) =>
+    step === Infinity ? "all" : String(step),
+  );
+  if (dependencies === "0" && dependents === "0") return undefined;
+  return dependencies === dependents ? dependencies : `${dependencies},${dependents}`;
+}
+
+/** A side's pills show more of it, or take it back to what it showed at first */
+function revealSide(revealed: Revealed, side: Side, more: boolean): Revealed {
+  return { ...revealed, [side]: more ? revealed[side] + 1 : 0 };
+}
+
+const EVERYTHING_REVEALED: Revealed = { dependencies: Infinity, dependents: Infinity };
+
 interface MapColumn {
   nodes: DependencyMapNode[];
   /** Undefined for the entity's own column in the middle */
@@ -75,7 +118,7 @@ interface MapColumn {
 }
 
 /** Columns from the far left to the far right, each centred on the tallest one */
-function layoutMap(map: DependencyMap, revealed: Revealed): MapLayout {
+function layoutMap(map: DependencyMap): MapLayout {
   const columns: MapColumn[] = [
     ...map.dependencies.map((nodes, index) => ({ nodes, side: "dependencies" as const, index })),
   ].reverse();
@@ -83,13 +126,13 @@ function layoutMap(map: DependencyMap, revealed: Revealed): MapLayout {
   map.dependents.forEach((nodes, index) => columns.push({ nodes, side: "dependents", index }));
 
   // The outermost column on a side ends with a way to see what the map leaves out, and once
-  // some has been shown, a way back
+  // it shows more than at first, a way back
   const pillsOf = (column: MapColumn) => {
     if (column.side === undefined || column.index !== map[column.side].length - 1) return [];
     const count = map.more[column.side];
     return [
       ...(count > 0 ? [{ label: `Show ${count} more`, reveal: true }] : []),
-      ...(revealed[column.side] > 0 ? [{ label: "Show fewer", reveal: false }] : []),
+      ...(showsMoreThanAtFirst(map[column.side]) ? [{ label: "Show fewer", reveal: false }] : []),
     ];
   };
   const columnHeight = (column: MapColumn) =>
@@ -293,23 +336,49 @@ function useDragToPan(enabled: boolean) {
 }
 
 /**
- * One entity's dependency map, undefined when it has no dependencies and no dependents, and how
- * much of each side the reader has asked to see. That resets for each entity.
+ * One entity's dependency map, undefined without an entity or when it has no dependencies and no
+ * dependents, and how much of each side the reader has asked to see. That lives in the URL as
+ * `?more=`, so a link shows the map as the reader left it, and moving to another entity starts
+ * afresh.
  */
-export function useDependencyMap(detail: EntityDetail, setKey?: string) {
+export function useDependencyMap(detail: EntityDetail | null | undefined, setKey?: string) {
   const { index } = useCatalogIndex(setKey);
-  const entity = `${detail.type}:${detail.key}`;
-  const [asked, setAsked] = React.useState({ entity, revealed: NOTHING_REVEALED });
-  const revealed = asked.entity === entity ? asked.revealed : NOTHING_REVEALED;
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const asked = searchParams.get(MORE_PARAM);
+  const revealed = React.useMemo(() => parseRevealed(asked), [asked]);
   const map = React.useMemo(
     () =>
-      getDependencyMap(detail, index, {
-        dependencies: getRevealedLimits(revealed.dependencies),
-        dependents: getRevealedLimits(revealed.dependents),
-      }),
+      detail
+        ? getDependencyMap(detail, index, {
+            dependencies: getRevealedLimits(revealed.dependencies),
+            dependents: getRevealedLimits(revealed.dependents),
+          })
+        : undefined,
     [detail, index, revealed],
   );
-  const setRevealed = (next: Revealed) => setAsked({ entity, revealed: next });
+
+  // Replaces the history entry, so Back leaves the page rather than retracing the map. The new
+  // entry has no way back for the full view, so closing it keeps what the reader asked to see.
+  const setRevealed = React.useCallback(
+    (next: Revealed) => {
+      const params = new URLSearchParams(location.search);
+      const value = formatRevealed(next);
+      if (value) params.set(MORE_PARAM, value);
+      else params.delete(MORE_PARAM);
+      navigate(
+        {
+          pathname: location.pathname,
+          search: toSearch(params),
+          hash: location.hash,
+        },
+        { replace: true },
+      );
+    },
+    [location.hash, location.pathname, location.search, navigate],
+  );
+
   return { map, revealed, setRevealed };
 }
 
@@ -317,7 +386,7 @@ export function useDependencyMap(detail: EntityDetail, setKey?: string) {
  * What an entity depends on and what depends on it, drawn as a map: the entity in the middle,
  * its dependencies to the left and its dependents to the right, a column for each step away.
  * Hovering an entity traces its way to the middle. A map larger than its frame drags, and opens
- * in a full view that takes most of the window.
+ * in a full view that takes most of the window, `DependencyMapFullView`.
  */
 export function DependencyMapView(props: {
   map: DependencyMap;
@@ -327,56 +396,99 @@ export function DependencyMapView(props: {
   onRevealedChange?: (next: Revealed) => void;
 }) {
   const revealed = props.revealed ?? NOTHING_REVEALED;
-  const layout = React.useMemo(() => layoutMap(props.map, revealed), [props.map, revealed]);
+  const layout = React.useMemo(() => layoutMap(props.map), [props.map]);
   const expandRef = React.useRef<HTMLButtonElement | null>(null);
-  // A side's pills show more of it or take it back, and the full view shows or hides everything
-  const reveal = (side: Side, more: boolean) =>
-    props.onRevealedChange?.({ ...revealed, [side]: more ? revealed[side] + 1 : 0 });
-  // Everything grows only the sides that leave something out, so a side with nothing hidden
-  // never offers to show fewer
-  const revealAll = (all: boolean) =>
-    props.onRevealedChange?.(
-      all
-        ? {
-            dependencies: props.map.more.dependencies > 0 ? Infinity : revealed.dependencies,
-            dependents: props.map.more.dependents > 0 ? Infinity : revealed.dependents,
-          }
-        : NOTHING_REVEALED,
-    );
-
-  const { expanded, open, close } = useFullView(FULL_VIEW_PARAM);
+  const { expanded, open } = useFullView(FULL_VIEW_PARAM);
   useFocusOnClose(expanded, () => expandRef.current?.focus());
 
   return (
-    <>
+    <MapCanvas
+      map={props.map}
+      layout={layout}
+      setKey={props.setKey}
+      onReveal={(side, more) => props.onRevealedChange?.(revealSide(revealed, side, more))}
+      onExpand={open}
+      expandRef={expandRef}
+    />
+  );
+}
+
+/** An entity's detail, from the cache at once when it is there, or once it loads */
+function useEntityDetailOf(type?: CatalogEntityType, key?: string, setKey?: string) {
+  const id = type && key ? `${setKey ?? ""}\u0000${type}:${key}` : undefined;
+  const cached = React.useMemo(
+    () => (type && key ? peekEntityDetail(type, key, setKey) : undefined),
+    [type, key, setKey],
+  );
+  const [loaded, setLoaded] = React.useState<{
+    id: string;
+    detail?: EntityDetail;
+    failed?: boolean;
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (!type || !key || !id || cached) return;
+    let active = true;
+    fetchEntityDetail(type, key, setKey).then(
+      (detail) => active && setLoaded({ id, detail }),
+      () => active && setLoaded({ id, failed: true }),
+    );
+    return () => {
+      active = false;
+    };
+  }, [type, key, setKey, id, cached]);
+
+  const mine = loaded?.id === id ? loaded : undefined;
+  return { detail: cached ?? mine?.detail ?? null, failed: Boolean(mine?.failed) };
+}
+
+/**
+ * The dependency map's full view, opened by `?map=full` on an entity's Usage tab. It sits beside
+ * the entity's view rather than in it, so it stays open while the page behind it moves: clicking
+ * an entity in it opens that entity's Usage tab underneath and its map here, and Back and Forward
+ * retrace the way. While the next entity loads, the map before it stays.
+ */
+export function DependencyMapFullView(props: {
+  type?: CatalogEntityType;
+  entityKey?: string;
+  setKey?: string;
+}) {
+  const { type, entityKey, setKey } = props;
+  const location = useLocation();
+  const { expanded: asked, close } = useFullView(FULL_VIEW_PARAM);
+  const tab = parseEntityPathname(location.pathname)?.tab;
+  const expanded = asked && tab?.length === 1 && tab[0] === "usage";
+  const { detail, failed } = useEntityDetailOf(expanded ? type : undefined, entityKey, setKey);
+  const { map, revealed, setRevealed } = useDependencyMap(detail, setKey);
+
+  // The last map shown, kept while the next one loads
+  const [kept, setKept] = React.useState<DependencyMap | null>(null);
+  if (map && kept !== map) setKept(map);
+  if (!expanded && kept) setKept(null);
+  const loading = expanded && !detail && !failed;
+  const shownMap = map ?? (loading ? kept : null);
+  const layout = React.useMemo(() => (shownMap ? layoutMap(shownMap) : undefined), [shownMap]);
+
+  if (!expanded || !shownMap || !layout) return null;
+
+  return (
+    <FullViewDialog
+      label={`Dependency map of ${shownMap.center.key}`}
+      title="Dependency map"
+      subtitle={`${typeName(shownMap.center)} ${shownMap.center.key}`}
+      hint={`Drag to move, pinch or hold ${isMac() ? "⌘" : "Ctrl"} and scroll to zoom`}
+      onClose={close}
+    >
       <MapCanvas
-        map={props.map}
+        map={shownMap}
         layout={layout}
-        setKey={props.setKey}
-        onReveal={reveal}
-        onExpand={open}
-        expandRef={expandRef}
+        setKey={setKey}
+        onReveal={(side, more) => setRevealed(revealSide(revealed, side, more))}
+        onRevealAll={(all) => setRevealed(all ? EVERYTHING_REVEALED : NOTHING_REVEALED)}
+        busy={!map}
+        full
       />
-      {expanded && (
-        <FullViewDialog
-          label={`Dependency map of ${props.map.center.key}`}
-          title="Dependency map"
-          subtitle={`${typeName(props.map.center)} ${props.map.center.key}`}
-          hint={`Drag to move, pinch or hold ${isMac() ? "⌘" : "Ctrl"} and scroll to zoom`}
-          onClose={close}
-        >
-          <MapCanvas
-            map={props.map}
-            layout={layout}
-            setKey={props.setKey}
-            onReveal={reveal}
-            revealed={revealed}
-            onRevealAll={revealAll}
-            full
-          />
-        </FullViewDialog>
-      )}
-    </>
+    </FullViewDialog>
   );
 }
 
@@ -405,17 +517,24 @@ function MapCanvas(props: {
   setKey?: string;
   /** Shows more of a side, or goes back to what it showed at first */
   onReveal?: (side: Side, more: boolean) => void;
-  revealed?: Revealed;
   /** Shows everything the map leaves out on both sides, or goes back to how it opened */
   onRevealAll?: (all: boolean) => void;
-  /** Fills the full view, rather than sitting in the page */
+  /** Fills the full view, rather than sitting in the page. Its entities open their own maps. */
   full?: boolean;
+  /** Still shows the map before while the next one loads */
+  busy?: boolean;
   onExpand?: () => void;
   expandRef?: React.Ref<HTMLButtonElement>;
 }) {
-  const { map, layout } = props;
+  const { map, layout, full } = props;
   const summaryOf = useSummaryLookup(props.setKey);
-  const [hovered, setHovered] = React.useState<string | null>(null);
+  // What the pointer or focus is on, forgotten when the map moves to another entity
+  const [hover, setHover] = React.useState<{ center: string; id: string } | null>(null);
+  const hovered = hover?.center === map.center.id ? hover.id : null;
+  const setHovered = React.useCallback(
+    (id: string | null) => setHover(id ? { center: map.center.id, id } : null),
+    [map.center.id],
+  );
   const [overflows, setOverflows] = React.useState(false);
   const { ref, dragging, handlers } = useDragToPan(overflows);
   const boxRef = React.useRef<HTMLDivElement | null>(null);
@@ -456,6 +575,44 @@ function MapCanvas(props: {
     const box = node.getBoundingClientRect();
     centerSpot.current = { x: box.left - frame.left, y: box.top - frame.top };
   }, [ref]);
+
+  /** Where on screen the entity clicked in the full view sat, so its own map can come from there */
+  const arrival = React.useRef<{ x: number; y: number } | null>(null);
+  const shownCenter = React.useRef(map.center.id);
+
+  const rememberArrival = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    // A click that opens a new tab or window leaves this map as it is
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    const box = event.currentTarget.getBoundingClientRect();
+    arrival.current = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  };
+
+  // Another entity's map slides in from where the reader clicked that entity, settling with it in
+  // the middle, so the move reads as a step through the project. Focus, lost with the clicked
+  // entity, goes to the new one in the middle so the keyboard can carry on from there.
+  const arrive = React.useCallback(() => {
+    const from = arrival.current;
+    arrival.current = null;
+    const box = boxRef.current;
+    const node = centerRef.current;
+    if (!box || !node) return;
+    if (full && (!document.activeElement || document.activeElement === document.body)) {
+      node.focus({ preventScroll: true });
+    }
+    if (typeof box.animate !== "function" || prefersReducedMotion()) return;
+    const placed = node.getBoundingClientRect();
+    const dx = from ? from.x - (placed.left + placed.width / 2) : 0;
+    const dy = from ? from.y - (placed.top + placed.height / 2) : 0;
+    box.animate(
+      [
+        { transform: `translate(${dx}px, ${dy}px)`, opacity: 0.4 },
+        { transform: "translate(0, 0)", opacity: 1 },
+      ],
+      { duration: from ? 360 : 180, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    );
+  }, [full]);
 
   const centerView = React.useCallback(
     (behavior: ScrollBehavior = "auto") => {
@@ -521,14 +678,16 @@ function MapCanvas(props: {
     measure();
   }, [zoom, measure, rememberCenter, ref]);
 
-  // Opens on the entity itself. When the map changes under it, as when a side shows more, the
-  // entity stays where it was, so the reader keeps their place. It also notices when the map
-  // outgrows its frame.
+  // Opens on the entity itself, as does another entity's map. When the map changes under the same
+  // entity, as when a side shows more, the entity stays where it was, so the reader keeps their
+  // place. It also notices when the map outgrows its frame.
   React.useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
     measure();
-    const spot = centerSpot.current;
+    const moved = shownCenter.current !== map.center.id;
+    shownCenter.current = map.center.id;
+    const spot = moved ? null : centerSpot.current;
     const node = centerRef.current;
     if (spot && node) {
       const frame = element.getBoundingClientRect();
@@ -536,17 +695,18 @@ function MapCanvas(props: {
       element.scrollBy(box.left - frame.left - spot.x, box.top - frame.top - spot.y);
     } else centerView();
     rememberCenter();
+    if (moved) arrive();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [layout, centerView, measure, rememberCenter, ref]);
+  }, [layout, map.center.id, arrive, centerView, measure, rememberCenter, ref]);
 
   // In the full view, a pinch or Ctrl or ⌘ with the wheel zooms around the pointer, and +, −
   // and 0 zoom around the middle. A plain wheel still scrolls.
   React.useEffect(() => {
     const element = ref.current;
-    if (!props.full || !element) return;
+    if (!full || !element) return;
     function onWheel(event: WheelEvent) {
       // A pinch on a trackpad arrives as a wheel with Ctrl held
       if (!event.ctrlKey && !event.metaKey) return;
@@ -569,35 +729,42 @@ function MapCanvas(props: {
       element.removeEventListener("wheel", onWheel);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [props.full, zoomTo, ref]);
+  }, [full, zoomTo, ref]);
 
   const percent = Math.round(zoom * 100);
   // For the full view's control showing or hiding everything at once
   const hidden = map.more.dependencies + map.more.dependents;
-  const anyRevealed = Object.values(props.revealed ?? NOTHING_REVEALED).some((step) => step > 0);
-  const showExpand = !props.full && overflows && props.onExpand;
+  const grown = showsMoreThanAtFirst(map.dependencies) || showsMoreThanAtFirst(map.dependents);
+  const showExpand = !full && overflows && props.onExpand;
 
   return (
-    <div className={props.full ? "h-full" : undefined}>
-      <div className={`relative ${props.full ? "h-full" : ""}`}>
+    <div className={full ? "h-full" : undefined}>
+      <div className={`relative ${full ? "h-full" : ""}`}>
         <div
           ref={ref}
           {...handlers}
           onScroll={rememberCenter}
-          data-dependency-map={props.full ? "full" : ""}
+          data-dependency-map={full ? "full" : ""}
+          aria-busy={props.busy || undefined}
           style={{
-            maxHeight: props.full ? undefined : VIEWPORT_HEIGHT,
+            maxHeight: full ? undefined : VIEWPORT_HEIGHT,
             backgroundImage: "radial-gradient(var(--mv-color-border) 1px, transparent 1px)",
             backgroundSize: "16px 16px",
           }}
           className={[
             "overflow-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-            props.full ? "h-full bg-elevated/40" : "rounded-xl border border-border bg-elevated/40",
+            full ? "h-full bg-elevated/40" : "rounded-xl border border-border bg-elevated/40",
             overflows ? (dragging ? "cursor-grabbing select-none" : "cursor-grab") : "",
           ].join(" ")}
         >
-          {/* Auto margins centre a map smaller than its frame, and never clip a larger one */}
-          <div className="flex min-h-full min-w-full">
+          {/* Auto margins centre a map smaller than its frame, and never clip a larger one. A map
+              still showing while the next loads dims, unless the next comes quickly. */}
+          <div
+            className={[
+              "flex min-h-full min-w-full transition-opacity",
+              props.busy ? "opacity-50 delay-150 duration-300" : "duration-150",
+            ].join(" ")}
+          >
             <div
               ref={boxRef}
               className="relative m-auto shrink-0"
@@ -677,6 +844,15 @@ function MapCanvas(props: {
                   <MapNode
                     key={node.id}
                     node={node}
+                    to={
+                      full
+                        ? {
+                            pathname: `${getEntityRoute(node.type, node.key, props.setKey)}/usage`,
+                            search: `?${FULL_VIEW_PARAM}=${FULL_VIEW_VALUE}`,
+                          }
+                        : getEntityRoute(node.type, node.key, props.setKey)
+                    }
+                    onOpen={full ? rememberArrival : undefined}
                     summary={summaryOf(node)}
                     setKey={props.setKey}
                     dimmed={Boolean(trace && !trace.nodes.has(node.id))}
@@ -687,7 +863,8 @@ function MapCanvas(props: {
 
                 <div
                   ref={centerRef}
-                  className="absolute flex flex-col justify-center rounded-lg border border-header-active bg-header-active px-3 text-header-text shadow-md"
+                  tabIndex={full ? -1 : undefined}
+                  className="absolute flex flex-col justify-center rounded-lg border border-header-active bg-header-active px-3 text-header-text shadow-md outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   style={{
                     left: layout.center.x,
                     top: layout.center.y,
@@ -719,9 +896,9 @@ function MapCanvas(props: {
         </div>
 
         {/* In the frame's corner, outside what scrolls, so they stay put while the map moves */}
-        {(props.full || overflows) && (
+        {(full || overflows) && (
           <div className="absolute bottom-2 right-2 flex items-center gap-1">
-            {props.onRevealAll && (hidden > 0 || anyRevealed) && (
+            {props.onRevealAll && (hidden > 0 || grown) && (
               <button
                 type="button"
                 onClick={() => props.onRevealAll?.(hidden > 0)}
@@ -734,7 +911,7 @@ function MapCanvas(props: {
                 {hidden > 0 ? <UnfoldIcon /> : <FoldIcon />}
               </button>
             )}
-            {props.full && (
+            {full && (
               <div
                 role="group"
                 aria-label="Zoom"
@@ -798,7 +975,7 @@ function MapCanvas(props: {
         )}
       </div>
 
-      {!props.full && overflows && (
+      {!full && overflows && (
         <p className="mt-1.5 text-right text-[11px] text-faint">Drag to explore</p>
       )}
     </div>
@@ -807,6 +984,9 @@ function MapCanvas(props: {
 
 function MapNode(props: {
   node: PlacedNode;
+  /** The entity's page, or in the full view its Usage tab with its map open */
+  to: To;
+  onOpen?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
   summary?: EntitySummary;
   setKey?: string;
   dimmed: boolean;
@@ -816,15 +996,21 @@ function MapNode(props: {
   const { node, summary } = props;
   const status = summary?.archived ? "archived" : summary?.deprecated ? "deprecated" : undefined;
   const description = summary?.description ? `\n${summary.description}` : "";
+  // Pointing at an entity starts loading it, so following it is quick
+  const point = () => {
+    props.onHover(node.id);
+    prefetchEntityDetail(node.type, node.key, props.setKey);
+  };
 
   return (
     <Link
-      to={getEntityRoute(node.type, node.key, props.setKey)}
+      to={props.to}
+      onClick={props.onOpen}
       draggable={false}
       title={`${node.key}${description}`}
-      onMouseEnter={() => props.onHover(node.id)}
+      onMouseEnter={point}
       onMouseLeave={() => props.onHover(null)}
-      onFocus={() => props.onHover(node.id)}
+      onFocus={point}
       onBlur={() => props.onHover(null)}
       className={[
         "absolute flex flex-col justify-center rounded-lg border bg-surface px-3 shadow-sm outline-none transition-[opacity,border-color,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-primary",
@@ -842,6 +1028,14 @@ function MapNode(props: {
       </span>
       <span className="truncate text-sm font-medium text-text">{node.key}</span>
     </Link>
+  );
+}
+
+function prefersReducedMotion() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
 }
 

@@ -10,6 +10,21 @@ export const entityPaths: EntityPath[] = [
   "tests",
 ];
 
+export function isEntityPath(value: string | undefined): value is EntityPath {
+  return entityPaths.includes(value as EntityPath);
+}
+
+/**
+ * An entity page's pathname in parts: the set it is in, if any, and the tab and what follows it,
+ * as in `/sets/:setKey/:entityPath/:entityKey/rules/production`. Undefined for other pages.
+ */
+export function parseEntityPathname(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  const start = segments[0] === "sets" ? 2 : 0;
+  if (segments.length < start + 2 || !isEntityPath(segments[start])) return undefined;
+  return { set: segments.slice(0, start), tab: segments.slice(start + 2) };
+}
+
 export const entityPathToType: Record<EntityPath, CatalogEntityType> = {
   features: "feature",
   segments: "segment",

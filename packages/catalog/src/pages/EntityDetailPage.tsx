@@ -9,8 +9,9 @@ import {
   entityPathToType,
   getEntityListRoute,
   getEntityRoute,
+  isEntityPath,
 } from "../entityTypes";
-import type { CatalogEntityType, EntityDetail, EntityPath } from "../types";
+import type { CatalogEntityType, EntityDetail } from "../types";
 import {
   EmptyState,
   EntityKey,
@@ -19,6 +20,7 @@ import {
   PageSkeleton,
   Tabs,
 } from "../components/ui";
+import { DependencyMapFullView } from "../components/dependencyMap";
 import { DeprecatedDependencies, LifecycleBanner } from "../components/insights";
 import { useEntityDependencies } from "../components/dependencies";
 import { useDocumentTitle } from "../useDocumentTitle";
@@ -37,18 +39,6 @@ export { getVariableSetters, FeatureVariablesTab } from "./entityDetail/Variable
 export { UsageTab } from "./entityDetail/UsageTab";
 export { TestsTab } from "./entityDetail/TestsTab";
 export { HistoryTab } from "./entityDetail/HistoryTab";
-
-function isEntityPath(value: string | undefined): value is EntityPath {
-  return (
-    value === "features" ||
-    value === "segments" ||
-    value === "attributes" ||
-    value === "targets" ||
-    value === "schemas" ||
-    value === "variables" ||
-    value === "tests"
-  );
-}
 
 async function copyText(value: string) {
   if (navigator.clipboard?.writeText) {
@@ -294,13 +284,22 @@ function EntityNotFound(props: { type: CatalogEntityType; entityKey: string; set
 /**
  * Remount per entity so tabs never render with the previous entity's detail. Otherwise a
  * link from a segment straight to a feature's rules would briefly see a segment, and the
- * feature only tabs would redirect to the overview before the new detail loads.
+ * feature only tabs would redirect to the overview before the new detail loads. The dependency
+ * map's full view stays outside, so it stays open while the reader moves from entity to entity
+ * inside it.
  */
 export function EntityDetailPage() {
   const { entityPath, entityKey, setKey } = useParams();
 
   return (
-    <EntityDetailView key={[setKey || "", entityPath || "", entityKey || ""].join("\u0000")} />
+    <>
+      <EntityDetailView key={[setKey || "", entityPath || "", entityKey || ""].join("\u0000")} />
+      <DependencyMapFullView
+        type={isEntityPath(entityPath) ? entityPathToType[entityPath] : undefined}
+        entityKey={entityKey ? decodeRouteSegment(entityKey) : undefined}
+        setKey={setKey ? decodeRouteSegment(setKey) : undefined}
+      />
+    </>
   );
 }
 

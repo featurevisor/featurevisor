@@ -53,6 +53,17 @@ export function getRevealedLimits(step: number): DependencyMapLimits {
   };
 }
 
+/**
+ * Whether a side shows more than the first limits allow, which only asking for more does. A side
+ * fits them exactly when the first limits leave nothing of it out.
+ */
+export function showsMoreThanAtFirst(columns: DependencyMapNode[][]) {
+  return (
+    columns.length > DEPENDENCY_MAP_LIMITS.levels ||
+    columns.some((column) => column.length > DEPENDENCY_MAP_LIMITS.perColumn)
+  );
+}
+
 const TYPE_ORDER: Partial<Record<CatalogEntityType, number>> = {
   feature: 0,
   variable: 1,
