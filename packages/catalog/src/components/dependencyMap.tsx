@@ -475,7 +475,18 @@ export function DependencyMapFullView(props: {
     <FullViewDialog
       label={`Dependency map of ${shownMap.center.key}`}
       title="Dependency map"
-      subtitle={`${typeName(shownMap.center)} ${shownMap.center.key}`}
+      subtitle={
+        <>
+          {typeName(shownMap.center)}{" "}
+          {/* Its own page, which closes the full view, as only the Usage tab opens it */}
+          <Link
+            to={getEntityRoute(shownMap.center.type, shownMap.center.key, setKey)}
+            className="rounded-sm font-medium text-text underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            {shownMap.center.key}
+          </Link>
+        </>
+      }
       hint={`Drag to move, pinch or hold ${isMac() ? "⌘" : "Ctrl"} and scroll to zoom`}
       onClose={close}
     >
