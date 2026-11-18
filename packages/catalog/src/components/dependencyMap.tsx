@@ -309,14 +309,8 @@ export function useDependencyMap(detail: EntityDetail, setKey?: string) {
       }),
     [detail, index, revealed],
   );
-  const reveal = (side: Side, step: number) =>
-    setAsked({ entity, revealed: { ...revealed, [side]: step } });
-  return {
-    map,
-    revealed,
-    showMore: (side: Side) => reveal(side, revealed[side] + 1),
-    showFewer: (side: Side) => reveal(side, 0),
-  };
+  const setRevealed = (next: Revealed) => setAsked({ entity, revealed: next });
+  return { map, revealed, setRevealed };
 }
 
 /**
@@ -330,14 +324,25 @@ export function DependencyMapView(props: {
   setKey?: string;
   /** How many times each side has been asked to show more */
   revealed?: Revealed;
-  onShowMore?: (side: Side) => void;
-  onShowFewer?: (side: Side) => void;
+  onRevealedChange?: (next: Revealed) => void;
 }) {
   const revealed = props.revealed ?? NOTHING_REVEALED;
   const layout = React.useMemo(() => layoutMap(props.map, revealed), [props.map, revealed]);
   const expandRef = React.useRef<HTMLButtonElement | null>(null);
+  // A side's pills show more of it or take it back, and the full view shows or hides everything
   const reveal = (side: Side, more: boolean) =>
-    more ? props.onShowMore?.(side) : props.onShowFewer?.(side);
+    props.onRevealedChange?.({ ...revealed, [side]: more ? revealed[side] + 1 : 0 });
+  // Everything grows only the sides that leave something out, so a side with nothing hidden
+  // never offers to show fewer
+  const revealAll = (all: boolean) =>
+    props.onRevealedChange?.(
+      all
+        ? {
+            dependencies: props.map.more.dependencies > 0 ? Infinity : revealed.dependencies,
+            dependents: props.map.more.dependents > 0 ? Infinity : revealed.dependents,
+          }
+        : NOTHING_REVEALED,
+    );
 
   const { expanded, open, close } = useFullView(FULL_VIEW_PARAM);
   useFocusOnClose(expanded, () => expandRef.current?.focus());
@@ -360,7 +365,15 @@ export function DependencyMapView(props: {
           hint={`Drag to move, pinch or hold ${isMac() ? "⌘" : "Ctrl"} and scroll to zoom`}
           onClose={close}
         >
-          <MapCanvas map={props.map} layout={layout} setKey={props.setKey} onReveal={reveal} full />
+          <MapCanvas
+            map={props.map}
+            layout={layout}
+            setKey={props.setKey}
+            onReveal={reveal}
+            revealed={revealed}
+            onRevealAll={revealAll}
+            full
+          />
         </FullViewDialog>
       )}
     </>
@@ -392,6 +405,9 @@ function MapCanvas(props: {
   setKey?: string;
   /** Shows more of a side, or goes back to what it showed at first */
   onReveal?: (side: Side, more: boolean) => void;
+  revealed?: Revealed;
+  /** Shows everything the map leaves out on both sides, or goes back to how it opened */
+  onRevealAll?: (all: boolean) => void;
   /** Fills the full view, rather than sitting in the page */
   full?: boolean;
   onExpand?: () => void;
@@ -556,6 +572,9 @@ function MapCanvas(props: {
   }, [props.full, zoomTo, ref]);
 
   const percent = Math.round(zoom * 100);
+  // For the full view's control showing or hiding everything at once
+  const hidden = map.more.dependencies + map.more.dependents;
+  const anyRevealed = Object.values(props.revealed ?? NOTHING_REVEALED).some((step) => step > 0);
   const showExpand = !props.full && overflows && props.onExpand;
 
   return (
@@ -702,6 +721,19 @@ function MapCanvas(props: {
         {/* In the frame's corner, outside what scrolls, so they stay put while the map moves */}
         {(props.full || overflows) && (
           <div className="absolute bottom-2 right-2 flex items-center gap-1">
+            {props.onRevealAll && (hidden > 0 || anyRevealed) && (
+              <button
+                type="button"
+                onClick={() => props.onRevealAll?.(hidden > 0)}
+                aria-label={
+                  hidden > 0 ? `Show all ${hidden} hidden entities` : "Show the map as it opened"
+                }
+                title={hidden > 0 ? `Show everything (${hidden} more)` : "Show fewer"}
+                className={cornerControlClass}
+              >
+                {hidden > 0 ? <UnfoldIcon /> : <FoldIcon />}
+              </button>
+            )}
             {props.full && (
               <div
                 role="group"
@@ -810,6 +842,36 @@ function MapNode(props: {
       </span>
       <span className="truncate text-sm font-medium text-text">{node.key}</span>
     </Link>
+  );
+}
+
+/** Arrows apart, for showing everything */
+function UnfoldIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M5 6.5l3-3 3 3M5 9.5l3 3 3-3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Arrows together, for going back to how the map opened */
+function FoldIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M5 3.5l3 3 3-3M5 12.5l3-3 3 3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

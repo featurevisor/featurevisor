@@ -100,6 +100,13 @@ describe("dependency map", () => {
     expect(getRevealedLimits(2)).toEqual({ levels: 12, perColumn: 384 });
   });
 
+  it("shows everything when a reader asks for all of it", () => {
+    expect(getRevealedLimits(Infinity)).toEqual({ levels: Infinity, perColumn: Infinity });
+    const all = getDependencyMap(discount, index, getRevealedLimits(Infinity))!;
+    expect(all.more).toEqual({ dependencies: 0, dependents: 0 });
+    expect(all.dependencies.flat()).toHaveLength(5);
+  });
+
   it("walks dependents outwards as far as they go", () => {
     const country: EntityDetail = {
       type: "attribute",

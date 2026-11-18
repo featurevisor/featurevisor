@@ -500,7 +500,7 @@ export function UsageTab() {
   const { index } = useCatalogIndex(setKey);
   const dependencies = useEntityDependencies(detail, setKey);
   const sections = getRelatedSections(detail, index);
-  const { map, revealed, showMore, showFewer } = useDependencyMap(detail, setKey);
+  const { map, revealed, setRevealed } = useDependencyMap(detail, setKey);
   const label = entityLabels[detail.type].singular.toLowerCase();
 
   if (countUsage(detail, dependencies) === 0) {
@@ -518,8 +518,7 @@ export function UsageTab() {
             map={map}
             setKey={setKey}
             revealed={revealed}
-            onShowMore={showMore}
-            onShowFewer={showFewer}
+            onRevealedChange={setRevealed}
           />
         </UsageBlock>
       )}
