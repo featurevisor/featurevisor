@@ -293,15 +293,9 @@ function IndirectList(props: { entries: IndirectDependency[]; setKey?: string })
   );
 }
 
-function UsageBlock(props: {
-  title: string;
-  description: string;
-  /** Lets the map above scroll to the list naming what it leaves out */
-  block?: "used-by" | "depends-on";
-  children: React.ReactNode;
-}) {
+function UsageBlock(props: { title: string; description: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-5" data-usage-block={props.block}>
+    <section className="space-y-5">
       <div>
         <h2 className="text-base font-semibold text-text">{props.title}</h2>
         <p className="mt-0.5 text-sm text-muted">{props.description}</p>
@@ -326,7 +320,6 @@ function UsedByBlock(props: {
   return (
     <UsageBlock
       title="Used by"
-      block="used-by"
       description={`What refers to this ${label}, and what reaches it through them. A change here can change their results.`}
     >
       {groupByType(usedBy).map(([type, entries]) => (
@@ -370,7 +363,6 @@ function DependsOnBlock(props: {
   return (
     <UsageBlock
       title="Depends on"
-      block="depends-on"
       description={`What this ${label} refers to, and what those refer to in turn. A change to any of them can change its result.`}
     >
       {groupByType(uses).map(([type, entries]) => (
@@ -508,7 +500,7 @@ export function UsageTab() {
   const { index } = useCatalogIndex(setKey);
   const dependencies = useEntityDependencies(detail, setKey);
   const sections = getRelatedSections(detail, index);
-  const map = useDependencyMap(detail, setKey);
+  const { map, reveal } = useDependencyMap(detail, setKey);
   const label = entityLabels[detail.type].singular.toLowerCase();
 
   if (countUsage(detail, dependencies) === 0) {
@@ -522,17 +514,7 @@ export function UsageTab() {
           title="Dependency map"
           description={`What this ${label} depends on, to its left, and what depends on it, to its right, a column for each step away.`}
         >
-          <DependencyMapView
-            map={map}
-            setKey={setKey}
-            onMore={(side) =>
-              document
-                .querySelector(
-                  `[data-usage-block="${side === "dependencies" ? "depends-on" : "used-by"}"]`,
-                )
-                ?.scrollIntoView({ behavior: "smooth", block: "start" })
-            }
-          />
+          <DependencyMapView map={map} setKey={setKey} onReveal={reveal} />
         </UsageBlock>
       )}
       <UsedByBlock detail={detail} dependencies={dependencies} setKey={setKey} />

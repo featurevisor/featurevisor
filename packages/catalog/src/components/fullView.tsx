@@ -9,6 +9,15 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 export const FULL_VIEW_VALUE = "full";
 
 /**
+ * A URL's search from its parameters, with commas left as they are, since lists such as
+ * `?more=1,0` read back the same either way and read better plain
+ */
+export function toSearch(params: URLSearchParams) {
+  const search = params.toString().replace(/%2C/gi, ",");
+  return search ? `?${search}` : "";
+}
+
+/**
  * Whether the full view `?<param>=full` is open, and how to open and close it. It lives in the
  * URL, so a link to it opens it for whoever follows the link.
  */
@@ -26,7 +35,7 @@ export function useFullView(param: string) {
       navigate(
         {
           pathname: location.pathname,
-          search: next.toString() ? `?${next}` : "",
+          search: toSearch(next),
           hash: location.hash,
         },
         options,
@@ -41,8 +50,9 @@ export function useFullView(param: string) {
     go(next, { state: { openedFullView: param } });
   }, [go, param, searchParams]);
 
-  // Closing returns to the entry it was opened from. Arriving through a link, or once the entry
-  // was replaced since, there is none to return to, so it takes the full view out of the URL.
+  // Closing returns to the entry it was opened from. Arriving through a link, or once the reader
+  // changed what it shows, there is none to return to, so it takes the full view out of the URL
+  // and leaves the page as the reader left it.
   const close = React.useCallback(() => {
     if (openedHere) {
       navigate(-1);

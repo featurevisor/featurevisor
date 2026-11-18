@@ -17,14 +17,17 @@ export function ScrollRestoration() {
     if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
   }, []);
 
-  // Track the position of the current history entry while the reader scrolls.
+  // Track the position of the current history entry while the reader scrolls. An entry that
+  // replaces another, as when a dependency map shows more, starts where the reader already is,
+  // since they may leave it without scrolling, and Back should return them there.
   React.useEffect(() => {
     const key = location.key;
     const remember = () => positions.current.set(key, window.scrollY);
+    if (navigationType === "REPLACE") remember();
 
     window.addEventListener("scroll", remember, { passive: true });
     return () => window.removeEventListener("scroll", remember);
-  }, [location.key]);
+  }, [location.key, navigationType]);
 
   React.useEffect(() => {
     const pathnameChanged = previousPathname.current !== location.pathname;

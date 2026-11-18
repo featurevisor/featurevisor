@@ -24,9 +24,12 @@ export interface DependencyMap {
   /** Columns right of the entity, nearest first. The first holds what refers to it directly. */
   dependents: DependencyMapNode[][];
   edges: DependencyMapEdge[];
-  /** How many entities each side leaves out for space, all of them listed on the Usage tab */
-  more: { dependencies: number; dependents: number };
+  /** How many entities each side leaves out for space, until the reader asks to see more */
+  more: Record<DependencyMapSide, number>;
 }
+
+/** What an entity depends on, to its left, or what depends on it, to its right */
+export type DependencyMapSide = "dependencies" | "dependents";
 
 export interface DependencyMapLimits {
   /** Columns on each side */
@@ -37,6 +40,29 @@ export interface DependencyMapLimits {
 
 /** Large enough that most maps show everything and drag, small enough to stay quick to draw */
 export const DEPENDENCY_MAP_LIMITS: DependencyMapLimits = { levels: 4, perColumn: 24 };
+
+/**
+ * A side's limits once the reader has asked to see more `step` times: four more columns each
+ * time, and four times as many entities in a column, so one ask shows most of what was left out
+ * and a very large project never draws everything at once.
+ */
+export function getRevealedLimits(step: number): DependencyMapLimits {
+  return {
+    levels: DEPENDENCY_MAP_LIMITS.levels * (step + 1),
+    perColumn: DEPENDENCY_MAP_LIMITS.perColumn * 4 ** step,
+  };
+}
+
+/**
+ * Whether a side shows more than the first limits allow, which only asking for more does. A side
+ * fits them exactly when the first limits leave nothing of it out.
+ */
+export function showsMoreThanAtFirst(columns: DependencyMapNode[][]) {
+  return (
+    columns.length > DEPENDENCY_MAP_LIMITS.levels ||
+    columns.some((column) => column.length > DEPENDENCY_MAP_LIMITS.perColumn)
+  );
+}
 
 const TYPE_ORDER: Partial<Record<CatalogEntityType, number>> = {
   feature: 0,
@@ -186,12 +212,16 @@ function walkSide(
 /**
  * The dependency map of one entity, from its own definition and the index's graph. Without an
  * index only its direct dependencies and dependents are known. Undefined when it has neither.
+ * The limits apply to both sides, or to each side apart.
  */
 export function getDependencyMap(
   detail: EntityDetail,
   index: CatalogIndex | null | undefined,
-  limits: DependencyMapLimits = DEPENDENCY_MAP_LIMITS,
+  limits:
+    | DependencyMapLimits
+    | Record<DependencyMapSide, DependencyMapLimits> = DEPENDENCY_MAP_LIMITS,
 ): DependencyMap | undefined {
+  const sides = "levels" in limits ? { dependencies: limits, dependents: limits } : limits;
   const center = toNodeId(detail.type, detail.key);
   const indexGraph = index ? getIndexGraph(index) : undefined;
   const exists = (id: string) => !indexGraph || indexGraph.exists(id);
@@ -208,8 +238,8 @@ export function getDependencyMap(
   ].filter(exists);
 
   const seen = new Set([center]);
-  const left = walkSide(center, [...new Set(uses)], "dependencies", next, seen, limits);
-  const right = walkSide(center, [...new Set(usedBy)], "dependents", next, seen, limits);
+  const left = walkSide(center, [...new Set(uses)], "dependencies", next, seen, sides.dependencies);
+  const right = walkSide(center, [...new Set(usedBy)], "dependents", next, seen, sides.dependents);
   if (left.columns.length === 0 && right.columns.length === 0) return undefined;
 
   return {
