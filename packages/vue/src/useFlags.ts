@@ -1,7 +1,8 @@
 import { computed, type Ref } from "vue";
-import type { FeatureKey } from "@featurevisor/types";
+import type { Context, FeatureKey } from "@featurevisor/types";
 
 import { onFeatures, useLive, type ContextSource } from "./live.js";
+import { injectEveryUpdate, usePrecise } from "./precise.js";
 import { injectScope, readScopedContext } from "./scope.js";
 import { useSdk } from "./useSdk.js";
 
@@ -12,6 +13,24 @@ import { useSdk } from "./useSdk.js";
 export type FlagRefs<K extends readonly FeatureKey[]> = {
   readonly [I in keyof K]: Readonly<Ref<boolean>>;
 };
+
+function evaluate(
+  isEnabled: (featureKey: FeatureKey, context: Context) => boolean,
+  keys: readonly FeatureKey[],
+  context: Context,
+): boolean[] {
+  const evaluated = new Map<FeatureKey, boolean>();
+
+  return keys.map((featureKey) => {
+    let enabled = evaluated.get(featureKey);
+    if (enabled === undefined) {
+      enabled = isEnabled(featureKey, context);
+      evaluated.set(featureKey, enabled);
+    }
+
+    return enabled;
+  });
+}
 
 /**
  * Returns a readonly ref for each feature, in the order of the keys, so the
@@ -27,21 +46,18 @@ export function useFlags<K extends readonly FeatureKey[] | []>(
   const sdk = useSdk();
   const scope = injectScope();
   const keys = featureKeys.slice();
+  const read = () => readScopedContext(scope, context);
+  const isEnabled = (featureKey: FeatureKey, merged: Context) => sdk.isEnabled(featureKey, merged);
 
-  const values = useLive(sdk, keys.length === 0 ? undefined : onFeatures(sdk, keys), () => {
-    const resolved = readScopedContext(scope, context);
-    const evaluated = new Map<FeatureKey, boolean>();
-
-    return keys.map((featureKey) => {
-      let enabled = evaluated.get(featureKey);
-      if (enabled === undefined) {
-        enabled = sdk.isEnabled(featureKey, resolved);
-        evaluated.set(featureKey, enabled);
-      }
-
-      return enabled;
-    });
-  });
+  const values: Readonly<Ref<boolean[]>> = injectEveryUpdate()
+    ? useLive(sdk, keys.length === 0 ? undefined : onFeatures(sdk, keys), () =>
+        evaluate(isEnabled, keys, read()),
+      )
+    : usePrecise(sdk, (merged) => evaluate(isEnabled, keys, merged), read, {
+        follows: { features: keys },
+        // No keys read nothing, so nothing can change the answer.
+        constant: keys.length === 0,
+      });
 
   return keys.map((_, index) => computed(() => values.value[index])) as unknown as FlagRefs<K>;
 }

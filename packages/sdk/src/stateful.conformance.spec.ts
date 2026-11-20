@@ -62,9 +62,23 @@ const fixture = JSON.parse(
   cases: StatefulCase[];
 };
 
+/**
+ * `segments` in datafile_set and `keys` in context_set are JavaScript's for now,
+ * tested in its own suites, and not yet part of the portable fixtures.
+ */
+function portable<T extends object>(details: T, field: string): T {
+  const copy = { ...details } as Record<string, unknown>;
+  delete copy[field];
+  return copy as T;
+}
+
 function subscribe(target: string, instance: StatefulInstance, events: ExpectedEvent[]): void {
-  instance.on("datafile_set", (details) => events.push({ target, name: "datafile_set", details }));
-  instance.on("context_set", (details) => events.push({ target, name: "context_set", details }));
+  instance.on("datafile_set", (details) =>
+    events.push({ target, name: "datafile_set", details: portable(details, "segments") }),
+  );
+  instance.on("context_set", (details) =>
+    events.push({ target, name: "context_set", details: portable(details, "keys") }),
+  );
   instance.on("sticky_features_set", (details) =>
     events.push({ target, name: "sticky_features_set", details }),
   );

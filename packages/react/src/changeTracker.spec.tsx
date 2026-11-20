@@ -5,7 +5,24 @@ import "@testing-library/jest-dom";
 import { createFeaturevisor, type Featurevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
 
-import { FeaturevisorProvider } from "./FeaturevisorProvider";
+import {
+  FeaturevisorProvider as Provider,
+  type FeaturevisorProviderProps,
+} from "./FeaturevisorProvider";
+
+/**
+ * Tests of how the hooks subscribed and evaluated before they moved onto the
+ * signals engine pin `updates="every"`, which keeps that behaviour. The
+ * engine's own tests are in precise.spec.tsx.
+ */
+let pinnedUpdates: "every" | undefined;
+function FeaturevisorProvider(props: FeaturevisorProviderProps) {
+  return <Provider updates={pinnedUpdates} {...props} />;
+}
+
+beforeEach(() => {
+  pinnedUpdates = "every";
+});
 import { useEveryFlag } from "./useEveryFlag";
 import { useFlag } from "./useFlag";
 import { useFlags } from "./useFlags";

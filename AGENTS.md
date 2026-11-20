@@ -38,6 +38,9 @@ check runs.
   `make fmt-examples`, since every example must stay formatted.
 - Catalog lives in packages/catalog. Visible changes also run
   `make test-catalog-browser`.
+- packages/signals holds the reactive engine the React and Vue hooks build on.
+  Each of those packages also runs its suites with `updates: "every"` through
+  `jest.every.config.js`, which must keep passing unchanged.
 
 ## Contribution boundaries
 

@@ -108,10 +108,20 @@ function observe(sdk: Featurevisor) {
   return { on, active: () => cleanups.filter((fn) => !fn.mock.calls.length) };
 }
 
+/**
+ * Tests of how the composables subscribed before they moved onto the signals
+ * engine pin `updates: "every"`, which keeps that behaviour. The engine's own
+ * tests are in composables.precise.spec.ts.
+ */
+let pinnedUpdates: "every" | undefined;
+beforeEach(() => {
+  pinnedUpdates = undefined;
+});
+
 function featurevisorPlugin(sdk: Featurevisor): Plugin {
   return {
     install(app: App) {
-      setupApp(app, sdk);
+      setupApp(app, sdk, { updates: pinnedUpdates });
     },
   };
 }
@@ -291,6 +301,7 @@ describe("vue: reactive context", () => {
 
 describe("vue: subscriptions", () => {
   it("attach when mounted, with one set of counting listeners per instance, and leave on unmount", () => {
+    pinnedUpdates = "every";
     const { sdk } = instance();
     const events = observe(sdk);
     const first = mountValue(sdk, () => useFlag("checkout"));

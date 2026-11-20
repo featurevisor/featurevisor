@@ -29,6 +29,7 @@ import {
   DependencyError,
   type DependencyOf,
 } from "./session.js";
+import { ANY_ATTRIBUTE, recordAttribute, recordFeature } from "./reads.js";
 
 function hasOwn(value: object, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, key);
@@ -218,6 +219,8 @@ export function beforeEvaluation<TOptions extends EvaluationOptions>(
 ): TOptions {
   for (const module of modules) {
     if (module.beforeEvaluation) {
+      // A module can read any attribute, which tracking cannot see.
+      recordAttribute(ANY_ATTRIBUTE);
       beginEvaluation(options);
       const next = module.beforeEvaluation(options) as TOptions;
       updateEvaluation(options, next);
@@ -256,8 +259,10 @@ export function afterEvaluation(
 
 export function evaluateWithModules(opts: EvaluateOptions): Evaluation {
   let options = opts;
+  recordFeature(opts.featureKey);
   try {
     options = beforeEvaluation(opts.modules, opts);
+    if (options.featureKey !== opts.featureKey) recordFeature(options.featureKey);
     const evaluation = evaluate(options);
     return afterEvaluation(opts.datafile.modules, evaluation, options);
   } catch (e) {
@@ -599,6 +604,7 @@ function evaluate(options: EvaluateOptions, flagOnly = false): Evaluation {
     });
     for (const module of datafile.modules) {
       if (module.bucketKey) {
+        recordAttribute(ANY_ATTRIBUTE);
         bucketKey = module.bucketKey({
           featureKey,
           context,
@@ -613,6 +619,7 @@ function evaluate(options: EvaluateOptions, flagOnly = false): Evaluation {
 
     for (const module of datafile.modules) {
       if (module.bucketValue) {
+        recordAttribute(ANY_ATTRIBUTE);
         bucketValue = module.bucketValue({
           featureKey,
           bucketKey,

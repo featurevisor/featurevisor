@@ -2,6 +2,7 @@ import type { BucketBy, Context, FeatureKey } from "@featurevisor/types";
 
 import type { Evaluation, EvaluationOptions } from "./evaluate.js";
 import type { BucketKey, BucketValue } from "./bucketer.js";
+import type { TrackResult } from "./reads.js";
 import type {
   FeaturevisorDiagnosticHandler,
   FeaturevisorModuleReportedDiagnostic,
@@ -44,6 +45,12 @@ export interface FeaturevisorModuleApi {
     options?: FeaturevisorModuleDiagnosticOptions,
   ) => FeaturevisorUnsubscribe;
   reportDiagnostic: (diagnostic: FeaturevisorModuleReportedDiagnostic) => void;
+  /**
+   * Runs `callback` and returns its result with what the evaluations inside it
+   * read: attributes, segments, features and variables. Nothing is recorded
+   * outside it, so getters cost what they did before.
+   */
+  track: <T>(callback: () => T) => TrackResult<T>;
 }
 
 /**

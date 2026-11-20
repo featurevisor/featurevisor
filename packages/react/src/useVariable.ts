@@ -3,8 +3,12 @@ import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevi
 import { useRequiredSdk } from "./useRequiredSdk.js";
 import { useScopedContext } from "./scope.js";
 import { useEvaluationSubscription } from "./useEvaluationSubscription.js";
+import { useEvaluated, useEveryUpdate } from "./useEvaluated.js";
 
 const EMPTY_CONTEXT: Context = {};
+
+// Feature and variable keys come from file names, so they never contain this character.
+const SEPARATOR = "\u0000";
 
 /**
  * Returns the evaluated variable and updates it when the feature changes. The
@@ -28,12 +32,34 @@ export function useVariable<TValue = VariableValue>(
   const sdk = useRequiredSdk();
   const isStandaloneVariable = typeof variableKeyOrContext !== "string";
   const resolvedContext = useScopedContext(isStandaloneVariable ? variableKeyOrContext : context);
-  useEvaluationSubscription(sdk, featureKeyOrVariableKey, isStandaloneVariable);
 
-  // Context and module inputs are evaluated on every render. Runtime programs
-  // can return fresh objects, so storing their results in an effect would loop
-  // with inline contexts. Values, including functions, never enter React state.
-  return isStandaloneVariable
-    ? sdk.getVariable<TValue>(featureKeyOrVariableKey, resolvedContext)
-    : sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKeyOrContext, resolvedContext);
+  if (useEveryUpdate()) {
+    useEvaluationSubscription(sdk, featureKeyOrVariableKey, isStandaloneVariable);
+
+    // Context and module inputs are evaluated on every render. Runtime programs
+    // can return fresh objects, so storing their results in an effect would loop
+    // with inline contexts. Values, including functions, never enter React state.
+    return isStandaloneVariable
+      ? sdk.getVariable<TValue>(featureKeyOrVariableKey, resolvedContext)
+      : sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKeyOrContext, resolvedContext);
+  }
+
+  if (isStandaloneVariable) {
+    return useEvaluated(
+      sdk,
+      SEPARATOR + featureKeyOrVariableKey,
+      resolvedContext,
+      (merged) => sdk.getVariable<TValue>(featureKeyOrVariableKey, merged),
+      { follows: { variables: [featureKeyOrVariableKey] } },
+    );
+  }
+
+  const variableKey = variableKeyOrContext;
+  return useEvaluated(
+    sdk,
+    featureKeyOrVariableKey + SEPARATOR + variableKey,
+    resolvedContext,
+    (merged) => sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKey, merged),
+    { follows: { features: [featureKeyOrVariableKey] } },
+  );
 }

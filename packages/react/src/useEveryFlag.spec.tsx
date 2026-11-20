@@ -4,7 +4,24 @@ import "@testing-library/jest-dom";
 import { createFeaturevisor, type Featurevisor } from "@featurevisor/sdk";
 import type { Context, DatafileContent, FeatureKey } from "@featurevisor/types";
 
-import { FeaturevisorProvider } from "./FeaturevisorProvider";
+import {
+  FeaturevisorProvider as Provider,
+  type FeaturevisorProviderProps,
+} from "./FeaturevisorProvider";
+
+/**
+ * Tests of how the hooks subscribed and evaluated before they moved onto the
+ * signals engine pin `updates="every"`, which keeps that behaviour. The
+ * engine's own tests are in precise.spec.tsx.
+ */
+let pinnedUpdates: "every" | undefined;
+function FeaturevisorProvider(props: FeaturevisorProviderProps) {
+  return <Provider updates={pinnedUpdates} {...props} />;
+}
+
+beforeEach(() => {
+  pinnedUpdates = undefined;
+});
 import { useEveryFlag } from "./useEveryFlag";
 import { useSomeFlag } from "./useSomeFlag";
 
@@ -197,6 +214,7 @@ describe("react: useEveryFlag and useSomeFlag", function () {
   });
 
   test("subscribe once each for an inline list, and remove their listeners on unmount", async function () {
+    pinnedUpdates = "every";
     const { sdk } = instance();
     const original = sdk.on.bind(sdk);
     const cleanups: jest.Mock[] = [];

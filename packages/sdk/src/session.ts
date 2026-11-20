@@ -195,7 +195,7 @@ function copy<T>(value: T, ancestors: object[] = []): T {
   }
 }
 
-function sameValue(snapshot: unknown, value: unknown): boolean {
+export function sameValue(snapshot: unknown, value: unknown): boolean {
   if (snapshot === value) return snapshot !== 0 || Object.is(snapshot, value);
   if (
     snapshot === null ||

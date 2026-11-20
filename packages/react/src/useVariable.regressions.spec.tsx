@@ -4,7 +4,24 @@ import { act, render, screen } from "@testing-library/react";
 import { createFeaturevisor, type Featurevisor } from "@featurevisor/sdk";
 import type { Context, DatafileContent, VariableValue } from "@featurevisor/types";
 
-import { FeaturevisorProvider } from "./FeaturevisorProvider";
+import {
+  FeaturevisorProvider as Provider,
+  type FeaturevisorProviderProps,
+} from "./FeaturevisorProvider";
+
+/**
+ * Tests of how the hooks subscribed and evaluated before they moved onto the
+ * signals engine pin `updates="every"`, which keeps that behaviour. The
+ * engine's own tests are in precise.spec.tsx.
+ */
+let pinnedUpdates: "every" | undefined;
+function FeaturevisorProvider(props: FeaturevisorProviderProps) {
+  return <Provider updates={pinnedUpdates} {...props} />;
+}
+
+beforeEach(() => {
+  pinnedUpdates = undefined;
+});
 import { useVariable } from "./useVariable";
 
 function programDatafile(array = false, attribute = "country", grant = "read"): DatafileContent {
@@ -210,6 +227,7 @@ describe("react: useVariable evaluation and subscriptions", () => {
   });
 
   test("switches feature and global subscriptions, variable keys and provider instances with cleanup", async () => {
+    pinnedUpdates = "every";
     const first = createFeaturevisor({
       logLevel: "fatal",
       datafile: programDatafile(),
@@ -393,6 +411,7 @@ describe("react: useVariable evaluation and subscriptions", () => {
   test.each([false, true])(
     "never invokes a function returned by a module (feature: %s)",
     (feature) => {
+      pinnedUpdates = "every";
       const first = jest.fn(() => "must not run");
       const second = jest.fn(() => "must not run either");
       let result = first;
@@ -459,6 +478,7 @@ describe("react: useVariable evaluation and subscriptions", () => {
   test.each([false, true])(
     "keeps child state isolated while following parent datafiles and modules (feature: %s)",
     async (feature) => {
+      pinnedUpdates = "every";
       const parent = createFeaturevisor({ logLevel: "fatal", datafile: programDatafile() });
       const child = parent.spawn({ country: "nl" });
       const sibling = parent.spawn({ country: "de" });

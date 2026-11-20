@@ -3,6 +3,7 @@ import type { Context, FeatureKey, VariationValue } from "@featurevisor/types";
 import { useRequiredSdk } from "./useRequiredSdk.js";
 import { useScopedContext } from "./scope.js";
 import { useEvaluationSubscription } from "./useEvaluationSubscription.js";
+import { useEvaluated, useEveryUpdate } from "./useEvaluated.js";
 
 /**
  * Returns the evaluated variation and updates it when the feature changes. The
@@ -14,7 +15,17 @@ export function useVariation<TVariation extends VariationValue = VariationValue>
 ): TVariation | null {
   const sdk = useRequiredSdk();
   const scopedContext = useScopedContext(context);
-  useEvaluationSubscription(sdk, featureKey);
 
-  return sdk.getVariation<TVariation>(featureKey, scopedContext);
+  if (useEveryUpdate()) {
+    useEvaluationSubscription(sdk, featureKey);
+    return sdk.getVariation<TVariation>(featureKey, scopedContext);
+  }
+
+  return useEvaluated(
+    sdk,
+    featureKey,
+    scopedContext,
+    (merged) => sdk.getVariation<TVariation>(featureKey, merged),
+    { equals: Object.is, follows: { features: [featureKey] } },
+  );
 }

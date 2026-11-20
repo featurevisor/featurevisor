@@ -3,7 +3,24 @@ import { act, render } from "@testing-library/react";
 import { createFeaturevisor, type Featurevisor } from "@featurevisor/sdk";
 import type { Context, DatafileContent, FeatureKey } from "@featurevisor/types";
 
-import { FeaturevisorProvider } from "./FeaturevisorProvider";
+import {
+  FeaturevisorProvider as Provider,
+  type FeaturevisorProviderProps,
+} from "./FeaturevisorProvider";
+
+/**
+ * Tests of how the hooks subscribed and evaluated before they moved onto the
+ * signals engine pin `updates="every"`, which keeps that behaviour. The
+ * engine's own tests are in precise.spec.tsx.
+ */
+let pinnedUpdates: "every" | undefined;
+function FeaturevisorProvider(props: FeaturevisorProviderProps) {
+  return <Provider updates={pinnedUpdates} {...props} />;
+}
+
+beforeEach(() => {
+  pinnedUpdates = undefined;
+});
 import { useFlag } from "./useFlag";
 import { useFlags } from "./useFlags";
 import { useEveryFlag } from "./useEveryFlag";
@@ -139,6 +156,7 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
   }
 
   test("commits current provider, keys and context without mixed values", async () => {
+    pinnedUpdates = "every";
     const first = instance();
     const second = instance("second", ["liveChat"]);
     const firstEvents = observe(first);
@@ -213,6 +231,7 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
   });
 
   test("commits consistent values for context, datafile and both sticky event types", () => {
+    pinnedUpdates = "every";
     const sdk = instance();
     const h = harness();
     render(h.tree(sdk));
@@ -253,6 +272,7 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
   test.each(["flags", "every", "some"] as const)(
     "catches changes during subscription setup for %s without another hook refreshing it",
     (kind) => {
+      pinnedUpdates = "every";
       const sdk = instance();
       const original = sdk.on.bind(sdk);
       let calls = 0;

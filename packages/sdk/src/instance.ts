@@ -1,4 +1,4 @@
-import { mergeContext } from "./context.js";
+import { createContextSetDetails, mergeContext } from "./context.js";
 import type {
   Context,
   Feature,
@@ -36,7 +36,12 @@ import type {
 } from "./evaluate.js";
 import { FeaturevisorChildInstance } from "./child.js";
 import { applyVariableOperations, copyVariableObject } from "./mutations.js";
-import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
+import type {
+  ContextSetEventDetails,
+  EventCallback,
+  EventDetailsByName,
+  EventName,
+} from "./events.js";
 import { allConditionsAreMatched, valueIsMatched } from "./conditions.js";
 import type {
   FeaturevisorDiagnostic,
@@ -57,6 +62,7 @@ import {
 } from "./dependencies.js";
 import { getValueByType, type VariableGetter } from "./variable.js";
 import { getStickyChangeKeys } from "./keys.js";
+import { recordSegment, recordVariable, track } from "./reads.js";
 import { matchGroup } from "./groups.js";
 import {
   entityKinds,
@@ -110,6 +116,16 @@ export function getRequiredVariableValueAtPath(
         : undefined;
   }
   return value;
+}
+
+/** Whether a module takes part in evaluations. One without hooks, such as a package's, costs evaluations nothing. */
+function takesPartInEvaluations(module: FeaturevisorModule): boolean {
+  return !!(
+    module.beforeEvaluation ||
+    module.bucketKey ||
+    module.bucketValue ||
+    module.afterEvaluation
+  );
 }
 
 function createLookup<TValue>(): Record<string, TValue> {
@@ -193,6 +209,7 @@ function getDatafileSetEventDetails(
     revisionChanged: previousRevision !== newRevision,
     features: getChangedEntityKeys(previousDatafile.features, newDatafile.features),
     variables: getChangedEntityKeys(previousDatafile.variables || {}, newDatafile.variables || {}),
+    segments: [] as SegmentKey[],
     replaced: replace,
   };
 }
@@ -263,6 +280,9 @@ export class Featurevisor {
   private evaluationGeneration = 0;
   private regexCache: Record<string, RegExp> = {};
   private attributeConditions = new WeakMap<object, boolean>();
+  /** Every added module, in the order added. */
+  private registeredModules: FeaturevisorModule[] = [];
+  /** The added modules with evaluation hooks, which evaluations iterate. */
   private modules: FeaturevisorModule[] = [];
   private moduleDiagnosticSubscriptions: FeaturevisorModuleDiagnosticSubscription[] = [];
   private listeners: Listeners = {};
@@ -314,9 +334,17 @@ export class Featurevisor {
         ? resolvedDatafile
         : mergeStoredDatafile(this.datafile, resolvedDatafile);
       const details = getDatafileSetEventDetails(this.datafile, storedDatafile, replace);
-      const segmentKeys = replace
-        ? Object.keys(this.datafile.segments).concat(Object.keys(storedDatafile.segments))
-        : Object.keys(resolvedDatafile.segments);
+      // A replace considers the segments of both datafiles, each once.
+      const previousSegments = this.datafile.segments;
+      const segmentKeys = !replace
+        ? Object.keys(resolvedDatafile.segments)
+        : isEmptyLookup(previousSegments)
+          ? Object.keys(storedDatafile.segments)
+          : Object.keys(previousSegments).concat(
+              Object.keys(storedDatafile.segments).filter(
+                (segmentKey) => !hasOwn(previousSegments, segmentKey),
+              ),
+            );
       // The first datafile reports every entity, so it needs no comparisons or
       // dependency index. The index is built on demand by the next update.
       const previousIsEmpty =
@@ -334,6 +362,7 @@ export class Featurevisor {
               : undefined;
             return JSON.stringify(previousSegment) !== JSON.stringify(nextSegment);
           });
+      details.segments = changedSegments;
 
       if (previousIsEmpty) {
         this.dependencyIndex = undefined;
@@ -605,6 +634,7 @@ export class Featurevisor {
     if (conditions === "*") return true;
     if (!conditions) return false;
     if (typeof conditions === "string") {
+      recordSegment(conditions);
       const segment = this.getSegment(conditions);
       if (segment?.conditions === invalidConditions) throw invalidConditions;
       if (segment && this.isAttributeOnly(segment.conditions))
@@ -705,7 +735,10 @@ export class Featurevisor {
       return;
     }
 
-    if (module.name && this.modules.some((existingModule) => existingModule.name === module.name)) {
+    if (
+      module.name &&
+      this.registeredModules.some((existingModule) => existingModule.name === module.name)
+    ) {
       this.reportDiagnostic({
         level: "error",
         code: "duplicate_module",
@@ -733,12 +766,14 @@ export class Featurevisor {
 
       return;
     }
-    this.modules = this.modules.concat(module);
+    this.setRegisteredModules(this.registeredModules.concat(module));
     this.evaluationGeneration++;
 
     return async () => {
-      const moduleExists = this.modules.indexOf(module) !== -1;
-      this.modules = this.modules.filter((existingModule) => existingModule !== module);
+      const moduleExists = this.registeredModules.indexOf(module) !== -1;
+      this.setRegisteredModules(
+        this.registeredModules.filter((existingModule) => existingModule !== module),
+      );
       this.evaluationGeneration++;
       this.clearModuleDiagnosticSubscriptions(module);
 
@@ -748,14 +783,19 @@ export class Featurevisor {
     };
   }
 
+  private setRegisteredModules(modules: FeaturevisorModule[]): void {
+    this.registeredModules = modules;
+    this.modules = modules.filter(takesPartInEvaluations);
+  }
+
   async removeModule(name: string): Promise<void> {
     if (this.closed) {
       return;
     }
 
-    const removedModules = this.modules.filter((module) => module.name === name);
+    const removedModules = this.registeredModules.filter((module) => module.name === name);
 
-    this.modules = this.modules.filter((module) => module.name !== name);
+    this.setRegisteredModules(this.registeredModules.filter((module) => module.name !== name));
     this.evaluationGeneration++;
     for (const module of removedModules) {
       this.clearModuleDiagnosticSubscriptions(module);
@@ -820,8 +860,8 @@ export class Featurevisor {
 
     this.closed = true;
     this.evaluationGeneration++;
-    const modules = this.modules.slice();
-    this.modules = [];
+    const modules = this.registeredModules.slice();
+    this.setRegisteredModules([]);
 
     for (const module of modules) {
       this.clearModuleDiagnosticSubscriptions(module);
@@ -926,8 +966,18 @@ export class Featurevisor {
       getRevision: () => this.getRevision(),
       onDiagnostic,
       reportDiagnostic,
+      track,
     };
   };
+
+  /** Whether a debug diagnostic reaches anyone: the instance's handler, the console or a module. */
+  private receivesDebugDiagnostics(): boolean {
+    if (this.logLevel === "debug") return true;
+    for (const subscription of this.moduleDiagnosticSubscriptions) {
+      if (subscription.logLevel === "debug") return true;
+    }
+    return false;
+  }
 
   private clearModuleDiagnosticSubscriptions = (module: FeaturevisorModule): void => {
     this.moduleDiagnosticSubscriptions = this.moduleDiagnosticSubscriptions.filter(
@@ -943,25 +993,32 @@ export class Featurevisor {
       return;
     }
 
+    const previousContext = this.context;
     if (replace) {
       this.context = context;
     } else {
       this.context = mergeContext(this.context, context);
     }
     this.evaluationGeneration++;
+    // Only a listener or a debug diagnostic handler receives the details, so
+    // only then are the changed keys worked out.
+    const listeners = this.listeners.context_set;
+    const details =
+      (listeners !== undefined && listeners.length > 0) || this.receivesDebugDiagnostics()
+        ? createContextSetDetails(
+            this.context,
+            replace,
+            previousContext,
+            replace ? undefined : context,
+          )
+        : ({ context: this.context, replaced: replace } as ContextSetEventDetails);
 
-    this.trigger("context_set", {
-      context: this.context,
-      replaced: replace,
-    });
+    this.trigger("context_set", details);
     this.reportDiagnostic({
       level: "debug",
       code: "context_set",
       message: replace ? "Context replaced" : "Context updated",
-      details: {
-        context: this.context,
-        replaced: replace,
-      },
+      details: details as unknown as Record<string, unknown>,
     });
   }
 
@@ -1006,7 +1063,9 @@ export class Featurevisor {
       },
       params,
     );
-    return this.modules.length || this.onDiagnostic
+    // Only modules with hooks, diagnostic handlers and onDiagnostic run while
+    // an evaluation does, so only they can change sticky values during one.
+    return this.modules.length || this.moduleDiagnosticSubscriptions.length || this.onDiagnostic
       ? trackEvaluationState(
           dependencies,
           options.__featurevisorReadStickyState || this.readStickyState,
@@ -1109,6 +1168,7 @@ export class Featurevisor {
   ): Evaluation {
     let evaluationOptions = initialOptions;
     let moduleOptions: VariableEvaluateOptions | undefined;
+    recordVariable(initialOptions.variableKey);
 
     try {
       if (this.modules.length) {
@@ -1131,6 +1191,7 @@ export class Featurevisor {
       }
 
       const resolvedVariableKey = evaluationOptions.variableKey;
+      if (resolvedVariableKey !== initialOptions.variableKey) recordVariable(resolvedVariableKey);
       const variable = this.readEntity(2, resolvedVariableKey) as DatafileVariable | undefined;
       let evaluation: Evaluation = {
         type: "variable",

@@ -15,6 +15,8 @@ module.exports = {
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1",
     "^@featurevisor/sdk$": "<rootDir>/../sdk/src",
+    "^@featurevisor/signals$": "<rootDir>/../signals/src",
+    "^@featurevisor/signals/vue$": "<rootDir>/../signals/src/vue",
     "^@vue/test-utils$": "<rootDir>/../../node_modules/@vue/test-utils/dist/vue-test-utils.cjs.js",
   },
 };

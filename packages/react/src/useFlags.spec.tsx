@@ -4,7 +4,24 @@ import "@testing-library/jest-dom";
 import { createFeaturevisor, type Featurevisor } from "@featurevisor/sdk";
 import type { Context, DatafileContent, FeatureKey } from "@featurevisor/types";
 
-import { FeaturevisorProvider } from "./FeaturevisorProvider";
+import {
+  FeaturevisorProvider as Provider,
+  type FeaturevisorProviderProps,
+} from "./FeaturevisorProvider";
+
+/**
+ * Tests of how the hooks subscribed and evaluated before they moved onto the
+ * signals engine pin `updates="every"`, which keeps that behaviour. The
+ * engine's own tests are in precise.spec.tsx.
+ */
+let pinnedUpdates: "every" | undefined;
+function FeaturevisorProvider(props: FeaturevisorProviderProps) {
+  return <Provider updates={pinnedUpdates} {...props} />;
+}
+
+beforeEach(() => {
+  pinnedUpdates = undefined;
+});
 import { expectExactType, type IsExact } from "./typeAssertions.test-helper";
 import { useFlags } from "./useFlags";
 
@@ -186,6 +203,7 @@ describe("react: useFlags", function () {
   });
 
   test("subscribes once for an inline list, however often it renders", function () {
+    pinnedUpdates = "every";
     const sdk = instance();
     const events = observe(sdk);
     const view = render(tree(sdk, ["checkout", "liveChat"]));
@@ -200,6 +218,7 @@ describe("react: useFlags", function () {
   });
 
   test("resubscribes once when the keys change", function () {
+    pinnedUpdates = "every";
     const sdk = instance();
     const events = observe(sdk);
     const view = render(tree(sdk, ["checkout", "liveChat"]));

@@ -20,6 +20,7 @@ export type {
 export type { FeaturevisorChildInstance } from "./child.js";
 export type { Evaluation, EvaluationOptions, EvaluationReason } from "./evaluate.js";
 export type { DependencyOf } from "./session.js";
+export type { EvaluationReads, TrackResult } from "./reads.js";
 export type {
   FeaturevisorDiagnostic,
   FeaturevisorDiagnosticHandler,

@@ -1,4 +1,4 @@
-import type { FeatureKey, VariableKey } from "@featurevisor/types";
+import type { FeatureKey, SegmentKey, VariableKey } from "@featurevisor/types";
 
 import type { FeaturevisorDiagnostic } from "./diagnostics.js";
 
@@ -26,12 +26,19 @@ export interface DatafileSetEventDetails {
    * and required variable dependencies.
    */
   variables: VariableKey[];
+  /** Segment keys whose definitions were added, changed or, on replace, removed. */
+  segments: SegmentKey[];
   replaced: boolean;
 }
 
 export interface ContextSetEventDetails {
   context: Record<string, unknown>;
   replaced: boolean;
+  /**
+   * The top level keys whose values changed, compared by value. An object or
+   * array given again as the same reference counts as changed.
+   */
+  keys: string[];
 }
 
 export interface ErrorEventDetails {

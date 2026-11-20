@@ -22,7 +22,7 @@
   "scripts": {
     "transpile": "rimraf cjs esm node-esm && tsc --project tsconfig.cjs.json && tsc --project tsconfig.esm.json && tsc --project tsconfig.node-esm.json && node -e \"require('fs').writeFileSync('node-esm/package.json', '{\\n  \\\"type\\\": \\\"module\\\"\\n}\\n')\"",
     "build": "npm run transpile",
-    "test": "jest --config jest.config.js",
+    "test": "jest --config jest.config.js && jest --config jest.every.config.js",
     "typecheck": "tsc -p tsconfig.typecheck.json"
   },
   "author": {
@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "@featurevisor/sdk": "4.8.0",
+    "@featurevisor/signals": "4.12.0",
     "@featurevisor/types": "4.8.0"
   },
   "peerDependencies": {

@@ -53,8 +53,8 @@ describe("Featurevisor public API: child instances", () => {
 
     expect(parentEvents).toEqual([]);
     expect(childEvents).toEqual([
-      { context: { a: 1, b: 2 }, replaced: false },
-      { context: { c: 3 }, replaced: true },
+      { context: { a: 1, b: 2 }, replaced: false, keys: ["b"] },
+      { context: { c: 3 }, replaced: true, keys: ["a", "b", "c"] },
     ]);
   });
 

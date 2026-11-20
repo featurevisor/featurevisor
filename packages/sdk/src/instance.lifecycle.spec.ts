@@ -25,8 +25,12 @@ describe("Featurevisor public API: lifecycle and state", () => {
     sdk.setContext({ country: "de" }, true);
     expect(sdk.getContext()).toEqual({ country: "de" });
     expect(events).toEqual([
-      { context: { country: "nl", plan: "pro", locale: "nl-NL" }, replaced: false },
-      { context: { country: "de" }, replaced: true },
+      {
+        context: { country: "nl", plan: "pro", locale: "nl-NL" },
+        replaced: false,
+        keys: ["plan", "locale"],
+      },
+      { context: { country: "de" }, replaced: true, keys: ["country", "plan", "locale"] },
     ]);
   });
 
