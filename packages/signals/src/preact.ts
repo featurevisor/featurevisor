@@ -42,5 +42,9 @@ function together(run: () => void): void {
 
 /** A reader whose values are Preact signals, updated together in one batch per change. */
 export function createSignals(f: Featurevisor, options: ReaderOptions = {}): Reader<"preact"> {
-  return createReader<"preact">(f, toSignal, { ...options, batch: options.batch || together });
+  return createReader<"preact">(
+    f,
+    toSignal,
+    Object.assign({}, options, { batch: options.batch || together }),
+  );
 }

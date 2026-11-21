@@ -33,7 +33,7 @@ export function usePrecise<T>(
 
   const source: Source<T> = options.constant
     ? { read: () => compute(context()), listen: listenToNothing }
-    : createValue(sdk, compute, context, { ...options, copy: true });
+    : createValue(sdk, compute, context, Object.assign({}, options, { copy: true }));
 
   return useSource(source);
 }

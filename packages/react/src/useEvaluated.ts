@@ -55,7 +55,12 @@ class HookValue<T> implements Source<T> {
       const value = compute(this.context);
       this.source = { read: () => value, listen: listenToNothing };
     } else {
-      this.source = createValue(this.sdk, compute, () => this.context, { ...options, copy: true });
+      this.source = createValue(
+        this.sdk,
+        compute,
+        () => this.context,
+        Object.assign({}, options, { copy: true }),
+      );
     }
 
     return this.source;

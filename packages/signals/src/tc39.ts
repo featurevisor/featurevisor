@@ -40,5 +40,9 @@ function untracked(run: () => void): void {
 
 /** A reader whose values are TC39 computed signals, which work with Lit and plain watchers. */
 export function createSignals(f: Featurevisor, options: ReaderOptions = {}): Reader<"tc39"> {
-  return createReader<"tc39">(f, toSignal, { ...options, batch: options.batch || untracked });
+  return createReader<"tc39">(
+    f,
+    toSignal,
+    Object.assign({}, options, { batch: options.batch || untracked }),
+  );
 }
