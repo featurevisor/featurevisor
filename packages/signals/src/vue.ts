@@ -10,8 +10,11 @@ import type { Source } from "./engine.js";
  */
 export function useSource<T>(source: Source<T>): Readonly<Ref<T>> {
   const version = Vue.shallowRef(0);
+  // Writing without reading, so a refresh inside a running effect, such as a
+  // watchEffect that sets the context, does not tie that effect to this ref.
+  let count = 0;
   const refresh = () => {
-    version.value++;
+    version.value = ++count;
   };
 
   const value = Vue.computed(() => {

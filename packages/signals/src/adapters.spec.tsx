@@ -2,7 +2,7 @@ import * as React from "react";
 import { act, render } from "@testing-library/react";
 import { effect, signal } from "@preact/signals-core";
 import { Signal } from "signal-polyfill";
-import { defineComponent, h, nextTick } from "vue";
+import { defineComponent, effectScope, h, nextTick, ref, watchEffect } from "vue";
 import { mount } from "@vue/test-utils";
 import { createFeaturevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
@@ -200,6 +200,34 @@ describe("React useSource", () => {
 });
 
 describe("Vue useSource", () => {
+  test("a context set inside watchEffect does not tie it to the ref", () => {
+    const f = instance();
+    const checkout = createSignals(f).flag("checkout");
+    const scope = effectScope();
+    const value = scope.run(() => useVueSource(checkout));
+    expect(value?.value).toBe(true);
+    const country = ref("nl");
+    let runs = 0;
+    const stop = watchEffect(
+      () => {
+        runs++;
+        f.setContext({ country: country.value });
+      },
+      { flush: "sync" },
+    );
+
+    country.value = "de";
+    expect(runs).toBe(2);
+    expect(value?.value).toBe(false);
+
+    // The ref changing again does not run the effect, which would set its country back.
+    f.setContext({ country: "nl" });
+    expect(runs).toBe(2);
+    expect(value?.value).toBe(true);
+    stop();
+    scope.stop();
+  });
+
   test("a ref that renders only when the value changes", async () => {
     const f = instance();
     const checkout = createSignals(f).flag("checkout");
