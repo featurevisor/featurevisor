@@ -144,9 +144,17 @@ export function isDevelopment(): boolean {
   }
 }
 
-/** A browser, where the change count may listen before anything watches. Servers never do. */
-export function isBrowser(): boolean {
-  return typeof window !== "undefined" && typeof document !== "undefined";
+/**
+ * A client, where values may listen from their first read: a browser, or React
+ * Native, which has a window but no document. Servers never do.
+ */
+export function isClient(): boolean {
+  if (typeof window === "undefined") return false;
+
+  return (
+    typeof document !== "undefined" ||
+    (typeof navigator !== "undefined" && navigator.product === "ReactNative")
+  );
 }
 
 /**

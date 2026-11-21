@@ -6,7 +6,7 @@ import type {
 } from "@featurevisor/sdk";
 import type { Context } from "@featurevisor/types";
 
-import { copyValue, deepFreeze, isBrowser, sameValue, snapshot } from "./values.js";
+import { copyValue, deepFreeze, isClient, sameValue, snapshot } from "./values.js";
 
 /**
  * A value that updates itself. `read` answers now, and `listen` calls back when
@@ -376,9 +376,10 @@ export class Node<T> implements Source<T> {
     const engine = this.engine;
     const options = this.options;
 
-    // In a browser, listening from the first read lets an answer be trusted
-    // until the instance changes, and covers the moment before a value listens.
-    if (!engine.attached && isBrowser()) engine.attach();
+    // On a client, listening from the first read lets an answer be trusted
+    // until the instance changes, and covers the moment before a value listens,
+    // so a value read while rendering does not evaluate again once it listens.
+    if (!engine.attached && isClient()) engine.attach();
 
     let result: T;
     let reads: EvaluationReads | undefined;
