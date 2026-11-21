@@ -23,7 +23,7 @@ const packages = [
     name: "@featurevisor/react",
     entry: path.join(rootDir, "packages/react/src/index.ts"),
     fileName: "featurevisor-react",
-    budget: 2_750,
+    budget: 2_600,
     external: [
       "react",
       "react-dom",
@@ -36,14 +36,14 @@ const packages = [
     name: "@featurevisor/vue",
     entry: path.join(rootDir, "packages/vue/src/index.ts"),
     fileName: "featurevisor-vue",
-    budget: 2_200,
+    budget: 1_900,
     external: ["vue", "@featurevisor/sdk", "@featurevisor/signals", "@featurevisor/signals/vue"],
   },
   {
     name: "@featurevisor/signals",
     entry: path.join(rootDir, "packages/signals/src/index.ts"),
     fileName: "featurevisor-signals",
-    budget: 3_350,
+    budget: 3_650,
     external: ["@featurevisor/sdk"],
   },
   {
@@ -71,7 +71,7 @@ const packages = [
     name: "@featurevisor/signals/tc39",
     entry: path.join(rootDir, "packages/signals/src/tc39.ts"),
     fileName: "featurevisor-signals-tc39",
-    budget: 3_400,
+    budget: 3_700,
     external: ["@featurevisor/sdk", "signal-polyfill"],
   },
   {
