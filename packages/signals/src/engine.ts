@@ -395,9 +395,13 @@ export class Node<T> implements Source<T> {
     // so a value read while rendering does not evaluate again once it listens.
     if (!engine.attached && isClient()) engine.attach();
 
+    // Reads and the context matter only while the engine listens. Without it,
+    // as on a server, no answer is trusted, and a value that starts listening
+    // asks again, so neither is kept.
+    const attached = engine.attached;
     let result: T;
     let reads: EvaluationReads | undefined;
-    if (options.precise && engine.track && !options.kind) {
+    if (attached && options.precise && engine.track && !options.kind) {
       const tracked = engine.track(() => options.compute(context));
       result = tracked.result;
       reads = tracked.reads;
@@ -405,10 +409,10 @@ export class Node<T> implements Source<T> {
       result = options.compute(context);
     }
 
-    this.lastContext = snapshot(context);
+    this.lastContext = attached ? snapshot(context) : undefined;
     this.dirty = false;
     this.evaluatedAt = engine.changes;
-    this.evaluatedAttached = engine.attached;
+    this.evaluatedAttached = attached;
 
     if (!this.has || !options.equals(this.value as T, result)) {
       let kept = result;

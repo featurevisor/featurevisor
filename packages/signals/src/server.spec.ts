@@ -17,12 +17,15 @@ test("reads on a server evaluate without attaching anything to a shared instance
   const f = createFeaturevisor({ logLevel: "fatal", datafile });
   const on = jest.spyOn(f, "on");
   const fv = createSignals(f);
+  // Reads matter only to a value that listens, so a server does not track them.
+  const track = jest.spyOn(getEngine(f), "track" as never);
 
   for (let request = 0; request < 3; request++) {
     expect(fv.flag("checkout", { userId: `user-${request}` }).read()).toBe(false);
   }
 
   expect(on).not.toHaveBeenCalled();
+  expect(track).not.toHaveBeenCalled();
   expect(getEngine(f).attached).toBe(false);
 });
 
