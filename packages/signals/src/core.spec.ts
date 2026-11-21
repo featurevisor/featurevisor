@@ -386,6 +386,47 @@ describe("listening", () => {
     expect(checkout.read()).toBe(false);
   });
 
+  test("paths sharing a top level key are indexed once, and leave nothing behind", () => {
+    const f = createFeaturevisor({
+      datafile: datafile({
+        segments: {
+          proOne: {
+            conditions: {
+              and: [
+                { attribute: "account.plan", operator: "equals", value: "pro" },
+                { attribute: "account.id", operator: "equals", value: "1" },
+              ],
+            },
+          },
+        },
+        features: {
+          checkout: {
+            hash: "c1",
+            bucketBy: "userId",
+            traffic: [{ ...everyone, conditions: "proOne" }],
+          },
+        },
+      }),
+      logLevel: "fatal",
+      context: { userId: "user-1", account: { plan: "pro", id: "1" } },
+    });
+    const engine = getEngine(f) as unknown as { attributes: number; index: Map<string, unknown> };
+    const checkout = createSignals(f).flag("checkout");
+    const stop = checkout.listen(() => {});
+    expect(checkout.read()).toBe(true);
+    expect(engine.attributes).toBe(2);
+
+    f.setContext({ account: { plan: "free", id: "1" } });
+    expect(checkout.read()).toBe(false);
+    f.setContext({ account: { plan: "pro", id: "1" } });
+    expect(checkout.read()).toBe(true);
+    expect(engine.attributes).toBe(2);
+
+    stop();
+    expect(engine.attributes).toBe(0);
+    expect(engine.index.size).toBe(0);
+  });
+
   test("one instance has one engine, whatever reads it", () => {
     const { f } = setup();
 

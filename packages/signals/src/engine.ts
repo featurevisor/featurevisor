@@ -78,7 +78,9 @@ function keysOf(node: AnyNode): string[] {
   const keys: string[] = [];
   if (reads) {
     for (const path of reads.attributes) {
-      keys.push(path === ANY ? ANY : ATTRIBUTE + path.split(".")[0]);
+      // Paths such as account.plan and account.id share one top level key.
+      const key = path === ANY ? ANY : ATTRIBUTE + path.split(".")[0];
+      if (keys.indexOf(key) === -1) keys.push(key);
     }
     for (const key of reads.segments) keys.push(SEGMENT + key);
     for (const key of reads.features) keys.push(FEATURE + key);
