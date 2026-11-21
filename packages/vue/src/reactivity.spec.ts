@@ -318,6 +318,9 @@ describe("vue: subscriptions", () => {
   });
 
   it("do not attach during server rendering", async () => {
+    // The change count is the earlier mechanism's. Precise composables attach
+    // nothing at all on a server, which ssr.precise.spec.ts checks.
+    pinnedUpdates = "every";
     const { sdk } = instance();
     const events = observe(sdk);
     const Component = defineComponent({
@@ -330,7 +333,7 @@ describe("vue: subscriptions", () => {
 
     for (let request = 0; request < 3; request++) {
       const app = createSSRApp(Component);
-      setupApp(app, sdk);
+      setupApp(app, sdk, { updates: pinnedUpdates });
       expect(await renderToString(app)).toBe("<p>true:help</p>");
     }
 
