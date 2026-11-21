@@ -38,13 +38,13 @@ Each value is a Preact signal. When `country` changes, only the values whose ans
 
 ## Adapters
 
-| Import | Values are |
-| --- | --- |
-| `@featurevisor/signals` | sources, with `read()` and `listen(changed)` |
-| `@featurevisor/signals/preact` | Preact signals, updated in one batch per change |
-| `@featurevisor/signals/tc39` | TC39 `Signal.Computed` values from `signal-polyfill`, which work with Lit and plain watchers. This entry is ESM only, as the polyfill is. |
-| `@featurevisor/signals/react` | `useSource(source)`, which renders a component again only when the value changes |
-| `@featurevisor/signals/vue` | `useSource(source)`, a readonly ref |
+| Import                         | Values are                                                                                                                                |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `@featurevisor/signals`        | sources, with `read()` and `listen(changed)`                                                                                              |
+| `@featurevisor/signals/preact` | Preact signals, updated in one batch per change                                                                                           |
+| `@featurevisor/signals/tc39`   | TC39 `Signal.Computed` values from `signal-polyfill`, which work with Lit and plain watchers. This entry is ESM only, as the polyfill is. |
+| `@featurevisor/signals/react`  | `useSource(source)`, which renders a component again only when the value changes                                                          |
+| `@featurevisor/signals/vue`    | `useSource(source)`, a readonly ref                                                                                                       |
 
 `@featurevisor/react` and `@featurevisor/vue` build their hooks and composables on this package, so most React and Vue applications use those instead.
 
