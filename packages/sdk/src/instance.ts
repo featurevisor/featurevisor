@@ -875,10 +875,38 @@ export class Featurevisor {
     this.dependencyIndex = undefined;
   }
 
+  /**
+   * Whether a diagnostic at this level reaches anyone: a module's handler other
+   * than the reporting module's own, `onDiagnostic` or the console. An error
+   * always does, since it also reaches error listeners. These are the checks
+   * `reportDiagnostic` makes, so callers can skip building details nobody reads.
+   */
+  private receivesDiagnostic(
+    level: FeaturevisorLogLevel,
+    sourceModule?: FeaturevisorModule,
+  ): boolean {
+    if (level === "error" || shouldLog(this.logLevel, level)) return true;
+
+    const subscriptions = this.moduleDiagnosticSubscriptions;
+    for (let index = 0; index < subscriptions.length; index++) {
+      const subscription = subscriptions[index];
+      if (subscription.module !== sourceModule && shouldLog(subscription.logLevel, level)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   private reportDiagnostic = (
     diagnostic: FeaturevisorDiagnostic,
     sourceModule?: FeaturevisorModule,
   ): void => {
+    // Every evaluation reports a debug diagnostic, which usually reaches nobody.
+    // Nothing below runs a handler before the instance's level is checked, so
+    // returning here changes nothing anyone can see.
+    if (!this.receivesDiagnostic(diagnostic.level, sourceModule)) return;
+
     const normalizedDiagnostic: FeaturevisorDiagnostic = {
       ...diagnostic,
       details: diagnostic.details || {},
@@ -1352,12 +1380,14 @@ export class Featurevisor {
             : evaluationOptions),
       );
 
-      this.reportDiagnostic({
-        level: "debug",
-        code: evaluation.reason,
-        message: "Global variable evaluated",
-        details: { ...evaluation },
-      });
+      if (this.receivesDiagnostic("debug")) {
+        this.reportDiagnostic({
+          level: "debug",
+          code: evaluation.reason,
+          message: "Global variable evaluated",
+          details: { ...evaluation },
+        });
+      }
       return evaluation;
     } catch (error) {
       const evaluation: Evaluation = {
