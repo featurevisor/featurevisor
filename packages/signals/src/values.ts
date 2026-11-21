@@ -17,23 +17,27 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
  * further up counts as equal, so values that contain themselves end.
  */
 export function sameValue(first: unknown, second: unknown): boolean {
-  return compare(first, second, []);
+  return compare(first, second);
 }
 
-function compare(first: unknown, second: unknown, path: unknown[]): boolean {
-  if (Object.is(first, second)) return true;
+/** The pairs being compared, outermost first, kept between calls so comparing allocates nothing. */
+const comparing: unknown[] = [];
 
-  if (first instanceof Date && second instanceof Date) {
-    return first.getTime() === second.getTime();
+function compare(first: unknown, second: unknown): boolean {
+  if (Object.is(first, second)) return true;
+  if (typeof first !== "object" || typeof second !== "object" || !first || !second) return false;
+
+  if (first instanceof Date || second instanceof Date) {
+    return first instanceof Date && second instanceof Date && first.getTime() === second.getTime();
   }
 
   const arrays = Array.isArray(first) && Array.isArray(second);
   if (!arrays && !(isPlainObject(first) && isPlainObject(second))) return false;
 
-  for (let index = 0; index < path.length; index += 2) {
-    if (path[index] === first && path[index + 1] === second) return true;
+  for (let index = 0; index < comparing.length; index += 2) {
+    if (comparing[index] === first && comparing[index + 1] === second) return true;
   }
-  path.push(first, second);
+  comparing.push(first, second);
 
   try {
     if (arrays) {
@@ -41,21 +45,23 @@ function compare(first: unknown, second: unknown, path: unknown[]): boolean {
       const b = second as unknown[];
       if (a.length !== b.length) return false;
       for (let index = 0; index < a.length; index++) {
-        if (!compare(a[index], b[index], path)) return false;
+        if (!compare(a[index], b[index])) return false;
       }
       return true;
     }
 
     const a = first as Record<string, unknown>;
     const b = second as Record<string, unknown>;
-    const keys = Object.keys(a);
-    if (keys.length !== Object.keys(b).length) return false;
-    for (const key of keys) {
-      if (!hasOwn(b, key) || !compare(a[key], b[key], path)) return false;
+    let count = 0;
+    for (const key in a) {
+      if (!hasOwn(a, key)) continue;
+      count++;
+      if (!hasOwn(b, key) || !compare(a[key], b[key])) return false;
     }
-    return true;
+    for (const key in b) if (hasOwn(b, key)) count--;
+    return count === 0;
   } finally {
-    path.length -= 2;
+    comparing.length -= 2;
   }
 }
 

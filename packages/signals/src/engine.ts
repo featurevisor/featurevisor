@@ -62,37 +62,63 @@ export function getEngine(f: Featurevisor): Engine {
   return engine;
 }
 
-// Index keys: a kind's letter and a key. Attributes by their top level key,
-// since a context change names top level keys. Untracked values follow every
-// change, and "*" marks values a module may have read any attribute for.
-const ATTRIBUTE = "a";
-const SEGMENT = "s";
-const FEATURE = "f";
-const VARIABLE = "v";
+type Nodes = Set<AnyNode>;
+type Index = Map<string, Nodes>;
+
+/** What the SDK records when a module may have read any attribute. */
 const ANY = "*";
-const UNTRACKED = "u";
-const REVISION = "r";
-const STATUS = "t";
 
-function keysOf(node: AnyNode): string[] {
-  const kind = node.options.kind;
-  if (kind) return [kind === "revision" ? REVISION : STATUS];
+/** A context change names top level keys, so attributes are filed by theirs. */
+function topKey(path: string): string {
+  const dot = path.indexOf(".");
+  return dot === -1 ? path : path.slice(0, dot);
+}
 
-  const reads = node.reads;
-  const keys: string[] = [];
-  if (reads) {
-    for (const path of reads.attributes) {
-      // Paths such as account.plan and account.id share one top level key.
-      const key = path === ANY ? ANY : ATTRIBUTE + path.split(".")[0];
-      if (keys.indexOf(key) === -1) keys.push(key);
-    }
-    for (const key of reads.segments) keys.push(SEGMENT + key);
-    for (const key of reads.features) keys.push(FEATURE + key);
-    for (const key of reads.variables) keys.push(VARIABLE + key);
+function file(index: Index, key: string, node: AnyNode): void {
+  let nodes = index.get(key);
+  if (!nodes) index.set(key, (nodes = new Set()));
+  nodes.add(node);
+}
+
+function unfile(index: Index, key: string, node: AnyNode): void {
+  const nodes = index.get(key);
+  if (nodes && nodes.delete(node) && nodes.size === 0) index.delete(key);
+}
+
+function collect(nodes: Nodes | undefined, touched: Nodes): void {
+  if (nodes) nodes.forEach((node) => touched.add(node));
+}
+
+function readsNothing(reads: EvaluationReads): boolean {
+  return (
+    reads.attributes.length === 0 &&
+    reads.segments.length === 0 &&
+    reads.features.length === 0 &&
+    reads.variables.length === 0
+  );
+}
+
+function sameList(first: readonly string[], second: readonly string[]): boolean {
+  if (first.length !== second.length) return false;
+  for (let index = 0; index < first.length; index++) {
+    if (first[index] !== second[index]) return false;
   }
+  return true;
+}
 
-  // Without reads to go by, a value follows every change.
-  return keys.length > 0 ? keys : [UNTRACKED];
+/** Whether two answers read the same, in the same order, as the SDK records an unchanged evaluation. */
+function sameReads(
+  first: EvaluationReads | undefined,
+  second: EvaluationReads | undefined,
+): boolean {
+  if (!first || !second) return first === second;
+
+  return (
+    sameList(first.attributes, second.attributes) &&
+    sameList(first.segments, second.segments) &&
+    sameList(first.features, second.features) &&
+    sameList(first.variables, second.variables)
+  );
 }
 
 function run(batch: Batch | undefined, work: () => void): void {
@@ -119,9 +145,19 @@ export class Engine {
   ready: boolean;
 
   private watching = 0;
-  private attributes = 0;
   private stop: Array<() => void> = [];
-  private index = new Map<string, Set<AnyNode>>();
+  // Listening values, filed by what their last answers read, each key as the
+  // SDK names it, so filing builds no strings.
+  private attributes: Index = new Map();
+  private segments: Index = new Map();
+  private features: Index = new Map();
+  private variables: Index = new Map();
+  /** Values a module may have read any attribute for, which every context change touches. */
+  private anyAttribute: Nodes = new Set();
+  /** Values without reads to go by, which follow every change. */
+  private untracked: Nodes = new Set();
+  private revision: Nodes = new Set();
+  private status: Nodes = new Set();
 
   constructor(readonly f: Featurevisor) {
     let api: FeaturevisorModuleApi | undefined;
@@ -144,29 +180,29 @@ export class Engine {
     const f = this.f;
     this.stop = [
       f.on("context_set", (details) => {
-        const touched = this.touch([ANY, UNTRACKED]);
+        const touched = this.touch();
+        collect(this.anyAttribute, touched);
+        collect(this.untracked, touched);
         // Only an index with attributes in it needs the keys, which the SDK works out when asked.
-        if (this.attributes > 0) {
+        if (this.attributes.size > 0) {
           const keys = details.keys;
           if (Array.isArray(keys)) {
-            for (const key of keys) this.collect(ATTRIBUTE + key, touched);
+            for (const key of keys) collect(this.attributes.get(key), touched);
           } else {
-            this.index.forEach((nodes, key) => {
-              if (key[0] === ATTRIBUTE) nodes.forEach((node) => touched.add(node));
-            });
+            this.attributes.forEach((nodes) => collect(nodes, touched));
           }
         }
         this.update(touched);
       }),
       f.on("datafile_set", (details) => {
-        const touched = this.touch([]);
-        if (!this.ready) this.collect(STATUS, touched);
+        const touched = this.touch();
+        if (!this.ready) collect(this.status, touched);
         this.ready = true;
-        if (details.revisionChanged) this.collect(REVISION, touched);
-        for (const key of details.features) this.collect(FEATURE + key, touched);
-        for (const key of details.variables) this.collect(VARIABLE + key, touched);
-        for (const key of details.segments || []) this.collect(SEGMENT + key, touched);
-        this.index.get(UNTRACKED)?.forEach((node) => {
+        if (details.revisionChanged) collect(this.revision, touched);
+        for (const key of details.features) collect(this.features.get(key), touched);
+        for (const key of details.variables) collect(this.variables.get(key), touched);
+        for (const key of details.segments || []) collect(this.segments.get(key), touched);
+        this.untracked.forEach((node) => {
           const follows = node.options.follows;
           if (
             !follows ||
@@ -178,8 +214,8 @@ export class Engine {
         });
         this.update(touched);
       }),
-      f.on("sticky_features_set", ({ features }) => this.sticky(FEATURE, features)),
-      f.on("sticky_variables_set", ({ variables }) => this.sticky(VARIABLE, variables)),
+      f.on("sticky_features_set", ({ features }) => this.sticky(this.features, features)),
+      f.on("sticky_variables_set", ({ variables }) => this.sticky(this.variables, variables)),
     ];
   }
 
@@ -206,50 +242,60 @@ export class Engine {
     });
   }
 
-  /** Indexes a listening value by what its last answer read. */
+  /** Files a listening value by what its last answer read. */
   add(node: AnyNode): void {
-    const keys = keysOf(node);
-    node.indexed = keys;
-    for (const key of keys) {
-      let nodes = this.index.get(key);
-      if (!nodes) this.index.set(key, (nodes = new Set()));
+    const kind = node.options.kind;
+    const reads = node.reads;
+    if (kind || !reads || readsNothing(reads)) {
+      // Instance state, or a value without reads to go by, which follows every change.
+      const nodes = kind === "revision" ? this.revision : kind ? this.status : this.untracked;
       nodes.add(node);
-      if (key[0] === ATTRIBUTE) this.attributes++;
+      node.indexed = nodes;
+      return;
     }
+
+    node.indexed = reads;
+    for (const path of reads.attributes) {
+      if (path === ANY) this.anyAttribute.add(node);
+      else file(this.attributes, topKey(path), node);
+    }
+    for (const key of reads.segments) file(this.segments, key, node);
+    for (const key of reads.features) file(this.features, key, node);
+    for (const key of reads.variables) file(this.variables, key, node);
   }
 
   remove(node: AnyNode): void {
-    for (const key of node.indexed) {
-      const nodes = this.index.get(key);
-      if (nodes && nodes.delete(node)) {
-        if (key[0] === ATTRIBUTE) this.attributes--;
-        if (nodes.size === 0) this.index.delete(key);
-      }
+    const indexed = node.indexed;
+    node.indexed = undefined;
+    if (!indexed) return;
+    if (indexed instanceof Set) {
+      indexed.delete(node);
+      return;
     }
-    node.indexed = [];
+
+    for (const path of indexed.attributes) {
+      if (path === ANY) this.anyAttribute.delete(node);
+      else unfile(this.attributes, topKey(path), node);
+    }
+    for (const key of indexed.segments) unfile(this.segments, key, node);
+    for (const key of indexed.features) unfile(this.features, key, node);
+    for (const key of indexed.variables) unfile(this.variables, key, node);
   }
 
-  private sticky(kind: string, keys: readonly string[]): void {
-    const touched = this.touch([]);
+  private sticky(index: Index, keys: readonly string[]): void {
+    const touched = this.touch();
     if (keys.length > 0) {
-      for (const key of keys) this.collect(kind + key, touched);
+      for (const key of keys) collect(index.get(key), touched);
       // Without reads, any sticky change may reach a value through its dependencies.
-      this.collect(UNTRACKED, touched);
+      collect(this.untracked, touched);
     }
     this.update(touched);
   }
 
-  /** Counts a change, and starts the set of values it touches with these index keys. */
-  private touch(keys: string[]): Set<AnyNode> {
+  /** Counts a change, and starts the set of values it touches. */
+  private touch(): Nodes {
     this.changes++;
-    const touched = new Set<AnyNode>();
-    for (const key of keys) this.collect(key, touched);
-
-    return touched;
-  }
-
-  private collect(key: string, touched: Set<AnyNode>): void {
-    this.index.get(key)?.forEach((node) => touched.add(node));
+    return new Set<AnyNode>();
   }
 
   /**
@@ -282,9 +328,9 @@ export class Engine {
 
 /** A value of one instance: what it computes, what it last read, and who listens. */
 export class Node<T> implements Source<T> {
-  /** What the last evaluation read, and the index keys the engine filed it under while listening. */
+  /** What the last evaluation read, and what the engine filed it by while listening. */
   reads: EvaluationReads | undefined;
-  indexed: string[] = [];
+  indexed: EvaluationReads | Set<AnyNode> | undefined;
 
   private value: T | undefined;
   private has = false;
@@ -422,8 +468,10 @@ export class Node<T> implements Source<T> {
       this.has = true;
     }
 
+    // An answer usually reads what the last one did, which keeps its index keys.
+    const reindex = !sameReads(this.reads, reads);
     this.reads = reads;
-    if (this.listeners.length > 0) {
+    if (reindex && this.listeners.length > 0) {
       engine.remove(this as AnyNode);
       engine.add(this as AnyNode);
     }

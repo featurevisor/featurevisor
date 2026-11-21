@@ -1,7 +1,7 @@
 import { createFeaturevisor, type Evaluation, type FeaturevisorModule } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
 
-import { createSignals } from "./index";
+import { copyValue, createSignals, sameValue } from "./index";
 import { getEngine } from "./engine";
 
 const everyone = { key: "everyone", conditions: "*" as const, percentage: 100000 };
@@ -410,21 +410,35 @@ describe("listening", () => {
       logLevel: "fatal",
       context: { userId: "user-1", account: { plan: "pro", id: "1" } },
     });
-    const engine = getEngine(f) as unknown as { attributes: number; index: Map<string, unknown> };
+    const engine = getEngine(f) as unknown as Record<string, Map<string, Set<unknown>>>;
+    const filed = () => {
+      const names = ["attributes", "segments", "features", "variables"];
+      return names.map((name) =>
+        [...engine[name].entries()].map(([key, nodes]) => [key, nodes.size]).sort(),
+      );
+    };
     const checkout = createSignals(f).flag("checkout");
     const stop = checkout.listen(() => {});
     expect(checkout.read()).toBe(true);
-    expect(engine.attributes).toBe(2);
+    const listening = [
+      [
+        ["account", 1],
+        ["userId", 1],
+      ],
+      [["proOne", 1]],
+      [["checkout", 1]],
+      [],
+    ];
+    expect(filed()).toEqual(listening);
 
     f.setContext({ account: { plan: "free", id: "1" } });
     expect(checkout.read()).toBe(false);
     f.setContext({ account: { plan: "pro", id: "1" } });
     expect(checkout.read()).toBe(true);
-    expect(engine.attributes).toBe(2);
+    expect(filed()).toEqual(listening);
 
     stop();
-    expect(engine.attributes).toBe(0);
-    expect(engine.index.size).toBe(0);
+    expect(filed()).toEqual([[], [], [], []]);
   });
 
   test("one instance has one engine, whatever reads it", () => {
@@ -536,5 +550,31 @@ describe("async values", () => {
     jest.advanceTimersByTime(0);
     await settle();
     expect(value.read()).toEqual({ status: "ready", value: true });
+  });
+});
+
+describe("comparing and copying", () => {
+  test("values compare by what they hold, whatever the key order", () => {
+    expect(sameValue({ a: 1, b: [1, { c: 2 }] }, { b: [1, { c: 2 }], a: 1 })).toBe(true);
+    expect(sameValue({ a: 1 }, { a: 1, b: 2 })).toBe(false);
+    expect(sameValue({ a: 1, b: 2 }, { a: 1 })).toBe(false);
+    expect(sameValue({ a: undefined }, {})).toBe(false);
+    expect(sameValue([1, 2], [1, 2, 3])).toBe(false);
+    expect(sameValue(new Date(1), new Date(1))).toBe(true);
+    expect(sameValue(new Date(1), { getTime: () => 1 })).toBe(false);
+    expect(sameValue(NaN, NaN)).toBe(true);
+    expect(sameValue(0, -0)).toBe(false);
+    expect(sameValue(new Map(), new Map())).toBe(false);
+  });
+
+  test("values that contain themselves end, and the comparison after them starts afresh", () => {
+    const first: Record<string, unknown> = { a: 1 };
+    first.self = first;
+    const second: Record<string, unknown> = { a: 1 };
+    second.self = second;
+
+    expect(sameValue(first, second)).toBe(true);
+    expect(sameValue({ a: 1 }, { a: 2 })).toBe(false);
+    expect(copyValue(first)).toBe(first);
   });
 });
