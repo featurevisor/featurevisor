@@ -1,5 +1,7 @@
 import * as React from "react";
 import { act, render } from "@testing-library/react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { createFeaturevisor, type Evaluation, type Featurevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
 import { useSource } from "@featurevisor/signals/react";
@@ -405,6 +407,39 @@ describe("precise updates in React", () => {
     act(() => f.setContext({ country: "de" }));
     expect(view.getByTestId("banner").textContent).toBe("Welcome");
     expect(renders).toBe(2);
+  });
+
+  test("hydrating server HTML renders each component once, with no mismatch", () => {
+    const { f } = setup();
+    let renders = 0;
+    function Wishlist() {
+      renders++;
+      const settings = useVariable<{ currency: string }>("wishlist", "settings");
+      return (
+        <p>
+          {String(useFlag("checkout"))} {settings?.currency}
+        </p>
+      );
+    }
+    const app = (
+      <FeaturevisorProvider instance={f}>
+        <Wishlist />
+      </FeaturevisorProvider>
+    );
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(app);
+    renders = 0;
+
+    const errors: unknown[] = [];
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    act(() => {
+      root = hydrateRoot(container, app, { onRecoverableError: (error) => errors.push(error) });
+    });
+
+    expect(errors).toEqual([]);
+    expect(renders).toBe(1);
+    expect(container.textContent).toBe("true EUR");
+    act(() => root?.unmount());
   });
 
   test("renders fifty components once on a context change none of them read", () => {

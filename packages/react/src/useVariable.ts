@@ -1,14 +1,33 @@
+import type { Featurevisor } from "@featurevisor/sdk";
 import type { Context, FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
 import { useRequiredSdk } from "./useRequiredSdk.js";
 import { useScopedContext } from "./scope.js";
 import { useEvaluationSubscription } from "./useEvaluationSubscription.js";
-import { useEvaluated, useEveryUpdate } from "./useEvaluated.js";
+import { useEvaluated, useEveryUpdate, type Evaluated } from "./useEvaluated.js";
 
 const EMPTY_CONTEXT: Context = {};
 
 // Feature and variable keys come from file names, so they never contain this character.
 const SEPARATOR = "\u0000";
+
+function featureVariable(
+  sdk: Featurevisor,
+  featureKey: FeatureKey,
+  variableKey: VariableKey,
+): Evaluated<unknown> {
+  return {
+    compute: (merged) => sdk.getVariable(featureKey, variableKey, merged),
+    options: { follows: { features: [featureKey] } },
+  };
+}
+
+function globalVariable(sdk: Featurevisor, variableKey: VariableKey): Evaluated<unknown> {
+  return {
+    compute: (merged) => sdk.getVariable(variableKey, merged),
+    options: { follows: { variables: [variableKey] } },
+  };
+}
 
 /**
  * Returns the evaluated variable and updates it when the feature changes. The
@@ -49,17 +68,17 @@ export function useVariable<TValue = VariableValue>(
       sdk,
       SEPARATOR + featureKeyOrVariableKey,
       resolvedContext,
-      (merged) => sdk.getVariable<TValue>(featureKeyOrVariableKey, merged),
-      { follows: { variables: [featureKeyOrVariableKey] } },
-    );
+      globalVariable,
+      featureKeyOrVariableKey,
+    ) as TValue | null;
   }
 
-  const variableKey = variableKeyOrContext;
   return useEvaluated(
     sdk,
-    featureKeyOrVariableKey + SEPARATOR + variableKey,
+    featureKeyOrVariableKey + SEPARATOR + variableKeyOrContext,
     resolvedContext,
-    (merged) => sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKey, merged),
-    { follows: { features: [featureKeyOrVariableKey] } },
-  );
+    featureVariable,
+    featureKeyOrVariableKey,
+    variableKeyOrContext,
+  ) as TValue | null;
 }

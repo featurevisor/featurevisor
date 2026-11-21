@@ -1,10 +1,11 @@
 import { useMemo } from "react";
+import type { Featurevisor } from "@featurevisor/sdk";
 import type { Context, FeatureKey } from "@featurevisor/types";
 
 import { useRequiredSdk } from "./useRequiredSdk.js";
 import { useScopedContext } from "./scope.js";
 import { useFeaturesSubscription } from "./useFeaturesSubscription.js";
-import { useEvaluated, useEveryUpdate } from "./useEvaluated.js";
+import { useEvaluated, useEveryUpdate, type Evaluated } from "./useEvaluated.js";
 
 const EMPTY_CONTEXT: Context = {};
 
@@ -35,6 +36,17 @@ function evaluateFlags(
   });
 }
 
+function flags(sdk: Featurevisor, featureKeys: readonly FeatureKey[]): Evaluated<boolean[]> {
+  const keys = featureKeys.slice();
+
+  return {
+    compute: (merged) => evaluateFlags((key, own) => sdk.isEnabled(key, own), keys, merged),
+    options: { follows: { features: keys } },
+    // No keys read nothing, so nothing can change the answer.
+    constant: keys.length === 0,
+  };
+}
+
 /**
  * Returns whether each feature is enabled, in the order of the keys, and
  * updates when any of them changes. A key listed twice is evaluated once.
@@ -62,19 +74,14 @@ export function useFlags<K extends readonly FeatureKey[] | []>(
     return useMemo(() => values, [signature]) as unknown as FlagValues<K>;
   }
 
-  // An inline list is a new array on every render, so the source follows the keys it holds.
-  const signature = featureKeys.join(SEPARATOR);
-  const count = featureKeys.length;
-
-  const keys = count === 0 ? [] : signature.split(SEPARATOR);
-
-  // The same values keep the same array, so the result can sit in dependency lists.
+  // An inline list is a new array on every render, so the source follows the
+  // keys it holds. The same values keep the same array, so the result can sit
+  // in dependency lists.
   return useEvaluated(
     sdk,
-    `${count}${SEPARATOR}${signature}`,
+    `${featureKeys.length}${SEPARATOR}${featureKeys.join(SEPARATOR)}`,
     scopedContext,
-    (merged) => evaluateFlags((key, own) => sdk.isEnabled(key, own), keys, merged),
-    // No keys read nothing, so nothing can change the answer.
-    { follows: { features: keys }, constant: count === 0 },
+    flags,
+    featureKeys,
   ) as unknown as FlagValues<K>;
 }

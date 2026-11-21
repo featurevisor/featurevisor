@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { Featurevisor } from "@featurevisor/sdk";
 import type { Context } from "@featurevisor/types";
-import { createValue, type Source, type ValueOptions } from "@featurevisor/signals";
+import { copyValue, createValue, type Source, type ValueOptions } from "@featurevisor/signals";
 import { useSource } from "@featurevisor/signals/react";
 
 import { UpdatesContext } from "./updates.js";
@@ -11,21 +11,55 @@ export function useEveryUpdate(): boolean {
   return React.useContext(UpdatesContext) === "every";
 }
 
+/** What a hook's source evaluates, built once per source from the hook's keys. */
+export interface Evaluated<T> {
+  compute: (context: Context) => T;
+  options: ValueOptions<T>;
+  /** A value nothing can change, such as the answer for no keys, which listens to nothing. */
+  constant?: boolean;
+}
+
+const { useSyncExternalStore } = React as Partial<typeof React>;
+
+const listenToNothing = () => () => {};
+
 /**
- * The latest context a hook rendered with, as it was given, so the SDK and its
- * modules receive the same object they always did. The source compares it by
- * value with the one its last answer was for, so an inline context asks nothing
- * again, a context changed in place reads as changed, and one that differs is
- * read in the same render, so a new prop never shows a stale value for a frame.
+ * One hook's value. Its source on the instance's engine is made when a client
+ * first reads or listens, so a server, which renders once and never listens,
+ * evaluates directly and makes none. Hydrating in a browser reads the source,
+ * so the first client render matches what it holds.
  */
-function useContextGetter(context: Context): () => Context {
-  const latest = React.useRef(context);
-  latest.current = context;
+class HookValue<T> implements Source<T> {
+  private source: Source<T> | undefined;
 
-  const getter = React.useRef<(() => Context) | undefined>(undefined);
-  if (!getter.current) getter.current = () => latest.current;
+  constructor(
+    private readonly sdk: Featurevisor,
+    private readonly evaluated: Evaluated<T>,
+    public context: Context,
+  ) {}
 
-  return getter.current;
+  read = (): T => this.get().read();
+
+  listen = (changed: () => void): (() => void) => this.get().listen(changed);
+
+  readOnServer = (): T =>
+    typeof document === "undefined"
+      ? copyValue(this.evaluated.compute(this.context))
+      : this.get().read();
+
+  private get(): Source<T> {
+    if (this.source) return this.source;
+
+    const { compute, options, constant } = this.evaluated;
+    if (constant) {
+      const value = compute(this.context);
+      this.source = { read: () => value, listen: listenToNothing };
+    } else {
+      this.source = createValue(this.sdk, compute, () => this.context, { ...options, copy: true });
+    }
+
+    return this.source;
+  }
 }
 
 /**
@@ -33,33 +67,34 @@ function useContextGetter(context: Context): () => Context {
  * renders again only when the value changes, and the SDK evaluates again only
  * when something the last answer read has changed. Each value keeps its own
  * copy of what the SDK returned, so a component that changes a returned value
- * in place changes nothing the SDK or any other component holds. `identity`
- * names what the source evaluates, so a new key makes a new source.
+ * in place changes nothing the SDK or any other component holds.
+ *
+ * `identity` names what the source evaluates, so a new key makes a new source,
+ * and `build` makes what it evaluates from the keys only then, so a render
+ * allocates nothing here. The source reads the latest context as it was given,
+ * so the SDK and its modules receive the same object they always did. It
+ * compares that context by value with the one its last answer was for, so an
+ * inline context asks nothing again, a context changed in place reads as
+ * changed, and one that differs is read in the same render, so a new prop never
+ * shows a stale value for a frame.
  */
-export function useEvaluated<T>(
+export function useEvaluated<T, A, B = undefined>(
   sdk: Featurevisor,
   identity: string,
   context: Context,
-  compute: (context: Context) => T,
-  options: ValueOptions<T> & { constant?: boolean } = {},
+  build: (sdk: Featurevisor, first: A, second: B) => Evaluated<T>,
+  first: A,
+  second?: B,
 ): T {
-  const readContext = useContextGetter(context);
-  const source = React.useMemo(
-    () =>
-      options.constant
-        ? constant(compute(readContext()))
-        : createValue(sdk, compute, readContext, { ...options, copy: true }),
+  const value = React.useMemo(
+    () => new HookValue(sdk, build(sdk, first, second as B), context),
     [sdk, identity],
   );
+  value.context = context;
 
-  return useSource(source);
-}
-
-const listenToNothing = () => () => {};
-
-/** A value nothing can change, such as the answer for an empty list of keys, which listens to nothing. */
-function constant<T>(value: T): Source<T> {
-  return { read: () => value, listen: listenToNothing };
+  return useSyncExternalStore
+    ? useSyncExternalStore(value.listen, value.read, value.readOnServer)
+    : useSource(value);
 }
 
 /** Whether to stop at each feature, for useEveryFlag and useSomeFlag. */

@@ -1,12 +1,28 @@
+import type { Featurevisor } from "@featurevisor/sdk";
 import type { Context, FeatureKey } from "@featurevisor/types";
 
 import { useRequiredSdk } from "./useRequiredSdk.js";
 import { useScopedContext } from "./scope.js";
 import { useFeaturesSubscription } from "./useFeaturesSubscription.js";
-import { flagUntil, useEvaluated, useEveryUpdate } from "./useEvaluated.js";
+import { flagUntil, useEvaluated, useEveryUpdate, type Evaluated } from "./useEvaluated.js";
 
 // Feature keys come from file names, so they never contain this character.
 const SEPARATOR = "\u0000";
+
+function until(
+  sdk: Featurevisor,
+  featureKeys: readonly FeatureKey[],
+  stopAt: boolean,
+): Evaluated<boolean> {
+  const keys = featureKeys.slice();
+
+  return {
+    compute: (merged) => flagUntil(sdk, keys, merged, stopAt),
+    options: { equals: Object.is, follows: { features: keys } },
+    // No keys read nothing: every flag of none is enabled, and none is some.
+    constant: keys.length === 0,
+  };
+}
 
 /**
  * Evaluates the features in order and returns `stopAt` at the first one whose
@@ -36,17 +52,12 @@ export function useFlagUntil(
     return !stopAt;
   }
 
-  const signature = featureKeys.join(SEPARATOR);
-  const count = featureKeys.length;
-
-  const keys = count === 0 ? [] : signature.split(SEPARATOR);
-
   return useEvaluated(
     sdk,
-    `${stopAt}${SEPARATOR}${count}${SEPARATOR}${signature}`,
+    `${stopAt}${SEPARATOR}${featureKeys.length}${SEPARATOR}${featureKeys.join(SEPARATOR)}`,
     scopedContext,
-    (merged) => flagUntil(sdk, keys, merged, stopAt),
-    // No keys read nothing: every flag of none is enabled, and none is some.
-    { equals: Object.is, follows: { features: keys }, constant: count === 0 },
+    until,
+    featureKeys,
+    stopAt,
   );
 }
