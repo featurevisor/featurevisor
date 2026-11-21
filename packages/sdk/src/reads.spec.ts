@@ -1,7 +1,7 @@
 import type { DatafileContent } from "@featurevisor/types";
 
 import { createFeaturevisor } from "./instance";
-import type { FeaturevisorModuleApi } from "./modules";
+import type { FeaturevisorModule, FeaturevisorModuleApi } from "./modules";
 import { createDatafile, createFeature } from "./instance.test-fixtures";
 
 function datafile(overrides: Partial<DatafileContent> = {}): DatafileContent {
@@ -329,11 +329,11 @@ describe("datafile_set segments", () => {
   });
 });
 
-describe("modules without evaluation hooks", () => {
+describe("frozen modules without evaluation hooks", () => {
   test("take no part in evaluations", () => {
     const seen: string[] = [];
     const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
-    f.addModule({ name: "package", setup: () => {} });
+    f.addModule(Object.freeze({ name: "package", setup: () => {} }));
     f.addModule({
       name: "analytics",
       afterEvaluation: (evaluation, options) => {
@@ -346,6 +346,24 @@ describe("modules without evaluation hooks", () => {
     expect(f.getVariable("banner", { country: "nl" })).toBe("Welkom");
     expect(f.isEnabled("simple", { userId: "user-1" })).toBe(true);
     expect(seen).toEqual(["variable:banner", "flag:simple"]);
+    // Evaluations iterate only the analytics module.
+    expect((f as unknown as { modules: unknown[] }).modules).toHaveLength(1);
+  });
+
+  test("a module that is not frozen may set a hook after it is added", () => {
+    const seen: string[] = [];
+    const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
+    const module: FeaturevisorModule = { name: "later" };
+    f.addModule(module);
+    expect(f.isEnabled("simple", { userId: "user-1" })).toBe(true);
+
+    module.afterEvaluation = (evaluation) => {
+      seen.push(evaluation.featureKey || "?");
+      return { ...evaluation, enabled: false };
+    };
+
+    expect(f.isEnabled("simple", { userId: "user-1" })).toBe(false);
+    expect(seen).toEqual(["simple"]);
   });
 
   test("still count for duplicate names, removal and closing", async () => {
@@ -376,19 +394,21 @@ describe("modules without evaluation hooks", () => {
       stickyFeatures: { simple: { enabled: true } },
     });
     let changed = false;
-    f.addModule({
-      name: "listener",
-      setup: (api) => {
-        api.onDiagnostic(
-          () => {
-            if (changed) return;
-            changed = true;
-            f.setStickyFeatures({ simple: { enabled: false } }, true);
-          },
-          { logLevel: "debug" },
-        );
-      },
-    });
+    f.addModule(
+      Object.freeze({
+        name: "listener",
+        setup: (api: FeaturevisorModuleApi) => {
+          api.onDiagnostic(
+            () => {
+              if (changed) return;
+              changed = true;
+              f.setStickyFeatures({ simple: { enabled: false } }, true);
+            },
+            { logLevel: "debug" },
+          );
+        },
+      }),
+    );
 
     // The handler runs during the first evaluation and changes sticky values,
     // with the same answers the SDK gave before modules without hooks were set apart.

@@ -118,13 +118,15 @@ export function getRequiredVariableValueAtPath(
   return value;
 }
 
-/** Whether a module takes part in evaluations. One without hooks, such as a package's, costs evaluations nothing. */
+/**
+ * Whether a module takes part in evaluations. A frozen module without hooks,
+ * as packages add, can never gain one, so it costs evaluations nothing. Any
+ * other module may set a hook after it is added, and takes part as before.
+ */
 function takesPartInEvaluations(module: FeaturevisorModule): boolean {
-  return !!(
-    module.beforeEvaluation ||
-    module.bucketKey ||
-    module.bucketValue ||
-    module.afterEvaluation
+  return (
+    !Object.isFrozen(module) ||
+    !!(module.beforeEvaluation || module.bucketKey || module.bucketValue || module.afterEvaluation)
   );
 }
 

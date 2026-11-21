@@ -434,6 +434,8 @@ describe("listening", () => {
     createSignals(f).flag("checkout").read();
     createSignals(f).flag("wishlist").read();
     expect(getEngine(f)).toBe(getEngine(f));
+    // The engine's own module is frozen and has no hooks, so evaluations skip it.
+    expect((f as unknown as { modules: unknown[] }).modules).toHaveLength(1);
   });
 });
 

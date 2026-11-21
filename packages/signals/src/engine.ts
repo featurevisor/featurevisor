@@ -117,11 +117,11 @@ export class Engine {
   constructor(readonly f: Featurevisor) {
     let api: FeaturevisorModuleApi | undefined;
     const instance = f as Partial<Featurevisor>;
-    // A module without hooks costs evaluations nothing. It has no name, so two
-    // copies of this package on one instance never clash. A child instance has
-    // no modules, so its values follow every change, as before.
+    // A frozen module without hooks costs evaluations nothing. It has no name,
+    // so two copies of this package on one instance never clash. A child
+    // instance has no modules, so its values follow every change, as before.
     if (typeof instance.addModule === "function") {
-      instance.addModule({ setup: (moduleApi) => void (api = moduleApi) });
+      instance.addModule(Object.freeze({ setup: (moduleApi) => void (api = moduleApi) }));
     }
     this.track = api && typeof api.track === "function" ? api.track : undefined;
     // A child shares its parent's datafile, so only a root instance can be waiting for one.
