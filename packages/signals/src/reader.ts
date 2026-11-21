@@ -44,7 +44,10 @@ export interface ReaderOptions {
    * place reaches neither the SDK nor any other value. Framework hooks use it.
    */
   copy?: boolean;
-  /** Runs notifications together, such as Preact's `batch`. Set by adapters. */
+  /**
+   * Runs the engine's work together and outside the library's tracking, such
+   * as Preact's `batch` with `untracked`. Set by adapters.
+   */
   batch?: Batch;
 }
 

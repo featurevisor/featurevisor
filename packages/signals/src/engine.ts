@@ -20,7 +20,11 @@ export interface Source<T> {
   listen(changed: () => void): () => void;
 }
 
-/** Runs notifications together, such as Preact's `batch`. */
+/**
+ * Runs the engine's work for one library's values together and outside its
+ * tracking, such as Preact's `batch` with `untracked`, so a change made inside
+ * an effect neither ties that effect to what the values read nor runs it again.
+ */
 export type Batch = (run: () => void) => void;
 
 type Track = <T>(callback: () => T) => TrackResult<T>;
@@ -89,6 +93,11 @@ function keysOf(node: AnyNode): string[] {
 
   // Without reads to go by, a value follows every change.
   return keys.length > 0 ? keys : [UNTRACKED];
+}
+
+function run(batch: Batch | undefined, work: () => void): void {
+  if (batch) batch(work);
+  else work();
 }
 
 function intersects(keys: readonly string[] | undefined, changed: readonly string[]): boolean {
@@ -245,24 +254,29 @@ export class Engine {
 
   /**
    * Asks each touched value again, once all are known, since answering
-   * reindexes it, then tells the listeners of those whose answers changed,
-   * inside each library's batch.
+   * reindexes it. Every value answers before any listener is told, so a
+   * listener reading another value sees its new answer. Both steps run inside
+   * each library's batch.
    */
   private update(touched: Set<AnyNode>): void {
-    const batches: Array<[Batch | undefined, AnyNode[]]> = [];
+    const groups: Array<[Batch | undefined, AnyNode[]]> = [];
     touched.forEach((node) => {
-      if (!node.invalidate()) return;
       const batch = node.options.batch;
-      let group = batches.find(([candidate]) => candidate === batch);
-      if (!group) batches.push((group = [batch, []]));
+      let group = groups.find(([candidate]) => candidate === batch);
+      if (!group) groups.push((group = [batch, []]));
       group[1].push(node);
     });
 
-    for (const [batch, nodes] of batches) {
-      const run = () => nodes.forEach((node) => node.emit());
-      if (batch) batch(run);
-      else run();
-    }
+    const changed = groups.map(([batch, nodes]): AnyNode[] => {
+      const answered: AnyNode[] = [];
+      run(batch, () => nodes.forEach((node) => node.invalidate() && answered.push(node)));
+      return answered;
+    });
+
+    groups.forEach(([batch], index) => {
+      const nodes = changed[index];
+      if (nodes.length > 0) run(batch, () => nodes.forEach((node) => node.emit()));
+    });
   }
 }
 

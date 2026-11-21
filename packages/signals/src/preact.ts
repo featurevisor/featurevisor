@@ -1,4 +1,4 @@
-import { batch, computed, signal, type ReadonlySignal } from "@preact/signals-core";
+import { batch, computed, signal, untracked, type ReadonlySignal } from "@preact/signals-core";
 import type { Featurevisor } from "@featurevisor/sdk";
 
 import type { Source } from "./engine.js";
@@ -35,7 +35,12 @@ export function toSignal<T>(source: Source<T>): ReadonlySignal<T> {
   });
 }
 
+/** Runs together and untracked, so a change made inside an effect does not tie it to the values. */
+function together(run: () => void): void {
+  batch(() => untracked(run));
+}
+
 /** A reader whose values are Preact signals, updated together in one batch per change. */
 export function createSignals(f: Featurevisor, options: ReaderOptions = {}): Reader<"preact"> {
-  return createReader<"preact">(f, toSignal, { ...options, batch: options.batch || batch });
+  return createReader<"preact">(f, toSignal, { ...options, batch: options.batch || together });
 }

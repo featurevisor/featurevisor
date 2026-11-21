@@ -1,6 +1,6 @@
 import * as React from "react";
 import { act, render } from "@testing-library/react";
-import { effect } from "@preact/signals-core";
+import { effect, signal } from "@preact/signals-core";
 import { Signal } from "signal-polyfill";
 import { defineComponent, h, nextTick } from "vue";
 import { mount } from "@vue/test-utils";
@@ -67,6 +67,31 @@ describe("Preact", () => {
     stopReviews();
   });
 
+  test("a context set inside an effect does not tie that effect to the values", () => {
+    const f = instance();
+    const productId = signal("1");
+    const country = signal("nl");
+    const checkout = createPreactSignals(f).flag("checkout", () => ({
+      productId: productId.value,
+    }));
+    const seen: boolean[] = [];
+    const stopWatch = effect(() => void seen.push(checkout.value));
+    let runs = 0;
+    const stopSync = effect(() => {
+      runs++;
+      f.setContext({ country: country.value });
+    });
+
+    country.value = "de";
+    expect(seen).toEqual([true, false]);
+    expect(runs).toBe(2);
+
+    productId.value = "2";
+    expect(runs).toBe(2);
+    stopSync();
+    stopWatch();
+  });
+
   test("listens to the instance only while an effect watches", async () => {
     const f = instance();
     const checkout = createPreactSignals(f).flag("checkout");
@@ -102,6 +127,33 @@ describe("TC39 signals", () => {
     watcher.unwatch(checkout);
     await Promise.resolve();
     expect(getEngine(f).attached).toBe(false);
+  });
+
+  test("a context set inside a computed, as Lit's effects run, does not tie it to the values", () => {
+    const f = instance();
+    const productId = new Signal.State("1");
+    const country = new Signal.State("nl");
+    const checkout = createTc39Signals(f).flag("checkout", () => ({ productId: productId.get() }));
+    let runs = 0;
+    const sync = new Signal.Computed(() => {
+      runs++;
+      f.setContext({ country: country.get() });
+      return country.get();
+    });
+    const watcher = new Signal.subtle.Watcher(() => {});
+    watcher.watch(checkout);
+    expect(checkout.get()).toBe(true);
+    expect(sync.get()).toBe("nl");
+
+    country.set("de");
+    expect(sync.get()).toBe("de");
+    expect(checkout.get()).toBe(false);
+    expect(runs).toBe(2);
+
+    productId.set("2");
+    expect(sync.get()).toBe("de");
+    expect(runs).toBe(2);
+    watcher.unwatch(checkout);
   });
 });
 

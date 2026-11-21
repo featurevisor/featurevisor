@@ -13,7 +13,7 @@ export interface ValueOptions<T> {
   copy?: boolean;
   /** Freezes each kept value, so changing it in place throws. */
   freeze?: boolean;
-  /** Runs notifications together, such as Preact's `batch`. */
+  /** Runs the engine's work together and outside the library's tracking. Set by adapters. */
   batch?: Batch;
   /** What the value follows where the SDK cannot say what it read, such as on a child instance. */
   follows?: Follows;

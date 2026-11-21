@@ -33,7 +33,12 @@ export function toSignal<T>(source: Source<T>): Signal.Computed<T> {
   });
 }
 
+/** Runs untracked, so a change made inside a computed does not tie it to the values. */
+function untracked(run: () => void): void {
+  Signal.subtle.untrack(run);
+}
+
 /** A reader whose values are TC39 computed signals, which work with Lit and plain watchers. */
 export function createSignals(f: Featurevisor, options: ReaderOptions = {}): Reader<"tc39"> {
-  return createReader<"tc39">(f, toSignal, options);
+  return createReader<"tc39">(f, toSignal, { ...options, batch: options.batch || untracked });
 }
