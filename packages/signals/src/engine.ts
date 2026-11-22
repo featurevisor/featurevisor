@@ -369,6 +369,16 @@ export class Node<T> implements Source<T> {
     if (this.listeners.length === 1) {
       engine.watch(this as AnyNode);
 
+      // A value listened to before it was read answers now, so it is filed by
+      // what it reads, and its first answer is not told as a change.
+      if (!this.has) {
+        try {
+          this.evaluate(this.options.context());
+        } catch {
+          // The next read throws where the library can report it.
+        }
+      }
+
       // A change since the last answer, while nothing listened, would be
       // missed, whether it was heard or the instance was not followed then.
       if (

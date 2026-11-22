@@ -384,6 +384,22 @@ describe("listening", () => {
     expect(checkout.read()).toBe(false);
   });
 
+  test("a value listened to before it is read tells only real changes", () => {
+    const { f, counts, signals } = setup();
+    const checkout = signals.flag("checkout");
+    const wishlist = signals.flag("wishlist");
+    const told: string[] = [];
+    checkout.listen(() => told.push(`checkout ${checkout.read()}`));
+    wishlist.listen(() => told.push(`wishlist ${wishlist.read()}`));
+    expect(counts).toEqual({ checkout: 1, wishlist: 1 });
+
+    // wishlist reads no country, so the change neither asks it again nor tells its listener.
+    f.setContext({ country: "de" });
+
+    expect(told).toEqual(["checkout false"]);
+    expect(counts).toEqual({ checkout: 2, wishlist: 1 });
+  });
+
   test("paths sharing a top level key are indexed once, and leave nothing behind", () => {
     const f = createFeaturevisor({
       datafile: datafile({
