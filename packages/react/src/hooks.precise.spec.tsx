@@ -391,8 +391,8 @@ describe("precise updates in React", () => {
     let renders = 0;
     function Banner() {
       renders++;
-      const fv = useSignals();
-      const banner = React.useMemo(() => fv.variable("banner"), [fv]);
+      const signals = useSignals();
+      const banner = React.useMemo(() => signals.variable("banner"), [signals]);
       return <span data-testid="banner">{String(useSource(banner))}</span>;
     }
     const view = render(

@@ -64,13 +64,13 @@ function setup(context = {}) {
     context: { userId: "user-1", country: "nl", account: { plan: "free" }, ...context },
     modules: [module],
   });
-  return { f, counts, fv: createSignals(f) };
+  return { f, counts, signals: createSignals(f) };
 }
 
 describe("precise updates", () => {
   test("a value evaluates once, and again only when something it read changes", () => {
-    const { f, counts, fv } = setup();
-    const checkout = fv.flag("checkout");
+    const { f, counts, signals } = setup();
+    const checkout = signals.flag("checkout");
     const changes: boolean[] = [];
     const stop = checkout.listen(() => changes.push(checkout.read()));
 
@@ -91,8 +91,8 @@ describe("precise updates", () => {
   });
 
   test("an equal answer tells nobody", () => {
-    const { f, counts, fv } = setup();
-    const wishlist = fv.flag("wishlist");
+    const { f, counts, signals } = setup();
+    const wishlist = signals.flag("wishlist");
     let told = 0;
     wishlist.listen(() => told++);
     wishlist.read();
@@ -109,9 +109,9 @@ describe("precise updates", () => {
   });
 
   test("a datafile asks again only for what it changed", () => {
-    const { f, counts, fv } = setup();
-    const checkout = fv.flag("checkout");
-    const wishlist = fv.flag("wishlist");
+    const { f, counts, signals } = setup();
+    const checkout = signals.flag("checkout");
+    const wishlist = signals.flag("wishlist");
     checkout.listen(() => {});
     wishlist.listen(() => {});
     checkout.read();
@@ -130,8 +130,8 @@ describe("precise updates", () => {
   });
 
   test("a segment changed in a partial datafile asks again for what read it", () => {
-    const { f, fv } = setup();
-    const checkout = fv.flag("checkout");
+    const { f, signals } = setup();
+    const checkout = signals.flag("checkout");
     checkout.listen(() => {});
     expect(checkout.read()).toBe(true);
 
@@ -148,9 +148,9 @@ describe("precise updates", () => {
   });
 
   test("sticky values ask again only for the features they name", () => {
-    const { f, counts, fv } = setup();
-    const checkout = fv.flag("checkout");
-    const wishlist = fv.flag("wishlist");
+    const { f, counts, signals } = setup();
+    const checkout = signals.flag("checkout");
+    const wishlist = signals.flag("wishlist");
     checkout.listen(() => {});
     wishlist.listen(() => {});
     checkout.read();
@@ -191,8 +191,8 @@ describe("precise updates", () => {
   });
 
   test("a global variable follows the segments of its overrides", () => {
-    const { f, fv } = setup();
-    const banner = fv.variable("banner");
+    const { f, signals } = setup();
+    const banner = signals.variable("banner");
     banner.listen(() => {});
     expect(banner.read()).toBe("Welkom");
 
@@ -243,8 +243,8 @@ describe("without precision", () => {
 
 describe("values", () => {
   test("equal objects keep the previous one", () => {
-    const { f, fv } = setup({ account: { plan: "pro" } });
-    const settings = fv.variable("reviews", "settings");
+    const { f, signals } = setup({ account: { plan: "pro" } });
+    const settings = signals.variable("reviews", "settings");
     settings.listen(() => {});
     const first = settings.read();
 
@@ -280,9 +280,9 @@ describe("values", () => {
   });
 
   test("a context getter asks again when its value changes, compared by value", () => {
-    const { counts, fv } = setup();
+    const { counts, signals } = setup();
     let country = "nl";
-    const checkout = fv.flag("checkout", () => ({ country }));
+    const checkout = signals.flag("checkout", () => ({ country }));
 
     expect(checkout.read()).toBe(true);
     expect(checkout.read()).toBe(true);
@@ -294,8 +294,8 @@ describe("values", () => {
   });
 
   test("scopes merge from the outermost, under the value's own context", () => {
-    const { fv } = setup();
-    const outer = fv.scope({ country: "de" });
+    const { signals } = setup();
+    const outer = signals.scope({ country: "de" });
     const inner = outer.scope({ country: "nl" });
 
     expect(outer.flag("checkout").read()).toBe(false);
@@ -304,9 +304,9 @@ describe("values", () => {
   });
 
   test("from makes any getter precise", () => {
-    const { f, fv } = setup();
+    const { f, signals } = setup();
     let computed = 0;
-    const summary = fv.from((context) => {
+    const summary = signals.from((context) => {
       computed++;
       return {
         checkout: f.isEnabled("checkout", context),
@@ -326,23 +326,23 @@ describe("values", () => {
   });
 
   test("everyFlag and someFlag stop at the first answer that decides", () => {
-    const { counts, fv } = setup({ country: "de" });
+    const { counts, signals } = setup({ country: "de" });
 
-    expect(fv.everyFlag(["checkout", "wishlist"]).read()).toBe(false);
+    expect(signals.everyFlag(["checkout", "wishlist"]).read()).toBe(false);
     expect(counts).toEqual({ checkout: 1 });
-    expect(fv.someFlag(["wishlist", "checkout"]).read()).toBe(true);
+    expect(signals.someFlag(["wishlist", "checkout"]).read()).toBe(true);
     expect(counts).toEqual({ checkout: 1, wishlist: 1 });
   });
 
   test("revision and status follow datafiles", () => {
     const f = createFeaturevisor({ logLevel: "fatal" });
-    const fv = createSignals(f);
+    const signals = createSignals(f);
     const told: string[] = [];
-    fv.revision.listen(() => told.push(`revision ${fv.revision.read()}`));
-    fv.status.listen(() => told.push(`status ${fv.status.read()}`));
+    signals.revision.listen(() => told.push(`revision ${signals.revision.read()}`));
+    signals.status.listen(() => told.push(`status ${signals.status.read()}`));
 
-    expect(fv.status.read()).toBe("pending");
-    expect(fv.revision.read()).toBe("unknown");
+    expect(signals.status.read()).toBe("pending");
+    expect(signals.revision.read()).toBe("unknown");
 
     f.setDatafile(datafile());
     f.setDatafile(datafile());
@@ -353,9 +353,9 @@ describe("values", () => {
 
 describe("listening", () => {
   test("listens to the instance only while something listens, and stops a microtask later", async () => {
-    const { f, fv } = setup();
+    const { f, signals } = setup();
     const engine = getEngine(f);
-    const checkout = fv.flag("checkout");
+    const checkout = signals.flag("checkout");
     const stop = checkout.listen(() => {});
     expect(engine.attached).toBe(true);
 
@@ -368,9 +368,9 @@ describe("listening", () => {
   });
 
   test("a change made while nothing listened is told once listening starts", async () => {
-    const { f, fv } = setup();
+    const { f, signals } = setup();
     const engine = getEngine(f);
-    const checkout = fv.flag("checkout");
+    const checkout = signals.flag("checkout");
     const stop = checkout.listen(() => {});
     checkout.read();
     stop();
@@ -464,11 +464,11 @@ describe("async values", () => {
   }
 
   test("waits for a pause, lets the latest input win and keeps answers", async () => {
-    const { fv } = setup();
+    const { signals } = setup();
     let input: string | undefined = "an";
     const loads: string[] = [];
     const aborted: string[] = [];
-    const available = fv.async(
+    const available = signals.async(
       (name: string, { signal }) => {
         loads.push(name);
         signal?.addEventListener("abort", () => aborted.push(name));
@@ -552,10 +552,10 @@ describe("async values", () => {
   });
 
   test("a failure is reported and not kept", async () => {
-    const { fv } = setup();
+    const { signals } = setup();
     let attempts = 0;
     let input: string | undefined = "x";
-    const value = fv.async(
+    const value = signals.async(
       () => {
         attempts++;
         return Promise.reject(new Error("offline"));
@@ -580,9 +580,9 @@ describe("async values", () => {
   });
 
   test("nothing loads while nothing listens, as on a server", async () => {
-    const { fv } = setup();
+    const { signals } = setup();
     let loads = 0;
-    const value = fv.async(
+    const value = signals.async(
       () => {
         loads++;
         return true;

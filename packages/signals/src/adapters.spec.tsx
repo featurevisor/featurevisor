@@ -42,10 +42,10 @@ function instance() {
 describe("Preact", () => {
   test("effects run only when a value changes, once per SDK change", () => {
     const f = instance();
-    const fv = createPreactSignals(f);
-    const checkout = fv.flag("checkout");
-    const liveChat = fv.flag("liveChat");
-    const reviews = fv.flag("reviews");
+    const signals = createPreactSignals(f);
+    const checkout = signals.flag("checkout");
+    const liveChat = signals.flag("liveChat");
+    const reviews = signals.flag("reviews");
     const runs: string[] = [];
 
     const stopBoth = effect(() => {
@@ -108,8 +108,8 @@ describe("Preact", () => {
 describe("TC39 signals", () => {
   test("a watcher is told only when a value changes", async () => {
     const f = instance();
-    const fv = createTc39Signals(f);
-    const checkout = fv.flag("checkout");
+    const signals = createTc39Signals(f);
+    const checkout = signals.flag("checkout");
     let notified = 0;
     const watcher = new Signal.subtle.Watcher(() => {
       notified++;

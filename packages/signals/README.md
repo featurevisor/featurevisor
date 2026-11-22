@@ -28,12 +28,12 @@ const f = createFeaturevisor({
   },
 });
 
-const fv = createSignals(f);
+const signals = createSignals(f);
 
-const checkout = fv.flag("checkout");
-const label = fv.variable("buyButton", "label");
-const banner = fv.variable("banner");
-const [wishlist, liveChat] = fv.flags(["wishlist", "liveChat"]);
+const checkout = signals.flag("checkout");
+const label = signals.variable("buyButton", "label");
+const banner = signals.variable("banner");
+const [wishlist, liveChat] = signals.flags(["wishlist", "liveChat"]);
 ```
 
 Each value is a Preact signal. When `country` changes, only the values whose answers read `country` evaluate again, and only those whose answers differ notify. Writes stay on the instance: `setContext`, `setDatafile`, `setStickyFeatures` and `setStickyVariables`.
@@ -58,8 +58,8 @@ import { useSignals } from "@featurevisor/react";
 import { useSource } from "@featurevisor/signals/react";
 
 function Checkout() {
-  const fv = useSignals();
-  const checkout = useMemo(() => fv.flag("checkout"), [fv]);
+  const signals = useSignals();
+  const checkout = useMemo(() => signals.flag("checkout"), [signals]);
   const enabled = useSource(checkout);
 
   return enabled ? <NewCheckout /> : <OldCheckout />;
@@ -74,17 +74,17 @@ Every value takes context as its last argument: an object, or a getter that read
 import { signal } from "@preact/signals-core";
 
 const productId = signal("1");
-const reviews = fv.flag("productReviews", () => ({ productId: productId.value }));
+const reviews = signals.flag("productReviews", () => ({ productId: productId.value }));
 ```
 
-`fv.scope(context)` returns a reader whose values merge that context under their own, as `FeaturevisorScope` does.
+`signals.scope(context)` returns a reader whose values merge that context under their own, as `FeaturevisorScope` does.
 
 ## Values from anything
 
-`fv.from(compute, context)` makes a value from any function of the effective context, such as a package's getter. It follows exactly what the SDK evaluations inside it read:
+`signals.from(compute, context)` makes a value from any function of the effective context, such as a package's getter. It follows exactly what the SDK evaluations inside it read:
 
 ```ts
-const summary = fv.from((context) => ({
+const summary = signals.from((context) => ({
   checkout: f.isEnabled("checkout", context),
   banner: f.getVariable("banner", context),
 }));
@@ -92,12 +92,12 @@ const summary = fv.from((context) => ({
 
 ## Async values
 
-`fv.async(load, options)` gives a value a promise away, such as a username check. It waits for `debounce` milliseconds of quiet input, aborts an older load through its signal when a newer input arrives, keeps ready answers per input, and loads nothing while nothing listens, so a server never waits:
+`signals.async(load, options)` gives a value a promise away, such as a username check. It waits for `debounce` milliseconds of quiet input, aborts an older load through its signal when a newer input arrives, keeps ready answers per input, and loads nothing while nothing listens, so a server never waits:
 
 ```ts
 const username = signal("");
 
-const availability = fv.async(
+const availability = signals.async(
   (name: string, { signal }) => api.isUsernameAvailable(name, { signal }),
   { input: () => username.value || undefined, debounce: 400 },
 );
@@ -105,11 +105,11 @@ const availability = fv.async(
 
 Its value is `{ status: "idle" }`, `{ status: "pending" }`, `{ status: "ready", value }` or `{ status: "failed", error }`.
 
-Every ready answer is kept for as long as the value lives. `keepAnswers` keeps only that many, the most recently used, for every async value of a reader, as in `createSignals(f, { keepAnswers: 100 })`, or for one value, as an option of `fv.async`.
+Every ready answer is kept for as long as the value lives. `keepAnswers` keeps only that many, the most recently used, for every async value of a reader, as in `createSignals(f, { keepAnswers: 100 })`, or for one value, as an option of `signals.async`.
 
 ## Instance state
 
-`fv.revision` holds the datafile's revision, and `fv.status` is `"pending"` until the instance accepts a datafile, then `"ready"`.
+`signals.revision` holds the datafile's revision, and `signals.status` is `"pending"` until the instance accepts a datafile, then `"ready"`.
 
 ## Precision
 
