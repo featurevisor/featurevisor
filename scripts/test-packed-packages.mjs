@@ -12,6 +12,7 @@ const packageDirectories = [
   "types",
   "expressions",
   "sdk",
+  "signals",
   "react",
   "vue",
   "catalog",

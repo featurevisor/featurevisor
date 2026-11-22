@@ -10,6 +10,7 @@ import type {
 
 import { compareVersions } from "./compareVersions.js";
 import type { FeaturevisorDiagnosticReporter } from "./diagnostics.js";
+import { recordAttribute } from "./reads.js";
 
 export type GetRegex = (regexString: string, regexFlags: string) => RegExp;
 
@@ -59,6 +60,8 @@ export function getPortableTimestamp(value: unknown): number | null {
 }
 
 export function getValueFromContext(obj: Context, path: string): AttributeValue {
+  recordAttribute(path);
+
   if (path.indexOf(".") === -1) {
     return obj[path];
   }

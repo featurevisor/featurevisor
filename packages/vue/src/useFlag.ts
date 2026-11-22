@@ -1,7 +1,8 @@
 import type { Ref } from "vue";
 import type { FeatureKey } from "@featurevisor/types";
 
-import { onFeatures, useLive, type ContextSource } from "./live.js";
+import type { ContextSource } from "./context.js";
+import { usePrecise } from "./precise.js";
 import { injectScope, readScopedContext } from "./scope.js";
 import { useSdk } from "./useSdk.js";
 
@@ -13,8 +14,10 @@ import { useSdk } from "./useSdk.js";
 export function useFlag(featureKey: FeatureKey, context?: ContextSource): Readonly<Ref<boolean>> {
   const sdk = useSdk();
   const scope = injectScope();
+  const read = () => readScopedContext(scope, context);
 
-  return useLive(sdk, onFeatures(sdk, [featureKey]), () =>
-    sdk.isEnabled(featureKey, readScopedContext(scope, context)),
-  );
+  return usePrecise(sdk, (merged) => sdk.isEnabled(featureKey, merged), read, {
+    equals: Object.is,
+    follows: { features: [featureKey] },
+  });
 }

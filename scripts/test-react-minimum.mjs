@@ -44,7 +44,7 @@ function npm(args, cwd, timeout) {
 
 try {
   // Consume existing output only. Building here could disrupt another consumer.
-  const tarballs = ["types", "sdk", "react"].map((name) => {
+  const tarballs = ["types", "sdk", "signals", "react"].map((name) => {
     const directory = join(root, "packages", name);
     const manifest = JSON.parse(readFileSync(join(directory, "package.json"), "utf8"));
     if (!existsSync(join(directory, manifest.main))) {

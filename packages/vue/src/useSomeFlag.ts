@@ -2,7 +2,7 @@ import type { Ref } from "vue";
 import type { FeatureKey } from "@featurevisor/types";
 
 import { flagUntil } from "./flagUntil.js";
-import type { ContextSource } from "./live.js";
+import type { ContextSource } from "./context.js";
 import type { NonEmptyFeatureKeys } from "./useEveryFlag.js";
 
 /**

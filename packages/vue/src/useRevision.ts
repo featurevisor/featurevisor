@@ -1,7 +1,11 @@
 import type { Ref } from "vue";
+import type { Context } from "@featurevisor/types";
 
-import { onRevision, useLive } from "./live.js";
+import { usePrecise } from "./precise.js";
 import { useSdk } from "./useSdk.js";
+
+const EMPTY_CONTEXT: Context = {};
+const noContext = () => EMPTY_CONTEXT;
 
 /**
  * Returns a readonly ref holding the revision of the instance's datafile. It
@@ -11,5 +15,7 @@ import { useSdk } from "./useSdk.js";
 export function useRevision(): Readonly<Ref<string>> {
   const sdk = useSdk();
 
-  return useLive(sdk, onRevision(sdk), () => sdk.getRevision());
+  // The revision reads no attribute, so the value asks again on every change,
+  // which is cheap, and its ref changes only when the revision does.
+  return usePrecise(sdk, () => sdk.getRevision(), noContext, { equals: Object.is });
 }

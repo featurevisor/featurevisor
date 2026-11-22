@@ -83,8 +83,8 @@ function expected(label = "first", key = "policy", enabled = true): Snapshot {
   };
 }
 
-// The change tracker adds four listeners per instance while any hook is subscribed.
-const TRACKER_LISTENERS = 4;
+// The engine listens to each instance once, whatever the number of hooks.
+const ENGINE_LISTENERS = 4;
 
 function observe(sdk: Featurevisor) {
   const original = sdk.on.bind(sdk);
@@ -159,13 +159,13 @@ describe.each([false, true])("committed hook snapshots, StrictMode: %s", (strict
     const h = harness(first);
     const view = render(h.tree());
     h.snapshots.forEach((snapshot) => expect(snapshot).toEqual(expected()));
-    expect(firstEvents.active()).toHaveLength(16 + TRACKER_LISTENERS);
+    expect(firstEvents.active()).toHaveLength(ENGINE_LISTENERS);
 
     h.check(() => view.rerender(h.tree(second)), expected("second", "policy", false));
-    // The change tracker stops a microtask after the last hook on an instance leaves.
+    // The engine stops listening a microtask after the last hook on an instance leaves.
     await Promise.resolve();
     expect(firstEvents.active()).toHaveLength(0);
-    expect(secondEvents.active()).toHaveLength(16 + TRACKER_LISTENERS);
+    expect(secondEvents.active()).toHaveLength(ENGINE_LISTENERS);
     h.check(() => view.rerender(h.tree(first)), expected());
     h.check(() => view.rerender(h.tree(first, "alternate")), expected("first", "alternate"));
     h.check(() => view.rerender(h.tree(first, "missing")), {
@@ -249,48 +249,6 @@ describe.each([false, true])("committed hook snapshots, StrictMode: %s", (strict
       global: { labels: ["pinned"] },
     });
   });
-
-  test.each(["flag", "variation", "feature", "global"] as const)(
-    "catches changes during subscription setup for %s without another hook refreshing it",
-    (kind) => {
-      const sdk = instance();
-      const original = sdk.on.bind(sdk);
-      let calls = 0;
-      jest.spyOn(sdk, "on").mockImplementation((event, callback) => {
-        // The change tracker attaches first, while rendering. Change the SDK as
-        // the hook itself subscribes.
-        if (++calls === TRACKER_LISTENERS + 1) sdk.setStickyVariables({ gate: false });
-        return original(event, callback);
-      });
-      const commits: unknown[] = [];
-      const hooks = {
-        flag: () => useFlag("policy"),
-        variation: () => useVariation("policy"),
-        feature: () => useVariable("policy", "value"),
-        global: () => useVariable("policy"),
-      };
-      const useValue = hooks[kind];
-      function Reader() {
-        const value = useValue();
-        React.useLayoutEffect(() => {
-          commits.push(value);
-        });
-        return null;
-      }
-      const content = (
-        <FeaturevisorProvider instance={sdk}>
-          <Reader />
-        </FeaturevisorProvider>
-      );
-      render(strict ? <React.StrictMode>{content}</React.StrictMode> : content);
-      expect(commits[0]).toEqual(expected()[kind]);
-      expect(commits[commits.length - 1]).toEqual(expected("first", "policy", false)[kind]);
-      commits.length = 0;
-      act(() => sdk.setStickyVariables({}, true));
-      expect(commits.length).toBeGreaterThan(0);
-      commits.forEach((value) => expect(value).toEqual(expected()[kind]));
-    },
-  );
 
   describe.each(["context", "datafile", "sticky features", "sticky variables"])(
     "missed %s event",

@@ -54,8 +54,8 @@ function observe(sdk: Featurevisor) {
   return { on, cleanups, active: () => cleanups.filter((fn) => !fn.mock.calls.length) };
 }
 
-// The change tracker adds four listeners per instance while any hook is subscribed.
-const TRACKER_LISTENERS = 4;
+// The engine listens to each instance once, whatever the number of hooks.
+const ENGINE_LISTENERS = 4;
 
 let renders = 0;
 const results: (readonly boolean[])[] = [];
@@ -189,30 +189,27 @@ describe("react: useFlags", function () {
     const sdk = instance();
     const events = observe(sdk);
     const view = render(tree(sdk, ["checkout", "liveChat"]));
-    expect(events.on).toHaveBeenCalledTimes(4 + TRACKER_LISTENERS);
+    expect(events.on).toHaveBeenCalledTimes(ENGINE_LISTENERS);
 
     for (let i = 0; i < 5; i++) {
       view.rerender(tree(sdk, ["checkout", "liveChat"], { userId: `user-${i}` }));
     }
 
-    expect(events.on).toHaveBeenCalledTimes(4 + TRACKER_LISTENERS);
-    expect(events.active()).toHaveLength(4 + TRACKER_LISTENERS);
+    expect(events.on).toHaveBeenCalledTimes(ENGINE_LISTENERS);
+    expect(events.active()).toHaveLength(ENGINE_LISTENERS);
   });
 
-  test("resubscribes once when the keys change", function () {
+  test("follows new keys on the same listeners", function () {
     const sdk = instance();
     const events = observe(sdk);
     const view = render(tree(sdk, ["checkout", "liveChat"]));
     const first = [...events.cleanups];
 
     view.rerender(tree(sdk, ["liveChat", "wishlist"]));
-    // The hook's own four listeners are replaced. The change tracker keeps its
-    // four through the resubscription, so it counts nothing as a change.
-    expect(first.map((cleanup) => cleanup.mock.calls.length).sort()).toEqual([
-      0, 0, 0, 0, 1, 1, 1, 1,
-    ]);
-    expect(events.on).toHaveBeenCalledTimes(2 * 4 + TRACKER_LISTENERS);
-    expect(events.active()).toHaveLength(4 + TRACKER_LISTENERS);
+    // Other keys make another value on the same engine, which keeps listening.
+    expect(first.map((cleanup) => cleanup.mock.calls.length)).toEqual([0, 0, 0, 0]);
+    expect(events.on).toHaveBeenCalledTimes(ENGINE_LISTENERS);
+    expect(events.active()).toHaveLength(ENGINE_LISTENERS);
 
     // The new subscription follows the new keys.
     act(() => sdk.setDatafile(datafile("first", ["wishlist"])));
@@ -225,7 +222,7 @@ describe("react: useFlags", function () {
     const view = render(tree(sdk, KEYS));
 
     view.unmount();
-    // The change tracker stops a microtask after the last hook on an instance leaves.
+    // The engine stops a microtask after the last hook on an instance leaves.
     await Promise.resolve();
     events.cleanups.forEach((cleanup) => expect(cleanup).toHaveBeenCalledTimes(1));
 

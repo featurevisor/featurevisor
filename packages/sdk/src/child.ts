@@ -17,7 +17,7 @@ import type { EventCallback, EventDetailsByName, EventName } from "./events.js";
 import { getValueByType, type VariableGetter } from "./variable.js";
 import { getStickyChangeKeys } from "./keys.js";
 import type { StickyState } from "./session.js";
-import { mergeContext } from "./context.js";
+import { createContextSetDetails, mergeContext } from "./context.js";
 
 function mergeLookup<TValue>(
   previous: Record<string, TValue> | undefined,
@@ -168,16 +168,22 @@ export class FeaturevisorChildInstance {
 
   setContext(context: Context, replace = false) {
     this.evaluationGeneration++;
+    const previousContext = this.context;
     if (replace) {
       this.context = context;
     } else {
       this.context = mergeContext(this.context, context);
     }
 
-    this.trigger("context_set", {
-      context: this.context,
-      replaced: replace,
-    });
+    this.trigger(
+      "context_set",
+      createContextSetDetails(
+        this.context,
+        replace,
+        previousContext,
+        replace ? undefined : context,
+      ),
+    );
   }
 
   getContext(context?: Context): Context {

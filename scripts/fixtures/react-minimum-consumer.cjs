@@ -68,6 +68,8 @@ function instance(grant) {
 }
 
 async function main() {
+  // The engine listens with one set of four listeners per instance.
+  const listeners = 4;
   for (const strict of [false, true]) {
     const first = instance("read");
     const second = instance("second");
@@ -128,12 +130,11 @@ async function main() {
       });
       assert.deepEqual(snapshots[0], expected("read"), "initial render must have evaluated values");
       expectValue(expected("read"));
-      // One listener per event for each of the three hooks, and the change tracker's four.
-      assert.equal(active(first), 16, "one listener per event for each hook and the tracker");
+      assert.equal(active(first), listeners, "listeners for the hooks on one instance");
       step(() => view.update(tree()));
       step(() => view.update(tree()));
       expectValue(expected("read"));
-      assert.equal(active(first), 16);
+      assert.equal(active(first), listeners);
       step(() => view.update(tree(first.sdk, "de")));
       expectValue(expected("read", []));
       step(() => view.update(tree()));
@@ -149,10 +150,10 @@ async function main() {
       expectValue(expected("write"));
       step(() => view.update(tree(second.sdk)));
       expectValue(expected("second"));
-      // The change tracker stops a microtask after the last hook on an instance leaves.
+      // The engine stops a microtask after the last hook on an instance leaves.
       await Promise.resolve();
       assert.equal(active(first), 0, "provider replacement must release old SDK listeners");
-      assert.equal(active(second), 16);
+      assert.equal(active(second), listeners);
       const beforeOldEvent = renders;
       step(() => first.sdk.setContext({ country: "de" }));
       assert.equal(renders, beforeOldEvent);

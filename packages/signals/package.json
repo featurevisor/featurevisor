@@ -1,0 +1,129 @@
+{
+  "name": "@featurevisor/signals",
+  "sideEffects": false,
+  "version": "4.12.0",
+  "description": "Reactive values for Featurevisor flags, variables and packages, for any signals library, React and Vue",
+  "main": "cjs/index.js",
+  "module": "esm/index.js",
+  "types": "cjs/index.d.ts",
+  "files": [
+    "cjs",
+    "esm",
+    "node-esm"
+  ],
+  "exports": {
+    ".": {
+      "types": "./cjs/index.d.ts",
+      "require": "./cjs/index.js",
+      "import": "./node-esm/index.js"
+    },
+    "./react": {
+      "types": "./cjs/react.d.ts",
+      "require": "./cjs/react.js",
+      "import": "./node-esm/react.js"
+    },
+    "./vue": {
+      "types": "./cjs/vue.d.ts",
+      "require": "./cjs/vue.js",
+      "import": "./node-esm/vue.js"
+    },
+    "./preact": {
+      "types": "./cjs/preact.d.ts",
+      "require": "./cjs/preact.js",
+      "import": "./node-esm/preact.js"
+    },
+    "./tc39": {
+      "types": "./esm/tc39.d.ts",
+      "import": "./node-esm/tc39.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "react": [
+        "cjs/react.d.ts"
+      ],
+      "vue": [
+        "cjs/vue.d.ts"
+      ],
+      "preact": [
+        "cjs/preact.d.ts"
+      ],
+      "tc39": [
+        "esm/tc39.d.ts"
+      ]
+    }
+  },
+  "scripts": {
+    "transpile": "rimraf cjs esm node-esm && tsc --project tsconfig.cjs.json && tsc --project tsconfig.esm.json && tsc --project tsconfig.node-esm.json && node -e \"require('fs').writeFileSync('node-esm/package.json', '{\\n  \\\"type\\\": \\\"module\\\"\\n}\\n')\"",
+    "build": "npm run transpile",
+    "test": "jest --config jest.config.js --verbose --coverage",
+    "typecheck": "tsc -p tsconfig.typecheck.json && tsc -p tsconfig.typecheck.esm.json"
+  },
+  "author": {
+    "name": "Fahad Heylaal",
+    "url": "https://fahad19.com"
+  },
+  "homepage": "https://featurevisor.com",
+  "keywords": [
+    "featurevisor",
+    "feature",
+    "features",
+    "flags",
+    "feature flags",
+    "feature toggles",
+    "feature management",
+    "signals",
+    "reactivity",
+    "react",
+    "vue",
+    "preact"
+  ],
+  "repository": {
+    "directory": "packages/signals",
+    "type": "git",
+    "url": "https://github.com/featurevisor/featurevisor.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bugs": {
+    "url": "https://github.com/featurevisor/featurevisor/issues"
+  },
+  "dependencies": {
+    "@featurevisor/sdk": "4.8.0",
+    "@featurevisor/types": "4.8.0"
+  },
+  "peerDependencies": {
+    "@preact/signals-core": "^1.14.0",
+    "react": ">=16.8",
+    "signal-polyfill": "^0.2.0",
+    "vue": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@preact/signals-core": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "signal-polyfill": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@preact/signals-core": "1.14.5",
+    "@testing-library/react": "^16.3.2",
+    "@vue/test-utils": "^2.4.11",
+    "jest-environment-jsdom": "^30.4.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "signal-polyfill": "0.2.2",
+    "vue": "^3.5.44"
+  }
+}

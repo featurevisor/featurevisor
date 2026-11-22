@@ -257,6 +257,7 @@ describe("Featurevisor public API: datafiles", () => {
         revisionChanged: true,
         features: ["changed", "added"],
         variables: [],
+        segments: [],
         replaced: false,
       },
     ]);
@@ -270,6 +271,7 @@ describe("Featurevisor public API: datafiles", () => {
           revisionChanged: true,
           features: ["changed", "added"],
           variables: [],
+          segments: [],
           replaced: false,
         },
       }),
@@ -373,6 +375,7 @@ describe("Featurevisor public API: datafiles", () => {
       revisionChanged: true,
       features: ["direct", "indirect", "transitive"],
       variables: ["bySegment", "byFeature"],
+      segments: ["audience"],
       replaced: false,
     });
   });
@@ -610,6 +613,7 @@ describe("Featurevisor public API: datafiles", () => {
       revisionChanged: true,
       features: ["dependent", "transitive"],
       variables: ["source", "message"],
+      segments: [],
       replaced: replace,
     });
     expect(sdk.isEnabled("dependent")).toBe(true);

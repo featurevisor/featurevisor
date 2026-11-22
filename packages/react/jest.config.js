@@ -19,5 +19,7 @@ module.exports = {
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1",
     "^@featurevisor/sdk$": "<rootDir>/../sdk/src",
+    "^@featurevisor/signals$": "<rootDir>/../signals/src",
+    "^@featurevisor/signals/react$": "<rootDir>/../signals/src/react",
   },
 };

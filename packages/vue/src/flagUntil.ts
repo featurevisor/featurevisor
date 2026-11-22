@@ -1,7 +1,8 @@
 import type { Ref } from "vue";
-import type { FeatureKey } from "@featurevisor/types";
+import type { Context, FeatureKey } from "@featurevisor/types";
 
-import { onFeatures, useLive, type ContextSource } from "./live.js";
+import type { ContextSource } from "./context.js";
+import { usePrecise } from "./precise.js";
 import { injectScope, readScopedContext } from "./scope.js";
 import { useSdk } from "./useSdk.js";
 
@@ -19,10 +20,9 @@ export function flagUntil(
   const sdk = useSdk();
   const scope = injectScope();
   const keys = featureKeys.slice();
+  const read = () => readScopedContext(scope, context);
 
-  return useLive(sdk, keys.length === 0 ? undefined : onFeatures(sdk, keys), () => {
-    const resolved = readScopedContext(scope, context);
-
+  const evaluate = (resolved: Context) => {
     for (let index = 0; index < keys.length; index++) {
       const featureKey = keys[index];
 
@@ -32,5 +32,12 @@ export function flagUntil(
     }
 
     return !stopAt;
+  };
+
+  return usePrecise(sdk, evaluate, read, {
+    equals: Object.is,
+    follows: { features: keys },
+    // No keys read nothing: every flag of none is enabled, and none is some.
+    constant: keys.length === 0,
   });
 }

@@ -1,6 +1,6 @@
 export * from "./setupApp.js";
 export * from "./FeaturevisorScope.js";
-export type { ContextSource } from "./live.js";
+export type { ContextSource } from "./context.js";
 
 export * from "./useSdk.js";
 export * from "./useVariable.js";
@@ -10,3 +10,4 @@ export * from "./useFlags.js";
 export * from "./useEveryFlag.js";
 export * from "./useSomeFlag.js";
 export * from "./useRevision.js";
+export * from "./useSignals.js";

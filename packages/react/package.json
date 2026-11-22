@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "@featurevisor/sdk": "4.8.0",
+    "@featurevisor/signals": "4.12.0",
     "@featurevisor/types": "4.8.0"
   },
   "peerDependencies": {

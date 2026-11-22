@@ -30,6 +30,23 @@ const packages = [
     },
   },
   {
+    directory: "signals",
+    name: "@featurevisor/signals",
+    runtimeExports: {
+      createReader: "function",
+      createSignals: "function",
+      createValue: "function",
+      sameValue: "function",
+    },
+    subpaths: {
+      "./react": { useSource: "function" },
+      "./vue": { useSource: "function" },
+      "./preact": { createSignals: "function", toSignal: "function" },
+      // signal-polyfill is published as ESM only, so this subpath has no require condition.
+      "./tc39": { createSignals: "function", toSignal: "function", esmOnly: true },
+    },
+  },
+  {
     directory: "react",
     name: "@featurevisor/react",
     runtimeExports: {
@@ -40,7 +57,22 @@ const packages = [
       useEveryFlag: "function",
       useSomeFlag: "function",
       useRevision: "function",
-      onFeaturesChange: "function",
+      useSignals: "function",
+    },
+  },
+  {
+    directory: "vue",
+    name: "@featurevisor/vue",
+    runtimeExports: {
+      setupApp: "function",
+      provideFeaturevisorScope: "function",
+      useSdk: "function",
+      useFlag: "function",
+      useFlags: "function",
+      useEveryFlag: "function",
+      useSomeFlag: "function",
+      useRevision: "function",
+      useSignals: "function",
     },
   },
   {
@@ -140,7 +172,7 @@ function assertReactClientModules() {
 }
 
 async function main() {
-  for (const directory of ["types", "expressions", "sdk", "react", "vue"]) {
+  for (const directory of ["types", "expressions", "sdk", "signals", "react", "vue"]) {
     assertDeclarations(directory);
   }
   assertReactClientModules();
@@ -153,7 +185,10 @@ async function main() {
     if (manifest.repository?.directory !== `packages/${directory}`) {
       throw new Error(`${manifest.name} must link to its repository package directory`);
     }
-    if (["sdk", "react", "vue", "types"].includes(directory) && manifest.sideEffects !== false) {
+    if (
+      ["sdk", "signals", "react", "vue", "types"].includes(directory) &&
+      manifest.sideEffects !== false
+    ) {
       throw new Error(`${manifest.name} must retain its reviewed sideEffects declaration`);
     }
   }
@@ -182,6 +217,22 @@ async function main() {
 
     assertRuntimeExports(packageDetails, require(packageDetails.name), "require()");
     assertRuntimeExports(packageDetails, await import(packageDetails.name), "import");
+
+    for (const [subpath, expected] of Object.entries(packageDetails.subpaths || {})) {
+      const { esmOnly, ...runtimeExports } = expected;
+      const conditions = esmOnly ? ["types", "import"] : ["types", "require", "import"];
+      for (const condition of conditions) {
+        assertFileExists(
+          packageDirectory,
+          packageJson.exports?.[subpath]?.[condition],
+          `${packageDetails.name} exports["${subpath}"].${condition}`,
+        );
+      }
+      const specifier = packageDetails.name + subpath.slice(1);
+      const subpathDetails = { name: specifier, runtimeExports };
+      if (!esmOnly) assertRuntimeExports(subpathDetails, require(specifier), "require()");
+      assertRuntimeExports(subpathDetails, await import(specifier), "import");
+    }
 
     if (packageDetails.exposesFeaturevisor) {
       const declarations = readFileSync(join(packageDirectory, rootExports.types), "utf8");

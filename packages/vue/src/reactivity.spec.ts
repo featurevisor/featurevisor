@@ -290,19 +290,22 @@ describe("vue: reactive context", () => {
 });
 
 describe("vue: subscriptions", () => {
-  it("attach when mounted, with one set of counting listeners per instance, and leave on unmount", () => {
+  it("attach once per instance, whatever the number of composables, and leave after unmount", async () => {
     const { sdk } = instance();
     const events = observe(sdk);
     const first = mountValue(sdk, () => useFlag("checkout"));
     const second = mountValue(sdk, () => useVariable("supportEmail"));
 
-    // Four for each composable, and four for the change count.
-    expect(events.on).toHaveBeenCalledTimes(2 * 4 + 4);
-    expect(events.active()).toHaveLength(2 * 4 + 4);
+    // The engine's four listeners, for both composables.
+    expect(events.on).toHaveBeenCalledTimes(4);
+    expect(events.active()).toHaveLength(4);
 
     first.wrapper.unmount();
-    expect(events.active()).toHaveLength(4 + 4);
+    await Promise.resolve();
+    expect(events.active()).toHaveLength(4);
     second.wrapper.unmount();
+    // The engine stops a microtask after the last composable leaves.
+    await Promise.resolve();
     expect(events.active()).toHaveLength(0);
   });
 
@@ -323,8 +326,8 @@ describe("vue: subscriptions", () => {
       expect(await renderToString(app)).toBe("<p>true:help</p>");
     }
 
-    // Only the change count's one set, however many requests render.
-    expect(events.on).toHaveBeenCalledTimes(4);
+    // A server render makes nothing on the engine, however many requests render.
+    expect(events.on).not.toHaveBeenCalled();
   });
 
   it("catch a change made between setup and mounting", async () => {

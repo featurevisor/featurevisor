@@ -1,7 +1,8 @@
 import type { Ref } from "vue";
 import type { FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
-import { onFeatures, onVariable, useLive, type ContextSource } from "./live.js";
+import type { ContextSource } from "./context.js";
+import { usePrecise } from "./precise.js";
 import { injectScope, readScopedContext } from "./scope.js";
 import { useSdk } from "./useSdk.js";
 
@@ -33,20 +34,22 @@ export function useVariable<TValue = VariableValue>(
   // Keys are plain strings, so a second argument that is not one is the context.
   if (typeof variableKeyOrContext === "string") {
     const variableKey = variableKeyOrContext;
+    const read = () => readScopedContext(scope, context);
 
-    return useLive(sdk, onFeatures(sdk, [featureKeyOrVariableKey]), () =>
-      sdk.getVariable<TValue>(
-        featureKeyOrVariableKey,
-        variableKey,
-        readScopedContext(scope, context),
-      ),
+    return usePrecise(
+      sdk,
+      (merged) => sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKey, merged),
+      read,
+      { follows: { features: [featureKeyOrVariableKey] } },
     );
   }
 
-  return useLive(sdk, onVariable(sdk, featureKeyOrVariableKey), () =>
-    sdk.getVariable<TValue>(
-      featureKeyOrVariableKey,
-      readScopedContext(scope, variableKeyOrContext),
-    ),
+  const read = () => readScopedContext(scope, variableKeyOrContext);
+
+  return usePrecise(
+    sdk,
+    (merged) => sdk.getVariable<TValue>(featureKeyOrVariableKey, merged),
+    read,
+    { follows: { variables: [featureKeyOrVariableKey] } },
   );
 }
