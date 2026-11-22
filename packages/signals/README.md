@@ -21,7 +21,6 @@ This package is experimental: its API may change in a minor release until the fi
   - [Context from a getter](#context-from-a-getter)
   - [Scopes](#scopes)
 - [Values from anything](#values-from-anything)
-- [Async values](#async-values)
 - [Revision](#revision)
 - [Options](#options)
 - [Libraries and frameworks](#libraries-and-frameworks)
@@ -264,66 +263,6 @@ const loose = signals.from(compute, undefined, options);
 
 `compute` should read changing state only through the context or the SDK. State it reads from elsewhere is not followed, unless `precise` is `false`.
 
-## Async values
-
-`async(load, options)` makes a value that is a promise away, such as a username check:
-
-```ts
-let username = "";
-
-const availability = signals.async(
-  (name: string, { signal }) => api.isUsernameAvailable(name, { signal }),
-  {
-    input: () => username || undefined,
-    debounce: 400,
-  },
-);
-
-availability.listen(() => {
-  console.log(availability.read());
-});
-```
-
-Its value is one of:
-
-| Value                         | When                                           |
-| ----------------------------- | ---------------------------------------------- |
-| `{ status: "idle" }`          | No input, or nothing listening yet             |
-| `{ status: "pending" }`       | Waiting for the pause, or loading              |
-| `{ status: "ready", value }`  | `load` answered for the current input          |
-| `{ status: "failed", error }` | `load` threw or rejected for the current input |
-
-How it loads:
-
-- **The input.** `input` is read each time the value answers. `undefined` or `null` means no input, and the value is idle.
-- **A pause.** `debounce` waits that many milliseconds of the same input before loading. It is `0` by default.
-- **The latest input wins.** A newer input aborts the older load through `signal`, an `AbortSignal` where the runtime has one, and an older answer that arrives late is dropped.
-- **Answers kept.** A ready answer is kept for its input, so returning to that input answers at once, with no load. A failure is not kept, so coming back to that input loads it again.
-- **Nothing without a listener.** Nothing loads while nothing listens, and a load waiting for its pause, or running, is cancelled when the last listener leaves.
-
-`load` may return a value or a promise of one.
-
-Inputs are told apart by value: strings and numbers as they are, and anything else by its JSON. `key` names an input another way:
-
-```ts
-const quote = signals.async((cart: Cart, { signal }) => api.quote(cart, { signal }), {
-  input: () => currentCart,
-  key: (cart) => cart.id,
-});
-```
-
-Every ready answer is kept for as long as the value lives. `keepAnswers` keeps only that many, the most recently used, for one value, or for every async value of a reader through its [options](#options):
-
-```ts
-const search = signals.async((query: string) => api.search(query), {
-  input: () => query || undefined,
-  debounce: 200,
-  keepAnswers: 20,
-});
-```
-
-`keepAnswers: 0` keeps none.
-
 ## Revision
 
 `revision` holds the datafile's revision, as the SDK's `getRevision()` gives it, and tells its listeners when a datafile brings another:
@@ -342,17 +281,15 @@ The SDK fetches nothing, and an instance can start without a datafile or never h
 
 `createSignals(f, options)` takes:
 
-| Option        | Default                                     | What it does                                                                                                                                                            |
-| ------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `precise`     | `true`                                      | Asks again only when a change touches what the last answer read. With `false`, every value asks again on every change, for modules that read state outside the context. |
-| `freeze`      | In development builds, unless `copy` is set | Freezes the values kept, so changing one in place throws where it happens.                                                                                              |
-| `copy`        | `false`                                     | Gives each value its own copy of what the SDK returned, so changing it in place reaches nothing else.                                                                   |
-| `keepAnswers` | Every answer                                | How many ready answers each async value keeps, the most recently used. An async value's own `keepAnswers` overrides it, and `0` keeps none.                             |
+| Option    | Default                                     | What it does                                                                                                                                                            |
+| --------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `precise` | `true`                                      | Asks again only when a change touches what the last answer read. With `false`, every value asks again on every change, for modules that read state outside the context. |
+| `freeze`  | In development builds, unless `copy` is set | Freezes the values kept, so changing one in place throws where it happens.                                                                                              |
+| `copy`    | `false`                                     | Gives each value its own copy of what the SDK returned, so changing it in place reaches nothing else.                                                                   |
 
 ```ts
 const signals = createSignals(f, {
   copy: true,
-  keepAnswers: 100,
 });
 ```
 
@@ -398,20 +335,6 @@ Each value is a `ReadonlySignal`, so it works in `computed`, `effect` and Preact
 - One SDK change that alters several values updates them in one batch, so an effect reading several runs once.
 - A value listens to the instance only while something watches it.
 - Setting the context inside an effect does not make that effect depend on the values the change updates.
-
-An async value's input can read signals the same way:
-
-```ts
-const username = signal("");
-
-const availability = signals.async(
-  (name: string, { signal }) => api.isUsernameAvailable(name, { signal }),
-  {
-    input: () => username.value || undefined,
-    debounce: 400,
-  },
-);
-```
 
 `toSignal(source)` turns any source into a Preact signal, such as one from [`createValue`](#single-values).
 
@@ -473,7 +396,7 @@ This entry is ESM only, as the polyfill is.
 
 `@featurevisor/react` builds its hooks on this package, so `useFlag`, `useFlags`, `useEveryFlag`, `useSomeFlag`, `useVariation` and `useVariable` already render a component again only when their own value changes. Most applications need nothing more.
 
-For anything else, such as `from` and `async`, read the reader of the nearest `FeaturevisorProvider` with `useSignals`, and a value with `useSource`:
+For anything else, such as `from`, read the reader of the nearest `FeaturevisorProvider` with `useSignals`, and a value with `useSource`:
 
 ```tsx
 import { useMemo } from "react";
@@ -522,33 +445,35 @@ function Summary() {
 For anything else, make values in `setup` and read each with `useSource`, which returns a readonly ref:
 
 ```ts
-import { defineComponent, ref } from "vue";
+import { defineComponent } from "vue";
 import { useSdk } from "@featurevisor/vue";
 import { createSignals } from "@featurevisor/signals";
 import { useSource } from "@featurevisor/signals/vue";
 
 export default defineComponent({
-  setup() {
-    const signals = createSignals(useSdk());
-    const username = ref("");
+  props: {
+    productId: { type: String, required: true },
+  },
+  setup(props) {
+    const f = useSdk();
+    const signals = createSignals(f);
 
-    const checkout = useSource(signals.flag("checkout"));
-    const availability = useSource(
-      signals.async(
-        (name: string, { signal }) => api.isUsernameAvailable(name, { signal }),
-        {
-          input: () => username.value || undefined,
-          debounce: 400,
-        },
+    const summary = useSource(
+      signals.from(
+        (context) => ({
+          reviews: f.isEnabled("productReviews", context),
+          shipping: f.getVariable("shipping", "methods", context),
+        }),
+        () => ({ productId: props.productId }),
       ),
     );
 
-    return { checkout, username, availability };
+    return { summary };
   },
 });
 ```
 
-Refs and props that a context getter or an async input reads are followed, as `username` is here.
+Refs and props that a context getter reads are followed, as `props.productId` is here.
 
 - In a component, a ref listens once mounted and stops when unmounted, so server rendering attaches nothing.
 - Outside a component, it listens at once and stops with the current effect scope, if there is one.
@@ -634,7 +559,7 @@ A listener that throws is reported through `console.error`, and the other listen
 
 ## Server rendering
 
-Reading a value on a server evaluates it without listening, so nothing attaches to an instance shared between requests, and async values stay idle. The React and Vue hooks evaluate directly on a server, and make no value on the engine.
+Reading a value on a server evaluates it without listening, so nothing attaches to an instance shared between requests. The React and Vue hooks evaluate directly on a server, and make no value on the engine.
 
 ## API reference
 
@@ -648,7 +573,7 @@ Reading a value on a server evaluates it without listening, so nothing attaches 
 | `sameValue(first, second)`                   | Compares by value, as values do                                 |
 | `copyValue(value)`                           | A deep copy of arrays, plain objects and dates, as `copy` makes |
 
-Types: `Reader`, `ReaderOptions`, `FromOptions`, `ContextSource`, `Source`, `AsyncValue`, `AsyncOptions`, `AsyncLoad`, `ValueOptions`, `Follows`, `Batch`, `Wrapped` and `WrappedKind`.
+Types: `Reader`, `ReaderOptions`, `FromOptions`, `ContextSource`, `Source`, `ValueOptions`, `Follows`, `Batch`, `Wrapped` and `WrappedKind`.
 
 Adapters:
 

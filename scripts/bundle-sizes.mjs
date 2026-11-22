@@ -43,7 +43,7 @@ const packages = [
     name: "@featurevisor/signals",
     entry: path.join(rootDir, "packages/signals/src/index.ts"),
     fileName: "featurevisor-signals",
-    budget: 3_800,
+    budget: 3_050,
     external: ["@featurevisor/sdk"],
   },
   {
@@ -64,14 +64,14 @@ const packages = [
     name: "@featurevisor/signals/preact",
     entry: path.join(rootDir, "packages/signals/src/preact.ts"),
     fileName: "featurevisor-signals-preact",
-    budget: 3_850,
+    budget: 3_100,
     external: ["@featurevisor/sdk", "@preact/signals-core"],
   },
   {
     name: "@featurevisor/signals/tc39",
     entry: path.join(rootDir, "packages/signals/src/tc39.ts"),
     fileName: "featurevisor-signals-tc39",
-    budget: 3_850,
+    budget: 3_100,
     external: ["@featurevisor/sdk", "signal-polyfill"],
   },
   {

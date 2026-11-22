@@ -10,5 +10,4 @@ export type {
   WrappedKind,
 } from "./reader.js";
 export type { Batch, Follows, Source } from "./engine.js";
-export type { AsyncLoad, AsyncOptions, AsyncValue } from "./async.js";
 export { copyValue, sameValue } from "./values.js";

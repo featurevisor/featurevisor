@@ -7,7 +7,6 @@ import type {
   VariationValue,
 } from "@featurevisor/types";
 
-import { AsyncNode, type AsyncLoad, type AsyncOptions, type AsyncValue } from "./async.js";
 import { getEngine, Node, type Batch, type Follows, type Source } from "./engine.js";
 import { isDevelopment, mergeContext, sameValue } from "./values.js";
 
@@ -46,11 +45,6 @@ export interface ReaderOptions {
    * as Preact's `batch` with `untracked`. Set by adapters.
    */
   batch?: Batch;
-  /**
-   * How many ready answers each async value keeps, the most recently used.
-   * Every answer by default. An async value's own `keepAnswers` overrides it.
-   */
-  keepAnswers?: number;
 }
 
 export interface FromOptions<T> {
@@ -106,12 +100,6 @@ export interface Reader<K extends WrappedKind = "source"> {
     context?: ContextSource,
     options?: FromOptions<T>,
   ): Wrapped<T>[K];
-
-  /**
-   * A value a promise away, such as a username check: it waits for a pause,
-   * lets the latest input win, keeps answers, and loads nothing on a server.
-   */
-  async<T, I = unknown>(load: AsyncLoad<T, I>, options: AsyncOptions<I>): Wrapped<AsyncValue<T>>[K];
 }
 
 const EMPTY_CONTEXT: Context = {};
@@ -121,7 +109,6 @@ interface Settings {
   freeze: boolean;
   copy: boolean;
   batch?: Batch;
-  keepAnswers?: number;
 }
 
 function flagUntil(
@@ -267,9 +254,6 @@ function createScopedReader<K extends WrappedKind>(
         undefined,
         options.precise === undefined ? settings.precise : options.precise,
       ),
-
-    async: <T, I = unknown>(load: AsyncLoad<T, I>, options: AsyncOptions<I>) =>
-      wrap(new AsyncNode<T, I>(load, options, settings.batch, settings.keepAnswers)),
   };
 
   return reader;
@@ -289,7 +273,6 @@ export function createReader<K extends WrappedKind>(
     freeze: options.freeze === undefined ? isDevelopment() && !options.copy : options.freeze,
     copy: options.copy === true,
     batch: options.batch,
-    keepAnswers: options.keepAnswers,
   };
 
   return createScopedReader(f, wrap, settings, undefined);
