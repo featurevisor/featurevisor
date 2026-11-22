@@ -1,6 +1,6 @@
 {
   "name": "@featurevisor/catalog",
-  "version": "4.12.0",
+  "version": "4.13.0",
   "description": "Static catalog UI for Featurevisor projects",
   "keywords": [
     "featurevisor",
@@ -54,7 +54,7 @@
   "license": "MIT",
   "dependencies": {
     "@featurevisor/expressions": "4.10.0",
-    "@featurevisor/sdk": "4.8.0",
+    "@featurevisor/sdk": "4.13.0",
     "@featurevisor/types": "4.8.0"
   },
   "devDependencies": {
