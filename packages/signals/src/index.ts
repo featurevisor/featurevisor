@@ -10,4 +10,4 @@ export type {
   WrappedKind,
 } from "./reader.js";
 export type { Batch, Follows, Source } from "./engine.js";
-export { copyValue, sameValue } from "./values.js";
+export { copyValue, mergeContext, sameValue } from "./values.js";

@@ -2,7 +2,9 @@ import * as React from "react";
 import type { Featurevisor } from "@featurevisor/sdk";
 import type { Context } from "@featurevisor/types";
 
-import { mergeContext, ScopeContext } from "./scope.js";
+import { mergeContext } from "@featurevisor/signals";
+
+import { ScopeContext } from "./scope.js";
 import { useRequiredSdk } from "./useRequiredSdk.js";
 
 export const BOUND_METHODS = [

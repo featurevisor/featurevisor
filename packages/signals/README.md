@@ -570,6 +570,7 @@ Reading a value on a server evaluates it without listening, so nothing attaches 
 | `createSignals(f, options?)`                 | A reader whose values are sources                               |
 | `createReader(f, wrap, options?)`            | A reader whose values are what `wrap` makes of each source      |
 | `createValue(f, compute, context, options?)` | One source, without a reader                                    |
+| `mergeContext(first, second)`                | A shallow merge where `second` wins, as scopes merge            |
 | `sameValue(first, second)`                   | Compares by value, as values do                                 |
 | `copyValue(value)`                           | A deep copy of arrays, plain objects and dates, as `copy` makes |
 
