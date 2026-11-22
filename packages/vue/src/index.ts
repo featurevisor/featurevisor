@@ -10,3 +10,4 @@ export * from "./useFlags.js";
 export * from "./useEveryFlag.js";
 export * from "./useSomeFlag.js";
 export * from "./useRevision.js";
+export * from "./useSignals.js";

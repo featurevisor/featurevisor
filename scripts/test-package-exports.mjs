@@ -61,6 +61,21 @@ const packages = [
     },
   },
   {
+    directory: "vue",
+    name: "@featurevisor/vue",
+    runtimeExports: {
+      setupApp: "function",
+      provideFeaturevisorScope: "function",
+      useSdk: "function",
+      useFlag: "function",
+      useFlags: "function",
+      useEveryFlag: "function",
+      useSomeFlag: "function",
+      useRevision: "function",
+      useSignals: "function",
+    },
+  },
+  {
     directory: "openfeature-provider-core",
     name: "@featurevisor/openfeature-provider-core",
     runtimeExports: {

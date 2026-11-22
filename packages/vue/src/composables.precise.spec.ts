@@ -2,12 +2,14 @@ import { defineComponent, h, nextTick, ref, type Ref } from "vue";
 import { mount } from "@vue/test-utils";
 import { createFeaturevisor, type Evaluation, type Featurevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
+import { useSource } from "@featurevisor/signals/vue";
 
 import { provideFeaturevisorScope } from "./FeaturevisorScope";
 import { setupApp } from "./setupApp";
 import { useEveryFlag } from "./useEveryFlag";
 import { useFlag } from "./useFlag";
 import { useFlags } from "./useFlags";
+import { useSignals } from "./useSignals";
 import { useVariable } from "./useVariable";
 
 const everyone = { key: "everyone", conditions: "*" as const, percentage: 100000 };
@@ -166,5 +168,36 @@ describe("precise updates in Vue", () => {
     f.setContext({ country: "de" });
     await nextTick();
     expect(wrapper.text()).toBe("false:true:false");
+  });
+
+  test("useSignals gives the instance's reader, shared by every component", async () => {
+    const { f } = setup();
+    const readers: unknown[] = [];
+    let renders = 0;
+    const Banner = defineComponent({
+      setup() {
+        const signals = useSignals();
+        readers.push(signals);
+        const banner = useSource(signals.variable("banner"));
+        return () => {
+          renders++;
+          return h("span", String(banner.value));
+        };
+      },
+    });
+    const wrapper = mountWith(f, () => () => [h(Banner), h(Banner)]);
+    expect(readers).toHaveLength(2);
+    expect(readers[0]).toBe(readers[1]);
+    expect(wrapper.text()).toBe("WelkomWelkom");
+
+    // banner reads country, not plan.
+    f.setContext({ plan: "pro" });
+    await nextTick();
+    expect(renders).toBe(2);
+
+    f.setContext({ country: "de" });
+    await nextTick();
+    expect(wrapper.text()).toBe("WelcomeWelcome");
+    expect(renders).toBe(4);
   });
 });
