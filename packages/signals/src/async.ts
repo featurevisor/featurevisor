@@ -14,6 +14,16 @@ export interface AsyncOptions<I> {
   debounce?: number;
   /** How inputs are told apart. Strings and numbers by value, anything else by its JSON. */
   key?: (input: I) => string;
+  /**
+   * How many ready answers to keep, the most recently used. Every answer by
+   * default. Overrides the reader's `keepAnswers`.
+   */
+  keepAnswers?: number;
+}
+
+/** A count of answers to keep: a whole number from zero, or every answer. */
+export function answersToKeep(count: number | undefined): number {
+  return typeof count === "number" && count >= 0 ? Math.floor(count) : Infinity;
 }
 
 export type AsyncLoad<T, I> = (
@@ -27,8 +37,9 @@ const PENDING: AsyncValue<never> = { status: "pending" };
 /**
  * Loads for the latest input only. A newer input aborts the older load through
  * its signal, and an older answer arriving late is dropped. A ready answer is
- * kept for its input, so returning to it asks nothing, and a failure is not
- * kept. Nothing loads while nothing listens, so a server never waits.
+ * kept for its input, so returning to it asks nothing, up to `keepAnswers`
+ * answers, the least recently used going first. A failure is not kept.
+ * Nothing loads while nothing listens, so a server never waits.
  */
 export class AsyncNode<T, I> implements Source<AsyncValue<T>> {
   private state: AsyncValue<T> = IDLE;
@@ -39,11 +50,18 @@ export class AsyncNode<T, I> implements Source<AsyncValue<T>> {
   private controller: AbortController | undefined;
   private listeners: Array<() => void> = [];
 
+  private readonly keep: number;
+
   constructor(
     private readonly load: AsyncLoad<T, I>,
     private readonly options: AsyncOptions<I>,
     private readonly batch?: Batch,
-  ) {}
+    keepAnswers?: number,
+  ) {
+    this.keep = answersToKeep(
+      options.keepAnswers === undefined ? keepAnswers : options.keepAnswers,
+    );
+  }
 
   read = (): AsyncValue<T> => {
     const input = this.options.input();
@@ -92,7 +110,9 @@ export class AsyncNode<T, I> implements Source<AsyncValue<T>> {
     if (key === undefined) {
       this.state = IDLE;
     } else if (this.answers.has(key)) {
-      this.state = { status: "ready", value: this.answers.get(key) as T };
+      const value = this.answers.get(key) as T;
+      this.remember(key, value);
+      this.state = { status: "ready", value };
     } else if (this.listeners.length === 0) {
       this.state = IDLE;
     } else {
@@ -119,7 +139,7 @@ export class AsyncNode<T, I> implements Source<AsyncValue<T>> {
         (value) => {
           if (key !== this.key || controller !== this.controller) return;
           this.controller = undefined;
-          this.answers.set(key, value);
+          this.remember(key, value);
           this.settle({ status: "ready", value });
         },
         (error) => {
@@ -128,6 +148,15 @@ export class AsyncNode<T, I> implements Source<AsyncValue<T>> {
           this.settle({ status: "failed", error });
         },
       );
+  }
+
+  /** Keeps an answer as the most recently used, dropping the least recently used beyond the limit. */
+  private remember(key: string, value: T): void {
+    const answers = this.answers;
+    answers.delete(key);
+    if (this.keep === 0) return;
+    answers.set(key, value);
+    if (answers.size > this.keep) answers.delete(answers.keys().next().value as string);
   }
 
   private cancel(): void {

@@ -502,6 +502,55 @@ describe("async values", () => {
     expect(loads).toEqual(["ann", "anna"]);
   });
 
+  test("keepAnswers keeps the most recently used answers, for a reader or one value", async () => {
+    const f = createFeaturevisor({ datafile: datafile(), logLevel: "fatal" });
+    let input = "";
+    const loads: string[] = [];
+    const load = (name: string) => {
+      loads.push(name);
+      return name.toUpperCase();
+    };
+    async function visit(value: { read(): unknown }, name: string) {
+      input = name;
+      value.read();
+      jest.advanceTimersByTime(0);
+      await settle();
+      return value.read();
+    }
+
+    const twoKept = createSignals(f, { keepAnswers: 2 }).async(load, { input: () => input });
+    twoKept.listen(() => {});
+    for (const name of ["a", "b", "c"]) await visit(twoKept, name);
+    expect(loads).toEqual(["a", "b", "c"]);
+
+    // b is used again, so a newer answer pushes out c, the least recently used.
+    expect(await visit(twoKept, "b")).toEqual({ status: "ready", value: "B" });
+    await visit(twoKept, "a");
+    expect(loads).toEqual(["a", "b", "c", "a"]);
+    expect(await visit(twoKept, "b")).toEqual({ status: "ready", value: "B" });
+    await visit(twoKept, "c");
+    expect(loads).toEqual(["a", "b", "c", "a", "c"]);
+
+    // A value's own count wins over the reader's, and zero keeps none.
+    loads.length = 0;
+    const noneKept = createSignals(f, { keepAnswers: 2 }).async(load, {
+      input: () => input,
+      keepAnswers: 0,
+    });
+    noneKept.listen(() => {});
+    await visit(noneKept, "a");
+    await visit(noneKept, "b");
+    expect(await visit(noneKept, "a")).toEqual({ status: "ready", value: "A" });
+    expect(loads).toEqual(["a", "b", "a"]);
+
+    // Without a count, every answer is kept.
+    loads.length = 0;
+    const allKept = createSignals(f).async(load, { input: () => input });
+    allKept.listen(() => {});
+    for (const name of ["a", "b", "c", "a", "b", "c"]) await visit(allKept, name);
+    expect(loads).toEqual(["a", "b", "c"]);
+  });
+
   test("a failure is reported and not kept", async () => {
     const { fv } = setup();
     let attempts = 0;
