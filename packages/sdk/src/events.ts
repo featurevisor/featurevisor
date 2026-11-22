@@ -28,6 +28,12 @@ export interface DatafileSetEventDetails {
   variables: VariableKey[];
   /** Segment keys whose definitions were added, changed or, on replace, removed. */
   segments: SegmentKey[];
+  /**
+   * For every section in the previous or the new datafile, such as `schemas`,
+   * the keys of its entries that were added, changed by `hash` or, on replace,
+   * removed. Empty when a section did not change.
+   */
+  sections: Record<string, string[]>;
   replaced: boolean;
 }
 

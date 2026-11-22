@@ -51,6 +51,15 @@ export interface FeaturevisorModuleApi {
    * outside it, so getters cost what they did before.
    */
   track: <T>(callback: () => T) => TrackResult<T>;
+  /**
+   * An entry of a datafile section, such as `getEntry("schemas", "signUp")`, as
+   * stored and never copied, so treat it as read only. Undefined when the
+   * section or the entry is missing. A section is any top level datafile key
+   * besides the SDK's own whose value is an object.
+   */
+  getEntry: (section: string, key: string) => unknown;
+  /** The keys of a datafile section's entries, or an empty list for a missing section. */
+  getEntryKeys: (section: string) => string[];
 }
 
 /**
