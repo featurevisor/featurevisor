@@ -88,6 +88,7 @@ Supported SDKs include:
 - [React](https://featurevisor.com/docs/react/)
 - [React Native](https://featurevisor.com/docs/react-native/)
 - [Vue.js](https://featurevisor.com/docs/vue/)
+- [Signals](https://featurevisor.com/docs/signals/)
 - [Next.js](https://featurevisor.com/docs/frameworks/nextjs/)
 - [Go](https://featurevisor.com/docs/sdks/go/)
 - [Python](https://featurevisor.com/docs/sdks/python/)
