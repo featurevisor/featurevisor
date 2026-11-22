@@ -15,6 +15,8 @@ export const LINT_WARNING_CODES = [
   "expression_mixed_logic",
   "expression_negation_intent",
   "expression_semver_text",
+  "message_never_shown",
+  "message_worded_twice",
   "mixed_list",
   "mutation_order_changed",
   "untyped_condition",

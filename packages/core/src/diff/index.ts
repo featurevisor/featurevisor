@@ -16,6 +16,9 @@ import {
 } from "./details";
 import { DiffGit, diffError, type DiffSelection, type GitFile } from "./git";
 import { isScenarioSpec } from "../datasource/testSpecs";
+import { getTargetSchemaKeys } from "../targeting";
+import { describeSchemaWidening } from "./schemaWidening";
+import type { Schema, Target } from "@featurevisor/types";
 
 const entities = [
   "feature",
@@ -196,6 +199,7 @@ export function diffDefinitions(
       );
     }
   };
+  const widened: Array<{ key: string; set?: string; reasons: string[] }> = [];
   for (const file of Array.from(identified.keys()).sort()) {
     if (before.get(file) === after.get(file)) continue;
     const previous = parse(file, before.get(file), selection.from.ref);
@@ -223,6 +227,10 @@ export function diffDefinitions(
     if (entity.entity === "test" && isScenarioSpec(next ?? previous)) {
       entity.entity = "scenario";
     }
+    if (entity.entity === "schema" && kind === "changed") {
+      const reasons = describeSchemaWidening(previous, next);
+      if (reasons.length) widened.push({ key: entity.key, set: entity.set, reasons });
+    }
     const inheritance = describeInheritanceChanges(
       entity.entity,
       previous,
@@ -237,6 +245,37 @@ export function diffDefinitions(
       details: describeDefinitionChanges(entity.entity, previous, next, view),
       ...(inheritance.length > 0 ? { inheritance } : {}),
     });
+  }
+  // A delivered schema is a contract with the applications that load it. Values its old
+  // version rejected now pass, which code compiled against its old types may not expect.
+  if (widened.length) {
+    const delivered = (set: string | undefined) => {
+      const schemas: Record<string, Schema> = {};
+      const targets: Array<Target & { key: string }> = [];
+      for (const [file, entity] of identified) {
+        if (entity.set !== set || !after.has(file)) continue;
+        if (entity.entity === "schema") {
+          schemas[entity.key] = parse(file, after.get(file), selection.to.ref) as Schema;
+        } else if (entity.entity === "target") {
+          targets.push({
+            ...(parse(file, after.get(file), selection.to.ref) as Target),
+            key: entity.key,
+          });
+        }
+      }
+      return { schemas, targets };
+    };
+    for (const { key, set, reasons } of widened) {
+      const { schemas, targets } = delivered(set);
+      const keys = Object.keys(schemas);
+      const delivering = targets
+        .filter((target) => getTargetSchemaKeys(target, keys, schemas).includes(key))
+        .map((target) => `"${target.key}"`);
+      if (!delivering.length) continue;
+      result.warnings.push(
+        `Schema "${key}"${set ? ` in set "${set}"` : ""} now accepts values it rejected before: ${reasons.join(", ")}. Target ${delivering.join(", ")} delivers it to applications, whose code may not expect them. Regenerate their types and release them before this change.`,
+      );
+    }
   }
   const currentConfig = git
     .contents([{ path: configPath }], { ref: "working-tree" })

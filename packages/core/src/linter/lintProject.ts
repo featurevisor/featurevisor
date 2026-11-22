@@ -21,6 +21,7 @@ import { getSegmentZodSchema } from "./segmentSchema";
 import { getFeatureZodSchema } from "./featureSchema";
 import { assertNoLegacyDatasourceGroups } from "../config/removedGroups";
 import { getSchemaPatterns, getSchemaZodSchema } from "./schema";
+import { getMessageWarnings } from "./messageWarnings";
 import { getBacktrackingError, getPortableRegexError } from "./regexSafety";
 import { getTargetSchemaKeys, matchesFeaturePatterns } from "../targeting";
 import { getScenariosZodSchema, getTestsZodSchema } from "./testSchema";
@@ -1404,6 +1405,17 @@ export async function lintProject(
 
         if (!result.success && "error" in result) {
           await reportZodValidationError("schema", key, fullPath, result.error);
+        } else {
+          for (const warning of getMessageWarnings(parsed, schemasByKey)) {
+            await reportWarning({
+              filePath: path.relative(process.cwd(), fullPath),
+              entityType: "schema",
+              key,
+              path: warning.path,
+              code: warning.code,
+              message: warning.message,
+            });
+          }
         }
         await reportDeadlines("schema", key, fullPath, parsed);
       } catch (error) {

@@ -20,6 +20,25 @@ function createProject(files: Record<string, string>) {
   return root;
 }
 
+async function lintWarnings(files: Record<string, string>) {
+  const root = createProject(files);
+  try {
+    const projectConfig = getProjectConfig(root);
+    const deps = {
+      rootDirectoryPath: root,
+      projectConfig,
+      datasource: new Datasource(projectConfig, root),
+      options: {},
+    };
+    const result = await lintProject(deps as any, { json: true });
+    if (result.errors.length)
+      return result.errors.map(({ message }) => ({ code: "error", at: message }));
+    return (result.warnings || []).map(({ code, path: at }) => ({ code, at: at.join(".") }));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
 async function lint(files: Record<string, string>) {
   const root = createProject(files);
   try {
@@ -231,6 +250,48 @@ properties:
           'description: A reaction\n\ntype: string\n\nmaxLength: 1\n\nenum: ["😀"]\n',
       }),
     ).toEqual([]);
+  });
+
+  test("warns about messages that can never show", async () => {
+    const warnings = await lintWarnings({
+      "schemas/order.yml": `description: An order
+
+type: object
+
+properties:
+  quantity:
+    type: integer
+    minimum: 1
+    messages:
+      minimum: Order at least {minimum}
+  note:
+    oneOf:
+      - type: string
+        maxLength: 3
+        messages:
+          maxLength: Shorter, please
+      - type: string
+        minLength: 10
+  nickname:
+    oneOf:
+      - type: string
+        maxLength: 10
+      - const: null
+
+messages:
+  quantity:
+    maxLength: Too long
+    minimum: At least {minimum}
+  nickname:
+    maxLength: Keep it to {maxLength}
+`,
+    });
+
+    expect(warnings).toEqual([
+      { code: "message_never_shown", at: "messages.quantity.maxLength" },
+      { code: "message_worded_twice", at: "properties.quantity.messages.minimum" },
+      { code: "message_never_shown", at: "properties.note.oneOf.0.messages.maxLength" },
+    ]);
   });
 
   test("a nullable field is a oneOf with const null, in schemas and variables", async () => {
