@@ -8,6 +8,7 @@ import type {
   MessageInfo,
   PathKey,
 } from "./types.js";
+import { hasOwn } from "./paths.js";
 
 /**
  * Messages from a schema's `messages` that can word issues below `base`, the
@@ -36,6 +37,11 @@ function isMap(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function own(map: Record<string, unknown>, key: string): unknown {
+  return hasOwn(map, key) ? map[key] : undefined;
+}
+
+/** The map of messages a path leads to, through own keys only. */
 function navigate(
   messages: unknown,
   steps: ReadonlyArray<string>,
@@ -44,7 +50,7 @@ function navigate(
   let node = messages;
   for (let index = from; index < steps.length; index++) {
     if (!isMap(node)) return undefined;
-    node = node[steps[index]];
+    node = own(node, steps[index]);
   }
   return isMap(node) ? node : undefined;
 }
@@ -163,18 +169,21 @@ export function chooseMessage(
   if (ownMessage !== undefined) return fillTemplate(ownMessage, params);
   const { mpath, scopes } = lookup;
 
-  const form = navigate(sources.form, mpath)?.[code];
+  const formMessages = navigate(sources.form, mpath);
+  const form = formMessages && own(formMessages, code);
   if (typeof form === "string" || typeof form === "function") {
     return apply(form as Message, params, sources.info);
   }
 
   for (const scope of scopes) {
     if (scope.base > mpath.length) continue;
-    const schemaMessage = navigate(scope.messages, mpath, scope.base)?.[code];
+    const scopeMessages = navigate(scope.messages, mpath, scope.base);
+    const schemaMessage = scopeMessages && own(scopeMessages, code);
     if (typeof schemaMessage === "string") return fillTemplate(schemaMessage, params);
   }
 
-  const app = sources.app?.[code];
+  const app =
+    sources.app && (own(sources.app as Record<string, unknown>, code) as Message | undefined);
   if (app !== undefined) return apply(app, params, sources.info);
 
   return defaultMessage(code, params, path);

@@ -732,3 +732,98 @@ describe("the instance", () => {
     expect(createSchemas(f).isValid("coupon", "ABCD1234")).toBe(true);
   });
 });
+
+describe("hardening", () => {
+  test("a required key must be the value's own, never inherited", () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        named: {
+          type: "object",
+          properties: { constructor: { type: "string" as const } },
+          required: ["constructor"],
+        },
+      }),
+    );
+
+    expect(codes(s.validate("named", {}).issues)).toEqual([["required", "constructor"]]);
+    expect(s.isValid("named", { constructor: "Ada" })).toBe(true);
+  });
+
+  test("a form name can never reach a prototype", () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        labels: {
+          type: "object",
+          additionalProperties: { type: "object", additionalProperties: { type: "string" } },
+        },
+      }),
+    );
+    const data = new URLSearchParams("__proto__.polluted=yes&en.title=Hello");
+
+    const value = s.get("labels").fromFormData(data) as Record<string, unknown>;
+
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(value, "__proto__")).toBe(true);
+    expect(value.en).toEqual({ title: "Hello" });
+  });
+
+  test("a Date or a File is not an object, and says what it is", () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        profile: {
+          type: "object",
+          properties: { name: { type: "string" }, born: { type: "object" } },
+        },
+      }),
+    );
+
+    const result = s.validate("profile", { name: new File(["x"], "x.txt"), born: new Date(0) });
+
+    expect(result.issues!.map(({ path, params }) => [path.join("."), params.received])).toEqual([
+      ["name", "file"],
+      ["born", "date"],
+    ]);
+  });
+
+  test("form data reads a field typed only by its listed values", () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        order: { type: "object", properties: { size: { enum: [1, 2, 3] }, gift: { const: true } } },
+      }),
+    );
+
+    expect(s.get("order").fromFormData(new URLSearchParams("size=2&gift=true"))).toEqual({
+      size: 2,
+      gift: true,
+    });
+  });
+
+  test("a oneOf follows a referenced schema that changes, as do constraints through it", () => {
+    const { f, s } = setup(
+      undefined,
+      datafile({
+        name: { hash: "n1", type: "string", maxLength: 5 },
+        person: {
+          hash: "p1",
+          type: "object",
+          properties: {
+            name: { oneOf: [{ schema: "name" }, { const: null }] },
+            nick: { schema: "name" },
+          },
+        },
+      }),
+    );
+    expect(s.isValid("person", { name: 5 })).toBe(false);
+    expect(s.get("person").constraints.nick).toEqual({ maxLength: 5 });
+
+    // A partial datafile changes only the referenced schema.
+    f.setDatafile(datafile({ name: { hash: "n2", type: "integer", maximum: 9 } }, "2"));
+
+    expect(s.isValid("person", { name: 5 })).toBe(true);
+    expect(s.get("person").constraints.nick).toEqual({ max: 9, step: 1 });
+  });
+});

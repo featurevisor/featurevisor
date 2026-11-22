@@ -10,7 +10,7 @@ import {
   type Validate,
 } from "./engine.js";
 import type { MessageScope } from "./messages.js";
-import type { PathStep } from "./paths.js";
+import { hasOwn, type PathStep } from "./paths.js";
 
 /** What every schemas instance on one SDK instance shares: its module API and compiled schemas. */
 export interface Store {
@@ -61,7 +61,7 @@ export function getStore(f: Featurevisor): Store {
 
   const api = registerModule(f);
   const compiled = new Map<string, { entry: DatafileSchema; validate: Validate }>();
-  const derived = new Map<string, { entry: DatafileSchema; value: unknown }>();
+  const derived = new Map<string, { entry: DatafileSchema; revision: string; value: unknown }>();
   const reported = new Set<string>();
 
   const entry = (key: string): DatafileSchema | undefined => {
@@ -90,10 +90,14 @@ export function getStore(f: Featurevisor): Store {
       const node = entry(key);
       if (!node) return undefined;
       const id = `${kind}\u0000${key}`;
+      // Kept by the revision too, since a field's constraints can come from a referenced schema.
+      const revision = api.getRevision();
       const cached = derived.get(id);
-      if (cached && cached.entry === node) return cached.value as T;
+      if (cached && cached.entry === node && cached.revision === revision) {
+        return cached.value as T;
+      }
       const value = make(node);
-      derived.set(id, { entry: node, value });
+      derived.set(id, { entry: node, revision, value });
       return value;
     },
     reportMissing(key: string) {
@@ -141,7 +145,7 @@ export function locate(
 
     if (step.kind === "key") {
       const properties = resolved.properties;
-      if (isPlainObject(properties) && Object.prototype.hasOwnProperty.call(properties, step.key)) {
+      if (isPlainObject(properties) && hasOwn(properties, step.key)) {
         node = properties[step.key];
         mpath.push(step.key);
         continue;

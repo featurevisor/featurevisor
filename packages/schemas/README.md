@@ -19,6 +19,7 @@ This package is experimental: its API may change in a minor release.
 - [React](#react)
 - [Code generation](#code-generation)
 - [How values are checked](#how-values-are-checked)
+- [Changing a delivered schema](#changing-a-delivered-schema)
 - [Not yet](#not-yet)
 
 ## Installation
@@ -258,7 +259,7 @@ messages:
   pattern: Enter the 8 letters and digits printed on the coupon
 ```
 
-Messages reach the datafile with the schema. Lint checks that each text key is an issue code, each map key a field, and each placeholder a param of its code.
+Messages reach the datafile with the schema. Lint checks that each text key is an issue code, each map key a field, and each placeholder a param of its code. It warns about a message that can never show, such as `maxLength` for a number, and about a field and code worded both beside the rule and in an enclosing object's `messages`, where the outer one wins.
 
 **In the application**, `messages` on `createSchemas` gives a message per code for every schema, as a template or a function of the params:
 
@@ -488,12 +489,19 @@ Validation applies exactly the rules lint applies to variable values, so a value
 - `pattern` is a regular expression, tested unanchored.
 - `format: date-time` takes the portable timestamps conditions compare, and `format: semver` the versions they compare.
 - A number that is not finite fails, and a key whose value is `undefined` counts as absent.
+- An object is a plain object, as JSON has, so a `Date`, a `File` or a class instance is not one, and an issue names what it got, such as `date`.
 
 Compiled schemas are kept until the datafile changes them. Compiling builds functions without `new Function`, so the package works under a strict Content Security Policy.
 
+## Changing a delivered schema
+
+A schema that a target delivers is a contract with every application that loads it, and it changes without those applications being deployed again. Narrowing it, such as a lower `maxLength`, a new required key or a shorter `enum`, only rejects more values. Widening it lets values through that code compiled against its old types may not expect.
+
+`featurevisor diff` warns when a change widens a schema that a target delivers, directly or through a reference, saying how and naming the targets. Regenerate the applications' types and release them before such a change.
+
 ## Not yet
 
-Later releases of this package are planned to add schemas that differ by environment, rules that change under conditions, comparisons between fields, annotations for forms, and conversion to JSON Schema. A schema that some target delivers is a contract with every application that loads it: narrowing it, such as a lower `maxLength`, is safe, while widening it lets values through that code compiled against the old types may not expect, so regenerate types and release the application first.
+Later releases of this package are planned to add schemas that differ by environment, rules that change under conditions, comparisons between fields, annotations for forms, and conversion to JSON Schema.
 
 ## License
 

@@ -92,6 +92,21 @@ function expand(
   return found;
 }
 
+const parsed = new WeakMap<Refinement, { steps: PathStep[]; reads: PathStep[][] }>();
+
+/** A check's path and reads, read once per refinement object. */
+function parsedPaths(refinement: Refinement): { steps: PathStep[]; reads: PathStep[][] } {
+  let paths = parsed.get(refinement);
+  if (!paths) {
+    paths = {
+      steps: parsePath(refinement.path || ""),
+      reads: (refinement.reads || []).map(parsePath),
+    };
+    parsed.set(refinement, paths);
+  }
+  return paths;
+}
+
 /** The steps of a concrete path, for finding the field it names in a schema. */
 function stepsOf(path: ReadonlyArray<PathKey>): PathStep[] {
   return path.map((part) =>
@@ -176,8 +191,7 @@ export class SchemaHandleImpl {
     const refine = this.getOptions()?.refine || [];
     const checks: Check[] = [];
     for (const refinement of refine) {
-      const steps = parsePath(refinement.path || "");
-      const reads = (refinement.reads || []).map(parsePath);
+      const { steps, reads } = parsedPaths(refinement);
       if (this.steps.length === 0) {
         checks.push({ refinement, steps, reads });
         continue;
@@ -196,8 +210,10 @@ export class SchemaHandleImpl {
     return checks;
   }
 
-  private run(context: Context): Run {
+  private run(given: Context | undefined): Run {
     const instance = this.context.instanceOptions();
+    const { f } = this.context.store;
+    let context: Context | undefined;
     return {
       schema: this.key,
       issues: [],
@@ -205,7 +221,12 @@ export class SchemaHandleImpl {
       sources: {
         form: this.getOptions()?.messages,
         app: instance.messages,
-        info: { context },
+        // Merged only when a message function or a check reads it.
+        info: {
+          get context() {
+            return context || (context = f.getContext(given));
+          },
+        },
       },
       translate: instance.message,
     };
@@ -213,8 +234,7 @@ export class SchemaHandleImpl {
 
   /** The schema's own rules, without checks in code. */
   validateRules(value: unknown, options: ValidateOptions = {}): SchemaResult<unknown> {
-    const context = this.context.store.f.getContext(options.context);
-    const run = this.run(context);
+    const run = this.run(options.context);
     this.applyRules(value, run);
     return toResult(value, run.issues);
   }
@@ -248,11 +268,11 @@ export class SchemaHandleImpl {
     value: unknown,
     options: ValidateOptions = {},
   ): SchemaResult<unknown> | Promise<SchemaResult<unknown>> {
-    const context = this.context.store.f.getContext(options.context);
-    const run = this.run(context);
+    const run = this.run(options.context);
     const located = this.applyRules(value, run);
     const checks = located ? this.checks() : [];
     if (checks.length === 0) return toResult(value, run.issues);
+    const context = run.sources.info.context;
 
     const signal = options.signal || neverAborted();
     if (signal.aborted) return Promise.reject(signal.reason);

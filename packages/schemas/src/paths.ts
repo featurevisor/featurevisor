@@ -1,5 +1,10 @@
 import type { PathKey } from "./types.js";
 
+/** Whether a key is the object's own, never one it inherits such as `constructor`. */
+export function hasOwn(object: object, key: PropertyKey): boolean {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
 /**
  * One step of a field path: an object key, an array index, every item of an
  * array (`[]`), or every value of an object that allows any key (`*`).

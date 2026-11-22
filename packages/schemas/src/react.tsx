@@ -347,7 +347,8 @@ export function useValidation<T = unknown>(
   const version = useSchemaVersion(schemas, handle.key);
   const key = valueKey(value);
 
-  const rules = React.useMemo(() => handle.validateRules(value), [handle, key, version]);
+  // Rules are worked out on every render, so the result holds the value as it is now.
+  const rules = handle.validateRules(value);
   const needsChecks = !rules.issues && handle.hasChecks();
 
   const [checked, setChecked] = React.useState<

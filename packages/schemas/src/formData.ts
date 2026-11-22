@@ -1,16 +1,25 @@
 import { isPlainObject, resolveNode, type Resolve } from "./engine.js";
-import { parsePath, type PathStep } from "./paths.js";
+import { hasOwn, parsePath, type PathStep } from "./paths.js";
 import { locate } from "./store.js";
 
 type Container = Record<string, unknown> | unknown[];
 
 const NUMBER = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
 
+/** The one kind every listed value has, so `enum: [1, 2]` reads as a number, or undefined. */
+function listedType(values: unknown[]): string | undefined {
+  const kinds = values.filter((value) => value !== null).map((value) => typeof value);
+  if (kinds.length === 0 || kinds.some((kind) => kind !== kinds[0])) return undefined;
+  return kinds[0] === "number" || kinds[0] === "boolean" ? kinds[0] : undefined;
+}
+
 /** The rules a field's text is read by: a nullable field's are its other branch's. */
 function fieldType(node: unknown, resolve: Resolve): string | undefined {
   const resolved = resolveNode(node, resolve);
   if (!resolved) return undefined;
   if (typeof resolved.type === "string") return resolved.type;
+  if (Array.isArray(resolved.enum)) return listedType(resolved.enum);
+  if ("const" in resolved) return listedType([resolved.const]);
   if (Array.isArray(resolved.oneOf)) {
     const types = resolved.oneOf
       .map((branch) => resolveNode(branch, resolve))
@@ -33,6 +42,27 @@ function readText(raw: FormDataEntryValue, type: string | undefined): unknown {
     if (raw === "false") return false;
   }
   return raw;
+}
+
+/**
+ * Sets an own property, so a form name such as `__proto__` can never reach a
+ * prototype, whatever the schema allows.
+ */
+function setOwn(
+  holder: Record<string | number, unknown>,
+  key: string | number,
+  value: unknown,
+): void {
+  Object.defineProperty(holder, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+}
+
+function getOwn(holder: Record<string | number, unknown>, key: string | number): unknown {
+  return hasOwn(holder, key) ? holder[key] : undefined;
 }
 
 function setAt(root: Record<string, unknown>, steps: PathStep[], value: unknown): void {
@@ -58,13 +88,13 @@ function setAt(root: Record<string, unknown>, steps: PathStep[], value: unknown)
     const key = step.kind === "index" ? step.index : step.kind === "key" ? step.key : "*";
     const holder = container as Record<string | number, unknown>;
     if (last) {
-      holder[key] = value;
+      setOwn(holder, key, value);
     } else {
-      const existing = holder[key];
+      const existing = getOwn(holder, key);
       const child = (
         typeof existing === "object" && existing !== null ? existing : makeChild()
       ) as Container;
-      holder[key] = child;
+      setOwn(holder, key, child);
       container = child;
     }
   }
@@ -74,7 +104,7 @@ function setAt(root: Record<string, unknown>, steps: PathStep[], value: unknown)
 function compact(value: unknown): unknown {
   if (Array.isArray(value)) return value.filter((item) => item !== undefined).map(compact);
   if (isPlainObject(value)) {
-    for (const key of Object.keys(value)) value[key] = compact(value[key]);
+    for (const key of Object.keys(value)) setOwn(value, key, compact(value[key]));
   }
   return value;
 }
@@ -99,8 +129,8 @@ function fillBooleans(
   const properties = resolved.properties;
   for (const key of Object.keys(properties)) {
     const property = properties[key];
-    if (value[key] === undefined) {
-      if (fieldType(property, resolve) === "boolean") value[key] = false;
+    if (getOwn(value, key) === undefined) {
+      if (fieldType(property, resolve) === "boolean") setOwn(value, key, false);
     } else {
       fillBooleans(property, value[key], resolve, seen);
     }

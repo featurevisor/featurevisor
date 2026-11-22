@@ -7,6 +7,7 @@ import {
   type MessageScope,
   type MessageSources,
 } from "./messages.js";
+import { hasOwn } from "./paths.js";
 import type { IssueCode, PathKey, SchemaIssue, SchemasOptions } from "./types.js";
 
 type SchemaMessagesTranslator = NonNullable<SchemasOptions["message"]>;
@@ -71,7 +72,7 @@ export function sameJson(first: unknown, second: unknown): boolean {
   if (firstKeys.length !== secondKeys.length) return false;
   return firstKeys.every(
     (key) =>
-      Object.prototype.hasOwnProperty.call(second, key) &&
+      hasOwn(second, key) &&
       sameJson((first as Record<string, unknown>)[key], (second as Record<string, unknown>)[key]),
   );
 }
@@ -81,6 +82,11 @@ export function kindOf(value: unknown): string {
   if (value === null) return "null";
   if (Array.isArray(value)) return "array";
   if (typeof value === "number") return Number.isFinite(value) ? "number" : String(value);
+  if (typeof value === "object" && !isPlainObject(value)) {
+    // A Date, a File or a class instance is not an object as JSON has them.
+    const name = (value as { constructor?: { name?: unknown } }).constructor?.name;
+    return typeof name === "string" && name ? name.toLowerCase() : "object";
+  }
   return typeof value;
 }
 
@@ -151,26 +157,41 @@ function branchKinds(node: unknown, resolve: Resolve): Set<string> | undefined {
   return undefined;
 }
 
-function compileOneOf(node: Node, resolve: Resolve): Validate {
-  const branches = (node.oneOf as unknown[]).map((branch) => compileNode(branch, resolve));
-  let kinds: (Set<string> | undefined)[] | undefined;
+interface OneOfKinds {
+  nodes: (Node | undefined)[];
+  kinds: (Set<string> | undefined)[];
+  disjoint: boolean;
+}
 
-  return (value, run, at) => {
-    // Kinds are worked out on first use, once references can resolve.
-    if (!kinds) kinds = (node.oneOf as unknown[]).map((branch) => branchKinds(branch, resolve));
+function compileOneOf(node: Node, resolve: Resolve): Validate {
+  const branchNodes = node.oneOf as unknown[];
+  const branches = branchNodes.map((branch) => compileNode(branch, resolve));
+  let cached: OneOfKinds | undefined;
+
+  // The kinds each branch takes, kept until a branch's reference resolves to another schema.
+  const kindsNow = (): OneOfKinds => {
+    const nodes = branchNodes.map((branch) => resolveNode(branch, resolve));
+    if (cached && cached.nodes.every((resolved, index) => resolved === nodes[index])) return cached;
+    const kinds = nodes.map((resolved) => (resolved ? branchKinds(resolved, resolve) : undefined));
     const disjoint =
       kinds.every(Boolean) &&
       kinds.every((set, index) =>
-        kinds!.every(
+        kinds.every(
           (other, otherIndex) =>
-            otherIndex === index || ![...set!].some((kind) => other!.has(kind)),
+            otherIndex === index || !Array.from(set!).some((kind) => other!.has(kind)),
         ),
       );
+    cached = { nodes, kinds, disjoint };
+    return cached;
+  };
+
+  return (value, run, at) => {
+    const { kinds, disjoint } = kindsNow();
 
     if (disjoint) {
       // The value's type selects a branch, whose own issues are the ones reported.
       const kind = kindOf(value);
-      const selected = kinds.findIndex((set) => set!.has(kind === "integer" ? "number" : kind));
+      const selected = kinds.findIndex((set) => set!.has(kind));
       if (selected === -1) {
         report(run, at, "oneOf", { matches: 0 });
         return;
@@ -284,10 +305,10 @@ function compileObject(node: Node, resolve: Resolve): Validate {
   const properties = isPlainObject(node.properties)
     ? (node.properties as Record<string, unknown>)
     : undefined;
-  const compiledProperties: Record<string, Validate> = {};
+  const compiledProperties = new Map<string, Validate>();
   if (properties) {
     for (const key of Object.keys(properties))
-      compiledProperties[key] = compileNode(properties[key], resolve);
+      compiledProperties.set(key, compileNode(properties[key], resolve));
   }
   const required = Array.isArray(node.required) ? (node.required as string[]) : [];
   const additional = node.additionalProperties;
@@ -299,7 +320,7 @@ function compileObject(node: Node, resolve: Resolve): Validate {
 
     if (properties) {
       for (const key of required) {
-        if (object[key] !== undefined) continue;
+        if (hasOwn(object, key) && object[key] !== undefined) continue;
         // A missing key's issue is at the key, worded by the messages for that field.
         const mpath = [...at.mpath, key];
         report(run, at, "required", { key }, [...at.path, key], {
@@ -313,8 +334,9 @@ function compileObject(node: Node, resolve: Resolve): Validate {
       const child = object[key];
       // A key whose value is `undefined` counts as absent, as form state often holds.
       if (child === undefined) continue;
-      if (properties && Object.prototype.hasOwnProperty.call(properties, key)) {
-        compiledProperties[key](child, run, {
+      const property = compiledProperties.get(key);
+      if (property) {
+        property(child, run, {
           path: [...at.path, key],
           mpath: [...at.mpath, key],
           scopes: at.scopes,
@@ -344,7 +366,7 @@ const TYPE_CHECKS: Record<string, (value: unknown) => boolean> = {
   number: (value) => typeof value === "number" && Number.isFinite(value),
   boolean: (value) => typeof value === "boolean",
   array: (value) => Array.isArray(value),
-  object: (value) => typeof value === "object" && value !== null && !Array.isArray(value),
+  object: isPlainObject,
 };
 
 function compileRules(node: Node, resolve: Resolve): Validate {
@@ -373,21 +395,22 @@ function compileRules(node: Node, resolve: Resolve): Validate {
   }
 
   const type = typeof node.type === "string" ? node.type : undefined;
-  const string = compileString(node);
-  const number = compileNumber(node);
-  const array = compileArray(node, resolve);
-  const object = compileObject(node, resolve);
   const check = type ? TYPE_CHECKS[type] : undefined;
+  // With a type, only its own keywords can apply, so only they are compiled.
+  const string = !type || type === "string" ? compileString(node) : undefined;
+  const number = !type || type === "integer" || type === "number" ? compileNumber(node) : undefined;
+  const array = !type || type === "array" ? compileArray(node, resolve) : undefined;
+  const object = !type || type === "object" ? compileObject(node, resolve) : undefined;
 
   return (value, run, at) => {
     if (check && !check(value)) {
       report(run, at, "type", { type, received: kindOf(value) });
       return;
     }
-    if (typeof value === "string") string(value, run, at);
-    else if (typeof value === "number") number(value, run, at);
-    else if (Array.isArray(value)) array(value, run, at);
-    else if (value !== null && typeof value === "object") object(value, run, at);
+    if (typeof value === "string") string?.(value, run, at);
+    else if (typeof value === "number") number?.(value, run, at);
+    else if (Array.isArray(value)) array?.(value, run, at);
+    else if (isPlainObject(value)) object?.(value, run, at);
   };
 }
 

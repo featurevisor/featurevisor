@@ -67,7 +67,7 @@
     "@featurevisor/types": "4.8.0"
   },
   "peerDependencies": {
-    "@featurevisor/react": "^4.13.0",
+    "@featurevisor/react": "^4.0.0",
     "react": ">=16.8"
   },
   "peerDependenciesMeta": {
