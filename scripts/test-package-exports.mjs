@@ -57,7 +57,7 @@ const packages = [
       useEveryFlag: "function",
       useSomeFlag: "function",
       useRevision: "function",
-      onFeaturesChange: "function",
+      useSignals: "function",
     },
   },
   {
