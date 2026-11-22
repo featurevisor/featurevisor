@@ -13,7 +13,7 @@ This package is experimental: its API may change in a minor release until the fi
 - [Context](#context)
 - [Values from anything](#values-from-anything)
 - [Async values](#async-values)
-- [Instance state](#instance-state)
+- [Revision](#revision)
 - [Options](#options)
 - [Libraries and frameworks](#libraries-and-frameworks)
   - [Preact signals](#preact-signals)
@@ -149,9 +149,11 @@ Its value is `{ status: "idle" }`, `{ status: "pending" }`, `{ status: "ready", 
 - **Nothing on a server.** Nothing loads while nothing listens, so a server never waits.
 - **Keys.** Inputs are told apart by value, strings and numbers as they are and anything else by its JSON, or by a `key` function.
 
-## Instance state
+## Revision
 
-`signals.revision` holds the datafile's revision, and changes when a datafile brings another. `signals.status` is `"pending"` until the instance accepts a datafile, then `"ready"`.
+`signals.revision` holds the datafile's revision, and changes when a datafile brings another.
+
+The SDK fetches nothing, and an instance can start without a datafile or never have one, so there is no status of a datafile here. Whoever sets the datafile knows when it arrives, and a package that loads datafiles can offer its own status through `signals.from`.
 
 ## Options
 

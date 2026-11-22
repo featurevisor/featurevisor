@@ -334,20 +334,18 @@ describe("values", () => {
     expect(counts).toEqual({ checkout: 1, wishlist: 1 });
   });
 
-  test("revision and status follow datafiles", () => {
+  test("revision follows datafiles that bring another", () => {
     const f = createFeaturevisor({ logLevel: "fatal" });
     const signals = createSignals(f);
     const told: string[] = [];
     signals.revision.listen(() => told.push(`revision ${signals.revision.read()}`));
-    signals.status.listen(() => told.push(`status ${signals.status.read()}`));
 
-    expect(signals.status.read()).toBe("pending");
     expect(signals.revision.read()).toBe("unknown");
 
     f.setDatafile(datafile());
     f.setDatafile(datafile());
 
-    expect(told).toEqual(["status ready", "revision 1"]);
+    expect(told).toEqual(["revision 1"]);
   });
 });
 

@@ -48,8 +48,8 @@ export interface NodeOptions<T> {
   freeze: boolean;
   batch?: Batch;
   follows?: Follows;
-  /** Instance state that no evaluation reads. */
-  kind?: "revision" | "status";
+  /** The datafile's revision, which no evaluation reads. */
+  kind?: "revision";
 }
 
 const engines = new WeakMap<Featurevisor, Engine>();
@@ -141,8 +141,6 @@ export class Engine {
   /** Counts the instance's changes while listening, and each stop, so a value can tell whether it may be stale. */
   changes = 0;
   attached = false;
-  /** Whether the instance has accepted a datafile. */
-  ready: boolean;
 
   private watching = 0;
   private stop: Array<() => void> = [];
@@ -157,7 +155,6 @@ export class Engine {
   /** Values without reads to go by, which follow every change. */
   private untracked: Nodes = new Set();
   private revision: Nodes = new Set();
-  private status: Nodes = new Set();
 
   constructor(readonly f: Featurevisor) {
     let api: FeaturevisorModuleApi | undefined;
@@ -169,9 +166,6 @@ export class Engine {
       instance.addModule(Object.freeze({ setup: (moduleApi) => void (api = moduleApi) }));
     }
     this.track = api && typeof api.track === "function" ? api.track : undefined;
-    // A child shares its parent's datafile, so only a root instance can be waiting for one.
-    this.ready =
-      typeof instance.getRevision === "function" ? instance.getRevision() !== "unknown" : true;
   }
 
   attach(): void {
@@ -196,8 +190,6 @@ export class Engine {
       }),
       f.on("datafile_set", (details) => {
         const touched = this.touch();
-        if (!this.ready) collect(this.status, touched);
-        this.ready = true;
         if (details.revisionChanged) collect(this.revision, touched);
         for (const key of details.features) collect(this.features.get(key), touched);
         for (const key of details.variables) collect(this.variables.get(key), touched);
@@ -247,8 +239,8 @@ export class Engine {
     const kind = node.options.kind;
     const reads = node.reads;
     if (kind || !reads || readsNothing(reads)) {
-      // Instance state, or a value without reads to go by, which follows every change.
-      const nodes = kind === "revision" ? this.revision : kind ? this.status : this.untracked;
+      // The revision, or a value without reads to go by, which follows every change.
+      const nodes = kind ? this.revision : this.untracked;
       nodes.add(node);
       node.indexed = nodes;
       return;

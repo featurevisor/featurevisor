@@ -14,9 +14,6 @@ import { isDevelopment, mergeContext, sameValue } from "./values.js";
 /** Context for a value: an object, or a getter that reads other signals. */
 export type ContextSource = Context | (() => Context);
 
-/** Whether the instance has accepted a datafile yet. */
-export type InstanceStatus = "pending" | "ready";
-
 /**
  * What each adapter turns a source into, by name. The core's values are plain
  * sources, and each adapter adds its own, such as `preact` for a Preact signal.
@@ -97,9 +94,6 @@ export interface Reader<K extends WrappedKind = "source"> {
   /** The datafile's revision, updating when a datafile brings another. */
   readonly revision: Wrapped<string>[K];
 
-  /** `"pending"` until the instance has accepted a datafile, then `"ready"`. */
-  readonly status: Wrapped<InstanceStatus>[K];
-
   /** A reader whose values all merge `context` under their own, as FeaturevisorScope does. */
   scope(context: ContextSource): Reader<K>;
 
@@ -165,7 +159,7 @@ function createScopedReader<K extends WrappedKind>(
     context: () => Context,
     equals: (previous: T, next: T) => boolean,
     follows?: Follows,
-    kind?: "revision" | "status",
+    kind?: "revision",
     precise = settings.precise,
   ): Wrapped<T>[K] =>
     wrap(
@@ -183,7 +177,6 @@ function createScopedReader<K extends WrappedKind>(
     );
 
   let revision: Wrapped<string>[K] | undefined;
-  let status: Wrapped<InstanceStatus>[K] | undefined;
 
   const reader: Reader<K> = {
     flag: (featureKey, context) =>
@@ -255,19 +248,6 @@ function createScopedReader<K extends WrappedKind>(
           Object.is,
           undefined,
           "revision",
-        ))
-      );
-    },
-
-    get status() {
-      return (
-        status ||
-        (status = value<InstanceStatus>(
-          () => (engine.ready ? "ready" : "pending"),
-          contextOf(undefined),
-          Object.is,
-          undefined,
-          "status",
         ))
       );
     },

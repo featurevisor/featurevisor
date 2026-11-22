@@ -4,7 +4,6 @@ export type { ValueOptions } from "./value.js";
 export type {
   ContextSource,
   FromOptions,
-  InstanceStatus,
   Reader,
   ReaderOptions,
   Wrapped,
