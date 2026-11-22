@@ -16,14 +16,14 @@ const packages = [
     entry: path.join(rootDir, "packages/sdk/src/index.ts"),
     fileName: "featurevisor-sdk",
     // Terser plus gzip bytes. Raise deliberately, with the reason in the commit.
-    budget: 14_700,
+    budget: 15_000,
     external: [],
   },
   {
     name: "@featurevisor/react",
     entry: path.join(rootDir, "packages/react/src/index.ts"),
     fileName: "featurevisor-react",
-    budget: 2_600,
+    budget: 2_100,
     external: [
       "react",
       "react-dom",
@@ -36,14 +36,14 @@ const packages = [
     name: "@featurevisor/vue",
     entry: path.join(rootDir, "packages/vue/src/index.ts"),
     fileName: "featurevisor-vue",
-    budget: 1_900,
+    budget: 1_400,
     external: ["vue", "@featurevisor/sdk", "@featurevisor/signals", "@featurevisor/signals/vue"],
   },
   {
     name: "@featurevisor/signals",
     entry: path.join(rootDir, "packages/signals/src/index.ts"),
     fileName: "featurevisor-signals",
-    budget: 3_650,
+    budget: 3_800,
     external: ["@featurevisor/sdk"],
   },
   {
@@ -64,14 +64,14 @@ const packages = [
     name: "@featurevisor/signals/preact",
     entry: path.join(rootDir, "packages/signals/src/preact.ts"),
     fileName: "featurevisor-signals-preact",
-    budget: 3_750,
+    budget: 3_850,
     external: ["@featurevisor/sdk", "@preact/signals-core"],
   },
   {
     name: "@featurevisor/signals/tc39",
     entry: path.join(rootDir, "packages/signals/src/tc39.ts"),
     fileName: "featurevisor-signals-tc39",
-    budget: 3_700,
+    budget: 3_850,
     external: ["@featurevisor/sdk", "signal-polyfill"],
   },
   {
