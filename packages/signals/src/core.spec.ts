@@ -1,7 +1,7 @@
 import { createFeaturevisor, type Evaluation, type FeaturevisorModule } from "@featurevisor/sdk";
-import type { DatafileContent } from "@featurevisor/types";
+import type { Context, DatafileContent } from "@featurevisor/types";
 
-import { copyValue, createSignals, sameValue } from "./index";
+import { copyValue, createSignals, createValue, mergeContext, sameValue } from "./index";
 import { getEngine } from "./engine";
 
 const everyone = { key: "everyone", conditions: "*" as const, percentage: 100000 };
@@ -24,7 +24,12 @@ function datafile(overrides: Partial<DatafileContent> = {}): DatafileContent {
           settings: { type: "object", defaultValue: { currency: "EUR", limits: [1, 2] } },
         },
       },
-      wishlist: { hash: "w1", bucketBy: "userId", traffic: [everyone] },
+      wishlist: {
+        hash: "w1",
+        bucketBy: "userId",
+        traffic: [everyone],
+        variations: [{ value: "control" }, { value: "treatment" }],
+      },
     },
     variables: {
       banner: {
@@ -200,6 +205,45 @@ describe("precise updates", () => {
 
     expect(banner.read()).toBe("Welcome");
   });
+
+  test("sticky variables ask again only for the variables they name", () => {
+    const { f, counts, signals } = setup();
+    const banner = signals.variable("banner");
+    const checkout = signals.flag("checkout");
+    const told: unknown[] = [];
+    banner.listen(() => told.push(banner.read()));
+    checkout.listen(() => {});
+    checkout.read();
+
+    f.setStickyVariables({ banner: "Hallo" });
+
+    expect(told).toEqual(["Hallo"]);
+    expect(counts).toEqual({ banner: 2, checkout: 1 });
+  });
+
+  test("an SDK that names no changed keys asks every value that read an attribute", () => {
+    const { f, counts, signals } = setup();
+    // An SDK from before `keys`, whose context_set details carry only the context.
+    const on = f.on.bind(f) as (name: string, callback: (details: unknown) => void) => () => void;
+    (f as unknown as { on: typeof on }).on = (name, callback) =>
+      on(
+        name,
+        name === "context_set"
+          ? (details) => {
+              const { context, replaced } = details as { context: unknown; replaced: boolean };
+              callback({ context, replaced });
+            }
+          : callback,
+      );
+    const checkout = signals.flag("checkout");
+    const wishlist = signals.flag("wishlist");
+    checkout.listen(() => {});
+    wishlist.listen(() => {});
+
+    f.setContext({ account: { plan: "pro" } });
+
+    expect(counts).toEqual({ checkout: 2, wishlist: 2 });
+  });
 });
 
 describe("without precision", () => {
@@ -334,6 +378,66 @@ describe("values", () => {
     expect(counts).toEqual({ checkout: 1, wishlist: 1 });
   });
 
+  test("everyFlag and someFlag read every key once when none decides early", () => {
+    const { counts, signals } = setup();
+
+    // reviews needs a pro plan, and the user is on the free one.
+    expect(signals.everyFlag(["checkout", "wishlist", "checkout"]).read()).toBe(true);
+    expect(signals.someFlag(["reviews", "reviews"]).read()).toBe(false);
+    expect(counts).toEqual({ checkout: 1, wishlist: 1, reviews: 1 });
+    expect(signals.everyFlag([]).read()).toBe(true);
+    expect(signals.someFlag([]).read()).toBe(false);
+  });
+
+  test("variation follows sticky values, and flags give one value per key", () => {
+    const { f, signals } = setup();
+    const variation = signals.variation("wishlist");
+    const told: unknown[] = [];
+    variation.listen(() => told.push(variation.read()));
+    expect(variation.read()).toBe(null);
+
+    f.setStickyFeatures({ wishlist: { enabled: true, variation: "treatment" } });
+    expect(told).toEqual(["treatment"]);
+
+    const [checkout, wishlist] = signals.flags(["checkout", "wishlist"]);
+    expect([checkout.read(), wishlist.read()]).toEqual([true, true]);
+    f.setContext({ country: "de" });
+    expect([checkout.read(), wishlist.read()]).toEqual([false, true]);
+  });
+
+  test("createValue makes a precise value from any function of a context", () => {
+    const { f, counts } = setup({ account: { plan: "pro" } });
+    let country = "nl";
+    const summary = createValue(
+      f,
+      (context) => ({
+        checkout: f.isEnabled("checkout", context),
+        settings: f.getVariable("reviews", "settings", context),
+      }),
+      () => ({ country }),
+      { copy: true },
+    );
+    const told: unknown[] = [];
+    summary.listen(() => told.push(summary.read()));
+    const first = summary.read();
+
+    // Nothing the answer read changed, so it is not evaluated, and keeps its object.
+    f.setContext({ language: "nl" });
+    expect(summary.read()).toBe(first);
+    expect(counts).toEqual({ checkout: 1, reviews: 1 });
+
+    // Its own copy, so changing it reaches neither the SDK nor the next answer.
+    (first.settings as { currency: string }).currency = "USD";
+    expect(f.getVariable("reviews", "settings")).toEqual({ currency: "EUR", limits: [1, 2] });
+
+    country = "de";
+    expect(summary.read()).toEqual({
+      checkout: false,
+      settings: { currency: "EUR", limits: [1, 2] },
+    });
+    expect(told).toEqual([]);
+  });
+
   test("revision follows datafiles that bring another", () => {
     const f = createFeaturevisor({ logLevel: "fatal" });
     const signals = createSignals(f);
@@ -455,6 +559,44 @@ describe("listening", () => {
     expect(filed()).toEqual([[], [], [], []]);
   });
 
+  test("a listener that throws is reported, and the other listeners are still told", () => {
+    const { f, signals } = setup();
+    const error = jest.spyOn(console, "error").mockImplementation(() => {});
+    const checkout = signals.flag("checkout");
+    const told: boolean[] = [];
+    checkout.listen(() => {
+      throw new Error("listener failed");
+    });
+    checkout.listen(() => told.push(checkout.read()));
+
+    f.setContext({ country: "de" });
+
+    expect(told).toEqual([false]);
+    expect(error).toHaveBeenCalledWith(expect.objectContaining({ message: "listener failed" }));
+    error.mockRestore();
+  });
+
+  test("an evaluation that throws while listening throws from read, until it answers again", () => {
+    const { f, signals } = setup();
+    let fail = false;
+    const checkout = signals.from((context) => {
+      const enabled = f.isEnabled("checkout", context);
+      if (fail) throw new Error("compute failed");
+      return enabled;
+    });
+    let told = 0;
+    checkout.listen(() => told++);
+    expect(checkout.read()).toBe(true);
+
+    fail = true;
+    f.setContext({ country: "de" });
+    expect(told).toBe(1);
+    expect(() => checkout.read()).toThrow("compute failed");
+
+    fail = false;
+    expect(checkout.read()).toBe(false);
+  });
+
   test("one instance has one engine, whatever reads it", () => {
     const { f } = setup();
 
@@ -490,5 +632,29 @@ describe("comparing and copying", () => {
     expect(sameValue(first, second)).toBe(true);
     expect(sameValue({ a: 1 }, { a: 2 })).toBe(false);
     expect(copyValue(first)).toBe(first);
+  });
+
+  test("a __proto__ key stays a plain key when merged or copied", () => {
+    const hostile = JSON.parse('{ "__proto__": { "polluted": true }, "country": "nl" }');
+
+    const merged = mergeContext({ userId: "user-1" }, hostile);
+    expect(Object.getPrototypeOf(merged)).toBe(Object.prototype);
+    expect(Object.keys(merged)).toEqual(["__proto__", "userId", "country"]);
+
+    const copied = copyValue(hostile);
+    expect(Object.getPrototypeOf(copied)).toBe(Object.prototype);
+    expect(Object.prototype.hasOwnProperty.call(copied, "__proto__")).toBe(true);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  test("a context that contains itself is evaluated on every read, never trusted", () => {
+    const { counts, signals } = setup();
+    const context: Context = { country: "nl" };
+    context.self = context as unknown as Context[string];
+    const checkout = signals.flag("checkout", context);
+
+    expect(checkout.read()).toBe(true);
+    expect(checkout.read()).toBe(true);
+    expect(counts.checkout).toBe(2);
   });
 });
