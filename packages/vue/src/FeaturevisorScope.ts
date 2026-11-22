@@ -1,7 +1,7 @@
 import { defineComponent, provide, shallowRef, watch, type PropType } from "vue";
 import type { Context } from "@featurevisor/types";
 
-import { readContext, type ContextSource } from "./live.js";
+import { readContext, type ContextSource } from "./context.js";
 import { injectScope, mergeContext, sameValue, SCOPE } from "./scope.js";
 
 /**

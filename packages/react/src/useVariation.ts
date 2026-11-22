@@ -3,8 +3,7 @@ import type { Context, FeatureKey, VariationValue } from "@featurevisor/types";
 
 import { useRequiredSdk } from "./useRequiredSdk.js";
 import { useScopedContext } from "./scope.js";
-import { useEvaluationSubscription } from "./useEvaluationSubscription.js";
-import { useEvaluated, useEveryUpdate, type Evaluated } from "./useEvaluated.js";
+import { useEvaluated, type Evaluated } from "./useEvaluated.js";
 
 function variation(sdk: Featurevisor, featureKey: FeatureKey): Evaluated<VariationValue | null> {
   return {
@@ -23,11 +22,6 @@ export function useVariation<TVariation extends VariationValue = VariationValue>
 ): TVariation | null {
   const sdk = useRequiredSdk();
   const scopedContext = useScopedContext(context);
-
-  if (useEveryUpdate()) {
-    useEvaluationSubscription(sdk, featureKey);
-    return sdk.getVariation<TVariation>(featureKey, scopedContext);
-  }
 
   return useEvaluated(sdk, featureKey, scopedContext, variation, featureKey) as TVariation | null;
 }

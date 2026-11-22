@@ -330,7 +330,7 @@ describe("precise updates in React", () => {
     expect(seen).toBe(true);
   });
 
-  test("a module reading state outside the context needs updates every", () => {
+  test("a module's changing state reaches hooks through the context", () => {
     let outside = "first";
     const f = createFeaturevisor({
       datafile: datafile(),
@@ -339,33 +339,33 @@ describe("precise updates in React", () => {
       modules: [
         {
           name: "outside",
-          afterEvaluation: (evaluation) =>
+          afterEvaluation: (evaluation, options) =>
             evaluation.variableKey === "banner"
-              ? { ...evaluation, variableValue: outside }
+              ? { ...evaluation, variableValue: String(options.context.label ?? outside) }
               : evaluation,
         },
       ],
     });
-    const seen: Record<string, unknown> = {};
-    function Reader({ name }: { name: string }) {
-      seen[name] = useVariable("banner");
+    let seen: unknown;
+    function Reader({ label }: { label?: string }) {
+      seen = useVariable("banner", label ? { label } : undefined);
       return null;
     }
-    render(
-      <>
-        <FeaturevisorProvider instance={f}>
-          <Reader name="precise" />
-        </FeaturevisorProvider>
-        <FeaturevisorProvider instance={f} updates="every">
-          <Reader name="every" />
-        </FeaturevisorProvider>
-      </>,
+    const tree = (label?: string) => (
+      <FeaturevisorProvider instance={f}>
+        <Reader label={label} />
+      </FeaturevisorProvider>
     );
+    const view = render(tree());
     outside = "second";
     act(() => f.setContext({ plan: "pro" }));
 
-    // The banner does not read the plan, so the precise hook keeps its answer.
-    expect(seen).toEqual({ precise: "first", every: "second" });
+    // The banner does not read the plan, so state outside the context is not seen.
+    expect(seen).toBe("first");
+
+    // The same state passed through the context is.
+    view.rerender(tree("third"));
+    expect(seen).toBe("third");
   });
 
   test("a child instance works, following every change", () => {
@@ -451,24 +451,22 @@ describe("precise updates in React", () => {
       useFlag(name);
       return null;
     }
-    function App({ updates }: { updates?: "every" }) {
+    function App() {
       return (
-        <FeaturevisorProvider instance={f} updates={updates}>
+        <FeaturevisorProvider instance={f}>
           {names.map((name, index) => (
             <Flag key={index} name={name} />
           ))}
         </FeaturevisorProvider>
       );
     }
-    const precise = render(<App />);
+    render(<App />);
     renders = 0;
     act(() => f.setContext({ plan: "pro" }));
     expect(renders).toBe(0);
-    precise.unmount();
 
-    render(<App updates="every" />);
-    renders = 0;
-    act(() => f.setContext({ plan: "enterprise" }));
-    expect(renders).toBe(50);
+    // A change that alters one of them renders only the components showing it.
+    act(() => f.setContext({ country: "de" }));
+    expect(renders).toBe(25);
   });
 });

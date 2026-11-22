@@ -1,11 +1,9 @@
-import { useMemo } from "react";
 import type { Featurevisor } from "@featurevisor/sdk";
 import type { Context, FeatureKey } from "@featurevisor/types";
 
 import { useRequiredSdk } from "./useRequiredSdk.js";
 import { useScopedContext } from "./scope.js";
-import { useFeaturesSubscription } from "./useFeaturesSubscription.js";
-import { useEvaluated, useEveryUpdate, type Evaluated } from "./useEvaluated.js";
+import { useEvaluated, type Evaluated } from "./useEvaluated.js";
 
 const EMPTY_CONTEXT: Context = {};
 
@@ -57,22 +55,6 @@ export function useFlags<K extends readonly FeatureKey[] | []>(
 ): FlagValues<K> {
   const sdk = useRequiredSdk();
   const scopedContext = useScopedContext(context);
-
-  if (useEveryUpdate()) {
-    useFeaturesSubscription(sdk, featureKeys);
-
-    const values = evaluateFlags(
-      (key, merged) => sdk.isEnabled(key, merged),
-      featureKeys,
-      scopedContext,
-    );
-
-    // The same values keep the same array, so the result can sit in dependency
-    // lists. Evaluation still runs on every render, as it does for useFlag.
-    const signature = values.map((enabled) => (enabled ? "1" : "0")).join("");
-
-    return useMemo(() => values, [signature]) as unknown as FlagValues<K>;
-  }
 
   // An inline list is a new array on every render, so the source follows the
   // keys it holds. The same values keep the same array, so the result can sit

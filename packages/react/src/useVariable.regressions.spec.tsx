@@ -4,24 +4,7 @@ import { act, render, screen } from "@testing-library/react";
 import { createFeaturevisor, type Featurevisor } from "@featurevisor/sdk";
 import type { Context, DatafileContent, VariableValue } from "@featurevisor/types";
 
-import {
-  FeaturevisorProvider as Provider,
-  type FeaturevisorProviderProps,
-} from "./FeaturevisorProvider";
-
-/**
- * Tests of how the hooks subscribed and evaluated before they moved onto the
- * signals engine pin `updates="every"`, which keeps that behaviour. The
- * engine's own tests are in precise.spec.tsx.
- */
-let pinnedUpdates: "every" | undefined;
-function FeaturevisorProvider(props: FeaturevisorProviderProps) {
-  return <Provider updates={pinnedUpdates} {...props} />;
-}
-
-beforeEach(() => {
-  pinnedUpdates = undefined;
-});
+import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useVariable } from "./useVariable";
 
 function programDatafile(array = false, attribute = "country", grant = "read"): DatafileContent {
@@ -227,7 +210,6 @@ describe("react: useVariable evaluation and subscriptions", () => {
   });
 
   test("switches feature and global subscriptions, variable keys and provider instances with cleanup", async () => {
-    pinnedUpdates = "every";
     const first = createFeaturevisor({
       logLevel: "fatal",
       datafile: programDatafile(),
@@ -255,19 +237,17 @@ describe("react: useVariable evaluation and subscriptions", () => {
     );
     const view = render(tree());
     expectValue({ grants: ["read"] });
-    // StrictMode must leave just one set of four active listeners, plus the
-    // change tracker's four.
+    // StrictMode must leave the engine's one set of four listeners.
     const active = () =>
       firstSubscriptions.cleanups.filter((cleanup) => cleanup.mock.calls.length === 0);
-    expect(active()).toHaveLength(8);
+    expect(active()).toHaveLength(4);
     const globalCleanups = active();
     view.rerender(tree(first, "grants"));
     expectValue({ grants: ["feature-read"] });
-    // The hook swaps the global variable's four listeners for the feature's,
-    // while the change tracker keeps its four through the resubscription.
+    // Another key makes another value on the same engine, which keeps listening.
     const called = (cleanup: jest.Mock) => cleanup.mock.calls.length;
-    expect(globalCleanups.map(called).sort()).toEqual([0, 0, 0, 0, 1, 1, 1, 1]);
-    expect(active()).toHaveLength(8);
+    expect(globalCleanups.map(called)).toEqual([0, 0, 0, 0]);
+    expect(active()).toHaveLength(4);
 
     const subscriptions = firstSubscriptions.on.mock.calls.length;
     view.rerender(tree(first, "alternate"));
@@ -300,7 +280,7 @@ describe("react: useVariable evaluation and subscriptions", () => {
 
     view.rerender(tree(second));
     expectValue({ grants: ["second"] });
-    // The change tracker stops a microtask after the last hook on an instance leaves.
+    // The engine stops a microtask after the last hook on an instance leaves.
     await Promise.resolve();
     firstSubscriptions.cleanups.forEach((cleanup) => expect(cleanup).toHaveBeenCalledTimes(1));
     const afterSwap = guard.mock.calls.length;
@@ -411,42 +391,45 @@ describe("react: useVariable evaluation and subscriptions", () => {
   test.each([false, true])(
     "never invokes a function returned by a module (feature: %s)",
     (feature) => {
-      pinnedUpdates = "every";
       const first = jest.fn(() => "must not run");
       const second = jest.fn(() => "must not run either");
-      let result = first;
+      // A module that reads changing state gets it through the context.
       const sdk = createFeaturevisor({
         logLevel: "fatal",
         datafile: programDatafile(),
         modules: [
           {
-            afterEvaluation: (evaluation) =>
+            afterEvaluation: (evaluation, options) =>
               evaluation.variableKey === (feature ? "grants" : "policy")
-                ? { ...evaluation, variableValue: result as unknown as VariableValue }
+                ? {
+                    ...evaluation,
+                    variableValue: (options.context.version === 2
+                      ? second
+                      : first) as unknown as VariableValue,
+                  }
                 : evaluation,
           },
         ],
       });
       let observed: (() => string) | null = null;
-      function Reader() {
+      function Reader({ version }: { version: number }) {
         observed = feature
-          ? useVariable<() => string>("policy", "grants", { userId: "123" })
-          : useVariable<() => string>("policy", { userId: "123" });
+          ? useVariable<() => string>("policy", "grants", { userId: "123", version })
+          : useVariable<() => string>("policy", { userId: "123", version });
         return null;
       }
-      const tree = () => (
+      const tree = (version = 1) => (
         <React.StrictMode>
           <FeaturevisorProvider instance={sdk}>
-            <Reader />
+            <Reader version={version} />
           </FeaturevisorProvider>
         </React.StrictMode>
       );
       const view = render(tree());
       expect(observed).toBe(first);
-      result = second;
-      act(() => sdk.setContext({ country: "nl" }));
+      view.rerender(tree(2));
       expect(observed).toBe(second);
-      view.rerender(tree());
+      act(() => sdk.setContext({ country: "nl" }));
       expect(observed).toBe(second);
       expect(first).not.toHaveBeenCalled();
       expect(second).not.toHaveBeenCalled();
@@ -478,7 +461,6 @@ describe("react: useVariable evaluation and subscriptions", () => {
   test.each([false, true])(
     "keeps child state isolated while following parent datafiles and modules (feature: %s)",
     async (feature) => {
-      pinnedUpdates = "every";
       const parent = createFeaturevisor({ logLevel: "fatal", datafile: programDatafile() });
       const child = parent.spawn({ country: "nl" });
       const sibling = parent.spawn({ country: "de" });
@@ -530,7 +512,11 @@ describe("react: useVariable evaluation and subscriptions", () => {
             ? { ...evaluation, variableValue: { grants: ["module"] } }
             : evaluation,
       });
+      // A module added later emits no event, so values show its answers from
+      // the next change, here a context change on the child.
       view.rerender(tree());
+      expectValue({ grants: [feature ? "feature-parent-update" : "parent-update"] });
+      act(() => child.setContext({ country: "nl" }));
       expectValue({ grants: ["module"] });
       await act(async () => {
         await parent.removeModule("child-module");

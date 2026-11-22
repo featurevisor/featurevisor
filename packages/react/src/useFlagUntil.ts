@@ -3,8 +3,7 @@ import type { Context, FeatureKey } from "@featurevisor/types";
 
 import { useRequiredSdk } from "./useRequiredSdk.js";
 import { useScopedContext } from "./scope.js";
-import { useFeaturesSubscription } from "./useFeaturesSubscription.js";
-import { flagUntil, useEvaluated, useEveryUpdate, type Evaluated } from "./useEvaluated.js";
+import { flagUntil, useEvaluated, type Evaluated } from "./useEvaluated.js";
 
 // Feature keys come from file names, so they never contain this character.
 const SEPARATOR = "\u0000";
@@ -37,20 +36,6 @@ export function useFlagUntil(
 ): boolean {
   const sdk = useRequiredSdk();
   const scopedContext = useScopedContext(context);
-
-  if (useEveryUpdate()) {
-    useFeaturesSubscription(sdk, featureKeys);
-
-    for (let index = 0; index < featureKeys.length; index++) {
-      const featureKey = featureKeys[index];
-
-      // A key listed again was already evaluated and did not stop the loop.
-      if (featureKeys.indexOf(featureKey) !== index) continue;
-      if (sdk.isEnabled(featureKey, scopedContext) === stopAt) return stopAt;
-    }
-
-    return !stopAt;
-  }
 
   return useEvaluated(
     sdk,

@@ -1,7 +1,7 @@
 import { inject, type InjectionKey, type Ref } from "vue";
 import type { Context } from "@featurevisor/types";
 
-import { readContext, type ContextSource } from "./live.js";
+import { readContext, type ContextSource } from "./context.js";
 
 /** The merged context of the enclosing scopes, provided by FeaturevisorScope. */
 export const SCOPE: InjectionKey<Readonly<Ref<Context>>> = Symbol("featurevisor scope");

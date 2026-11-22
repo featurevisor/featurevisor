@@ -4,13 +4,6 @@ import type { Context } from "@featurevisor/types";
 import { copyValue, createValue, type Source, type ValueOptions } from "@featurevisor/signals";
 import { useSource } from "@featurevisor/signals/react";
 
-import { UpdatesContext } from "./updates.js";
-
-/** Whether the provider asked for the behaviour from before. */
-export function useEveryUpdate(): boolean {
-  return React.useContext(UpdatesContext) === "every";
-}
-
 /** What a hook's source evaluates, built once per source from the hook's keys. */
 export interface Evaluated<T> {
   compute: (context: Context) => T;

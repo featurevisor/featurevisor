@@ -63,9 +63,9 @@ function setup() {
   return { f, evaluations };
 }
 
-function mountWith(f: Featurevisor, setupFn: () => () => unknown, updates?: "every") {
+function mountWith(f: Featurevisor, setupFn: () => () => unknown) {
   return mount(defineComponent({ setup: setupFn }), {
-    global: { plugins: [{ install: (app) => setupApp(app, f, { updates }) }] },
+    global: { plugins: [{ install: (app) => setupApp(app, f) }] },
   });
 }
 
@@ -166,21 +166,5 @@ describe("precise updates in Vue", () => {
     f.setContext({ country: "de" });
     await nextTick();
     expect(wrapper.text()).toBe("false:true:false");
-  });
-
-  test("updates every keeps the earlier behaviour", async () => {
-    const { f, evaluations } = setup();
-    mountWith(
-      f,
-      () => {
-        const checkout = useFlag("checkout");
-        return () => h("p", String(checkout.value));
-      },
-      "every",
-    );
-    f.setContext({ plan: "pro" });
-    await nextTick();
-
-    expect(evaluations.checkout).toBe(2);
   });
 });

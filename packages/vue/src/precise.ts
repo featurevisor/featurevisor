@@ -4,13 +4,6 @@ import type { Context } from "@featurevisor/types";
 import { copyValue, createValue, type Source, type ValueOptions } from "@featurevisor/signals";
 import { useSource } from "@featurevisor/signals/vue";
 
-import { UPDATES } from "./updates.js";
-
-/** Whether setupApp asked for the behaviour from before. Read in setup. */
-export function injectEveryUpdate(): boolean {
-  return inject(UPDATES, undefined) === "every";
-}
-
 const listenToNothing = () => () => {};
 
 /**

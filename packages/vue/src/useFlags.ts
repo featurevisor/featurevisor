@@ -1,8 +1,8 @@
 import { computed, type Ref } from "vue";
 import type { Context, FeatureKey } from "@featurevisor/types";
 
-import { onFeatures, useLive, type ContextSource } from "./live.js";
-import { injectEveryUpdate, usePrecise } from "./precise.js";
+import type { ContextSource } from "./context.js";
+import { usePrecise } from "./precise.js";
 import { injectScope, readScopedContext } from "./scope.js";
 import { useSdk } from "./useSdk.js";
 
@@ -49,15 +49,16 @@ export function useFlags<K extends readonly FeatureKey[] | []>(
   const read = () => readScopedContext(scope, context);
   const isEnabled = (featureKey: FeatureKey, merged: Context) => sdk.isEnabled(featureKey, merged);
 
-  const values: Readonly<Ref<boolean[]>> = injectEveryUpdate()
-    ? useLive(sdk, keys.length === 0 ? undefined : onFeatures(sdk, keys), () =>
-        evaluate(isEnabled, keys, read()),
-      )
-    : usePrecise(sdk, (merged) => evaluate(isEnabled, keys, merged), read, {
-        follows: { features: keys },
-        // No keys read nothing, so nothing can change the answer.
-        constant: keys.length === 0,
-      });
+  const values: Readonly<Ref<boolean[]>> = usePrecise(
+    sdk,
+    (merged) => evaluate(isEnabled, keys, merged),
+    read,
+    {
+      follows: { features: keys },
+      // No keys read nothing, so nothing can change the answer.
+      constant: keys.length === 0,
+    },
+  );
 
   return keys.map((_, index) => computed(() => values.value[index])) as unknown as FlagRefs<K>;
 }

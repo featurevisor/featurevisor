@@ -1,8 +1,8 @@
 import type { Ref } from "vue";
 import type { FeatureKey, VariableKey, VariableValue } from "@featurevisor/types";
 
-import { onFeatures, onVariable, useLive, type ContextSource } from "./live.js";
-import { injectEveryUpdate, usePrecise } from "./precise.js";
+import type { ContextSource } from "./context.js";
+import { usePrecise } from "./precise.js";
 import { injectScope, readScopedContext } from "./scope.js";
 import { useSdk } from "./useSdk.js";
 
@@ -30,18 +30,11 @@ export function useVariable<TValue = VariableValue>(
 ): Readonly<Ref<TValue | null>> {
   const sdk = useSdk();
   const scope = injectScope();
-  const every = injectEveryUpdate();
 
   // Keys are plain strings, so a second argument that is not one is the context.
   if (typeof variableKeyOrContext === "string") {
     const variableKey = variableKeyOrContext;
     const read = () => readScopedContext(scope, context);
-
-    if (every) {
-      return useLive(sdk, onFeatures(sdk, [featureKeyOrVariableKey]), () =>
-        sdk.getVariable<TValue>(featureKeyOrVariableKey, variableKey, read()),
-      );
-    }
 
     return usePrecise(
       sdk,
@@ -52,12 +45,6 @@ export function useVariable<TValue = VariableValue>(
   }
 
   const read = () => readScopedContext(scope, variableKeyOrContext);
-
-  if (every) {
-    return useLive(sdk, onVariable(sdk, featureKeyOrVariableKey), () =>
-      sdk.getVariable<TValue>(featureKeyOrVariableKey, read()),
-    );
-  }
 
   return usePrecise(
     sdk,

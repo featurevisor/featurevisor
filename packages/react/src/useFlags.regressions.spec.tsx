@@ -3,24 +3,7 @@ import { act, render } from "@testing-library/react";
 import { createFeaturevisor, type Featurevisor } from "@featurevisor/sdk";
 import type { Context, DatafileContent, FeatureKey } from "@featurevisor/types";
 
-import {
-  FeaturevisorProvider as Provider,
-  type FeaturevisorProviderProps,
-} from "./FeaturevisorProvider";
-
-/**
- * Tests of how the hooks subscribed and evaluated before they moved onto the
- * signals engine pin `updates="every"`, which keeps that behaviour. The
- * engine's own tests are in precise.spec.tsx.
- */
-let pinnedUpdates: "every" | undefined;
-function FeaturevisorProvider(props: FeaturevisorProviderProps) {
-  return <Provider updates={pinnedUpdates} {...props} />;
-}
-
-beforeEach(() => {
-  pinnedUpdates = undefined;
-});
+import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useFlag } from "./useFlag";
 import { useFlags } from "./useFlags";
 import { useEveryFlag } from "./useEveryFlag";
@@ -91,14 +74,13 @@ function observe(sdk: Featurevisor) {
   return { on, cleanups, active: () => cleanups.filter((fn) => !fn.mock.calls.length) };
 }
 
-// Four hooks, each with one set of four listeners.
-const LISTENERS = 16;
-// The change tracker adds four listeners per instance while any hook is subscribed.
-const TRACKER_LISTENERS = 4;
+// The engine listens to each instance once, whatever the number of hooks.
+const ENGINE_LISTENERS = 4;
 
 describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (strict) => {
   function harness() {
     const snapshots: Snapshot[] = [];
+    let latest: Snapshot | undefined;
     let renders = 0;
     function Reader({
       featureKeys,
@@ -119,6 +101,7 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
       // Record only committed values, including the commit before passive effects.
       React.useLayoutEffect(() => {
         snapshots.push(snapshot);
+        latest = snapshot;
       });
       React.useLayoutEffect(() => duringLayout?.(), [duringLayout]);
       return null;
@@ -136,7 +119,11 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
       );
       return strict ? <React.StrictMode>{content}</React.StrictMode> : content;
     };
-    /** Every value committed during an operation is the SDK's answer after it. */
+    /**
+     * Every value committed during an operation is the SDK's answer after it,
+     * and so is what stays committed. An operation that changes no value
+     * renders nothing.
+     */
     function check(
       operation: () => void,
       sdk: Featurevisor,
@@ -146,9 +133,9 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
       snapshots.length = 0;
       const before = renders;
       operation();
-      expect(snapshots.length).toBeGreaterThan(0);
       const value = expected(sdk, keys, context);
       snapshots.forEach((snapshot) => expect(snapshot).toEqual(value));
+      expect(latest).toEqual(value);
       expect(renders - before).toBeLessThanOrEqual(16);
       return value;
     }
@@ -156,7 +143,6 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
   }
 
   test("commits current provider, keys and context without mixed values", async () => {
-    pinnedUpdates = "every";
     const first = instance();
     const second = instance("second", ["liveChat"]);
     const firstEvents = observe(first);
@@ -167,16 +153,16 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
     h.snapshots.forEach((snapshot) =>
       expect(snapshot).toEqual(expected(first, ["checkout", "liveChat"], { userId: "user-1" })),
     );
-    expect(firstEvents.active()).toHaveLength(LISTENERS + TRACKER_LISTENERS);
+    expect(firstEvents.active()).toHaveLength(ENGINE_LISTENERS);
 
     // Another provider: every hook leaves the first instance for the second.
     const onSecond = h.check(() => view.rerender(h.tree(second)), second);
     expect(onSecond.flags).toEqual([true, false]);
     expect(onSecond.every).toBe(false);
-    // The change tracker stops a microtask after the last hook on an instance leaves.
+    // The engine stops a microtask after the last hook on an instance leaves.
     await Promise.resolve();
     expect(firstEvents.active()).toHaveLength(0);
-    expect(secondEvents.active()).toHaveLength(LISTENERS + TRACKER_LISTENERS);
+    expect(secondEvents.active()).toHaveLength(ENGINE_LISTENERS);
 
     h.check(() => view.rerender(h.tree(first)), first);
 
@@ -231,7 +217,6 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
   });
 
   test("commits consistent values for context, datafile and both sticky event types", () => {
-    pinnedUpdates = "every";
     const sdk = instance();
     const h = harness();
     render(h.tree(sdk));
@@ -268,54 +253,6 @@ describe.each([false, true])("multiple flag hooks together, StrictMode: %s", (st
     expect(pinned.flags).toEqual([false, true]);
     h.check(() => act(() => sdk.setStickyFeatures({}, true)), sdk);
   });
-
-  test.each(["flags", "every", "some"] as const)(
-    "catches changes during subscription setup for %s without another hook refreshing it",
-    (kind) => {
-      pinnedUpdates = "every";
-      const sdk = instance();
-      const original = sdk.on.bind(sdk);
-      let calls = 0;
-      jest.spyOn(sdk, "on").mockImplementation((event, callback) => {
-        // The change tracker attaches first, while rendering. Change the SDK as
-        // the hook itself subscribes.
-        if (++calls === TRACKER_LISTENERS + 1) sdk.setStickyVariables({ gate: false });
-        return original(event, callback);
-      });
-      const keys = ["checkout", "liveChat"];
-      const hooks = {
-        flags: () => useFlags(keys),
-        every: () => useEveryFlag(keys),
-        some: () => useSomeFlag(keys),
-      };
-      const useValue = hooks[kind];
-      const commits: unknown[] = [];
-      function Reader() {
-        const value = useValue();
-        React.useLayoutEffect(() => {
-          commits.push(value);
-        });
-        return null;
-      }
-      const content = (
-        <FeaturevisorProvider instance={sdk}>
-          <Reader />
-        </FeaturevisorProvider>
-      );
-      render(strict ? <React.StrictMode>{content}</React.StrictMode> : content);
-
-      const on = expected(instance(), keys, {})[kind];
-      const off = expected(sdk, keys, {})[kind];
-      expect(off).not.toEqual(on);
-      expect(commits[0]).toEqual(on);
-      expect(commits[commits.length - 1]).toEqual(off);
-
-      commits.length = 0;
-      act(() => sdk.setStickyVariables({}, true));
-      expect(commits.length).toBeGreaterThan(0);
-      commits.forEach((value) => expect(value).toEqual(on));
-    },
-  );
 
   describe.each(["context", "datafile", "sticky features", "sticky variables"])(
     "missed %s event",

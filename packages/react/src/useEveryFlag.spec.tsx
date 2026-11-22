@@ -4,24 +4,7 @@ import "@testing-library/jest-dom";
 import { createFeaturevisor, type Featurevisor } from "@featurevisor/sdk";
 import type { Context, DatafileContent, FeatureKey } from "@featurevisor/types";
 
-import {
-  FeaturevisorProvider as Provider,
-  type FeaturevisorProviderProps,
-} from "./FeaturevisorProvider";
-
-/**
- * Tests of how the hooks subscribed and evaluated before they moved onto the
- * signals engine pin `updates="every"`, which keeps that behaviour. The
- * engine's own tests are in precise.spec.tsx.
- */
-let pinnedUpdates: "every" | undefined;
-function FeaturevisorProvider(props: FeaturevisorProviderProps) {
-  return <Provider updates={pinnedUpdates} {...props} />;
-}
-
-beforeEach(() => {
-  pinnedUpdates = undefined;
-});
+import { FeaturevisorProvider } from "./FeaturevisorProvider";
 import { useEveryFlag } from "./useEveryFlag";
 import { useSomeFlag } from "./useSomeFlag";
 
@@ -213,8 +196,7 @@ describe("react: useEveryFlag and useSomeFlag", function () {
     expect(text()).toBe("every:true some:false");
   });
 
-  test("subscribe once each for an inline list, and remove their listeners on unmount", async function () {
-    pinnedUpdates = "every";
+  test("listen once for an inline list, and remove their listeners on unmount", async function () {
     const { sdk } = instance();
     const original = sdk.on.bind(sdk);
     const cleanups: jest.Mock[] = [];
@@ -227,11 +209,11 @@ describe("react: useEveryFlag and useSomeFlag", function () {
     const view = render(tree(sdk, ["checkout", "liveChat"]));
     view.rerender(tree(sdk, ["checkout", "liveChat"]));
     view.rerender(tree(sdk, ["checkout", "liveChat"], { userId: "user-1" }));
-    // Four each, and four for the change tracker.
-    expect(on).toHaveBeenCalledTimes(12);
+    // The engine listens to the instance once for both hooks.
+    expect(on).toHaveBeenCalledTimes(4);
 
     view.unmount();
-    // The change tracker stops a microtask after the last hook on an instance leaves.
+    // The engine stops a microtask after the last hook on an instance leaves.
     await Promise.resolve();
     cleanups.forEach((cleanup) => expect(cleanup).toHaveBeenCalledTimes(1));
   });

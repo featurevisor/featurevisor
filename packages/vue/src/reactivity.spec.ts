@@ -108,20 +108,10 @@ function observe(sdk: Featurevisor) {
   return { on, active: () => cleanups.filter((fn) => !fn.mock.calls.length) };
 }
 
-/**
- * Tests of how the composables subscribed before they moved onto the signals
- * engine pin `updates: "every"`, which keeps that behaviour. The engine's own
- * tests are in composables.precise.spec.ts.
- */
-let pinnedUpdates: "every" | undefined;
-beforeEach(() => {
-  pinnedUpdates = undefined;
-});
-
 function featurevisorPlugin(sdk: Featurevisor): Plugin {
   return {
     install(app: App) {
-      setupApp(app, sdk, { updates: pinnedUpdates });
+      setupApp(app, sdk);
     },
   };
 }
@@ -300,27 +290,26 @@ describe("vue: reactive context", () => {
 });
 
 describe("vue: subscriptions", () => {
-  it("attach when mounted, with one set of counting listeners per instance, and leave on unmount", () => {
-    pinnedUpdates = "every";
+  it("attach once per instance, whatever the number of composables, and leave after unmount", async () => {
     const { sdk } = instance();
     const events = observe(sdk);
     const first = mountValue(sdk, () => useFlag("checkout"));
     const second = mountValue(sdk, () => useVariable("supportEmail"));
 
-    // Four for each composable, and four for the change count.
-    expect(events.on).toHaveBeenCalledTimes(2 * 4 + 4);
-    expect(events.active()).toHaveLength(2 * 4 + 4);
+    // The engine's four listeners, for both composables.
+    expect(events.on).toHaveBeenCalledTimes(4);
+    expect(events.active()).toHaveLength(4);
 
     first.wrapper.unmount();
-    expect(events.active()).toHaveLength(4 + 4);
+    await Promise.resolve();
+    expect(events.active()).toHaveLength(4);
     second.wrapper.unmount();
+    // The engine stops a microtask after the last composable leaves.
+    await Promise.resolve();
     expect(events.active()).toHaveLength(0);
   });
 
   it("do not attach during server rendering", async () => {
-    // The change count is the earlier mechanism's. Precise composables attach
-    // nothing at all on a server, which ssr.precise.spec.ts checks.
-    pinnedUpdates = "every";
     const { sdk } = instance();
     const events = observe(sdk);
     const Component = defineComponent({
@@ -333,12 +322,12 @@ describe("vue: subscriptions", () => {
 
     for (let request = 0; request < 3; request++) {
       const app = createSSRApp(Component);
-      setupApp(app, sdk, { updates: pinnedUpdates });
+      setupApp(app, sdk);
       expect(await renderToString(app)).toBe("<p>true:help</p>");
     }
 
-    // Only the change count's one set, however many requests render.
-    expect(events.on).toHaveBeenCalledTimes(4);
+    // A server render makes nothing on the engine, however many requests render.
+    expect(events.on).not.toHaveBeenCalled();
   });
 
   it("catch a change made between setup and mounting", async () => {
