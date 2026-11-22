@@ -757,8 +757,9 @@ export function getSchemaZodSchema(
             }
           : {}),
         type: propertyTypeEnum.optional(),
-        enum: z.array(valueZodSchema).optional(),
-        const: valueZodSchema.optional(),
+        // `null` is how a nullable value's `oneOf` branch is written: `const: null`.
+        enum: z.array(z.union([valueZodSchema, z.null()])).optional(),
+        const: z.union([valueZodSchema, z.null()]).optional(),
         minimum: z.number().optional(),
         maximum: z.number().optional(),
         minLength: countZodSchema.optional(),

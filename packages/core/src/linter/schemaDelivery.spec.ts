@@ -232,4 +232,15 @@ properties:
       }),
     ).toEqual([]);
   });
+
+  test("a nullable field is a oneOf with const null, in schemas and variables", async () => {
+    expect(
+      await lint({
+        "schemas/nickname.yml":
+          "description: A nickname\n\noneOf:\n  - type: string\n    maxLength: 10\n  - const: null\n",
+        "variables/nickname.yml":
+          "description: Nickname\n\nschema: nickname\n\ndefaultValue: null\n",
+      }),
+    ).toEqual([]);
+  });
 });

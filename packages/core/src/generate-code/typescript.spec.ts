@@ -1285,6 +1285,10 @@ export { every, some };
         "  country:",
         "    type: string",
         "    enum: [GB, NL]",
+        "  nickname:",
+        "    oneOf:",
+        "      - type: string",
+        "      - const: null",
         "required: [email]",
         "additionalProperties: true",
       ].join("\n"),
@@ -1306,7 +1310,7 @@ export { every, some };
 
     const schemasContent = fs.readFileSync(path.join(outputPath, "schemas.ts"), "utf8");
     expect(schemasContent).toContain(
-      'export type SignUpSchema = { email: string; country?: "GB" | "NL"; [key: string]: unknown };',
+      'export type SignUpSchema = { email: string; country?: "GB" | "NL"; nickname?: string | null; [key: string]: unknown };',
     );
     expect(schemasContent).toContain(
       "export interface SchemaTypes {\n  money: MoneySchema;\n  signUp: SignUpSchema;\n}",

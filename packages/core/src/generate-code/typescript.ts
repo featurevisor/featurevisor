@@ -153,7 +153,8 @@ function resolveSchema(schema: Schema, schemasByKey: Record<string, Schema>): Sc
 
 /** Emit a TypeScript literal type for a primitive const value, or null if not a primitive. */
 function constToLiteralType(constVal: unknown): string | null {
-  if (constVal === null || constVal === undefined) return null;
+  if (constVal === null) return "null";
+  if (constVal === undefined) return null;
   if (typeof constVal === "string") return JSON.stringify(constVal);
   if (typeof constVal === "number") return String(constVal);
   if (typeof constVal === "boolean") return constVal ? "true" : "false";
