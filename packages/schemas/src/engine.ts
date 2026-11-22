@@ -1,0 +1,406 @@
+import { getPortableTimestamp, isValidVersion } from "@featurevisor/sdk";
+import type { DatafileSchema, SchemaMessages } from "@featurevisor/types";
+
+import {
+  chooseMessage,
+  type MessageLookup,
+  type MessageScope,
+  type MessageSources,
+} from "./messages.js";
+import type { IssueCode, PathKey, SchemaIssue, SchemasOptions } from "./types.js";
+
+type SchemaMessagesTranslator = NonNullable<SchemasOptions["message"]>;
+
+/** Where validation is in a value: its path, its message path and the schema messages around it. */
+export interface Position extends MessageLookup {
+  readonly path: ReadonlyArray<PathKey>;
+}
+
+/** One validation: where issues go and how they are worded. */
+export interface Run {
+  readonly schema: string;
+  readonly issues: SchemaIssue[];
+  readonly sources: MessageSources;
+  readonly translate?: SchemaMessagesTranslator;
+  /** Counting `oneOf` branches only notes whether a branch failed, without wording anything. */
+  readonly trial?: boolean;
+  failed: boolean;
+}
+
+export type Validate = (value: unknown, run: Run, at: Position) => void;
+
+/** A compiled schema by key in the current datafile, for references, or undefined when it has none. */
+export type Resolve = (key: string) => { node: DatafileSchema; validate: Validate } | undefined;
+
+type Node = DatafileSchema & Record<string, unknown>;
+
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+/** A string's length in code points, as JSON Schema counts it, so an emoji counts one. */
+export function codePointLength(value: string): number {
+  let length = value.length;
+  for (let index = 0; index < value.length - 1; index++) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        length--;
+        index++;
+      }
+    }
+  }
+  return length;
+}
+
+/** Deep equality of JSON values: arrays item by item, objects key by key in any order. */
+export function sameJson(first: unknown, second: unknown): boolean {
+  if (Object.is(first, second)) return true;
+  if (typeof first !== "object" || typeof second !== "object" || !first || !second) return false;
+  if (Array.isArray(first) !== Array.isArray(second)) return false;
+  if (Array.isArray(first)) {
+    const other = second as unknown[];
+    if (first.length !== other.length) return false;
+    return first.every((item, index) => sameJson(item, other[index]));
+  }
+  const firstKeys = Object.keys(first);
+  const secondKeys = Object.keys(second);
+  if (firstKeys.length !== secondKeys.length) return false;
+  return firstKeys.every(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(second, key) &&
+      sameJson((first as Record<string, unknown>)[key], (second as Record<string, unknown>)[key]),
+  );
+}
+
+/** The kind of a value, as an issue names what it received. */
+export function kindOf(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  if (typeof value === "number") return Number.isFinite(value) ? "number" : String(value);
+  return typeof value;
+}
+
+export function report(
+  run: Run,
+  at: Position,
+  code: IssueCode,
+  params: Record<string, unknown>,
+  path: ReadonlyArray<PathKey> = at.path,
+  lookup: MessageLookup = at,
+  ownMessage?: string,
+): void {
+  run.failed = true;
+  if (run.trial) return;
+  let message = chooseMessage(code, params, path, lookup, run.sources, ownMessage);
+  const issue = { message, path, code, params, schema: run.schema };
+  if (run.translate) {
+    const translated = run.translate(issue, run.sources.info);
+    if (typeof translated === "string") message = translated;
+  }
+  run.issues.push(message === issue.message ? issue : { ...issue, message });
+}
+
+/** Schema messages around a field: its own node's, and a referenced schema's root's. */
+export function ownScopes(
+  node: unknown,
+  base: number,
+  resolve: Resolve,
+  scopes: MessageScope[] = [],
+  seen = new Set<string>(),
+): MessageScope[] {
+  if (!isPlainObject(node)) return scopes;
+  if (isPlainObject(node.messages))
+    scopes.push({ messages: node.messages as SchemaMessages, base });
+  if (typeof node.schema === "string" && !seen.has(node.schema)) {
+    seen.add(node.schema);
+    ownScopes(resolve(node.schema)?.node, base, resolve, scopes, seen);
+  }
+  return scopes;
+}
+
+/** The node a reference resolves to, through any chain of references. */
+export function resolveNode(
+  node: unknown,
+  resolve: Resolve,
+  seen = new Set<string>(),
+): Node | undefined {
+  if (!isPlainObject(node)) return undefined;
+  if (typeof node.schema === "string") {
+    if (seen.has(node.schema)) return undefined;
+    seen.add(node.schema);
+    return resolveNode(resolve(node.schema)?.node, resolve, seen);
+  }
+  return node as Node;
+}
+
+/** The kinds of value a branch takes, or undefined when the branch alone cannot say. */
+function branchKinds(node: unknown, resolve: Resolve): Set<string> | undefined {
+  const resolved = resolveNode(node, resolve);
+  if (!resolved) return undefined;
+  if (Array.isArray(resolved.oneOf)) return undefined;
+  if (resolved.type) {
+    const type = resolved.type === "integer" ? "number" : String(resolved.type);
+    return new Set([type]);
+  }
+  if ("const" in resolved) return new Set([kindOf(resolved.const)]);
+  if (Array.isArray(resolved.enum)) return new Set(resolved.enum.map(kindOf));
+  return undefined;
+}
+
+function compileOneOf(node: Node, resolve: Resolve): Validate {
+  const branches = (node.oneOf as unknown[]).map((branch) => compileNode(branch, resolve));
+  let kinds: (Set<string> | undefined)[] | undefined;
+
+  return (value, run, at) => {
+    // Kinds are worked out on first use, once references can resolve.
+    if (!kinds) kinds = (node.oneOf as unknown[]).map((branch) => branchKinds(branch, resolve));
+    const disjoint =
+      kinds.every(Boolean) &&
+      kinds.every((set, index) =>
+        kinds!.every(
+          (other, otherIndex) =>
+            otherIndex === index || ![...set!].some((kind) => other!.has(kind)),
+        ),
+      );
+
+    if (disjoint) {
+      // The value's type selects a branch, whose own issues are the ones reported.
+      const kind = kindOf(value);
+      const selected = kinds.findIndex((set) => set!.has(kind === "integer" ? "number" : kind));
+      if (selected === -1) {
+        report(run, at, "oneOf", { matches: 0 });
+        return;
+      }
+      branches[selected](value, run, at);
+      return;
+    }
+
+    let matches = 0;
+    for (const branch of branches) {
+      const trial: Run = { ...run, issues: [], trial: true, failed: false };
+      branch(value, trial, at);
+      if (!trial.failed) matches++;
+    }
+    if (matches !== 1) report(run, at, "oneOf", { matches });
+  };
+}
+
+function compileString(node: Node): Validate {
+  const minLength = typeof node.minLength === "number" ? node.minLength : undefined;
+  const maxLength = typeof node.maxLength === "number" ? node.maxLength : undefined;
+  const format = node.format;
+  let pattern: RegExp | undefined;
+  if (typeof node.pattern === "string") {
+    try {
+      pattern = new RegExp(node.pattern);
+    } catch {
+      // Lint reports a pattern that does not compile.
+    }
+  }
+
+  return (value, run, at) => {
+    const text = value as string;
+    if (format === "date-time" && getPortableTimestamp(text) === null) {
+      report(run, at, "format", { format });
+    } else if (format === "semver" && !isValidVersion(text)) {
+      report(run, at, "format", { format });
+    }
+    if (minLength !== undefined || maxLength !== undefined) {
+      const length = codePointLength(text);
+      if (minLength !== undefined && length < minLength) {
+        report(run, at, "minLength", { minLength, length });
+      }
+      if (maxLength !== undefined && length > maxLength) {
+        report(run, at, "maxLength", { maxLength, length });
+      }
+    }
+    if (pattern) {
+      pattern.lastIndex = 0;
+      if (!pattern.test(text)) report(run, at, "pattern", { pattern: node.pattern });
+    }
+  };
+}
+
+function compileNumber(node: Node): Validate {
+  const minimum = typeof node.minimum === "number" ? node.minimum : undefined;
+  const maximum = typeof node.maximum === "number" ? node.maximum : undefined;
+  return (value, run, at) => {
+    const number = value as number;
+    if (minimum !== undefined && number < minimum)
+      report(run, at, "minimum", { minimum, value: number });
+    if (maximum !== undefined && number > maximum)
+      report(run, at, "maximum", { maximum, value: number });
+  };
+}
+
+function compileArray(node: Node, resolve: Resolve): Validate {
+  const minItems = typeof node.minItems === "number" ? node.minItems : undefined;
+  const maxItems = typeof node.maxItems === "number" ? node.maxItems : undefined;
+  const items = node.items !== undefined ? compileNode(node.items, resolve) : undefined;
+  return (value, run, at) => {
+    const list = value as unknown[];
+    if (minItems !== undefined && list.length < minItems) {
+      report(run, at, "minItems", { minItems, count: list.length });
+    }
+    if (maxItems !== undefined && list.length > maxItems) {
+      report(run, at, "maxItems", { maxItems, count: list.length });
+    }
+    if (node.uniqueItems === true) {
+      outer: for (let index = 1; index < list.length; index++) {
+        for (let earlier = 0; earlier < index; earlier++) {
+          if (sameJson(list[earlier], list[index])) {
+            report(run, at, "uniqueItems", { index });
+            break outer;
+          }
+        }
+      }
+    }
+    const mpath = [...at.mpath, "[]"];
+    for (let index = 0; index < list.length; index++) {
+      const item = { path: [...at.path, index], mpath, scopes: at.scopes };
+      if (items) items(list[index], run, item);
+      else if (typeof list[index] !== "string") {
+        // An array without `items` holds strings only.
+        report(run, item, "type", { type: "string", received: kindOf(list[index]) });
+      }
+    }
+  };
+}
+
+function isPrimitive(value: unknown): boolean {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value))
+  );
+}
+
+function compileObject(node: Node, resolve: Resolve): Validate {
+  const properties = isPlainObject(node.properties)
+    ? (node.properties as Record<string, unknown>)
+    : undefined;
+  const compiledProperties: Record<string, Validate> = {};
+  if (properties) {
+    for (const key of Object.keys(properties))
+      compiledProperties[key] = compileNode(properties[key], resolve);
+  }
+  const required = Array.isArray(node.required) ? (node.required as string[]) : [];
+  const additional = node.additionalProperties;
+  const compiledAdditional =
+    additional !== undefined && additional !== true ? compileNode(additional, resolve) : undefined;
+
+  return (value, run, at) => {
+    const object = value as Record<string, unknown>;
+
+    if (properties) {
+      for (const key of required) {
+        if (object[key] !== undefined) continue;
+        // A missing key's issue is at the key, worded by the messages for that field.
+        const mpath = [...at.mpath, key];
+        report(run, at, "required", { key }, [...at.path, key], {
+          mpath,
+          scopes: [...at.scopes, ...ownScopes(properties[key], mpath.length, resolve)],
+        });
+      }
+    }
+
+    for (const key of Object.keys(object)) {
+      const child = object[key];
+      // A key whose value is `undefined` counts as absent, as form state often holds.
+      if (child === undefined) continue;
+      if (properties && Object.prototype.hasOwnProperty.call(properties, key)) {
+        compiledProperties[key](child, run, {
+          path: [...at.path, key],
+          mpath: [...at.mpath, key],
+          scopes: at.scopes,
+        });
+      } else if (additional === true) {
+        continue;
+      } else if (compiledAdditional) {
+        compiledAdditional(child, run, {
+          path: [...at.path, key],
+          mpath: [...at.mpath, "*"],
+          scopes: at.scopes,
+        });
+      } else if (properties) {
+        // An extra key has no field of its own, so the object that rejects it words its issue.
+        report(run, at, "additionalProperties", { key }, [...at.path, key]);
+      } else if (!isPrimitive(child)) {
+        // Without `properties` or `additionalProperties`, an object is flat.
+        report(run, at, "type", { type: "primitive", received: kindOf(child) }, [...at.path, key]);
+      }
+    }
+  };
+}
+
+const TYPE_CHECKS: Record<string, (value: unknown) => boolean> = {
+  string: (value) => typeof value === "string",
+  integer: (value) => typeof value === "number" && Number.isInteger(value),
+  number: (value) => typeof value === "number" && Number.isFinite(value),
+  boolean: (value) => typeof value === "boolean",
+  array: (value) => Array.isArray(value),
+  object: (value) => typeof value === "object" && value !== null && !Array.isArray(value),
+};
+
+function compileRules(node: Node, resolve: Resolve): Validate {
+  if (typeof node.schema === "string") {
+    const key = node.schema;
+    return (value, run, at) => {
+      const target = resolve(key);
+      if (target) target.validate(value, run, at);
+      else report(run, at, "schemaNotFound", { schema: key });
+    };
+  }
+
+  if (Array.isArray(node.oneOf)) return compileOneOf(node, resolve);
+
+  if ("const" in node) {
+    return (value, run, at) => {
+      if (!sameJson(value, node.const)) report(run, at, "const", { const: node.const });
+    };
+  }
+
+  if (Array.isArray(node.enum)) {
+    const options = node.enum as unknown[];
+    return (value, run, at) => {
+      if (!options.some((option) => sameJson(value, option))) report(run, at, "enum", { options });
+    };
+  }
+
+  const type = typeof node.type === "string" ? node.type : undefined;
+  const string = compileString(node);
+  const number = compileNumber(node);
+  const array = compileArray(node, resolve);
+  const object = compileObject(node, resolve);
+  const check = type ? TYPE_CHECKS[type] : undefined;
+
+  return (value, run, at) => {
+    if (check && !check(value)) {
+      report(run, at, "type", { type, received: kindOf(value) });
+      return;
+    }
+    if (typeof value === "string") string(value, run, at);
+    else if (typeof value === "number") number(value, run, at);
+    else if (Array.isArray(value)) array(value, run, at);
+    else if (value !== null && typeof value === "object") object(value, run, at);
+  };
+}
+
+/** Compiles a schema node into a function that validates a value, with its messages in scope. */
+export function compileNode(node: unknown, resolve: Resolve): Validate {
+  if (!isPlainObject(node)) return () => {};
+  const rules = compileRules(node as Node, resolve);
+  const messages = isPlainObject(node.messages) ? (node.messages as SchemaMessages) : undefined;
+  if (!messages) return rules;
+  return (value, run, at) =>
+    rules(value, run, {
+      path: at.path,
+      mpath: at.mpath,
+      scopes: [...at.scopes, { messages, base: at.mpath.length }],
+    });
+}

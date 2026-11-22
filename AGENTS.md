@@ -40,6 +40,10 @@ check runs.
   `make test-catalog-browser`.
 - packages/signals holds the reactive engine the React and Vue hooks and
   composables build on. They have no other way to update.
+- packages/schemas holds `@featurevisor/schemas`, which validates data against
+  the schemas targets deliver. The SDK only carries them, as a datafile
+  section its modules read with `getEntry`, and Core's lint and the package
+  must agree on every rule.
 
 ## Contribution boundaries
 

@@ -47,6 +47,22 @@ const packages = [
     },
   },
   {
+    directory: "schemas",
+    name: "@featurevisor/schemas",
+    runtimeExports: {
+      createSchemas: "function",
+      flattenIssues: "function",
+    },
+    subpaths: {
+      "./react": {
+        SchemasProvider: "function",
+        useSchema: "function",
+        useSchemas: "function",
+        useValidation: "function",
+      },
+    },
+  },
+  {
     directory: "react",
     name: "@featurevisor/react",
     runtimeExports: {
@@ -143,7 +159,7 @@ function assertDeclarations(directory) {
       if (TYPESCRIPT_5_TYPE_PARAMETER.test(declarations)) {
         throw new Error(`${file} has a const type parameter, which TypeScript 4 cannot parse`);
       }
-      if (directory === "react" && REACT_JSX_NAMESPACE.test(declarations)) {
+      if (["react", "schemas"].includes(directory) && REACT_JSX_NAMESPACE.test(declarations)) {
         throw new Error(`${file} names the JSX namespace, which older @types/react releases lack`);
       }
     }
@@ -155,6 +171,17 @@ function assertDeclarations(directory) {
 // them as client modules, which bundlers recognise by a leading "use client".
 const CLIENT_DIRECTIVE = /^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*"use client";/;
 const REACT_CLIENT_COMPONENTS = ["FeaturevisorProvider.js", "FeaturevisorScope.js"];
+
+function assertSchemasReactClientModule() {
+  for (const output of ["cjs", "esm", "node-esm"]) {
+    const file = join(rootDirectory, "packages", "schemas", output, "react.js");
+    if (!CLIENT_DIRECTIVE.test(readFileSync(file, "utf8"))) {
+      throw new Error(
+        `schemas/${output}/react.js must start with "use client" for server components`,
+      );
+    }
+  }
+}
 
 function assertReactClientModules() {
   for (const output of ["cjs", "esm", "node-esm"]) {
@@ -172,10 +199,11 @@ function assertReactClientModules() {
 }
 
 async function main() {
-  for (const directory of ["types", "expressions", "sdk", "signals", "react", "vue"]) {
+  for (const directory of ["types", "expressions", "sdk", "signals", "react", "vue", "schemas"]) {
     assertDeclarations(directory);
   }
   assertReactClientModules();
+  assertSchemasReactClientModule();
   for (const entry of readdirSync(join(rootDirectory, "packages"), { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const directory = entry.name;
@@ -186,7 +214,7 @@ async function main() {
       throw new Error(`${manifest.name} must link to its repository package directory`);
     }
     if (
-      ["sdk", "signals", "react", "vue", "types"].includes(directory) &&
+      ["sdk", "signals", "react", "vue", "types", "schemas"].includes(directory) &&
       manifest.sideEffects !== false
     ) {
       throw new Error(`${manifest.name} must retain its reviewed sideEffects declaration`);
