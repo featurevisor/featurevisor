@@ -8,9 +8,13 @@
 // - publishes one package at a time, in dependency order and a pause apart, so npm has taken a
 //   package before the packages depending on it follow,
 // - after a failure, waits a few minutes and publishes again, which skips what npm already has
-//   and signs provenance with a fresh key, rather than leave the whole job to be rerun, and
+//   and signs provenance with a fresh key, rather than leave the whole job to be rerun,
+// - before each attempt, puts back the package.json files a failed attempt left changed, since
+//   Lerna will not start on a changed working tree,
+// - stops at once when npm answers E404, its answer to a publish it does not authorise, such as
+//   a package whose trusted publisher is missing, which no later attempt can change, and
 // - once everything is published, waits until npm serves every new version.
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -45,6 +49,51 @@ const lernaPublish = [
   "--throttle-size=1",
   `--throttle-delay=${PACE_SECONDS}`,
 ];
+
+/**
+ * Lerna rewrites the package.json of each package it publishes, and puts it back only when the
+ * run ends without an error. `lerna version` has already committed the new versions, so a
+ * changed package.json here is only what a failed attempt left behind.
+ */
+function restoreManifests() {
+  const changed = execFileSync(
+    "git",
+    ["diff", "--name-only", "--", ":(glob)packages/*/package.json"],
+    { encoding: "utf8" },
+  )
+    .split("\n")
+    .filter(Boolean);
+  if (changed.length === 0) return;
+
+  execFileSync("git", ["checkout", "--", ...changed]);
+  console.log(`Put back ${changed.join(", ")}, which the failed attempt left changed.`);
+}
+
+/** Runs `lerna publish`, showing its output as it comes and keeping it to read afterwards */
+function runLernaPublish() {
+  return new Promise((resolve) => {
+    const child = spawn("npx", lernaPublish, { stdio: ["inherit", "pipe", "pipe"] });
+    let output = "";
+    child.stdout.on("data", (chunk) => {
+      process.stdout.write(chunk);
+      output += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      process.stderr.write(chunk);
+      output += chunk;
+    });
+    child.on("close", (status) => resolve({ status, output }));
+    child.on("error", (error) => resolve({ status: 1, output: String(error) }));
+  });
+}
+
+/** The packages npm refused with E404, or an empty list when it refused none */
+function refusedPackages(output) {
+  if (!/ERR! E404/.test(output)) return [];
+
+  const names = [...output.matchAll(/Package failed to publish: (\S+)/g)].map((match) => match[1]);
+  return names.length > 0 ? names : ["a package"];
+}
 
 /** The public packages, in dependency order */
 function publicPackages() {
@@ -99,7 +148,8 @@ async function main() {
       return;
     }
 
-    const { status } = spawnSync("npx", lernaPublish, { stdio: "inherit" });
+    restoreManifests();
+    const { status, output } = await runLernaPublish();
     if (status === 0) {
       const late = await waitUntilServed(missing);
       if (late.length > 0) {
@@ -108,6 +158,14 @@ async function main() {
         );
       }
       return;
+    }
+
+    const refused = refusedPackages(output);
+    if (refused.length > 0) {
+      console.log(
+        `::error::npm refused ${refused.join(", ")} with E404, which it answers when a publish is not authorised. Check the trusted publisher in each package's settings on npmjs.com: repository featurevisor/featurevisor, workflow publish.yml, no environment. Trying again cannot change that, so publishing stops here. Rerun the job once it is set.`,
+      );
+      process.exit(1);
     }
 
     if (attempt >= ATTEMPTS) {
