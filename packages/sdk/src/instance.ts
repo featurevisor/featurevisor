@@ -1000,15 +1000,6 @@ export class Featurevisor {
     };
   };
 
-  /** Whether a debug diagnostic reaches anyone: the instance's handler, the console or a module. */
-  private receivesDebugDiagnostics(): boolean {
-    if (this.logLevel === "debug") return true;
-    for (const subscription of this.moduleDiagnosticSubscriptions) {
-      if (subscription.logLevel === "debug") return true;
-    }
-    return false;
-  }
-
   private clearModuleDiagnosticSubscriptions = (module: FeaturevisorModule): void => {
     this.moduleDiagnosticSubscriptions = this.moduleDiagnosticSubscriptions.filter(
       (subscription) => subscription.module !== module,
@@ -1034,7 +1025,7 @@ export class Featurevisor {
     // only then are the changed keys worked out.
     const listeners = this.listeners.context_set;
     const details =
-      (listeners !== undefined && listeners.length > 0) || this.receivesDebugDiagnostics()
+      (listeners !== undefined && listeners.length > 0) || this.receivesDiagnostic("debug")
         ? createContextSetDetails(
             this.context,
             replace,
