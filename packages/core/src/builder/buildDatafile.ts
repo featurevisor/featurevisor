@@ -22,6 +22,7 @@ import type {
   ParsedVariableOverride,
   ParsedFeature,
   Schema,
+  SchemaKey,
   VariableKey,
   VariableType,
   VariableValue,
@@ -52,6 +53,8 @@ import {
 } from "../linter/comparisonOperators";
 import { Datasource, FilesystemAdapter, getExistingStateFilePath } from "../datasource";
 import { generateHashForDatafile, refreshDatafileHashes } from "./hashes";
+import { buildSchemasSection } from "./schemas";
+import { getTargetSchemaKeys } from "../targeting";
 
 import { getTraffic } from "./traffic";
 import {
@@ -168,6 +171,10 @@ export interface CustomDatafileOptions {
   excludeFeatures?: "*" | FeatureKey[];
   includeVariables?: "*" | VariableKey[];
   excludeVariables?: "*" | VariableKey[];
+  includeSchemas?: "*" | SchemaKey[];
+  excludeSchemas?: "*" | SchemaKey[];
+  /** False for targets whose datafiles cannot carry schemas, such as schema "2" ones. */
+  withSchemas?: boolean;
   featurevisorVersion?: string;
   revisionFromHash?: boolean;
 }
@@ -190,6 +197,9 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
       excludeFeatures: options.excludeFeatures,
       includeVariables: options.includeVariables,
       excludeVariables: options.excludeVariables,
+      includeSchemas: options.includeSchemas,
+      excludeSchemas: options.excludeSchemas,
+      withSchemas: options.withSchemas,
       featurevisorVersion: options.featurevisorVersion,
       revisionFromHash: options.revisionFromHash,
     },
@@ -255,6 +265,12 @@ export interface BuildOptions {
   excludeFeatures?: "*" | FeatureKey[];
   includeVariables?: "*" | VariableKey[];
   excludeVariables?: "*" | VariableKey[];
+  /** Schemas to deliver whatever their tags. */
+  includeSchemas?: "*" | SchemaKey[];
+  /** Schemas never to deliver, though references still bring them along. */
+  excludeSchemas?: "*" | SchemaKey[];
+  /** False for targets whose datafiles cannot carry schemas, such as schema "2" ones. */
+  withSchemas?: boolean;
   features?: FeatureKey[];
   variables?: VariableKey[];
   inflate?: number;
@@ -946,6 +962,21 @@ export async function buildDatafile(
     }
   }
 
+  // Schemas the target delivers, with every schema they reference.
+  const deliveredSchemaKeys =
+    options.withSchemas === false || (options.features && !options.tag && !options.tags)
+      ? []
+      : getTargetSchemaKeys(
+          {
+            tag: options.tag,
+            tags: options.tags,
+            includeSchemas: options.includeSchemas,
+            excludeSchemas: options.excludeSchemas,
+          },
+          schemaKeys,
+          schemasByKey,
+        );
+
   if (inflation > 1) {
     features = inflateEntries(features, inflation);
     segments = inflateEntries(segments, inflation);
@@ -994,6 +1025,11 @@ export async function buildDatafile(
 
     return acc;
   }, {});
+
+  // Datafiles without schemas have no `schemas` key, so their bytes and revisions stay as they were.
+  if (deliveredSchemaKeys.length > 0) {
+    datafileContent.schemas = buildSchemasSection(deliveredSchemaKeys, schemasByKey);
+  }
 
   datafileContent.variables = variables.reduce(
     (acc, variable) => {

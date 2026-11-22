@@ -35,7 +35,12 @@ import {
   getVariableAssertionsFromMatrix,
 } from "./matrix";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
-import { getTargetFeatureKeys, getTargetVariableKeys, resolveTargets } from "../targeting";
+import {
+  getTargetFeatureKeys,
+  getTargetSchemaKeys,
+  getTargetVariableKeys,
+  resolveTargets,
+} from "../targeting";
 import { resolveForEnvironment } from "../builder/environments";
 import { writesEnvironment } from "../config/environmentSettings";
 import {
@@ -333,6 +338,18 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     targetVariableKeys = await getTargetVariableKeys(datasource, targets);
   }
 
+  // Schemas a target delivers, with the schemas they reference.
+  let targetSchemaKeys: Set<string> | undefined;
+  if (entityType === "schema" && options.target) {
+    const targets = await resolveTargets(datasource, options.target, { defaultToAll: false });
+    const schemasByKey: Record<string, Schema> = {};
+    for (const schemaKey of entityKeys)
+      schemasByKey[schemaKey] = await datasource.readSchema(schemaKey);
+    targetSchemaKeys = new Set(
+      targets.flatMap((target) => getTargetSchemaKeys(target, entityKeys, schemasByKey)),
+    );
+  }
+
   const metadataFilters = getMetadataFilters(options);
 
   async function initializeEntitiesWithTests() {
@@ -583,6 +600,14 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         if ((options.withTests && !hasTests) || (options.withoutTests && hasTests)) {
           continue;
         }
+      }
+    } else if (entityType === "schema") {
+      if (targetSchemaKeys && !targetSchemaKeys.has(key)) continue;
+
+      if (options.tag) {
+        const tags = Array.isArray(options.tag) ? options.tag : [options.tag];
+        const schemaTags = (entity as Schema).tags || [];
+        if (!tags.every((tag) => schemaTags.includes(tag))) continue;
       }
     } else if (entityType === "segment") {
       // --with-tests
@@ -1127,9 +1152,12 @@ function assertListOptions(options: Record<string, any>, projectConfig?: Project
   ];
 
   for (const option of ["target", "tag"]) {
-    if (!["features", "variables"].includes(selector) && typeof options[option] !== "undefined") {
+    if (
+      !["features", "variables", "schemas"].includes(selector) &&
+      typeof options[option] !== "undefined"
+    ) {
       throw new FeaturevisorCLIError(
-        `Option ${toFlag(option)} can only be used with --features or --variables.`,
+        `Option ${toFlag(option)} can only be used with --features, --variables or --schemas.`,
         { code: "incompatible_cli_options", details: { selector, option } },
       );
     }

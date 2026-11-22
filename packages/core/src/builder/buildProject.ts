@@ -138,6 +138,10 @@ export async function buildTargetDatafile({
       excludeFeatures: target.excludeFeatures,
       includeVariables: target.includeVariables,
       excludeVariables: target.excludeVariables,
+      includeSchemas: target.includeSchemas,
+      excludeSchemas: target.excludeSchemas,
+      // Schema "2" datafiles are for the v3 SDK, which no schemas package runs beside.
+      withSchemas: target.schemaVersion !== SCHEMA_V2,
       inflate,
       featurevisorVersion,
       dependencyGraph,
@@ -227,6 +231,9 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       excludeFeatures: target?.excludeFeatures,
       includeVariables: target?.includeVariables,
       excludeVariables: target?.excludeVariables,
+      includeSchemas: target?.includeSchemas,
+      excludeSchemas: target?.excludeSchemas,
+      withSchemas: target?.schemaVersion !== SCHEMA_V2,
       featurevisorVersion: getFeaturevisorVersion(),
       revisionFromHash: target?.context ? false : cliOptions.revisionFromHash,
     });

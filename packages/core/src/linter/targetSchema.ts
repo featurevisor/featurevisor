@@ -40,6 +40,8 @@ export function getTargetZodSchema(projectConfig: ProjectConfig) {
       excludeFeatures: entityPatternsSchema.optional(),
       includeVariables: entityPatternsSchema.optional(),
       excludeVariables: entityPatternsSchema.optional(),
+      includeSchemas: entityPatternsSchema.optional(),
+      excludeSchemas: entityPatternsSchema.optional(),
       context: z.record(z.string(), z.unknown()).optional(),
       schemaVersion: z
         .enum(["2", "4"], {

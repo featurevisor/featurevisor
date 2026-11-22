@@ -32,6 +32,8 @@ function getGeneratedTypeScriptDiagnostics(
       [importSdkPath]: [path.join(repositoryPath, "packages/sdk/src/index.ts")],
       "@featurevisor/vue": [path.join(repositoryPath, "packages/vue/src/index.ts")],
       "@featurevisor/types": [path.join(repositoryPath, "packages/types/src/index.d.ts")],
+      "@featurevisor/schemas": [path.join(repositoryPath, "packages/schemas/src/index.ts")],
+      "@featurevisor/schemas/react": [path.join(repositoryPath, "packages/schemas/src/react.tsx")],
     },
     skipLibCheck: true,
     strict: true,
@@ -1267,6 +1269,53 @@ export { every, some };
     expect(variablesContent).toContain("headerMessage: string;");
     expect(featuresContent).toContain("showHeader: null;");
     expect(featuresContent).not.toContain("discount:");
+    expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
+  });
+  it("types the schemas a target delivers, with a typed createSchemas and schema hooks", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "schemas", "signUp.yml"),
+      [
+        "description: A sign up form",
+        "tags:",
+        "  - sign-up",
+        "type: object",
+        "properties:",
+        "  email:",
+        "    type: string",
+        "  country:",
+        "    type: string",
+        "    enum: [GB, NL]",
+        "required: [email]",
+        "additionalProperties: true",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(tempProjectPath, "targets", "signUpForms.yml"),
+      ["description: Sign up forms", "tag: sign-up", "includeSchemas:", "  - money"].join("\n"),
+      "utf8",
+    );
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      { rootDirectoryPath: tempProjectPath, projectConfig, datasource, options: {} } as any,
+      outputPath,
+      { target: "signUpForms", schemas: true, react: true },
+    );
+
+    const schemasContent = fs.readFileSync(path.join(outputPath, "schemas.ts"), "utf8");
+    expect(schemasContent).toContain(
+      'export type SignUpSchema = { email: string; country?: "GB" | "NL"; [key: string]: unknown };',
+    );
+    expect(schemasContent).toContain(
+      "export interface SchemaTypes {\n  money: MoneySchema;\n  signUp: SignUpSchema;\n}",
+    );
+    expect(schemasContent).toContain("return createSchemasBase<SchemaTypes>(f, options);");
+    expect(fs.existsSync(path.join(outputPath, "schemas-react.ts"))).toBe(true);
+    expect(fs.readFileSync(path.join(outputPath, "index.ts"), "utf8")).toContain(
+      'export * from "./schemas-react.js";',
+    );
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });
 });

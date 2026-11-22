@@ -20,7 +20,9 @@ import { getConditionKindIssues } from "./conditionKinds";
 import { getSegmentZodSchema } from "./segmentSchema";
 import { getFeatureZodSchema } from "./featureSchema";
 import { assertNoLegacyDatasourceGroups } from "../config/removedGroups";
-import { getSchemaZodSchema } from "./schema";
+import { getSchemaPatterns, getSchemaZodSchema } from "./schema";
+import { getBacktrackingError, getPortableRegexError } from "./regexSafety";
+import { getTargetSchemaKeys, matchesFeaturePatterns } from "../targeting";
 import { getScenariosZodSchema, getTestsZodSchema } from "./testSchema";
 import { getTargetZodSchema } from "./targetSchema";
 import { describeSchemaV2TargetIssue, findSchemaV2TargetIssues } from "./schemaV2Targets";
@@ -1496,6 +1498,89 @@ export async function lintProject(
         code: "schema_v2_unsupported",
         value: { targets: issue.targets, environments: issue.environments },
       });
+    }
+  }
+
+  // Schemas that targets deliver to applications: patterns in `includeSchemas` and
+  // `excludeSchemas` must match a schema, schema "2" targets deliver none, and every
+  // `pattern` they deliver is portable and cannot backtrack exponentially, since
+  // applications test untrusted input against it.
+  if (!options.entityType || options.entityType === "target" || options.entityType === "schema") {
+    const deliveringTargets = new Map<string, string[]>();
+    for (const targetKey of targets) {
+      let target = parsedTargets.get(targetKey);
+      if (!target) {
+        try {
+          const parsed = await datasource.readTarget(targetKey);
+          if (targetZodSchema.safeParse(parsed, diagnosticParseOptions).success) target = parsed;
+        } catch {
+          // Linting targets reports this.
+        }
+      }
+      if (!target) continue;
+      const reportsTarget =
+        (!options.entityType || options.entityType === "target") &&
+        (!keyPattern || keyPattern.test(targetKey));
+
+      if (reportsTarget) {
+        for (const field of ["includeSchemas", "excludeSchemas"] as const) {
+          const patterns = target[field];
+          if (!Array.isArray(patterns)) continue;
+          for (const [index, pattern] of patterns.entries()) {
+            if (schemas.some((schemaKey) => matchesFeaturePatterns(schemaKey, [pattern]))) continue;
+            await reportSimpleError({
+              entityType: "target",
+              key: targetKey,
+              fullPath: getFullPathFromKey("target", targetKey),
+              message: `"${pattern}" in \`${field}\` matches no schema.`,
+              pathParts: [field, index],
+              code: "unknown_schema",
+            });
+          }
+        }
+      }
+
+      const delivered = getTargetSchemaKeys(target, schemas, schemasByKey);
+      if (delivered.length === 0) continue;
+      if (target.schemaVersion === "2") {
+        if (reportsTarget) {
+          await reportSimpleError({
+            entityType: "target",
+            key: targetKey,
+            fullPath: getFullPathFromKey("target", targetKey),
+            message: `A target with \`schemaVersion: "2"\` cannot deliver schemas, since its datafiles are for the v3 SDK. It selects ${delivered.map((schemaKey) => `"${schemaKey}"`).join(", ")}.`,
+            detail:
+              'Leave the schemas out with `excludeSchemas`, or deliver them from a target with schema "4".',
+            pathParts: ["schemaVersion"],
+            code: "schema_v2_unsupported",
+          });
+        }
+        continue;
+      }
+      for (const schemaKey of delivered) {
+        deliveringTargets.set(schemaKey, [...(deliveringTargets.get(schemaKey) || []), targetKey]);
+      }
+    }
+
+    if (!options.entityType || options.entityType === "schema") {
+      for (const [schemaKey, targetKeys] of deliveringTargets) {
+        if (keyPattern && !keyPattern.test(schemaKey)) continue;
+        for (const { pattern, path: patternPath } of getSchemaPatterns(schemasByKey[schemaKey])) {
+          const portableError = getPortableRegexError(pattern);
+          const backtrackingError = !portableError && getBacktrackingError(pattern);
+          if (!portableError && !backtrackingError) continue;
+          await reportSimpleError({
+            entityType: "schema",
+            key: schemaKey,
+            fullPath: getFullPathFromKey("schema", schemaKey),
+            message: portableError
+              ? `\`pattern\` ${portableError} in the cross-SDK regex subset, since target ${targetKeys.map((targetKey) => `"${targetKey}"`).join(", ")} delivers this schema to applications.`
+              : `\`pattern\` ${backtrackingError}. Target ${targetKeys.map((targetKey) => `"${targetKey}"`).join(", ")} delivers this schema to applications, which test untrusted input against it.`,
+            pathParts: patternPath,
+            code: portableError ? "unportable_regex" : "regex_backtracking",
+          });
+        }
+      }
     }
   }
 

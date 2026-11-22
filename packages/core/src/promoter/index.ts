@@ -53,6 +53,7 @@ import {
   featureFlagNode,
   variableNode,
 } from "../datasource/dependencies";
+import { getTargetSchemaKeys } from "../targeting";
 
 type ConflictPolicy = "source" | "destination" | "fail";
 type PromotionAuditFormat = "json" | "markdown";
@@ -1285,6 +1286,25 @@ async function getPromotionPlan(
         selectedTargets.some((target) => variableMatchesTarget(key, variable, target));
       if (hasVariableSelectors && matchesSelectedTags && matchesSelectedTargets) {
         promotedVariableKeys.add(key);
+      }
+    }
+
+    // Schemas the selected tags or targets deliver, with every schema they reference.
+    if (tagSelectors.length > 0 || selectedTargets.length > 0) {
+      const byTargets =
+        selectedTargets.length > 0
+          ? new Set(
+              selectedTargets.flatMap((target) => getTargetSchemaKeys(target, schemaKeys, schemas)),
+            )
+          : undefined;
+      const byTags =
+        tagSelectors.length > 0
+          ? new Set(getTargetSchemaKeys({ tags: { or: tagSelectors } }, schemaKeys, schemas))
+          : undefined;
+      for (const key of schemaKeys) {
+        if ((!byTargets || byTargets.has(key)) && (!byTags || byTags.has(key))) {
+          promotedSchemaKeys.add(key);
+        }
       }
     }
 

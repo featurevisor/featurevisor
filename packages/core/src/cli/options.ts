@@ -140,8 +140,13 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     tag: { type: "array", description: "include one or more feature or variable tags" },
     target: { type: "array", description: "include one or more feature or variable targets" },
     react: { type: "boolean", description: "generate React helpers" },
+    schemas: {
+      type: "boolean",
+      description: "generate a typed createSchemas, and typed schema hooks with --react",
+    },
     importSdkPath: { type: "string", hidden: true },
     importReactPath: { type: "string", hidden: true },
+    importSchemasPath: { type: "string", hidden: true },
   },
   fmt: {
     ...outputOptions,
@@ -280,7 +285,10 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     variables: { type: "boolean", description: "list global variables" },
     tests: { type: "boolean", description: "list test specifications" },
     scenarios: { type: "boolean", description: "list authored scenario definitions" },
-    target: { type: "array", description: "filter features or variables by one or more targets" },
+    target: {
+      type: "array",
+      description: "filter features, variables or schemas by one or more targets",
+    },
     entityType: { type: "string", choices: ["feature", "segment", "variable", "scenario"] },
     applyMatrix: { type: "boolean", description: "expand test assertion matrices" },
     assertionPattern: { type: "string", description: "filter assertion descriptions" },
@@ -300,7 +308,10 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     },
     disabled: { type: "boolean", description: "filter disabled features, without environments" },
     enabled: { type: "boolean", description: "filter enabled features, without environments" },
-    tag: { type: "array", description: "filter features or variables by one or more tags" },
+    tag: {
+      type: "array",
+      description: "filter features, variables or schemas by one or more tags",
+    },
     owner: { type: "array", description: "filter definitions by one or more owners in metadata" },
     deadline: {
       type: "array",

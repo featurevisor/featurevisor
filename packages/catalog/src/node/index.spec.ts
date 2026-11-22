@@ -3356,6 +3356,7 @@ describe("catalog export", () => {
         features: ["c"],
         variables: ["a", "b", "d"],
         segments: ["fromDatafile"],
+        schemas: [],
       });
       expect(readDetail("feature", "c").relationships.targets).toEqual(["chain"]);
       expect(readDetail("feature", "excluded").relationships.targets).toEqual([]);

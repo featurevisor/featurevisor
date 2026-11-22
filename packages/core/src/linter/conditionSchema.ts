@@ -8,7 +8,7 @@ import type {
 } from "@featurevisor/types";
 import { z } from "zod";
 import { getPortableTimestamp, isValidVersion } from "@featurevisor/sdk";
-import { getBacktrackingError } from "./regexSafety";
+import { getBacktrackingError, getPortableRegexError } from "./regexSafety";
 import { getSchemaKind, valueMatchesFormat } from "./schemaFormats";
 
 import { ProjectConfig } from "../config";
@@ -84,26 +84,6 @@ function isMembershipList(value: unknown): boolean {
         (typeof entry === "number" && Number.isFinite(entry)),
     )
   );
-}
-
-function getPortableRegexError(pattern: string): string | null {
-  try {
-    new RegExp(pattern);
-  } catch {
-    return "must be a valid regular expression";
-  }
-
-  if (/\(\?/.test(pattern)) {
-    return "must not use lookaround, named groups, noncapturing groups, atomic groups, or inline mode groups";
-  }
-  if (/\\(?:[1-9]|k<|k'|g<|g')/.test(pattern)) {
-    return "must not use backreferences";
-  }
-  if (/(?:[?*+]|\{\d+(?:,\d*)?\})\+/.test(pattern)) {
-    return "must not use possessive quantifiers";
-  }
-
-  return null;
 }
 
 function valueDeepEqual(a: unknown, b: unknown): boolean {

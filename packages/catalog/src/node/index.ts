@@ -122,6 +122,8 @@ export interface CatalogTargetMembership {
   variables: string[];
   /** Segments in the Target's datafiles. Without it, segments come from features and variables. */
   segments?: string[];
+  /** Schemas the Target's datafiles carry, for @featurevisor/schemas. */
+  schemas?: string[];
   /** Members the Target does not select itself, held only because selected entities need them. */
   dependencyFeatures?: string[];
   dependencyVariables?: string[];
@@ -395,6 +397,8 @@ type RelationshipMaps = {
   targetFeatures: Record<string, Set<string>>;
   targetVariables: Record<string, Set<string>>;
   targetSegments: Record<string, Set<string>>;
+  targetSchemas: Record<string, Set<string>>;
+  schemaTargets: Record<string, Set<string>>;
   variableFeatures: Record<string, Set<string>>;
   variableSegments: Record<string, Set<string>>;
   variableAttributes: Record<string, Set<string>>;
@@ -2006,6 +2010,8 @@ function buildRelationships(
     targetFeatures: {},
     targetVariables: {},
     targetSegments: {},
+    targetSchemas: {},
+    schemaTargets: {},
     variableFeatures: {},
     variableSegments: {},
     variableAttributes: {},
@@ -2130,6 +2136,10 @@ function buildRelationships(
     for (const attributeKey of attributes) {
       addToSet(relationships.attributeTargets, attributeKey, targetKey);
     }
+    for (const schemaKey of canonicalMembership.schemas || []) {
+      addToSet(relationships.targetSchemas, targetKey, schemaKey);
+      addToSet(relationships.schemaTargets, schemaKey, targetKey);
+    }
   }
 
   for (const [testIdentity, testSpec] of Object.entries(maps.test)) {
@@ -2196,6 +2206,7 @@ function getEntityRelationships(
       features: sortSet(relationships.targetFeatures[key]),
       variables: sortSet(relationships.targetVariables[key]),
       segments: sortSet(relationships.targetSegments[key]),
+      schemas: sortSet(relationships.targetSchemas[key]),
     };
   }
 
@@ -2203,6 +2214,7 @@ function getEntityRelationships(
     return {
       features: sortSet(relationships.schemasUsedInFeatures[key]),
       variables: sortSet(relationships.schemasUsedInVariables[key]),
+      targets: sortSet(relationships.schemaTargets[key]),
     };
   }
 
@@ -2523,7 +2535,9 @@ async function buildSetCatalog(
                   ? sortSet(relationships.attributeTargets[key])
                   : plan.type === "variable"
                     ? sortSet(relationships.variableTargets[key])
-                    : undefined,
+                    : plan.type === "schema"
+                      ? sortSet(relationships.schemaTargets[key])
+                      : undefined,
           ...getDependentCounts(plan.type, key, relationships),
           usedByCount: getUsedByCount(plan.type, key, relationships),
           ...getDependencySummary(plan.type, key, dependencyGraph, maps, nodeExists),

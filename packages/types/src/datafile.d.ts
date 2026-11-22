@@ -14,6 +14,7 @@ import type {
 } from "./feature";
 import type { GroupSegment, Segment, SegmentKey } from "./segment";
 import type { DatafileVariable } from "./variable";
+import type { DatafileSchema, SchemaKey } from "./schema";
 import type { Conditions } from "./condition";
 
 export type Percentage = number; // 0 to 100,000 (100% * 1000 to include three decimal places in same integer)
@@ -75,5 +76,9 @@ export interface DatafileContent {
   /** Optional for compatibility with datafiles generated before global variables. */
   variables?: {
     [key: VariableKey]: DatafileVariable;
+  };
+  /** Schemas a target delivers, for `@featurevisor/schemas`. Absent when it delivers none. */
+  schemas?: {
+    [key: SchemaKey]: DatafileSchema;
   };
 }

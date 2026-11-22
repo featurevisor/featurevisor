@@ -451,7 +451,7 @@ export function getVariableZodSchema(
       type: z.union([z.literal("json"), propertyTypeEnum]).optional(),
       items: nestedSchema.optional(),
       properties: z.record(z.string(), nestedSchema).optional(),
-      additionalProperties: nestedSchema.optional(),
+      additionalProperties: z.union([z.literal(true), nestedSchema]).optional(),
       required: z.array(z.string()).optional(),
       enum: z.array(valueSchema).optional(),
       const: valueSchema.optional(),

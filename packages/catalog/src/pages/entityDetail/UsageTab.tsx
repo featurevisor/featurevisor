@@ -472,11 +472,13 @@ function getRelatedSections(detail: EntityDetail, index: CatalogIndex | null = n
         values: relationships.segments,
         ...getTargetNotes(detail, "segment", relationships.segments, index),
       },
+      { title: "Schemas this target delivers", type: "schema", values: relationships.schemas },
     );
   } else if (detail.type === "schema") {
     sections.push(
       { title: "Used by features", type: "feature", values: relationships.features },
       { title: "Used by variables", type: "variable", values: relationships.variables },
+      { title: "Delivered by targets", type: "target", values: relationships.targets },
     );
   } else {
     sections.push({ title: "Included in targets", type: "target", values: relationships.targets });

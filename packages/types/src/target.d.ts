@@ -1,6 +1,7 @@
 import type { Metadata } from "./metadata";
 import type { Context } from "./context";
 import type { FeatureKey, Tag, VariableKey } from "./feature";
+import type { SchemaKey } from "./schema";
 
 export type TargetKey = string;
 
@@ -15,6 +16,7 @@ export interface TargetAndTags {
 export type TargetTags = Tag[] | TargetOrTags | TargetAndTags;
 export type TargetFeatures = "*" | FeatureKey[];
 export type TargetVariables = "*" | VariableKey[];
+export type TargetSchemas = "*" | SchemaKey[];
 
 export interface Target {
   key?: TargetKey;
@@ -27,6 +29,10 @@ export interface Target {
   excludeFeatures?: TargetFeatures;
   includeVariables?: TargetVariables;
   excludeVariables?: TargetVariables;
+  /** Schemas to deliver whatever their tags, by key or `*` pattern. */
+  includeSchemas?: TargetSchemas;
+  /** Schemas never to deliver, winning over tags and `includeSchemas`. Their references still come along. */
+  excludeSchemas?: TargetSchemas;
   context?: Context;
   /**
    * Datafile schema to write. "4" by default. "2" writes datafiles that the

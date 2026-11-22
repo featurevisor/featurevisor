@@ -8,6 +8,7 @@ import type {
 } from "@featurevisor/types";
 import { z } from "zod";
 import {
+  codePointLength,
   formatValueMessage,
   isRemovedSchemaType,
   refineRemovedSchemaType,
@@ -244,8 +245,8 @@ export function valueMatchesSchema(
     if (typeof value !== "string") return false;
     if (!valueMatchesFormat(resolved.format, value)) return false;
     const s = value as string;
-    if (resolved.minLength !== undefined && s.length < resolved.minLength) return false;
-    if (resolved.maxLength !== undefined && s.length > resolved.maxLength) return false;
+    if (resolved.minLength !== undefined && codePointLength(s) < resolved.minLength) return false;
+    if (resolved.maxLength !== undefined && codePointLength(s) > resolved.maxLength) return false;
     if (resolved.pattern !== undefined) {
       try {
         if (!new RegExp(resolved.pattern).test(s)) return false;
@@ -297,7 +298,7 @@ export function valueMatchesSchema(
       } else if (additional && typeof additional === "object") {
         if (!valueMatchesSchema(additional as { [k: string]: unknown }, obj[key], schemasByKey))
           return false;
-      } else {
+      } else if (additional !== true) {
         return false;
       }
     }
@@ -657,6 +658,8 @@ function refineVariableValueObject(
 
     for (const key of Object.keys(variableValue)) {
       const propSchema = schemaProperties[key];
+      // `additionalProperties: true` allows any other key with any value, unchecked.
+      if (!propSchema && additionalProperties === true) continue;
       if (!propSchema && additionalProperties && typeof additionalProperties === "object") {
         superRefineVariableValue(
           projectConfig,
@@ -689,6 +692,8 @@ function refineVariableValueObject(
         );
       }
     }
+  } else if (additionalProperties === true) {
+    // Any object, with any value under any key.
   } else if (additionalProperties && typeof additionalProperties === "object") {
     for (const key of Object.keys(variableValue)) {
       superRefineVariableValue(
@@ -866,17 +871,18 @@ export function superRefineVariableValue(
     }
     const strMaxLen = (effectiveSchema as { maxLength?: number }).maxLength;
     const strPattern = (effectiveSchema as { pattern?: string }).pattern;
-    if (strMinLen !== undefined && variableValue.length < strMinLen) {
+    const stringLength = codePointLength(variableValue);
+    if (strMinLen !== undefined && stringLength < strMinLen) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `${typedSubject(subject, "string", mutation)} must be at least ${strMinLen} characters long (\`minLength\`), but has ${variableValue.length}.`,
+        message: `${typedSubject(subject, "string", mutation)} must be at least ${strMinLen} characters long (\`minLength\`), but has ${stringLength}.`,
         path,
       });
     }
-    if (strMaxLen !== undefined && variableValue.length > strMaxLen) {
+    if (strMaxLen !== undefined && stringLength > strMaxLen) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `${typedSubject(subject, "string", mutation)} must be at most ${strMaxLen} characters long (\`maxLength\`), but has ${variableValue.length}.`,
+        message: `${typedSubject(subject, "string", mutation)} must be at most ${strMaxLen} characters long (\`maxLength\`), but has ${stringLength}.`,
         path,
       });
     }
@@ -1838,7 +1844,7 @@ export function getFeatureZodSchema(
               type: z.union([z.literal("json"), propertyTypeEnum]).optional(),
               items: schemaZodSchema.optional(),
               properties: z.record(z.string(), schemaZodSchema).optional(),
-              additionalProperties: schemaZodSchema.optional(),
+              additionalProperties: z.union([z.literal(true), schemaZodSchema]).optional(),
               required: z.array(z.string()).optional(),
               enum: z.array(variableValueZodSchema).optional(),
               const: variableValueZodSchema.optional(),
