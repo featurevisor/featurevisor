@@ -273,8 +273,70 @@ export function getSchemaAnnotationFindings(
     }
   };
 
-  const visit = (node: unknown, path: Path, choice: boolean) => {
+  /** The names a vocabulary lists in `required`, which every node or choice it covers must carry. */
+  const requiredOf = (vocab: Node | undefined): string[] =>
+    vocab && Array.isArray(vocab.required)
+      ? vocab.required.filter((name): name is string => typeof name === "string")
+      : [];
+  const requiredAnnotations = requiredOf(fieldVocabulary);
+  const requiredOptionFields = requiredOf(optionVocabulary);
+
+  /** The annotation names a node carries, its own and, beside a reference, the referenced schema's. */
+  const carried = (node: Node, seen = new Set<string>()): Set<string> => {
+    const names = new Set(isNode(node.annotations) ? Object.keys(node.annotations) : []);
+    if (typeof node.schema === "string" && !seen.has(node.schema)) {
+      seen.add(node.schema);
+      const referenced = schemas[node.schema] as unknown;
+      if (isNode(referenced)) for (const name of carried(referenced, seen)) names.add(name);
+    }
+    return names;
+  };
+
+  const requires = (field: string, missing: string[]) =>
+    `\`${field}\` requires ${missing.map((name) => `\`${name}\``).join(" and ")}`;
+
+  /**
+   * Walks the file. `reachable` is whether a handle can reach the node, as
+   * `at` and `fields` do, which a required annotation covers: the schema, and
+   * every field, item and value below it, never inside a `oneOf`.
+   */
+  const visit = (node: unknown, path: Path, choice: boolean, reachable: boolean) => {
     if (!isNode(node)) return;
+    if (reachable && requiredAnnotations.length > 0) {
+      const names = carried(node);
+      const missing = requiredAnnotations.filter((name) => !names.has(name));
+      if (missing.length > 0) {
+        errors.push({
+          path: node.annotations === undefined ? path : [...path, "annotations"],
+          message: `${requires("annotationsSchema", missing)}, which this node does not have.`,
+        });
+      }
+    }
+    // Every value of an enum is a choice, which carries what `optionSchema` requires through its entry.
+    if (Array.isArray(node.enum) && requiredOptionFields.length > 0) {
+      const options =
+        isNode(node.annotations) && isNode(node.annotations.options)
+          ? node.annotations.options
+          : undefined;
+      node.enum.forEach((value, index) => {
+        const key = optionKey(value);
+        const entry = options && hasOwn(options, key) ? options[key] : undefined;
+        if (!isNode(entry)) {
+          errors.push({
+            path: [...path, "enum", index],
+            message: `${requires("optionSchema", requiredOptionFields)}, and the choice ${show(value)} has no entry in \`options\`.`,
+          });
+          return;
+        }
+        const missing = requiredOptionFields.filter((name) => !hasOwn(entry, name));
+        if (missing.length > 0) {
+          errors.push({
+            path: [...path, "annotations", "options", key],
+            message: `${requires("optionSchema", missing)}, which this choice does not have.`,
+          });
+        }
+      });
+    }
     if (node.annotations !== undefined) {
       const at = [...path, "annotations"];
       if (!isNode(node.annotations)) {
@@ -285,11 +347,11 @@ export function getSchemaAnnotationFindings(
 
     if (isNode(node.properties)) {
       for (const [key, property] of Object.entries(node.properties))
-        visit(property, [...path, "properties", key], false);
+        visit(property, [...path, "properties", key], false, reachable);
     }
-    if (isNode(node.items)) visit(node.items, [...path, "items"], false);
+    if (isNode(node.items)) visit(node.items, [...path, "items"], false, reachable);
     if (isNode(node.additionalProperties))
-      visit(node.additionalProperties, [...path, "additionalProperties"], false);
+      visit(node.additionalProperties, [...path, "additionalProperties"], false, reachable);
     if (Array.isArray(node.oneOf)) {
       // The branches of a list of choices carry what a choice carries, and any other branch a field's annotations.
       const list = isChoiceList(node, schemas);
@@ -310,11 +372,25 @@ export function getSchemaAnnotationFindings(
           }
         });
         checkTitles(choices, [...path, "oneOf"]);
+        if (requiredOptionFields.length > 0) {
+          node.oneOf.forEach((branch, index) => {
+            if (!isNode(branch)) return;
+            const names = carried(branch);
+            const missing = requiredOptionFields.filter((name) => !names.has(name));
+            if (missing.length > 0) {
+              errors.push({
+                path: [...path, "oneOf", index],
+                message: `${requires("optionSchema", missing)}, which this choice does not have.`,
+              });
+            }
+          });
+        }
       }
-      node.oneOf.forEach((branch, index) => visit(branch, [...path, "oneOf", index], list));
+      // `at` stops at a `oneOf`, so nothing inside one is a node a handle reaches.
+      node.oneOf.forEach((branch, index) => visit(branch, [...path, "oneOf", index], list, false));
     }
   };
 
-  visit(root, [], false);
+  visit(root, [], false, true);
   return { errors, warnings };
 }

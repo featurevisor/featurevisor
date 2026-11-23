@@ -520,6 +520,112 @@ annotations:
     );
   });
 
+  test("a vocabulary's required names are carried by every node a handle reaches, and by every choice", async () => {
+    const errors = await lint({
+      "schemas/address.yml": `description: An address
+
+annotationsSchema:
+  type: object
+  properties:
+    help:
+      type: string
+
+type: object
+
+properties:
+  city:
+    type: string
+
+annotations:
+  help: Where you live
+`,
+      "schemas/form.yml": `description: A form
+
+annotationsSchema:
+  type: object
+  properties:
+    help:
+      type: string
+    placeholder:
+      type: string
+  required: [help]
+
+optionSchema:
+  type: object
+  properties:
+    tone:
+      type: string
+  required: [tone]
+
+type: object
+
+properties:
+  email:
+    type: string
+    annotations:
+      help: Where we write
+  plan:
+    type: string
+    enum: [free, pro, team]
+    annotations:
+      help: Pick one
+      options:
+        free:
+          tone: grey
+        pro:
+          title: Pro
+  tier:
+    oneOf:
+      - const: 1
+        annotations:
+          tone: blue
+      - const: 2
+    annotations:
+      help: Tiers
+  tags:
+    type: array
+    items:
+      type: string
+    annotations:
+      help: Tags
+  address:
+    schema: address
+  nickname:
+    oneOf:
+      - type: object
+        properties:
+          first:
+            type: string
+      - const: null
+    annotations:
+      help: Optional
+
+annotations:
+  help: The whole form
+`,
+    });
+
+    // A field beside a reference carries the referenced schema's annotations, and nothing inside a oneOf is reached.
+    expect(errors.map(({ at, message }) => [at.join("."), message])).toEqual([
+      [
+        "properties.plan.annotations.options.pro",
+        "`optionSchema` requires `tone`, which this choice does not have.",
+      ],
+      [
+        "properties.plan.enum.2",
+        "`optionSchema` requires `tone`, and the choice team has no entry in `options`.",
+      ],
+      [
+        "properties.tier.oneOf.1",
+        "`optionSchema` requires `tone`, which this choice does not have.",
+      ],
+      [
+        "properties.tags.items",
+        "`annotationsSchema` requires `help`, which this node does not have.",
+      ],
+    ]);
+  });
+
   test("without a vocabulary only the built in annotations are allowed, and a vocabulary is an object", async () => {
     const errors = await lint({
       "schemas/plain.yml": `description: A plain schema
