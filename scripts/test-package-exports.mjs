@@ -68,6 +68,7 @@ const packages = [
     runtimeExports: {
       FeaturevisorProvider: "function",
       FeaturevisorScope: "function",
+      useScopeContext: "function",
       useFlag: "function",
       useFlags: "function",
       useEveryFlag: "function",
