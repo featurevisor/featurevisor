@@ -157,13 +157,36 @@ function branchKinds(node: unknown, resolve: Resolve): Set<string> | undefined {
   return undefined;
 }
 
+/** Whether a node is a `oneOf` whose every branch is a `const`, a list of choices like an `enum`. */
+export function isConstList(node: Node, resolve: Resolve): boolean {
+  const branches = node.oneOf;
+  return (
+    Array.isArray(branches) &&
+    branches.length > 0 &&
+    branches.every((branch) => {
+      const resolved = resolveNode(branch, resolve);
+      return Boolean(resolved && "const" in resolved);
+    })
+  );
+}
+
 interface OneOfKinds {
   nodes: (Node | undefined)[];
   kinds: (Set<string> | undefined)[];
   disjoint: boolean;
 }
 
+/** A `oneOf` of consts, which reports `enum` with its values, as an `enum` does. */
+function compileConstList(node: Node, resolve: Resolve): Validate {
+  const branchNodes = node.oneOf as unknown[];
+  return (value, run, at) => {
+    const options = branchNodes.map((branch) => resolveNode(branch, resolve)?.const);
+    if (!options.some((option) => sameJson(value, option))) report(run, at, "enum", { options });
+  };
+}
+
 function compileOneOf(node: Node, resolve: Resolve): Validate {
+  if (isConstList(node, resolve)) return compileConstList(node, resolve);
   const branchNodes = node.oneOf as unknown[];
   const branches = branchNodes.map((branch) => compileNode(branch, resolve));
   let cached: OneOfKinds | undefined;

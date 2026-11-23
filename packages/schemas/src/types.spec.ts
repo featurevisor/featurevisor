@@ -2,7 +2,15 @@ import { createFeaturevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
 
 import { createSchemas } from "./index";
-import type { FieldPath, FieldValue, SchemaHandle } from "./types";
+import type {
+  FieldKind,
+  FieldPath,
+  FieldValue,
+  InferSchema,
+  SchemaHandle,
+  SchemaKey,
+  SchemaOption,
+} from "./types";
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
@@ -146,5 +154,39 @@ describe("typed field paths", () => {
       // @ts-expect-error reads are field paths too
       refine: [{ key: "typo", path: "email", reads: ["emial"], check: () => true }],
     });
+  });
+
+  test("parse, options, option, kind and the helpers are typed by the schema", () => {
+    const s = typed();
+    const signUp = s.get("signUp");
+
+    expectExactType<IsExact<ReturnType<typeof signUp.parse>, SignUp>>(true);
+    expectExactType<IsExact<ReturnType<typeof s.parse<"coupon">>, string>>(true);
+    expectExactType<IsExact<InferSchema<typeof signUp>, SignUp>>(true);
+    expectExactType<IsExact<SchemaKey<typeof s>, "signUp" | "coupon">>(true);
+    expectExactType<IsExact<typeof signUp.kind, FieldKind | undefined>>(true);
+
+    const country = signUp.at("country");
+    expectExactType<IsExact<typeof country.options, ReadonlyArray<SchemaOption<"GB" | "NL">>>>(
+      true,
+    );
+    expectExactType<
+      IsExact<ReturnType<typeof country.option>, SchemaOption<"GB" | "NL"> | undefined>
+    >(true);
+    country.option("GB");
+    // @ts-expect-error a value the field does not allow
+    country.option("FR");
+
+    const tags = signUp.at("tags");
+    expectExactType<IsExact<typeof tags.options, ReadonlyArray<SchemaOption<string>>>>(true);
+    expect(tags.path).toBe("tags");
+
+    expectExactType<
+      IsExact<NonNullable<typeof signUp.options.country>, ReadonlyArray<SchemaOption<"GB" | "NL">>>
+    >(true);
+
+    const key: string = "coupon";
+    if (s.has(key)) expectExactType<IsExact<typeof key, "signUp" | "coupon">>(true);
+    expect(s.has("coupon")).toBe(true);
   });
 });

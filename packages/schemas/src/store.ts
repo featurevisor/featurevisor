@@ -20,6 +20,8 @@ export interface Store {
   readonly resolve: Resolve;
   /** The entry as the datafile holds it. */
   entry(key: string): DatafileSchema | undefined;
+  /** What changes when the schema does, through the schemas it references too, since its hash covers them. */
+  version(key: string): unknown;
   /** Results derived from an entry, such as constraints, kept until the entry changes. */
   derive<T>(key: string, kind: string, make: (entry: DatafileSchema) => T): T | undefined;
   /** Reports `schema_not_found` once per key. */
@@ -86,6 +88,10 @@ export function getStore(f: Featurevisor): Store {
     api,
     resolve,
     entry,
+    version(key) {
+      const node = entry(key);
+      return node ? (node.hash ?? node) : undefined;
+    },
     derive<T>(key: string, kind: string, make: (node: DatafileSchema) => T): T | undefined {
       const node = entry(key);
       if (!node) return undefined;

@@ -37,10 +37,18 @@ export function createSchemas<TSchemas extends object = Record<string, unknown>>
   options: SchemasOptions = {},
 ): Schemas<TSchemas> {
   const store = getStore(f);
-  const context: HandleContext = { store, instanceOptions: () => options };
+  const unsubscribes = new Set<() => void>();
+  const listen = (callback: () => void) => {
+    const stop = f.on("datafile_set", () => callback());
+    unsubscribes.add(stop);
+    return () => {
+      unsubscribes.delete(stop);
+      stop();
+    };
+  };
+  const context: HandleContext = { store, instanceOptions: () => options, listen };
   const plain = new Map<string, SchemaHandleImpl>();
   const withOptions = new WeakMap<object, Map<string, SchemaHandleImpl>>();
-  const unsubscribes = new Set<() => void>();
 
   const get = (key: string, handleOptions?: HandleOptions<any, any>) => {
     const handles = handleOptions
@@ -59,18 +67,8 @@ export function createSchemas<TSchemas extends object = Record<string, unknown>>
     f,
     createHandle: (key, getOptions, wrapCheck) =>
       new SchemaHandleImpl(context, key, getOptions, [], wrapCheck),
-    subscribe(callback) {
-      const stop = f.on("datafile_set", () => callback());
-      unsubscribes.add(stop);
-      return () => {
-        unsubscribes.delete(stop);
-        stop();
-      };
-    },
-    version(key) {
-      const entry = store.entry(key);
-      return entry ? (entry.hash ?? entry) : undefined;
-    },
+    subscribe: listen,
+    version: (key) => store.version(key),
   };
 
   const schemas = {
@@ -79,6 +77,10 @@ export function createSchemas<TSchemas extends object = Record<string, unknown>>
       get(key).validate(value, { context: validationContext }),
     isValid: (key: string, value: unknown, validationContext?: Context) =>
       get(key).isValid(value, { context: validationContext }),
+    parse: (key: string, value: unknown, validationContext?: Context) =>
+      get(key).parse(value, { context: validationContext }),
+    keys: () => store.api.getEntryKeys("schemas"),
+    has: (key: string) => Boolean(store.entry(key)),
     close() {
       for (const stop of unsubscribes) stop();
       unsubscribes.clear();

@@ -4,7 +4,7 @@ import { createFeaturevisor } from "@featurevisor/sdk";
 import { FeaturevisorProvider, FeaturevisorScope } from "@featurevisor/react";
 import type { DatafileContent, DatafileSchema } from "@featurevisor/types";
 
-import { createSchemas } from "./index";
+import { createSchemas, SchemaError } from "./index";
 import { SchemasProvider, useSchema, useSchemas, useValidation } from "./react";
 
 const signUp: DatafileSchema = {
@@ -56,7 +56,9 @@ describe("useSchema", () => {
         <Form />
       </FeaturevisorProvider>,
     );
-    expect(view.getByTestId("options").textContent).toBe('{"country":["GB","NL"]}');
+    expect(view.getByTestId("options").textContent).toBe(
+      '{"country":[{"value":"GB"},{"value":"NL"}]}',
+    );
 
     // Context changes never render it again, since schemas do not depend on it here.
     act(() => f.setContext({ plan: "pro" }));
@@ -82,7 +84,9 @@ describe("useSchema", () => {
           ),
         ),
     );
-    expect(view.getByTestId("options").textContent).toBe('{"country":["GB","NL","BE"]}');
+    expect(view.getByTestId("options").textContent).toBe(
+      '{"country":[{"value":"GB"},{"value":"NL"},{"value":"BE"}]}',
+    );
     expect(renders).toBe(2);
   });
 
@@ -292,6 +296,51 @@ describe("scope context and kept answers", () => {
     expect(handle.isValid({ quantity: 3, total: 10 })).toBe(false);
     expect(handle.isValid({ quantity: 3, total: 10, note: "x" })).toBe(false);
     expect(asked).toEqual([10, 10]);
+  });
+});
+
+describe("the hook's handle", () => {
+  test("has kind, option, parse and subscribe, and parses with the scope's context", async () => {
+    const f = sdk();
+    let handle: any;
+    function Form() {
+      handle = useSchema("coupon", {
+        refine: [
+          { key: "dutch", check: (_value: string, { context }) => context.country === "nl" },
+        ],
+      });
+      return null;
+    }
+    render(
+      <FeaturevisorProvider instance={f}>
+        <FeaturevisorScope context={{ country: "nl" }}>
+          <Form />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+
+    expect(handle.kind).toBe("text");
+    expect(handle.parse("ABCD1234")).toBe("ABCD1234");
+    expect(() => handle.parse("ABCD1234", { context: { country: "de" } })).toThrow(SchemaError);
+
+    let signUpHandle: any;
+    function SignUp() {
+      signUpHandle = useSchema("signUp");
+      return null;
+    }
+    render(
+      <FeaturevisorProvider instance={f}>
+        <SignUp />
+      </FeaturevisorProvider>,
+    );
+    expect(signUpHandle.at("country").option("NL")).toEqual({ value: "NL" });
+
+    const calls: string[] = [];
+    const stop = signUpHandle.subscribe(() => calls.push("changed"));
+    act(() => void f.setDatafile(datafile({ signUp: { ...signUp, hash: "s2" }, coupon }, "2")));
+    stop();
+    act(() => void f.setDatafile(datafile({ signUp: { ...signUp, hash: "s3" }, coupon }, "3")));
+    expect(calls).toEqual(["changed"]);
   });
 });
 

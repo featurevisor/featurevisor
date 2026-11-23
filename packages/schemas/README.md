@@ -16,6 +16,7 @@ This package is experimental: its API may change in a minor release.
 - [Messages](#messages)
 - [Checks in code](#checks-in-code)
 - [Reading form data](#reading-form-data)
+- [Server actions](#server-actions)
 - [React](#react)
 - [Code generation](#code-generation)
 - [How values are checked](#how-values-are-checked)
@@ -108,10 +109,28 @@ if (result.issues) {
 
 - The result is a Standard Schema result: `{ value }` with the input itself, never changed, or `{ issues }`. Validation never coerces, fills defaults or strips keys.
 - `s.isValid(key, value)` returns a boolean.
-- Both take a context as a third argument, merged over the instance's, for checks in code and messages.
+- `s.parse(key, value)` returns the value itself, typed with generated types, or throws a `SchemaError`, for servers, scripts and workers that want a value or a stop.
+- All three take a context as a third argument, merged over the instance's, for checks in code and messages.
+- `s.keys()` lists the schemas the datafile has, and `s.has(key)` says whether it has one.
 - The instance holds no copy of the schemas. Every call reads the datafile the SDK has now, so a new datafile takes effect at the next validation.
 
 A key the datafile does not have fails closed, with one `schemaNotFound` issue, and the SDK reports a `schema_not_found` diagnostic once per key. A target that forgot to deliver a schema is noticed, rather than letting anything through. Validate once the SDK has its datafile, as you would evaluate flags.
+
+A `SchemaError` is an `Error` with the schema's key in `schema`, the `issues`, and `flattened`, the issues by field as `flattenIssues` groups them, so one error handler can answer every bad request:
+
+```ts
+import { SchemaError } from "@featurevisor/schemas";
+
+try {
+  const order = s.parse("order", body);
+  // order is the body, unchanged
+} catch (error) {
+  if (error instanceof SchemaError) {
+    return Response.json(error.flattened, { status: 400 });
+  }
+  throw error;
+}
+```
 
 ## Issues
 
@@ -175,17 +194,21 @@ signUp["~standard"].validate(input); // the same result as s.validate("signUp", 
 
 A handle is stable, and reads the current datafile whenever it is used, so you can hand it to a library once, at start up, and still pick up every new datafile.
 
-| Member               | What it is                                                                    |
-| -------------------- | ----------------------------------------------------------------------------- |
-| `["~standard"]`      | The Standard Schema interface                                                 |
-| `key`                | The schema's key, such as `signUp`                                            |
-| `validate(value)`    | The same result as `s.validate`, with the handle's checks in code             |
-| `isValid(value)`     | A boolean, and a type guard with generated types                              |
-| `at(path)`           | The handle for one field, such as `at("displayName")` or `at("items[].name")` |
-| `constraints`        | The HTML validation attributes its rules imply                                |
-| `options`            | The values its `enum` or `const` allows                                       |
-| `fromFormData(data)` | A value read from `FormData` or `URLSearchParams`                             |
-| `path`               | Where a field's handle sits, such as `address.city`                           |
+| Member                | What it is                                                                    |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `["~standard"]`       | The Standard Schema interface                                                 |
+| `key`                 | The schema's key, such as `signUp`                                            |
+| `validate(value)`     | The same result as `s.validate`, with the handle's checks in code             |
+| `isValid(value)`      | A boolean, and a type guard with generated types                              |
+| `at(path)`            | The handle for one field, such as `at("displayName")` or `at("items[].name")` |
+| `constraints`         | The HTML validation attributes its rules imply                                |
+| `options`             | The choices its `enum` or `const` allows, as `{ value }`                      |
+| `option(value)`       | One of its choices by value, for showing a value saved earlier                |
+| `kind`                | What its rules make the field, such as `text` or `select`                     |
+| `parse(value)`        | The value, or a thrown `SchemaError`                                          |
+| `subscribe(listener)` | A call when a new datafile changes the schema                                 |
+| `fromFormData(data)`  | A value read from `FormData` or `URLSearchParams`                             |
+| `path`                | Where a field's handle sits, such as `address.city`                           |
 
 **Fields.** `at` takes a field name as form libraries write it: `address.city`, `items.0.name` or `items[0].name`. Since a schema describes every item of an array alike, `items[].name` means the same, and `labels.*` steps into the values of an object that allows any key. It follows references, and stops at `oneOf`. A field's handle reports issues with paths relative to the field, and a path the schema lacks fails closed with `schemaNotFound`.
 
@@ -210,14 +233,39 @@ signUp.constraints;
 
 An object's constraints go by field path, through nested objects, such as `address.city`, and stop at arrays, whose rows have handles of their own, `at("items.0")`. Any other schema's constraints are its own. `pattern` is left out, since a browser anchors and compiles patterns its own way, and validation still checks it. Browsers count `maxlength` in UTF-16 code units, which stops typing at an emoji sooner than the schema would, never later.
 
-**Options** come from an `enum`, a `const`, or `oneOf` branches that each list values, so a nullable choice lists `null` too. An array's options are its items', for a multiple select:
+**Options** come from an `enum`, a `const`, or `oneOf` branches that each list values, so a nullable choice lists `null` too. They come in the order the schema lists them, each as an object, so what a later release says about a choice, such as its title, joins its value. An array's options are its items', for a multiple select:
 
 ```ts
-signUp.options.country; // ["GB", "NL"]
-signUp.at("country").options; // ["GB", "NL"]
+signUp.options.country; // [{ value: "GB" }, { value: "NL" }]
+signUp.at("country").options; // [{ value: "GB" }, { value: "NL" }]
+signUp.at("country").option("NL"); // { value: "NL" }
 ```
 
-A field without `enum` or `const` has no options, so code writes `signUp.options.country ?? []`. A schema the datafile lacks has no constraints and no options.
+A field without `enum` or `const` has no options, so code writes `signUp.options.country ?? []`. A schema the datafile lacks has no constraints and no options. A `oneOf` whose every branch is a `const` is a list of choices too, and a value it does not list reports `enum`, as an `enum` does.
+
+**Kinds.** Every generic form writes the same switch over a field's rules, so `kind` answers it, from the rules alone. A project's own way of choosing an input still wins.
+
+| `kind`        | From                                         |
+| ------------- | -------------------------------------------- |
+| `text`        | `type: string`                               |
+| `date-time`   | `type: string` with `format: date-time`      |
+| `version`     | `type: string` with `format: semver`         |
+| `number`      | `type: integer` or `type: number`            |
+| `boolean`     | `type: boolean`                              |
+| `select`      | An `enum`, a `const`, or a `oneOf` of consts |
+| `multiselect` | An array whose items are choices             |
+| `object`      | `type: object`                               |
+| `list`        | Any other array                              |
+
+A nullable field has its other branch's kind, so a nullable name is `text`. Any other `oneOf` has no kind, and `kind` is `undefined`.
+
+**Changes.** Code without hooks, such as a web component, renders again from `subscribe`, which calls back when a new datafile changes the schema, through a schema it references too, and returns a function that stops it. A field's handle follows its schema, and `s.close()` stops every listener the instance started:
+
+```ts
+const country = s.get("signUp").at("country");
+
+const stop = country.subscribe(() => render(country.options));
+```
 
 ## Messages
 
@@ -363,6 +411,52 @@ const result = signUp.validate(value);
 
 Names the schema does not describe are left out, so a submit button's name or a CSRF token never fails a closed object.
 
+## Server actions
+
+`formAction` turns a handle into a server action, or a router action. It reads the form data by the schema's types, validates it, and answers with the issues by field, or runs your function with the value and answers with what it returns:
+
+```ts
+"use server";
+
+import { formAction, type FormActionState } from "@featurevisor/schemas";
+import { s } from "../featurevisor";
+
+const signUp = formAction(s.get("signUp"), async (value) => {
+  const account = await createAccount(value);
+
+  return { accountId: account.id };
+});
+
+export async function signUpAction(previous: FormActionState, formData: FormData) {
+  return signUp(previous, formData);
+}
+```
+
+```tsx
+"use client";
+
+import { useActionState } from "react";
+import { initialFormState } from "@featurevisor/schemas";
+
+export function SignUpForm() {
+  const [state, action] = useActionState(signUpAction, initialFormState);
+
+  return (
+    <form action={action}>
+      <input name="email" defaultValue={String(state.values?.email ?? "")} />
+      {state.errors.fieldErrors.email?.[0]}
+
+      <button>Sign up</button>
+    </form>
+  );
+}
+```
+
+- A failed submit answers `{ ok: false, errors, values }`. `errors` has `formErrors` and `fieldErrors`, as `flattenIssues` gives them, and `values` holds what was read, without files, so a form that works before its JavaScript loads can show what was typed again.
+- A passing submit answers `{ ok: true, errors }`, with what your function returns merged in. Your function gets the value, which has passed every rule and check, and `{ formData, previousState }`.
+- `initialFormState` is the state before the first submit.
+- A React Router action calls it with `await request.formData()`.
+
 ## React
 
 `@featurevisor/schemas/react` has an optional provider and three hooks. Under a `FeaturevisorProvider`, they need nothing more:
@@ -378,8 +472,8 @@ export function SignUpForm() {
       <input name="displayName" {...signUp.constraints.displayName} />
 
       <select name="country" {...signUp.constraints.country}>
-        {(signUp.options.country ?? []).map((country) => (
-          <option key={country}>{country}</option>
+        {(signUp.options.country ?? []).map((option) => (
+          <option key={option.value}>{option.value}</option>
         ))}
       </select>
 
@@ -389,7 +483,7 @@ export function SignUpForm() {
 }
 ```
 
-**`useSchema(key, options)`** returns the handle, and renders the component again when a new datafile changes the schema. Context and flag changes never render it again. Options can be written inline: the hook keeps one handle per key for the component and reads the latest options when it validates. Inside a `FeaturevisorScope`, it validates with the scope's context, as flag hooks do, and a context given to `validate` is merged over it. With checks in code, it also:
+**`useSchema(key, options)`** returns the handle, and renders the component again when a new datafile changes the schema. Context and flag changes never render it again. Options can be written inline: the hook keeps one handle per key for the component and reads the latest options when it validates. Inside a `FeaturevisorScope`, it validates and parses with the scope's context, as flag hooks do, and a context given to `validate` or `parse` is merged over it. With checks in code, it also:
 
 - keeps each check's answer for the component's life, per value, per the values its `reads` name and per context, so leaving a field and then submitting asks once, and asks again after a check failed to run,
 - shares one call between validations waiting on the same value, and
@@ -429,28 +523,7 @@ const form = useForm({ defaultValues, validators: { onChange: signUp } });
 
 With a form library, put `noValidate` on the form so its messages show instead of the browser's.
 
-Server code has no hooks. It uses an instance created beside the server's SDK instance:
-
-```ts
-"use server";
-
-import { flattenIssues } from "@featurevisor/schemas";
-import { s } from "../featurevisor";
-
-const signUp = s.get("signUp");
-
-export async function signUpAction(previous, formData) {
-  const result = signUp.validate(signUp.fromFormData(formData));
-
-  if (result.issues) {
-    return { errors: flattenIssues(result.issues).fieldErrors };
-  }
-
-  await createAccount(result.value);
-
-  return { errors: {} };
-}
-```
+Server code has no hooks. It uses an instance created beside the server's SDK instance, and `formAction` makes server actions from its handles (see [Server actions](#server-actions)).
 
 ## Code generation
 
@@ -492,7 +565,7 @@ s.get("signUp", {
 });
 ```
 
-Without generated code, `createSchemas<SchemaTypes>(f)` and `useSchema<SignUp>("signUp")` take types by hand. `FieldPath<T>` and `FieldValue<T, P>` name a type's paths and the value at one.
+Without generated code, `createSchemas<SchemaTypes>(f)` and `useSchema<SignUp>("signUp")` take types by hand. `FieldPath<T>` and `FieldValue<T, P>` name a type's paths and the value at one, `InferSchema<typeof signUp>` the type a handle validates, and `SchemaKey<typeof s>` the keys an instance knows, so a type is never written twice. With types, `options` and `option` take only the values a field allows, and `s.has(key)` narrows a string to a known key.
 
 ## How values are checked
 

@@ -6,7 +6,13 @@ import type { Featurevisor } from "@featurevisor/sdk";
 import type { Context } from "@featurevisor/types";
 import { useScopeContext, useSdk } from "@featurevisor/react";
 
-import { isPromise, readValues, type CheckWrapper, type SchemaHandleImpl } from "./handle.js";
+import {
+  isPromise,
+  parseResult,
+  readValues,
+  type CheckWrapper,
+  type SchemaHandleImpl,
+} from "./handle.js";
 import { setOwn } from "./paths.js";
 import { createSchemas, getInternals } from "./instance.js";
 import type {
@@ -239,6 +245,15 @@ class HookHandle {
   get options() {
     return this.inner.options;
   }
+  get kind() {
+    return this.inner.kind;
+  }
+  option(value: unknown) {
+    return this.inner.option(value);
+  }
+  subscribe(listener: () => void) {
+    return this.inner.subscribe(listener);
+  }
   fromFormData(data: FormData | URLSearchParams) {
     return this.inner.fromFormData(data);
   }
@@ -302,6 +317,10 @@ class HookHandle {
   isValid(value: unknown, options?: ValidateOptions) {
     const result = this.validate(value, options);
     return isPromise(result) ? result.then((settled) => !settled.issues) : !result.issues;
+  }
+
+  parse(value: unknown, options?: ValidateOptions) {
+    return parseResult(this.key, this.validate(value, options));
   }
 }
 

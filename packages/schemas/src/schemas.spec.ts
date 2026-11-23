@@ -1,7 +1,14 @@
 import { createFeaturevisor } from "@featurevisor/sdk";
 import type { DatafileContent, DatafileSchema } from "@featurevisor/types";
 
-import { createSchemas, flattenIssues, type SchemaIssue } from "./index";
+import {
+  createSchemas,
+  flattenIssues,
+  formAction,
+  initialFormState,
+  SchemaError,
+  type SchemaIssue,
+} from "./index";
 
 const signUp: DatafileSchema = {
   hash: "s1",
@@ -485,12 +492,31 @@ describe("handles", () => {
     expect(s.get("coupon").constraints).toEqual({});
   });
 
-  test("options list what enum and const allow, by field, with a multiple select's items", () => {
+  test("options list what enum and const allow as objects, by field, with a multiple select's items", () => {
     const { s } = setup();
 
-    expect(s.get("signUp").options).toEqual({ country: ["GB", "NL"], tags: ["new", "vip"] });
-    expect(s.get("signUp").at("country").options).toEqual(["GB", "NL"]);
+    expect(s.get("signUp").options).toEqual({
+      country: [{ value: "GB" }, { value: "NL" }],
+      tags: [{ value: "new" }, { value: "vip" }],
+    });
+    expect(s.get("signUp").at("country").options).toEqual([{ value: "GB" }, { value: "NL" }]);
     expect(s.get("missing").options).toEqual({});
+  });
+
+  test("option finds one choice by value, comparing objects by value", () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        plan: { hash: "p1", oneOf: [{ const: "free" }, { const: { tier: 2 } }, { const: null }] },
+      }),
+    );
+    const plan = s.get("plan");
+
+    expect(plan.option("free")).toEqual({ value: "free" });
+    expect(plan.option({ tier: 2 })).toEqual({ value: { tier: 2 } });
+    expect(plan.option(null)).toEqual({ value: null });
+    expect(plan.option("paid")).toBeUndefined();
+    expect(setup().s.get("signUp").at("tags").option("vip")).toEqual({ value: "vip" });
   });
 });
 
@@ -821,5 +847,181 @@ describe("hardening", () => {
 
     expect(s.isValid("person", { name: 5 })).toBe(true);
     expect(s.get("person").constraints.nick).toEqual({ max: 9, step: 1 });
+  });
+});
+
+describe("conveniences", () => {
+  test("kind says what a field's rules make it", () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        signUp,
+        address,
+        form: {
+          hash: "f1",
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            startsAt: { type: "string", format: "date-time" },
+            appVersion: { type: "string", format: "semver" },
+            age: { type: "integer" },
+            plan: { oneOf: [{ const: "free" }, { const: "pro" }] },
+            fixed: { const: "web" },
+            nickname: { oneOf: [{ type: "string" }, { const: null }] },
+            payment: { oneOf: [{ type: "string" }, { type: "integer" }] },
+            notes: { type: "array" },
+          },
+        },
+      }),
+    );
+    const field = (path: string) => s.get("form").at(path).kind;
+
+    expect(s.get("form").kind).toBe("object");
+    expect(field("name")).toBe("text");
+    expect(field("startsAt")).toBe("date-time");
+    expect(field("appVersion")).toBe("version");
+    expect(field("age")).toBe("number");
+    expect(field("plan")).toBe("select");
+    expect(field("fixed")).toBe("select");
+    expect(field("nickname")).toBe("text");
+    expect(field("payment")).toBeUndefined();
+    expect(field("notes")).toBe("list");
+    expect(s.get("signUp").at("country").kind).toBe("select");
+    expect(s.get("signUp").at("marketingConsent").kind).toBe("boolean");
+    expect(s.get("signUp").at("tags").kind).toBe("multiselect");
+    expect(s.get("signUp").at("items").kind).toBe("list");
+    expect(s.get("signUp").at("address").kind).toBe("object");
+    expect(s.get("missing").kind).toBeUndefined();
+  });
+
+  test("a oneOf of consts reports enum, with its values, as an enum does", () => {
+    const { s } = setup(
+      undefined,
+      datafile({ plan: { hash: "p1", oneOf: [{ const: "free" }, { const: "pro" }] } }),
+    );
+
+    expect(s.validate("plan", "pro")).toEqual({ value: "pro" });
+    expect(s.validate("plan", "gold").issues![0]).toMatchObject({
+      code: "enum",
+      params: { options: ["free", "pro"] },
+    });
+    expect(s.get("plan").options).toEqual([{ value: "free" }, { value: "pro" }]);
+  });
+
+  test("parse gives the value, or throws a SchemaError with the issues", async () => {
+    const { s } = setup();
+
+    expect(s.parse("coupon", "ABCD1234")).toBe("ABCD1234");
+    expect(s.get("coupon").parse("ABCD1234")).toBe("ABCD1234");
+
+    let thrown: unknown;
+    try {
+      s.parse("signUp", { email: "nope" });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(SchemaError);
+    expect(thrown).toBeInstanceOf(Error);
+    const error = thrown as SchemaError;
+    expect(error.name).toBe("SchemaError");
+    expect(error.schema).toBe("signUp");
+    expect(error.message).toBe('signUp: 2 issues. Value at "displayName" is required.');
+    expect(error.flattened.fieldErrors).toEqual({
+      email: ["Enter an email like ada@example.com"],
+      displayName: ['Value at "displayName" is required.'],
+    });
+
+    const free = s.get("coupon", {
+      refine: [{ key: "unused", check: async (code: string) => code !== "USED1234" }],
+    });
+    await expect(free.parse("ABCD1234")).resolves.toBe("ABCD1234");
+    await expect(free.parse("USED1234")).rejects.toBeInstanceOf(SchemaError);
+  });
+
+  test("keys and has tell which schemas the datafile has", () => {
+    const { f, s } = setup();
+
+    expect(s.keys()).toEqual(["signUp", "address", "coupon"]);
+    expect(s.has("coupon")).toBe(true);
+    expect(s.has("missing")).toBe(false);
+
+    f.setDatafile(datafile({ coupon }, "2"), true);
+    expect(s.keys()).toEqual(["coupon"]);
+    expect(s.has("signUp")).toBe(false);
+  });
+
+  test("subscribe calls back when a datafile changes the schema, through a reference too", () => {
+    const { f, s } = setup();
+    const calls: string[] = [];
+    const stopSignUp = s.get("signUp").subscribe(() => calls.push("signUp"));
+    s.get("signUp")
+      .at("address.city")
+      .subscribe(() => calls.push("city"));
+    s.get("coupon").subscribe(() => calls.push("coupon"));
+
+    // Unchanged hashes call nothing.
+    f.setDatafile(datafile(undefined, "2"));
+    expect(calls).toEqual([]);
+
+    // A referenced schema's change changes the hash of the schemas that reference it.
+    f.setDatafile(
+      datafile(
+        { signUp: { ...signUp, hash: "s2" }, address: { ...address, hash: "a2" }, coupon },
+        "3",
+      ),
+    );
+    expect(calls).toEqual(["signUp", "city"]);
+
+    stopSignUp();
+    f.setDatafile(datafile({ signUp: { ...signUp, hash: "s3" }, address, coupon }, "4"));
+    expect(calls).toEqual(["signUp", "city", "city"]);
+
+    s.close();
+    f.setDatafile(datafile({ signUp, address, coupon: { ...coupon, hash: "c2" } }, "5"));
+    expect(calls).toEqual(["signUp", "city", "city"]);
+  });
+
+  test("formAction answers with issues and what was typed, or runs the action", async () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        profile: {
+          hash: "p1",
+          type: "object",
+          properties: {
+            name: { type: "string", minLength: 2 },
+            avatar: { type: "string" },
+            newsletter: { type: "boolean" },
+          },
+          required: ["name"],
+        },
+      }),
+    );
+    const saved: unknown[] = [];
+    const action = formAction(s.get("profile"), (value, { previousState }) => {
+      saved.push(value);
+      return { profileId: "profile-1", previouslyOk: previousState.ok };
+    });
+
+    const failed = new FormData();
+    failed.append("name", "A");
+    failed.append("avatar", new File(["x"], "avatar.png"));
+    const first = await action(initialFormState, failed);
+    expect(first.ok).toBe(false);
+    expect(Object.keys(first.errors.fieldErrors)).toEqual(["name", "avatar"]);
+    // A file cannot travel back from a server action, so what was typed leaves it out.
+    expect(first.values).toEqual({ name: "A", newsletter: false });
+    expect(saved).toEqual([]);
+
+    const passed = new FormData();
+    passed.append("name", "Ada");
+    const second = await action(first, passed);
+    expect(second).toEqual({
+      ok: true,
+      errors: { formErrors: [], fieldErrors: {} },
+      profileId: "profile-1",
+      previouslyOk: false,
+    });
+    expect(saved).toEqual([{ name: "Ada", newsletter: false }]);
   });
 });

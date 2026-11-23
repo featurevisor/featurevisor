@@ -1,5 +1,5 @@
-import { isPlainObject, resolveNode, type Resolve } from "./engine.js";
-import type { FieldConstraints } from "./types.js";
+import { isConstList, isPlainObject, resolveNode, type Resolve } from "./engine.js";
+import type { FieldConstraints, FieldKind, SchemaOption } from "./types.js";
 
 type Node = Record<string, unknown>;
 
@@ -101,11 +101,17 @@ function valuesOf(
   return undefined;
 }
 
+/** A node's choices as options, in the order its rules list them. */
+function optionsOf(node: unknown, resolve: Resolve): SchemaOption[] | undefined {
+  const values = valuesOf(node, resolve);
+  return values && values.map((value) => ({ value }));
+}
+
 function collectOptions(
   node: Node,
   prefix: string,
   resolve: Resolve,
-  result: Record<string, unknown[]>,
+  result: Record<string, SchemaOption[]>,
   seen: Set<unknown>,
 ): void {
   if (seen.has(node)) return;
@@ -113,20 +119,47 @@ function collectOptions(
   const properties = isPlainObject(node.properties) ? node.properties : {};
   for (const key of Object.keys(properties)) {
     const path = prefix + key;
-    const values = valuesOf(properties[key], resolve);
-    if (values) result[path] = values;
+    const options = optionsOf(properties[key], resolve);
+    if (options) result[path] = options;
     const child = resolveNode(properties[key], resolve);
     if (child && isObjectNode(child)) collectOptions(child, `${path}.`, resolve, result, seen);
   }
 }
 
-/** The values a node allows: by field path for an object, or its own list. */
-export function getOptions(node: unknown, resolve: Resolve): Record<string, unknown[]> | unknown[] {
+/** The choices a node allows: by field path for an object, or its own list. */
+export function getOptions(
+  node: unknown,
+  resolve: Resolve,
+): Record<string, SchemaOption[]> | SchemaOption[] {
   const resolved = resolveNode(node, resolve);
   if (resolved && isObjectNode(resolved)) {
-    const result: Record<string, unknown[]> = {};
+    const result: Record<string, SchemaOption[]> = {};
     collectOptions(resolved, "", resolve, result, new Set());
     return result;
   }
-  return valuesOf(node, resolve) || [];
+  return optionsOf(node, resolve) || [];
+}
+
+/** What a node's rules make a field, or undefined for a `oneOf` of shapes. */
+export function getKind(node: unknown, resolve: Resolve): FieldKind | undefined {
+  const resolved = resolveNode(node, resolve);
+  if (!resolved) return undefined;
+  if (Array.isArray(resolved.enum) || "const" in resolved || isConstList(resolved, resolve))
+    return "select";
+  if (Array.isArray(resolved.oneOf)) {
+    // A nullable field is what its other branch is.
+    const rules = nonNullBranch(resolved, resolve);
+    return rules ? getKind(rules, resolve) : undefined;
+  }
+  if (resolved.type === "string")
+    return resolved.format === "date-time"
+      ? "date-time"
+      : resolved.format === "semver"
+        ? "version"
+        : "text";
+  if (resolved.type === "array")
+    return getKind(resolved.items, resolve) === "select" ? "multiselect" : "list";
+  if (resolved.type === "integer") return "number";
+  if (resolved.type === "number" || resolved.type === "boolean") return resolved.type;
+  return isObjectNode(resolved) ? "object" : undefined;
 }

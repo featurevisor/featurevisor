@@ -1,7 +1,8 @@
 import type { Context } from "@featurevisor/types";
 
-import { getConstraints, getOptions } from "./derived.js";
-import { compileNode, report, type Position, type Run, type Validate } from "./engine.js";
+import { getConstraints, getKind, getOptions } from "./derived.js";
+import { compileNode, report, sameJson, type Position, type Run, type Validate } from "./engine.js";
+import { valueOf } from "./errors.js";
 import { readFormData } from "./formData.js";
 import type { MessageLookup, MessageScope } from "./messages.js";
 import {
@@ -15,10 +16,12 @@ import {
 import { locate, type Store } from "./store.js";
 import type { StandardSchemaV1 } from "./standard.js";
 import type {
+  FieldKind,
   HandleOptions,
   PathKey,
   Refinement,
   SchemaIssue,
+  SchemaOption,
   SchemaResult,
   SchemasOptions,
   ValidateOptions,
@@ -35,6 +38,8 @@ interface Check {
 export interface HandleContext {
   readonly store: Store;
   readonly instanceOptions: () => SchemasOptions;
+  /** Calls back on every datafile the SDK instance accepts, until the instance closes or the returned function is called. */
+  readonly listen: (callback: () => void) => () => void;
 }
 
 /** How a framework adapts a handle's checks in code, such as React's kept answers. */
@@ -369,6 +374,21 @@ export class SchemaHandleImpl {
     return isPromise(result) ? result.then((settled) => !settled.issues) : !result.issues;
   }
 
+  parse(value: unknown, options?: ValidateOptions): unknown {
+    return parseResult(this.key, this.validate(value, options));
+  }
+
+  subscribe(listener: () => void): () => void {
+    const { store } = this.context;
+    let version = store.version(this.key);
+    return this.context.listen(() => {
+      const next = store.version(this.key);
+      if (next === version) return;
+      version = next;
+      listener();
+    });
+  }
+
   at(path: string): SchemaHandleImpl {
     let field = this.fields.get(path);
     if (!field) {
@@ -400,7 +420,29 @@ export class SchemaHandleImpl {
     return derived || (this.steps.length === 0 ? {} : []);
   }
 
+  option(value: unknown): SchemaOption | undefined {
+    const options = this.options;
+    return Array.isArray(options)
+      ? (options as SchemaOption[]).find((option) => sameJson(option.value, value))
+      : undefined;
+  }
+
+  get kind(): FieldKind | undefined {
+    const { store } = this.context;
+    return store.derive(this.key, `kind${this.path}`, () => getKind(this.node(), store.resolve));
+  }
+
   fromFormData(data: FormData | URLSearchParams): unknown {
     return readFormData(this.node(), data, this.context.store.resolve);
   }
+}
+
+/** A validation's value, or a thrown `SchemaError`, waiting for a promise when there is one. */
+export function parseResult(
+  schema: string,
+  result: SchemaResult<unknown> | Promise<SchemaResult<unknown>>,
+): unknown {
+  return isPromise(result)
+    ? result.then((settled) => valueOf(schema, settled))
+    : valueOf(schema, result);
 }

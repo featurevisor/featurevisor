@@ -273,18 +273,47 @@ export type ConstraintsOf<T> = unknown extends T
         >
       : FieldConstraints;
 
-/** An object's options are by field path, and any other value's are its own list. */
+/** One value an `enum`, a `const` or a `oneOf` of consts allows, with what is said about it. */
+export interface SchemaOption<T = unknown> {
+  readonly value: T;
+}
+
+/** The value one choice of a field holds: an item's for an array, or none for an object. */
+export type ChoiceOf<T> = unknown extends T
+  ? unknown
+  : T extends readonly (infer Item)[]
+    ? Item
+    : T extends object
+      ? never
+      : T;
+
+/** An object's options are by field path, and any other value's are its own list, of every choice its union holds. */
 export type OptionsOf<T> = unknown extends T
   ? any
-  : T extends readonly (infer Item)[]
-    ? ReadonlyArray<Item>
-    : T extends object
-      ? { readonly [K in keyof T & string]?: ReadonlyArray<OptionValue<T[K]>> } & Readonly<
-          Record<string, ReadonlyArray<unknown>>
-        >
-      : ReadonlyArray<T>;
+  : [T] extends [readonly unknown[]]
+    ? ReadonlyArray<SchemaOption<ChoiceOf<T>>>
+    : [T] extends [object]
+      ? {
+          readonly [K in keyof T & string]?: ReadonlyArray<
+            SchemaOption<ChoiceOf<Exclude<T[K], undefined>>>
+          >;
+        } & Readonly<Record<string, ReadonlyArray<SchemaOption>>>
+      : ReadonlyArray<SchemaOption<T>>;
 
-type OptionValue<T> = T extends readonly (infer Item)[] ? Item : T;
+/**
+ * What a field's rules make it, for a renderer to choose an input by. A
+ * nullable field has its other branch's kind, and any other `oneOf` has none.
+ */
+export type FieldKind =
+  | "text"
+  | "date-time"
+  | "version"
+  | "number"
+  | "boolean"
+  | "select"
+  | "multiselect"
+  | "object"
+  | "list";
 
 /** What every handle has, synchronous or not. */
 export interface SchemaHandleBase<
@@ -304,10 +333,24 @@ export interface SchemaHandleBase<
   at<P extends FieldPath<T>>(path: P): SchemaHandle<FieldValue<T, P>, TAsync>;
   /** The HTML validation attributes its rules imply: by field path for an object, or for the value itself. */
   readonly constraints: ConstraintsOf<T>;
-  /** The values its `enum` or `const` allows: by field path for an object, or for the value itself. */
+  /**
+   * The choices its `enum`, `const` or `oneOf` of consts allows, in order, as
+   * `{ value }`: by field path for an object, or for the value itself.
+   */
   readonly options: OptionsOf<T>;
+  /** One of its choices by value, or undefined when it allows no such choice. */
+  option(value: ChoiceOf<T>): SchemaOption<ChoiceOf<T>> | undefined;
+  /** What its rules make the field, such as `text` or `select`. A project's own annotation can say otherwise. */
+  readonly kind: FieldKind | undefined;
   /** A value read from `FormData` or `URLSearchParams` by the schema's types, for `validate` to check. */
   fromFormData(data: FormData | URLSearchParams): unknown;
+  /** The value, unchanged and typed, or a thrown `SchemaError` with the issues. Never coerces. */
+  parse(value: unknown, options?: ValidateOptions): Awaitable<TAsync, T>;
+  /**
+   * Calls back when a new datafile changes the schema, through a schema it
+   * references too. Returns a function that stops it.
+   */
+  subscribe(listener: () => void): () => void;
 }
 
 /** A handle whose checks, if any, answer at once. */
@@ -353,6 +396,18 @@ export interface Schemas<TSchemas extends object = Record<string, unknown>> {
     value: unknown,
     context?: Context,
   ): value is TSchemas[K];
+  /** The value, unchanged and typed, or a thrown `SchemaError` with the issues. */
+  parse<K extends keyof TSchemas & string>(key: K, value: unknown, context?: Context): TSchemas[K];
+  /** The keys of the schemas the current datafile has. */
+  keys(): string[];
+  /** Whether the current datafile has a schema. */
+  has(key: string): key is keyof TSchemas & string;
   /** Stops listening to the SDK instance. */
   close(): void;
 }
+
+/** The type a handle validates, such as `InferSchema<typeof signUp>`. */
+export type InferSchema<THandle> = THandle extends SchemaHandleBase<infer T, boolean> ? T : never;
+
+/** The keys an instance knows, such as `SchemaKey<typeof s>`. */
+export type SchemaKey<TSchemas> = TSchemas extends Schemas<infer T> ? keyof T & string : never;

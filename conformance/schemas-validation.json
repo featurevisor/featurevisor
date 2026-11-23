@@ -1360,6 +1360,62 @@
       "issues": []
     },
     {
+      "name": "a oneOf of consts takes one of them",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "oneOf": [
+            {
+              "const": "free"
+            },
+            {
+              "const": "pro"
+            },
+            {
+              "const": null
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": null,
+      "issues": []
+    },
+    {
+      "name": "a oneOf of consts reports enum, with its values, as an enum does",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "oneOf": [
+            {
+              "const": "free"
+            },
+            {
+              "const": "pro"
+            },
+            {
+              "const": null
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": "gold",
+      "issues": [
+        {
+          "code": "enum",
+          "path": [],
+          "params": {
+            "options": [
+              "free",
+              "pro",
+              null
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "an object branch selected by type reports its fields' issues",
       "schemas": {
         "subject": {

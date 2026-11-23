@@ -52,6 +52,9 @@ const packages = [
     runtimeExports: {
       createSchemas: "function",
       flattenIssues: "function",
+      formAction: "function",
+      initialFormState: "object",
+      SchemaError: "function",
     },
     subpaths: {
       "./react": {
