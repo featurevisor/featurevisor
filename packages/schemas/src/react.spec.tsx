@@ -343,6 +343,60 @@ describe("the hook's handle", () => {
     expect(calls).toEqual(["changed"]);
   });
 
+  test("has annotations and fields, whose handles are the hook's own, with the scope's context", async () => {
+    const f = createFeaturevisor({
+      datafile: datafile({
+        profile: {
+          hash: "p1",
+          type: "object",
+          properties: {
+            name: { type: "string", minLength: 2, annotations: { title: "Name" } },
+            plan: {
+              type: "string",
+              enum: ["free", "pro"],
+              annotations: { options: { pro: { title: "Pro" } } },
+            },
+          },
+          annotations: { title: "Your profile", order: ["plan", "name"] },
+        },
+      }),
+      logLevel: "fatal",
+    });
+    let handle: any;
+    function Form() {
+      handle = useSchema("profile", {
+        refine: [
+          {
+            key: "dutch",
+            path: "name",
+            check: (_name: string, { context }) => context.country === "nl",
+          },
+        ],
+      });
+      return <h1>{handle.annotations.title}</h1>;
+    }
+    const view = render(
+      <FeaturevisorProvider instance={f}>
+        <FeaturevisorScope context={{ country: "nl" }}>
+          <Form />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+
+    expect(view.container.textContent).toBe("Your profile");
+    expect(handle.fields.map((field: any) => field.name)).toEqual(["plan", "name"]);
+    expect(handle.fields[1]).toBe(handle.at("name"));
+    expect(handle.fields[1].annotations.title).toBe("Name");
+    expect(handle.fields[0].option("pro")).toEqual({ value: "pro", title: "Pro" });
+    // The field's handle validates with the scope's context, as the hook's handle does.
+    expect(await handle.fields[1].validate("Ada")).toEqual({ value: "Ada" });
+    expect((await handle.fields[1].validate("A")).issues[0].params).toEqual({
+      minLength: 2,
+      length: 1,
+      title: "Name",
+    });
+  });
+
   test("a validation that throws fails the older one waiting on it, which stops listening", async () => {
     const f = sdk();
     let handle: any;

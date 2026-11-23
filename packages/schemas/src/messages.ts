@@ -24,6 +24,8 @@ export interface MessageLookup {
   /** Keys, with `"[]"` for array items and `"*"` for the values of an open object. */
   readonly mpath: ReadonlyArray<string>;
   readonly scopes: ReadonlyArray<MessageScope>;
+  /** The field's `title` annotation, which every issue about the field carries in its params. */
+  readonly title?: string;
 }
 
 /** What wording an instance and a form bring, for one validation. */
@@ -112,7 +114,8 @@ export function defaultMessage(
     case "const":
       return `${at} must equal ${JSON.stringify(params.const)}.`;
     case "enum":
-      return `${at} must be one of ${(params.options as unknown[]).map((option) => (typeof option === "string" ? option : JSON.stringify(option))).join(", ")}.`;
+      // The choices' titles when every choice has one, since those are what a person picks from.
+      return `${at} must be one of ${((params.titles || params.options) as unknown[]).map((option) => (typeof option === "string" ? option : JSON.stringify(option))).join(", ")}.`;
     case "minimum":
       return `${at} must be at least ${params.minimum} (got ${params.value}).`;
     case "maximum":

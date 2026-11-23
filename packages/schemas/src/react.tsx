@@ -29,12 +29,12 @@ import type {
 /** `T` as written, never inferred from where it is used, so options never type the schema. */
 type Uninferred<T> = [T][T extends unknown ? 0 : never];
 
-const SchemasContext = React.createContext<Schemas<any> | undefined>(undefined);
+const SchemasContext = React.createContext<Schemas<any, any> | undefined>(undefined);
 
 /** One instance per SDK instance, for hooks under a FeaturevisorProvider without a SchemasProvider. */
-const fallbacks = new WeakMap<Featurevisor, Schemas<any>>();
+const fallbacks = new WeakMap<Featurevisor, Schemas<any, any>>();
 
-function fallbackFor(f: Featurevisor): Schemas<any> {
+function fallbackFor(f: Featurevisor): Schemas<any, any> {
   let schemas = fallbacks.get(f);
   if (!schemas) {
     schemas = createSchemas(f);
@@ -49,7 +49,7 @@ export interface SchemasProviderProps {
   /** The translating function, for the instance this provider creates. The latest is used. */
   message?: SchemasOptions["message"];
   /** An instance created elsewhere, which needs no FeaturevisorProvider above. */
-  schemas?: Schemas<any>;
+  schemas?: Schemas<any, any>;
   children: React.ReactNode;
 }
 
@@ -84,11 +84,14 @@ export function SchemasProvider(props: SchemasProviderProps): React.ReactElement
  * FeaturevisorProvider's SDK instance. Reads through it do not render the
  * component again.
  */
-export function useSchemas<TSchemas extends object = Record<string, unknown>>(): Schemas<TSchemas> {
+export function useSchemas<
+  TSchemas extends object = Record<string, unknown>,
+  TVocabularies extends object = Record<string, unknown>,
+>(): Schemas<TSchemas, TVocabularies> {
   const provided = React.useContext(SchemasContext);
   const sdk = useSdk();
-  if (provided) return provided as Schemas<TSchemas>;
-  if (sdk) return fallbackFor(sdk) as Schemas<TSchemas>;
+  if (provided) return provided as Schemas<TSchemas, TVocabularies>;
+  if (sdk) return fallbackFor(sdk) as Schemas<TSchemas, TVocabularies>;
   throw new Error(
     "@featurevisor/schemas/react needs a SchemasProvider or a FeaturevisorProvider above it.",
   );
@@ -97,7 +100,7 @@ export function useSchemas<TSchemas extends object = Record<string, unknown>>():
 const { useSyncExternalStore } = React as Partial<typeof React>;
 
 /** What the datafile holds for a key, read again when a datafile is set. */
-function useSchemaVersion(schemas: Schemas<any>, key: string): unknown {
+function useSchemaVersion(schemas: Schemas<any, any>, key: string): unknown {
   const internals = getInternals(schemas);
   const read = () => internals.version(key);
   const subscribe = React.useCallback(
@@ -213,7 +216,8 @@ class HookHandle {
     controller: AbortController;
     settleWith: (result: SchemaResult<unknown> | Promise<SchemaResult<unknown>>) => void;
   };
-  private readonly fields = new Map<string, HookHandle>();
+  private readonly handles = new Map<SchemaHandleImpl, HookHandle>();
+  private listed?: { keys: ReadonlyArray<string>; fields: HookHandle[] };
   readonly "~standard": SchemaHandleImpl["~standard"];
 
   constructor(
@@ -248,6 +252,19 @@ class HookHandle {
   get kind() {
     return this.inner.kind;
   }
+  get name() {
+    return this.inner.name;
+  }
+  get annotations() {
+    return this.inner.annotations;
+  }
+  get fields(): ReadonlyArray<HookHandle> {
+    const keys = this.inner.fieldKeys();
+    if (!this.listed || this.listed.keys !== keys) {
+      this.listed = { keys, fields: keys.map((key) => this.child(key)) };
+    }
+    return this.listed.fields;
+  }
   option(value: unknown) {
     return this.inner.option(value);
   }
@@ -268,10 +285,19 @@ class HookHandle {
   }
 
   at(path: string): HookHandle {
-    let field = this.fields.get(path);
+    return this.wrap(this.inner.at(path));
+  }
+
+  child(key: string): HookHandle {
+    return this.wrap(this.inner.child(key));
+  }
+
+  /** One wrapper per inner handle, so a field from `fields` is the one `at` gives. */
+  private wrap(inner: SchemaHandleImpl): HookHandle {
+    let field = this.handles.get(inner);
     if (!field) {
-      field = new HookHandle(this.inner.at(path), this.scope);
-      this.fields.set(path, field);
+      field = new HookHandle(inner, this.scope);
+      this.handles.set(inner, field);
     }
     return field;
   }
@@ -354,10 +380,14 @@ class HookHandle {
  * it, under a context given to `validate`. Checks in code keep their answers,
  * share calls and let the latest validation win.
  */
-export function useSchema<T = unknown, TResult extends boolean | Promise<boolean> = boolean>(
+export function useSchema<
+  T = unknown,
+  TResult extends boolean | Promise<boolean> = boolean,
+  V = unknown,
+>(
   key: string,
   options?: HandleOptions<Uninferred<T>, TResult>,
-): SchemaHandle<T, IsAsync<TResult>> {
+): SchemaHandle<T, IsAsync<TResult>, V> {
   const schemas = useSchemas();
   const latest = React.useRef(options);
   latest.current = options;
@@ -372,7 +402,7 @@ export function useSchema<T = unknown, TResult extends boolean | Promise<boolean
   }, [schemas, key]);
 
   useSchemaVersion(schemas, key);
-  return handle as unknown as SchemaHandle<T, IsAsync<TResult>>;
+  return handle as unknown as SchemaHandle<T, IsAsync<TResult>, V>;
 }
 
 export interface ValidationOptions {
@@ -400,7 +430,7 @@ interface RulesHandle {
  * code wait for `debounce`, and the result says when they run.
  */
 export function useValidation<T = unknown>(
-  keyOrHandle: string | SchemaHandle<T, boolean>,
+  keyOrHandle: string | SchemaHandle<T, boolean, any>,
   value: unknown,
   options: ValidationOptions = {},
 ): ValidationResult<T> {

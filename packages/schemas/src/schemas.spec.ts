@@ -577,6 +577,226 @@ describe("handles", () => {
   });
 });
 
+describe("annotations", () => {
+  const form: DatafileSchema = {
+    hash: "f1",
+    type: "object",
+    properties: {
+      email: {
+        type: "string",
+        annotations: { title: "Email address", placeholder: "ada@example.com" },
+      },
+      plan: {
+        type: "string",
+        enum: ["free", "pro", "team"],
+        annotations: {
+          title: "Plan",
+          options: {
+            free: { title: "Free" },
+            pro: { title: "Pro", badge: "popular" },
+            team: { title: "Team" },
+          },
+        },
+      },
+      seats: {
+        enum: [1, 5, null],
+        annotations: { options: { "1": { title: "Just me" }, null: { title: "Not sure" } } },
+      },
+      country: { schema: "country", annotations: { title: "Country of residence" } },
+      nickname: {
+        oneOf: [
+          { type: "string", maxLength: 3 },
+          { const: null, annotations: { title: "No nickname" } },
+        ],
+        annotations: { title: "Nickname" },
+      },
+      address: { schema: "postal", annotations: { order: ["postcode", "city"] } },
+      "a.b": { type: "string" },
+    },
+    required: ["email", "plan", "country"],
+    annotations: { title: "Create your account", order: ["plan", "email", "nope"] },
+  };
+  const country: DatafileSchema = {
+    hash: "c1",
+    oneOf: [
+      { const: "GB", annotations: { title: "United Kingdom", flag: "gb" } },
+      { const: "NL", annotations: { title: "Netherlands", flag: "nl" } },
+    ],
+    annotations: { title: "Country" },
+  };
+  const postal: DatafileSchema = {
+    hash: "p1",
+    type: "object",
+    properties: {
+      city: { type: "string", annotations: { title: "City" } },
+      street: { type: "string" },
+      postcode: { type: "string" },
+    },
+    required: ["city"],
+    annotations: { title: "Address", order: ["street", "city"] },
+  };
+  const annotated = (options?: Parameters<typeof createSchemas>[1]) =>
+    setup(options, datafile({ form, country, postal }));
+  const filled = { email: "ada@example.com", plan: "free", country: "GB" };
+
+  test("a handle has its own annotations, over those of a schema its field references", () => {
+    const { s } = annotated();
+    const signUpForm = s.get("form");
+
+    expect(signUpForm.annotations).toEqual({
+      title: "Create your account",
+      order: ["plan", "email", "nope"],
+    });
+    expect(Object.isFrozen(signUpForm.annotations)).toBe(true);
+    expect(signUpForm.at("email").annotations).toEqual({
+      title: "Email address",
+      placeholder: "ada@example.com",
+    });
+    // The reference's own title wins over the referenced schema's.
+    expect(signUpForm.at("country").annotations).toEqual({ title: "Country of residence" });
+    expect(s.get("country").annotations.title).toBe("Country");
+    expect(signUpForm.at("address").annotations).toEqual({
+      title: "Address",
+      order: ["postcode", "city"],
+    });
+    expect(signUpForm.at("address.city").annotations.title).toBe("City");
+    expect(signUpForm.at("address.city").name).toBe("city");
+    expect(signUpForm.name).toBe("");
+    expect(s.get("missing").annotations).toEqual({});
+  });
+
+  test("fields come in order, then the fields it leaves out, and are the handles at gives", () => {
+    const { s } = annotated();
+    const signUpForm = s.get("form");
+
+    expect(signUpForm.fields.map((field) => field.name)).toEqual([
+      "plan",
+      "email",
+      "seats",
+      "country",
+      "nickname",
+      "address",
+      "a.b",
+    ]);
+    expect(signUpForm.fields[0]).toBe(signUpForm.at("plan"));
+    expect(signUpForm.fields).toBe(signUpForm.fields);
+    // A field beside a reference orders the referenced schema's fields for that use only.
+    expect(signUpForm.at("address").fields.map((field) => field.path)).toEqual([
+      "address.postcode",
+      "address.city",
+      "address.street",
+    ]);
+    expect(s.get("postal").fields.map((field) => field.name)).toEqual([
+      "street",
+      "city",
+      "postcode",
+    ]);
+    // A key a path would read otherwise still has a handle of its own.
+    const dotted = signUpForm.fields[6];
+    expect(dotted.name).toBe("a.b");
+    expect(codes(dotted.validate(1).issues)).toEqual([["type", ""]]);
+    expect(signUpForm.at("email").fields).toEqual([]);
+    expect(s.get("missing").fields).toEqual([]);
+  });
+
+  test("options carry each choice's title and what its vocabulary declares", () => {
+    const { s } = annotated();
+    const signUpForm = s.get("form");
+
+    expect(signUpForm.at("plan").options).toEqual([
+      { value: "free", title: "Free" },
+      { value: "pro", title: "Pro", badge: "popular" },
+      { value: "team", title: "Team" },
+    ]);
+    expect(signUpForm.at("seats").options).toEqual([
+      { value: 1, title: "Just me" },
+      { value: 5 },
+      { value: null, title: "Not sure" },
+    ]);
+    expect(signUpForm.at("country").options).toEqual([
+      { value: "GB", title: "United Kingdom", flag: "gb" },
+      { value: "NL", title: "Netherlands", flag: "nl" },
+    ]);
+    // A nullable field's branches carry a field's annotations, so they make no choices.
+    expect(signUpForm.at("nickname").options).toEqual([]);
+    expect(signUpForm.at("plan").option("pro")?.badge).toBe("popular");
+    expect(signUpForm.options.plan[1].title).toBe("Pro");
+    expect(Object.isFrozen(signUpForm.at("plan").options[0])).toBe(true);
+  });
+
+  test("issues carry the field's title, and an enum's issue its choices' titles when every choice has one", () => {
+    const { s } = annotated();
+
+    expect(s.validate("form", {}).issues!.map(({ params }) => params)).toEqual([
+      { key: "email", title: "Email address" },
+      { key: "plan", title: "Plan" },
+      { key: "country", title: "Country of residence" },
+    ]);
+
+    const issues = s.validate("form", {
+      email: 1,
+      plan: "gold",
+      seats: 7,
+      country: "FR",
+      nickname: "abcd",
+      extra: true,
+    }).issues!;
+    expect(issues.map(({ code, params }) => [code, params])).toEqual([
+      ["type", { type: "string", received: "number", title: "Email address" }],
+      [
+        "enum",
+        { options: ["free", "pro", "team"], titles: ["Free", "Pro", "Team"], title: "Plan" },
+      ],
+      ["enum", { options: [1, 5, null] }],
+      [
+        "enum",
+        {
+          options: ["GB", "NL"],
+          titles: ["United Kingdom", "Netherlands"],
+          title: "Country of residence",
+        },
+      ],
+      ["maxLength", { maxLength: 3, length: 4, title: "Nickname" }],
+      ["additionalProperties", { key: "extra" }],
+    ]);
+    expect(issues[1].message).toBe('Value at "plan" must be one of Free, Pro, Team.');
+
+    const worded = annotated({ messages: { required: "{title} is required" } }).s;
+    expect(worded.validate("form", { plan: "free", country: "GB" }).issues![0].message).toBe(
+      "Email address is required",
+    );
+
+    const checked = s.get("form", { refine: [{ key: "free", path: "email", check: () => false }] });
+    expect(checked.validate(filled).issues![0].params).toEqual({
+      refine: "free",
+      title: "Email address",
+    });
+  });
+
+  test("annotations never change what validation accepts", () => {
+    const strip = (node: unknown): unknown => {
+      if (Array.isArray(node)) return node.map(strip);
+      if (!node || typeof node !== "object") return node;
+      return Object.fromEntries(
+        Object.entries(node)
+          .filter(([key]) => key !== "annotations")
+          .map(([key, value]) => [key, key === "enum" || key === "const" ? value : strip(value)]),
+      );
+    };
+    const { s } = annotated();
+    const bare = setup(
+      undefined,
+      datafile(strip({ form, country, postal }) as Record<string, DatafileSchema>),
+    ).s;
+
+    for (const value of [{}, filled, { ...filled, plan: "gold", nickname: "abcd" }, 42]) {
+      expect(codes(s.validate("form", value).issues)).toEqual(
+        codes(bare.validate("form", value).issues),
+      );
+    }
+  });
+});
+
 describe("form data", () => {
   test("is read by the schema's types, leaving out what it does not describe", () => {
     const { s } = setup();

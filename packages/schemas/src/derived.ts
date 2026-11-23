@@ -1,4 +1,11 @@
-import { isConstList, isPlainObject, resolveNode, type Resolve } from "./engine.js";
+import {
+  annotationsOf,
+  isConstList,
+  isPlainObject,
+  optionEntry,
+  resolveNode,
+  type Resolve,
+} from "./engine.js";
 import type { FieldConstraints, FieldKind, SchemaOption } from "./types.js";
 
 type Node = Record<string, unknown>;
@@ -115,37 +122,72 @@ export function getConstraints(
   return attributesOf(node, false, resolve);
 }
 
-/** The values a node allows by `enum` or `const`, or undefined when it does not list them. */
-function valuesOf(
+/**
+ * A node's choices in the order its rules list them, each as its value with
+ * what the schema says about it: an `enum` value's entry in the `options`
+ * annotation beside it, or a `const` branch's own annotations in a `oneOf` of
+ * consts. Undefined when the node lists no choices. A multiple select's
+ * choices are its items'.
+ */
+function choicesOf(
   node: unknown,
   resolve: Resolve,
+  branch = false,
   seen = new Set<unknown>(),
-): unknown[] | undefined {
+): ReadonlyArray<SchemaOption> | undefined {
   const resolved = resolveNode(node, resolve);
   if (!resolved || seen.has(resolved)) return undefined;
   seen.add(resolved);
-  if (Array.isArray(resolved.enum)) return resolved.enum as unknown[];
-  if ("const" in resolved) return [resolved.const];
+  // Frozen, since every caller shares them. Values and the entries' values stay the datafile's own.
+  // `value` first, as a console shows it, and last too, so an entry can never replace it.
+  const choice = (value: unknown, entry: Node | undefined) =>
+    Object.freeze(Object.assign({ value }, entry, { value })) as SchemaOption;
+  if (Array.isArray(resolved.enum))
+    return resolved.enum.map((value) => choice(value, optionEntry(resolved, value)));
+  if ("const" in resolved)
+    return [choice(resolved.const, branch ? annotationsOf(node, resolve) : undefined)];
   if (Array.isArray(resolved.oneOf)) {
-    const values: unknown[] = [];
-    for (const branch of resolved.oneOf) {
-      const branchValues = valuesOf(branch, resolve, seen);
-      if (!branchValues) return undefined;
-      for (const value of branchValues) if (values.indexOf(value) === -1) values.push(value);
+    // Only a list of choices gives its branches' annotations to the choices. Any other branch's are a field's.
+    const list = isConstList(resolved, resolve);
+    const choices: SchemaOption[] = [];
+    for (const each of resolved.oneOf) {
+      const found = choicesOf(each, resolve, list, seen);
+      if (!found) return undefined;
+      for (const option of found)
+        if (!choices.some((other) => other.value === option.value)) choices.push(option);
     }
-    return values;
+    return choices;
   }
-  // A multiple select's choices are its items'.
   if (resolved.type === "array" && resolved.items !== undefined)
-    return valuesOf(resolved.items, resolve, seen);
+    return choicesOf(resolved.items, resolve, false, seen);
   return undefined;
 }
 
-/** A node's choices as options, in the order its rules list them. */
+function valuesOf(node: unknown, resolve: Resolve): unknown[] | undefined {
+  return choicesOf(node, resolve)?.map((option) => option.value);
+}
+
+/** A node's choices as options, frozen. */
 function optionsOf(node: unknown, resolve: Resolve): ReadonlyArray<SchemaOption> | undefined {
-  const values = valuesOf(node, resolve);
-  // Frozen, since every caller shares them. The values stay the datafile's own.
-  return values && Object.freeze(values.map((value) => Object.freeze({ value })));
+  const choices = choicesOf(node, resolve);
+  return choices && Object.freeze(choices);
+}
+
+/** The keys of an object's fields, in its `order`, then the ones `order` leaves out, as written. */
+export function fieldKeys(node: unknown, resolve: Resolve): string[] {
+  const resolved = resolveNode(node, resolve);
+  if (!resolved || !isPlainObject(resolved.properties)) return [];
+  const keys = Object.keys(resolved.properties);
+  const order = annotationsOf(node, resolve)?.order;
+  const first = Array.isArray(order)
+    ? order.filter((key, index) => keys.indexOf(key) !== -1 && order.indexOf(key) === index)
+    : [];
+  return first.concat(keys.filter((key) => first.indexOf(key) === -1));
+}
+
+/** A node's annotations, over those of a schema it references, frozen. */
+export function getAnnotations(node: unknown, resolve: Resolve): Readonly<Record<string, unknown>> {
+  return Object.freeze({ ...annotationsOf(node, resolve) });
 }
 
 function collectOptions(

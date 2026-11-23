@@ -274,10 +274,55 @@ export type ConstraintsOf<T> = unknown extends T
         >
       : FieldConstraints;
 
-/** One value an `enum`, a `const` or a `oneOf` of consts allows, with what is said about it. */
-export interface SchemaOption<T = unknown> {
-  readonly value: T;
+/**
+ * What a schema's vocabularies declare, as generated code writes them for each
+ * schema: what its `annotationsSchema` lets annotations hold, and what its
+ * `optionsSchema` lets each choice carry, with `{}` for one it lacks.
+ */
+export interface Vocabulary {
+  readonly annotations?: object;
+  readonly options?: object;
 }
+
+/**
+ * The annotations Featurevisor uses itself, which every schema can carry
+ * without a vocabulary. A type rather than an interface, so a typed handle's
+ * annotations still fit where an untyped handle's are asked for.
+ */
+export type BuiltInAnnotations = {
+  /** A field's or a form's name for people, which issues carry in their params. */
+  readonly title?: string;
+  /** Values the field could hold, each checked by lint against its own rules. */
+  readonly examples?: ReadonlyArray<unknown>;
+  /** The order of an object's fields, which `fields` follows. */
+  readonly order?: ReadonlyArray<string>;
+  /** Beside an `enum`, what each choice carries, keyed by its value. `options` on a handle reads it. */
+  readonly options?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+};
+
+/**
+ * A handle's annotations: the built in ones, and what its schema's vocabulary
+ * declares, or any name for an untyped handle, since only the datafile knows.
+ */
+export type AnnotationsOf<V = unknown> = unknown extends V
+  ? BuiltInAnnotations & Readonly<Record<string, unknown>>
+  : BuiltInAnnotations & (V extends { annotations?: infer A } ? Readonly<Partial<A>> : unknown);
+
+/** What a choice carries besides its value and title: its vocabulary's fields, or any for an untyped handle. */
+export type OptionFieldsOf<V = unknown> = unknown extends V
+  ? Readonly<Record<string, unknown>>
+  : V extends { options?: infer O }
+    ? Readonly<Partial<O>>
+    : unknown;
+
+/**
+ * One value an `enum`, a `const` or a `oneOf` of consts allows, with what the
+ * schema says about it: its `title` and the fields its `optionsSchema` declares.
+ */
+export type SchemaOption<T = unknown, V = unknown> = {
+  readonly value: T;
+  readonly title?: string;
+} & OptionFieldsOf<V>;
 
 /** The value one choice of a field holds: an item's for an array, or none for an object. */
 export type ChoiceOf<T> = unknown extends T
@@ -289,17 +334,17 @@ export type ChoiceOf<T> = unknown extends T
       : T;
 
 /** An object's options are by field path, and any other value's are its own list, of every choice its union holds. */
-export type OptionsOf<T> = unknown extends T
+export type OptionsOf<T, V = unknown> = unknown extends T
   ? any
   : [T] extends [readonly unknown[]]
-    ? ReadonlyArray<SchemaOption<ChoiceOf<T>>>
+    ? ReadonlyArray<SchemaOption<ChoiceOf<T>, V>>
     : [T] extends [object]
       ? {
           readonly [K in keyof T & string]?: ReadonlyArray<
-            SchemaOption<ChoiceOf<Exclude<T[K], undefined>>>
+            SchemaOption<ChoiceOf<Exclude<T[K], undefined>>, V>
           >;
-        } & Readonly<Record<string, ReadonlyArray<SchemaOption>>>
-      : ReadonlyArray<SchemaOption<T>>;
+        } & Readonly<Record<string, ReadonlyArray<SchemaOption<unknown, V>>>>
+      : ReadonlyArray<SchemaOption<T, V>>;
 
 /**
  * What a field's rules make it, for a renderer to choose an input by. A
@@ -316,31 +361,43 @@ export type FieldKind =
   | "object"
   | "list";
 
-/** What every handle has, synchronous or not. */
+/** What every handle has, synchronous or not. `V` is its schema's vocabularies, from generated code. */
 export interface SchemaHandleBase<
   T = unknown,
   TAsync extends boolean = false,
+  V = unknown,
 > extends StandardSchemaV1<T, T> {
   /** The schema's key, such as `signUp`. */
   readonly key: string;
   /** Where a field's handle sits, such as `address.city`, or an empty string for the schema itself. */
   readonly path: string;
+  /** Its own key in the object it sits in, such as `city`, or an empty string for the schema itself. */
+  readonly name: string;
+  /**
+   * What the schema says beside the field's rules, such as `title`, `order` or
+   * a vocabulary's `placeholder`, over those of a schema the field references.
+   * Validation never reads them.
+   */
+  readonly annotations: AnnotationsOf<V>;
+  /** An object's fields' handles, in its `order`, then the fields it leaves out as written. None for any other value. */
+  readonly fields: ReadonlyArray<SchemaHandle<unknown, TAsync, V>>;
   /** The value itself on success, or the issues found. Never coerces. */
   validate(value: unknown, options?: ValidateOptions): Awaitable<TAsync, SchemaResult<T>>;
   /**
    * The handle for one field, such as `at("displayName")`, `at("items.0")` or
    * `at("items[].name")`, typed by the field with a typed schema.
    */
-  at<P extends FieldPath<T>>(path: P): SchemaHandle<FieldValue<T, P>, TAsync>;
+  at<P extends FieldPath<T>>(path: P): SchemaHandle<FieldValue<T, P>, TAsync, V>;
   /** The HTML validation attributes its rules imply: by field path for an object, or for the value itself. */
   readonly constraints: ConstraintsOf<T>;
   /**
    * The choices its `enum`, `const` or `oneOf` of consts allows, in order, as
-   * `{ value }`: by field path for an object, or for the value itself.
+   * `{ value, title, ...fields }`: by field path for an object, or for the
+   * value itself.
    */
-  readonly options: OptionsOf<T>;
+  readonly options: OptionsOf<T, V>;
   /** One of its choices by value, or undefined when it allows no such choice. */
-  option(value: ChoiceOf<T>): SchemaOption<ChoiceOf<T>> | undefined;
+  option(value: ChoiceOf<T>): SchemaOption<ChoiceOf<T>, V> | undefined;
   /** What its rules make the field, such as `text` or `select`. A project's own annotation can say otherwise. */
   readonly kind: FieldKind | undefined;
   /** A value read from `FormData` or `URLSearchParams` by the schema's types, for `validate` to check. */
@@ -355,12 +412,12 @@ export interface SchemaHandleBase<
 }
 
 /** A handle whose checks, if any, answer at once. */
-export interface SyncSchemaHandle<T = unknown> extends SchemaHandleBase<T, false> {
+export interface SyncSchemaHandle<T = unknown, V = unknown> extends SchemaHandleBase<T, false, V> {
   isValid(value: unknown, options?: ValidateOptions): value is T;
 }
 
 /** A handle with a check in code that can return a promise, so validation may need awaiting. */
-export interface AsyncSchemaHandle<T = unknown> extends SchemaHandleBase<T, true> {
+export interface AsyncSchemaHandle<T = unknown, V = unknown> extends SchemaHandleBase<T, true, V> {
   isValid(value: unknown, options?: ValidateOptions): boolean | Promise<boolean>;
 }
 
@@ -369,9 +426,16 @@ export interface AsyncSchemaHandle<T = unknown> extends SchemaHandleBase<T, true
  * current datafile whenever it is used, so one handle kept for the life of an
  * application picks up every new datafile.
  */
-export type SchemaHandle<T = unknown, TAsync extends boolean = false> = TAsync extends true
-  ? AsyncSchemaHandle<T>
-  : SyncSchemaHandle<T>;
+export type SchemaHandle<
+  T = unknown,
+  TAsync extends boolean = false,
+  V = unknown,
+> = TAsync extends true ? AsyncSchemaHandle<T, V> : SyncSchemaHandle<T, V>;
+
+/** A schema's vocabularies by its key, or unknown when generated code does not say. */
+export type VocabularyOf<TVocabularies, K> = K extends keyof TVocabularies
+  ? TVocabularies[K]
+  : unknown;
 
 /** Whether a check's result can be a promise, which makes its handle's validation need awaiting. */
 export type IsAsync<TResult> = [TResult] extends [never]
@@ -380,13 +444,21 @@ export type IsAsync<TResult> = [TResult] extends [never]
     ? false
     : true;
 
-/** The instance `createSchemas(f)` returns, by convention called `s`. */
-export interface Schemas<TSchemas extends object = Record<string, unknown>> {
-  get<K extends keyof TSchemas & string>(key: K): SchemaHandle<TSchemas[K], false>;
+/**
+ * The instance `createSchemas(f)` returns, by convention called `s`. Generated
+ * code gives it the schemas' types, and their vocabularies by key.
+ */
+export interface Schemas<
+  TSchemas extends object = Record<string, unknown>,
+  TVocabularies extends object = Record<string, unknown>,
+> {
+  get<K extends keyof TSchemas & string>(
+    key: K,
+  ): SchemaHandle<TSchemas[K], false, VocabularyOf<TVocabularies, K>>;
   get<K extends keyof TSchemas & string, TResult extends boolean | Promise<boolean> = boolean>(
     key: K,
     options: HandleOptions<TSchemas[K], TResult>,
-  ): SchemaHandle<TSchemas[K], IsAsync<TResult>>;
+  ): SchemaHandle<TSchemas[K], IsAsync<TResult>, VocabularyOf<TVocabularies, K>>;
   validate<K extends keyof TSchemas & string>(
     key: K,
     value: unknown,
@@ -408,7 +480,8 @@ export interface Schemas<TSchemas extends object = Record<string, unknown>> {
 }
 
 /** The type a handle validates, such as `InferSchema<typeof signUp>`. */
-export type InferSchema<THandle> = THandle extends SchemaHandleBase<infer T, boolean> ? T : never;
+export type InferSchema<THandle> =
+  THandle extends SchemaHandleBase<infer T, boolean, any> ? T : never;
 
 /** The keys an instance knows, such as `SchemaKey<typeof s>`. */
-export type SchemaKey<TSchemas> = TSchemas extends Schemas<infer T> ? keyof T & string : never;
+export type SchemaKey<TSchemas> = TSchemas extends Schemas<infer T, any> ? keyof T & string : never;

@@ -101,6 +101,8 @@ export function report(
 ): void {
   run.failed = true;
   if (run.trial) return;
+  // The field's title, so a message can say `{title} is required`.
+  if (lookup.title !== undefined) params = { ...params, title: lookup.title };
   let message = chooseMessage(code, params, path, lookup, run.sources, ownMessage);
   const issue = { message, path, code, params, schema: run.schema };
   if (run.translate) {
@@ -108,6 +110,42 @@ export function report(
     if (typeof translated === "string") message = translated;
   }
   run.issues.push(message === issue.message ? issue : { ...issue, message });
+}
+
+/** A node's annotations, over those of the schema it references, so the reference's own win. */
+export function annotationsOf(
+  node: unknown,
+  resolve: Resolve,
+  seen = new Set<string>(),
+): Record<string, unknown> | undefined {
+  if (!isPlainObject(node)) return undefined;
+  const own = isPlainObject(node.annotations) ? node.annotations : undefined;
+  if (typeof node.schema !== "string" || seen.has(node.schema)) return own;
+  seen.add(node.schema);
+  const referenced = annotationsOf(resolve(node.schema)?.node, resolve, seen);
+  return referenced && own ? { ...referenced, ...own } : own || referenced;
+}
+
+/** A node's `title` annotation, through the schema it references. */
+export function titleOf(node: unknown, resolve: Resolve): string | undefined {
+  const title = annotationsOf(node, resolve)?.title;
+  return typeof title === "string" ? title : undefined;
+}
+
+/** What an `enum`'s `options` annotation says about one value, keyed by the value, or a value's JSON text. */
+export function optionEntry(node: Node, value: unknown): Record<string, unknown> | undefined {
+  const options = isPlainObject(node.annotations) ? node.annotations.options : undefined;
+  const key = typeof value === "string" ? value : JSON.stringify(value);
+  const entry = isPlainObject(options) && hasOwn(options, key) ? options[key] : undefined;
+  return isPlainObject(entry) ? entry : undefined;
+}
+
+/** Each choice's title, when every choice has one, for an `enum` issue's `titles`. */
+function titlesOf(entries: unknown[]): { titles?: string[] } {
+  const titles = entries.map((entry) => (isPlainObject(entry) ? entry.title : undefined));
+  return titles.length > 0 && titles.every((title) => typeof title === "string")
+    ? { titles: titles as string[] }
+    : {};
 }
 
 /** Schema messages around a field: its own node's, and a referenced schema's root's. */
@@ -181,7 +219,10 @@ function compileConstList(node: Node, resolve: Resolve): Validate {
   const branchNodes = node.oneOf as unknown[];
   return (value, run, at) => {
     const options = branchNodes.map((branch) => resolveNode(branch, resolve)?.const);
-    if (!options.some((option) => sameJson(value, option))) report(run, at, "enum", { options });
+    if (!options.some((option) => sameJson(value, option))) {
+      const titles = titlesOf(branchNodes.map((branch) => annotationsOf(branch, resolve)));
+      report(run, at, "enum", { options, ...titles });
+    }
   };
 }
 
@@ -315,6 +356,11 @@ function compileArray(node: Node, resolve: Resolve): Validate {
   };
 }
 
+/** An object's messages for a key it has no field for, which has no title of its own. */
+function untitled(at: Position): MessageLookup {
+  return { mpath: at.mpath, scopes: at.scopes };
+}
+
 function isPrimitive(value: unknown): boolean {
   return (
     value === null ||
@@ -344,11 +390,12 @@ function compileObject(node: Node, resolve: Resolve): Validate {
     if (properties) {
       for (const key of required) {
         if (hasOwn(object, key) && object[key] !== undefined) continue;
-        // A missing key's issue is at the key, worded by the messages for that field.
+        // A missing key's issue is at the key, worded by the messages for that field, with its title.
         const mpath = [...at.mpath, key];
         report(run, at, "required", { key }, [...at.path, key], {
           mpath,
           scopes: [...at.scopes, ...ownScopes(properties[key], mpath.length, resolve)],
+          title: titleOf(properties[key], resolve),
         });
       }
     }
@@ -373,11 +420,18 @@ function compileObject(node: Node, resolve: Resolve): Validate {
           scopes: at.scopes,
         });
       } else if (properties) {
-        // An extra key has no field of its own, so the object that rejects it words its issue.
-        report(run, at, "additionalProperties", { key }, [...at.path, key]);
+        // An extra key has no field of its own, so the object that rejects it words its issue, without a title.
+        report(run, at, "additionalProperties", { key }, [...at.path, key], untitled(at));
       } else if (!isPrimitive(child)) {
         // Without `properties` or `additionalProperties`, an object is flat.
-        report(run, at, "type", { type: "primitive", received: kindOf(child) }, [...at.path, key]);
+        report(
+          run,
+          at,
+          "type",
+          { type: "primitive", received: kindOf(child) },
+          [...at.path, key],
+          untitled(at),
+        );
       }
     }
   };
@@ -413,7 +467,10 @@ function compileRules(node: Node, resolve: Resolve): Validate {
   if (Array.isArray(node.enum)) {
     const options = node.enum as unknown[];
     return (value, run, at) => {
-      if (!options.some((option) => sameJson(value, option))) report(run, at, "enum", { options });
+      if (!options.some((option) => sameJson(value, option))) {
+        const titles = titlesOf(options.map((option) => optionEntry(node, option)));
+        report(run, at, "enum", { options, ...titles });
+      }
     };
   }
 
@@ -437,16 +494,22 @@ function compileRules(node: Node, resolve: Resolve): Validate {
   };
 }
 
-/** Compiles a schema node into a function that validates a value, with its messages in scope. */
+/** Compiles a schema node into a function that validates a value, with its messages and title in scope. */
 export function compileNode(node: unknown, resolve: Resolve): Validate {
   if (!isPlainObject(node)) return () => {};
   const rules = compileRules(node as Node, resolve);
   const messages = isPlainObject(node.messages) ? (node.messages as SchemaMessages) : undefined;
-  if (!messages) return rules;
+  const title =
+    isPlainObject(node.annotations) && typeof node.annotations.title === "string"
+      ? node.annotations.title
+      : undefined;
+  if (!messages && title === undefined) return rules;
   return (value, run, at) =>
     rules(value, run, {
       path: at.path,
       mpath: at.mpath,
-      scopes: [...at.scopes, { messages, base: at.mpath.length }],
+      scopes: messages ? [...at.scopes, { messages, base: at.mpath.length }] : at.scopes,
+      // A reference's own title wins over the title of the schema it references.
+      title: at.title ?? title,
     });
 }

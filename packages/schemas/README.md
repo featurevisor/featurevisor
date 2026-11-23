@@ -2,7 +2,7 @@
 
 Validate data in your application against schemas defined in your Featurevisor project and delivered in its datafiles. Rules such as how long a display name may be, or which countries checkout accepts, then change on the product's schedule, reviewed in pull requests, without a deploy.
 
-Each schema comes as a [Standard Schema](https://standardschema.dev), so it plugs into tRPC, Hono, React Hook Form, TanStack Form and every other library that accepts one. Handles also give forms what they need: HTML attributes, choices, reading form data, messages per kind of issue, and checks only your application can make.
+Each schema comes as a [Standard Schema](https://standardschema.dev), so it plugs into tRPC, Hono, React Hook Form, TanStack Form and every other library that accepts one. Handles also give forms what they need to render: each field's title, placeholder and whatever else your project's annotations say, fields in order, choices with their labels, HTML attributes, reading form data, messages per kind of issue, and checks only your application can make.
 
 This package is experimental: its API may change in a minor release.
 
@@ -13,12 +13,16 @@ This package is experimental: its API may change in a minor release.
 - [Validating](#validating)
 - [Issues](#issues)
 - [Handles](#handles)
+- [Annotations](#annotations)
+- [Choices](#choices)
 - [Messages](#messages)
 - [Checks in code](#checks-in-code)
 - [Reading form data](#reading-form-data)
 - [Server actions](#server-actions)
 - [React](#react)
+- [Rendering forms](#rendering-forms)
 - [Code generation](#code-generation)
+- [API reference](#api-reference)
 - [How values are checked](#how-values-are-checked)
 - [Changing a delivered schema](#changing-a-delivered-schema)
 - [Not yet](#not-yet)
@@ -27,6 +31,12 @@ This package is experimental: its API may change in a minor release.
 
 ```bash
 npm install @featurevisor/sdk @featurevisor/schemas
+```
+
+The React entry, `@featurevisor/schemas/react`, also needs `react` and `@featurevisor/react`:
+
+```bash
+npm install @featurevisor/react
 ```
 
 ## Delivering schemas
@@ -83,7 +93,9 @@ excludeSchemas:
 | `includeSchemas` only              | The listed ones                     |
 | Any of these with `excludeSchemas` | The same, without the excluded ones |
 
-A delivered schema brings every schema it references with `schema`, at any depth, even an excluded one, so each can be validated on its own. Datafiles then gain a `schemas` section, with the rules and messages as written, and a `hash` for each schema that covers the schemas it references. A target that delivers no schema keeps its datafile exactly as it was.
+A delivered schema brings every schema it references with `schema`, at any depth, even an excluded one, so each can be validated on its own. Datafiles then gain a `schemas` section, with the rules, messages and annotations as written, and a `hash` for each schema that covers the schemas it references. A target that delivers no schema keeps its datafile exactly as it was.
+
+A target that only serves a backend, which validates but renders nothing, can leave annotations out with `includeAnnotations: false` (see [Annotations](#annotations)).
 
 Lint checks that the patterns in `includeSchemas` and `excludeSchemas` match a schema, and that a target with `schemaVersion: "2"` delivers none. Applications test untrusted input against delivered schemas, so every `pattern` in one must also be a regular expression every SDK reads alike, with no risk of exponential backtracking.
 
@@ -141,30 +153,32 @@ Every issue has a `message`, a `path` of object keys and array indices, the `cod
   "message": "Value at \"displayName\" must be at least 2 characters long (got 1).",
   "path": ["displayName"],
   "code": "minLength",
-  "params": { "minLength": 2, "length": 1 },
+  "params": { "minLength": 2, "length": 1, "title": "Display name" },
   "schema": "signUp"
 }
 ```
 
 Validation reports every issue it finds, so a form can mark every field at once.
 
-| Code                     | Raised when                               | Params                               |
-| ------------------------ | ----------------------------------------- | ------------------------------------ |
-| `type`                   | The value has another type                | `type`, `received`                   |
-| `const`                  | The value is not the constant             | `const`                              |
-| `enum`                   | The value is not one of the listed values | `options`                            |
-| `minimum`, `maximum`     | A number is out of range                  | `minimum` or `maximum`, `value`      |
-| `minLength`, `maxLength` | A string is too short or too long         | `minLength` or `maxLength`, `length` |
-| `pattern`                | A string does not match                   | `pattern`                            |
-| `format`                 | A string is not a timestamp or a version  | `format`                             |
-| `minItems`, `maxItems`   | An array has too few or too many items    | `minItems` or `maxItems`, `count`    |
-| `uniqueItems`            | An array repeats an item                  | `index`, of the first repeat         |
-| `required`               | A key is missing                          | `key`                                |
-| `additionalProperties`   | An object has a key it does not allow     | `key`                                |
-| `oneOf`                  | No branch matches, or more than one does  | `matches`                            |
-| `refine`                 | A check in code returns false             | `refine`, the check's key            |
-| `refineError`            | A check in code throws or rejects         | `refine`, the check's key            |
-| `schemaNotFound`         | The datafile has no such schema or field  | `schema`, and `field` for a field    |
+| Code                     | Raised when                               | Params                                            |
+| ------------------------ | ----------------------------------------- | ------------------------------------------------- |
+| `type`                   | The value has another type                | `type`, `received`                                |
+| `const`                  | The value is not the constant             | `const`                                           |
+| `enum`                   | The value is not one of the listed values | `options`, and `titles` when every choice has one |
+| `minimum`, `maximum`     | A number is out of range                  | `minimum` or `maximum`, `value`                   |
+| `minLength`, `maxLength` | A string is too short or too long         | `minLength` or `maxLength`, `length`              |
+| `pattern`                | A string does not match                   | `pattern`                                         |
+| `format`                 | A string is not a timestamp or a version  | `format`                                          |
+| `minItems`, `maxItems`   | An array has too few or too many items    | `minItems` or `maxItems`, `count`                 |
+| `uniqueItems`            | An array repeats an item                  | `index`, of the first repeat                      |
+| `required`               | A key is missing                          | `key`                                             |
+| `additionalProperties`   | An object has a key it does not allow     | `key`                                             |
+| `oneOf`                  | No branch matches, or more than one does  | `matches`                                         |
+| `refine`                 | A check in code returns false             | `refine`, the check's key                         |
+| `refineError`            | A check in code throws or rejects         | `refine`, the check's key                         |
+| `schemaNotFound`         | The datafile has no such schema or field  | `schema`, and `field` for a field                 |
+
+Every issue about a field with a `title` annotation also carries it as `params.title`, so a message can name the field (see [Annotations](#annotations)). An `additionalProperties` issue has none, since its key has no field.
 
 A `required` issue's path is the missing key's, such as `["address", "city"]`, and an `additionalProperties` issue's path is the extra key's, so a form shows both beside the field they are about.
 
@@ -198,19 +212,22 @@ A handle is stable, and reads the current datafile whenever it is used, so you c
 | --------------------- | ----------------------------------------------------------------------------- |
 | `["~standard"]`       | The Standard Schema interface                                                 |
 | `key`                 | The schema's key, such as `signUp`                                            |
+| `path`                | Where a field's handle sits, such as `address.city`, or `""` for the schema   |
+| `name`                | Its own key, such as `city`, or `""` for the schema                           |
 | `validate(value)`     | The same result as `s.validate`, with the handle's checks in code             |
 | `isValid(value)`      | A boolean, and a type guard with generated types                              |
+| `parse(value)`        | The value, or a thrown `SchemaError`                                          |
 | `at(path)`            | The handle for one field, such as `at("displayName")` or `at("items[].name")` |
+| `fields`              | An object's fields' handles, in its `order`                                   |
+| `annotations`         | What the schema says beside the field's rules, such as its `title`            |
 | `constraints`         | The HTML validation attributes its rules imply                                |
-| `options`             | The choices its `enum` or `const` allows, as `{ value }`                      |
+| `options`             | Its choices, as `{ value, title, ...fields }`                                 |
 | `option(value)`       | One of its choices by value, for showing a value saved earlier                |
 | `kind`                | What its rules make the field, such as `text` or `select`                     |
-| `parse(value)`        | The value, or a thrown `SchemaError`                                          |
-| `subscribe(listener)` | A call when a new datafile changes the schema                                 |
 | `fromFormData(data)`  | A value read from `FormData` or `URLSearchParams`                             |
-| `path`                | Where a field's handle sits, such as `address.city`                           |
+| `subscribe(listener)` | A call when a new datafile changes the schema                                 |
 
-**Fields.** `at` takes a field name as form libraries write it: `address.city`, `items.0.name` or `items[0].name`. Since a schema describes every item of an array alike, `items[].name` means the same, and `labels.*` steps into the values of an object that allows any key. It follows references, and stops at `oneOf`. A field's handle reports issues with paths relative to the field, and a path the schema lacks fails closed with `schemaNotFound`.
+**Fields.** `at` takes a field name as form libraries write it: `address.city`, `items.0.name` or `items[0].name`. Since a schema describes every item of an array alike, `items[].name` means the same, and `labels.*` steps into the values of an object that allows any key. It follows references, and stops at `oneOf`. A field's handle reports issues with paths relative to the field, and a path the schema lacks fails closed with `schemaNotFound`. `fields` and `annotations` have [a section of their own](#annotations).
 
 **Constraints**, named after HTML attributes, so they spread onto an input:
 
@@ -221,6 +238,8 @@ signUp.constraints;
 //   displayName: { required: true, minLength: 2, maxLength: 40 },
 //   country: {},
 // }
+
+signUp.at("displayName").constraints; // { required: true, minLength: 2, maxLength: 40 }
 ```
 
 | Attribute                | From                                                                 |
@@ -231,19 +250,19 @@ signUp.constraints;
 | `step`                   | `1` for an `integer`                                                 |
 | `multiple`               | An array, such as a multiple select                                  |
 
-An input left empty fails only some fields: a nullable field reads it as `null`, an unchecked box as `false` and a required list with nothing chosen as `[]` (see [Reading form data](#reading-form-data)), so `required` is left out for those, unless `const: true` or `minItems` say otherwise. An object's constraints go by field path, through nested objects, such as `address.city`, and stop at arrays, whose rows have handles of their own, `at("items.0")`. Any other schema's constraints are its own. `pattern` is left out, since a browser anchors and compiles patterns its own way, and validation still checks it. Browsers count `maxlength` in UTF-16 code units, which stops typing at an emoji sooner than the schema would, never later.
+An input left empty fails only some fields: a nullable field reads it as `null`, an unchecked box as `false` and a required list with nothing chosen as `[]` (see [Reading form data](#reading-form-data)), so `required` is left out for those, unless `const: true` or `minItems` say otherwise. An object's constraints go by field path, through nested objects, such as `address.city`, and stop at arrays, whose rows have handles of their own, `at("items.0")`. Any other schema's constraints are its own, a field's included. `pattern` is left out, since a browser anchors and compiles patterns its own way, and validation still checks it. Browsers count `maxlength` in UTF-16 code units, which stops typing at an emoji sooner than the schema would, never later.
 
-**Options** come from an `enum`, a `const`, or `oneOf` branches that each list values, so a nullable choice lists `null` too. They come in the order the schema lists them, each as an object, so what a later release says about a choice, such as its title, joins its value. An array's options are its items', for a multiple select:
+**Options** are the values an `enum`, a `const` or a `oneOf` of consts allows, in the order the schema lists them, each as an object with what the schema says about it (see [Choices](#choices)):
 
 ```ts
-signUp.options.country; // [{ value: "GB" }, { value: "NL" }]
-signUp.at("country").options; // [{ value: "GB" }, { value: "NL" }]
-signUp.at("country").option("NL"); // { value: "NL" }
+signUp.options.country; // [{ value: "GB", title: "United Kingdom" }, { value: "NL", title: "Netherlands" }]
+signUp.at("country").options; // the same list
+signUp.at("country").option("NL"); // { value: "NL", title: "Netherlands" }
 ```
 
-A field without `enum` or `const` has no options, so code writes `signUp.options.country ?? []`. A schema the datafile lacks has no constraints and an empty list of options, so `options.map` works before the datafile arrives. Constraints and options are frozen, since every caller shares them. A `oneOf` whose every branch is a `const` is a list of choices too, and a value it does not list reports `enum`, as an `enum` does.
+An object's options go by field path, and an array's are its items', for a multiple select. A field without choices has none, so code writes `signUp.options.country ?? []`. A schema the datafile lacks has no constraints and an empty list of options, so `options.map` works before the datafile arrives. Constraints, options and annotations are frozen, since every caller shares them.
 
-**Kinds.** Every generic form writes the same switch over a field's rules, so `kind` answers it, from the rules alone. A project's own way of choosing an input still wins.
+**Kinds.** Every generic form writes the same switch over a field's rules, so `kind` answers it, from the rules alone. A project's own `input` annotation, or whatever it calls one, still wins.
 
 | `kind`        | From                                                                |
 | ------------- | ------------------------------------------------------------------- |
@@ -267,11 +286,325 @@ const country = s.get("signUp").at("country");
 const stop = country.subscribe(() => render(country.options));
 ```
 
+## Annotations
+
+Validation stays the same wherever a schema runs. A form needs more than validation: a title for each field, a placeholder, help text, which input to show, and the order fields come in. Annotations carry these beside a schema's rules, typed by your project and checked by lint, delivered with the schema and changed without a deploy. Validation never reads them, so removing every annotation changes no validation result.
+
+```yml
+# schemas/signUp.yml
+description: A sign up form
+
+tags:
+  - web
+
+annotationsSchema:
+  schema: formAnnotations
+
+type: object
+
+properties:
+  email:
+    type: string
+    pattern: "^[^@\\s]+@[^@\\s]+$"
+    annotations:
+      title: Email address
+      placeholder: ada@example.com
+      input: email
+      autocomplete: email
+      help: We send a link to confirm it
+  displayName:
+    type: string
+    minLength: 2
+    maxLength: 40
+    annotations:
+      title: Display name
+      examples: [Ada, Grace Hopper]
+  address:
+    schema: address
+    annotations:
+      title: Billing address
+
+required: [email, displayName]
+
+annotations:
+  title: Create your account
+  submitLabel: Sign up
+  order: [displayName, email, address]
+```
+
+### Built in annotations
+
+Four annotations need no vocabulary, since Featurevisor uses them itself:
+
+| Annotation | Holds                                      | Used by                                                                       |
+| ---------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| `title`    | A field's, a form's or a choice's name     | `params.title` on every issue about the field, and the default `enum` message |
+| `examples` | Values the field could hold                | Lint, which checks each against the field's own rules                         |
+| `order`    | The order of an object's fields            | `fields`                                                                      |
+| `options`  | Beside an `enum`, what each choice carries | `options` and `option(value)` (see [Choices](#choices))                       |
+
+`description` stays for the people who maintain a schema and never reaches a datafile. Help text for the people filling in a form is your own annotation, such as `help`, so the two never mix.
+
+### Your own annotations
+
+Featurevisor ships no form vocabulary of its own, so nothing locks a project into a shape. A schema names what else its annotations can hold with `annotationsSchema` at its root: one object schema, written inline or referenced by key, whose properties are the annotation names:
+
+```yml
+# schemas/formAnnotations.yml
+description: What our forms say about a form and its fields
+
+type: object
+
+properties:
+  placeholder:
+    type: string
+  help:
+    type: string
+  input:
+    type: string
+    enum: [text, email, password, textarea, select, radio, checkbox]
+  autocomplete:
+    type: string
+  hidden:
+    type: boolean
+  submitLabel:
+    type: string
+```
+
+- **Closed, so typos fail.** An object with `properties` rejects names it does not list, so `placeholdr` fails lint. A vocabulary that wants to stay open says `additionalProperties: true`.
+- **Every node in the file.** The vocabulary covers the root and every field the file describes. A referenced schema such as `address` uses its own, so one form can mix vocabularies. A schema without one carries only the built in annotations.
+- **For forms and fields alike.** `submitLabel` suits a form and `placeholder` a field, and one object schema cannot tell them apart, so leave every property optional.
+- **Never the built in names.** A vocabulary cannot declare `title`, `examples`, `order` or `options`.
+- **Never in a datafile.** Lint has checked every annotation against the vocabulary, so only the annotations travel.
+- **Families of schemas.** Web forms, mobile forms, a back office and CMS content can each have a vocabulary, and a schema that only checks API bodies needs none.
+
+### Where annotations go
+
+`annotations` sit beside a node's rules: at a schema's root, on any field, in `items`, in a `oneOf` branch, and beside a `schema` reference.
+
+Beside a reference, they apply to that use of the referenced schema only, over its own. Above, `address` keeps the title and `order` its own file gives it, and this form titles it "Billing address". A field beside a reference can reorder the referenced schema's fields the same way, with its own `order`.
+
+Unlike `messages`, annotations are never keyed by field at the object level. Their values can be objects, such as `options`, so a map could not tell a field from a value, and a field named `title` would meet the `title` annotation.
+
+### Reading annotations
+
+A handle's `annotations` are its node's own, frozen:
+
+```ts
+const signUp = s.get("signUp");
+
+signUp.annotations; // { title: "Create your account", submitLabel: "Sign up", order: [...] }
+signUp.at("email").annotations.placeholder; // "ada@example.com"
+signUp.at("address").annotations.title; // "Billing address"
+s.get("address").annotations.title; // the address schema's own title
+```
+
+A schema or field the datafile lacks has none, `{}`. The same handle reads the same way in vanilla JavaScript, React, a page rendered on a server, or a worker.
+
+### Fields in order
+
+`fields` gives an object's fields' handles in its `order`, then the fields `order` leaves out, in the order the schema writes them. Each field's handle has its `name`, its own key, and its `path`, the name form libraries, issues and `flattenIssues` all use, so a renderer never maps one name to another:
+
+```ts
+signUp.fields.map((field) => field.path); // ["displayName", "email", "address"]
+
+signUp.at("address").fields.map((field) => field.path);
+// ["address.street", "address.city", "address.postcode"]
+```
+
+- A field from `fields` is the same handle `at` gives, and the list is the same array until a datafile changes the schema.
+- An object field, such as `address`, has fields of its own, in its own `order`. Any other value has none, `[]`, and so does a nullable object, since `at` stops at `oneOf`.
+- Rows of an array are data, not schema, so they come from your form library, with `at(index)` for each row's handle, whose `fields` are the row's (see [Rendering forms](#rendering-forms)).
+- `order` is the sequence and nothing else. Whether a field shows, which section it sits in, or which step of a wizard asks for it belongs to your vocabulary, such as `hidden`, so neither does the other's job.
+
+Order is a list, never the order keys are written in, since JavaScript moves a key such as `2024` to the front of an object, Go and Swift keep no key order at all, and formatting tools can reorder keys without anyone meaning to change a form.
+
+### Titles in messages
+
+Every issue about a field with a `title` carries it in `params.title`, so one message words every form:
+
+```ts
+const s = createSchemas(f, {
+  messages: {
+    required: ({ title, key }) => `${title ?? key} is required`,
+    minLength: "{title} needs at least {minLength} characters",
+  },
+});
+```
+
+A template fills `{title}` with nothing when a field has no title, so a function that falls back, as `required` does above, suits schemas where not every field has one. A field's title comes from beside a reference first, then from the referenced schema.
+
+### Lint
+
+Lint checks every annotation in a schema file:
+
+- each name is built in or declared by the vocabulary, and each value matches the vocabulary's rules for it,
+- `title` is text,
+- each of `examples` passes the field's own rules,
+- `order` lists the object's own fields, each once,
+- `options` sits beside an `enum`, its keys name the `enum`'s values, and its entries fit `optionsSchema` (see [Choices](#choices)),
+- the vocabularies are object schemas that leave the built in names alone.
+
+### Delivery
+
+Datafiles carry annotations inside each schema, as written, and a schema's `hash` covers them, so a change of wording makes the SDK's `datafile_set` event name the schema, `subscribe` call back and `useSchema` render again.
+
+A target that serves only a backend leaves annotations out, which keeps its datafiles small:
+
+```yml
+# targets/api.yml
+description: Our API
+
+tag: web
+
+includeAnnotations: false
+```
+
+Its applications still validate the same, since validation never reads annotations, but their issues carry no titles.
+
+## Choices
+
+A choice needs more than its value: a label, a flag, a region, a price, a badge. Every choice can carry a built in `title`, and whatever the schema's `optionsSchema` declares. `optionsSchema` sits at the root, inline or by reference, as `annotationsSchema` does, and follows the same rules: one object schema, closed, per file, never in a datafile:
+
+```yml
+# schemas/countryOption.yml
+description: What a country choice carries
+
+type: object
+
+properties:
+  flag:
+    type: string
+  region:
+    type: string
+    enum: [europe, americas]
+  hidden:
+    type: boolean
+```
+
+A field has a placeholder and an input, and a choice has a flag and a region, so each vocabulary stays closed and precise. `optionsSchema` cannot declare `title`, which is built in, or `value`, which holds the choice itself. Without one, a schema's choices carry only titles.
+
+### Two ways to write choices
+
+Beside an `enum`, under the built in `options` annotation, keyed by value:
+
+```yml
+# schemas/signUp.yml
+optionsSchema:
+  schema: countryOption
+
+properties:
+  country:
+    type: string
+    enum: [GB, NL, BE]
+    annotations:
+      title: Country
+      input: select
+      options:
+        GB:
+          title: United Kingdom
+          flag: gb
+          region: europe
+        NL:
+          title: Netherlands
+          flag: nl
+          region: europe
+        BE:
+          title: Belgium
+          hidden: true
+```
+
+Or as a `oneOf` of `const` branches, each with its own `annotations`, the way JSON Schema itself labels values:
+
+```yml
+# schemas/country.yml
+description: Countries we sell to
+
+optionsSchema:
+  schema: countryOption
+
+oneOf:
+  - const: GB
+    annotations:
+      title: United Kingdom
+      flag: gb
+  - const: NL
+    annotations:
+      title: Netherlands
+      flag: nl
+  - const: null
+    annotations:
+      title: Prefer not to say
+```
+
+| Written as                        | Suits                                                                                              |
+| --------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `enum` with `annotations.options` | Short lists of plain values, as most schemas write them                                            |
+| `const` branches of a `oneOf`     | Choices that come and go with their wording, a labelled `null`, and schemas from JSON Schema tools |
+
+- **Keys of `options`** are the values themselves, or, for a value that is not text, its JSON text: `1`, `true` or `null`, which is how YAML reads such keys. Lint rejects a key that names no value, and one that would name two, such as `"1"` beside `1` in one `enum`.
+- **Partial is fine.** A value without an entry is a choice like any other, so annotating one value for a badge is normal.
+- **Order is the rules'.** Choices come in the order of the `enum` or of the branches, never of the map.
+- **A `oneOf` of consts is a list of choices.** A value it does not list reports `enum`, as an `enum` does, its branches' annotations are its choices', and lint rejects a value given twice. In any other `oneOf`, such as a nullable field's, a branch's annotations are a field's.
+
+### Reading choices
+
+`options` lists the choices in order as flat objects, `{ value, title, ...fields }`, and `option(value)` finds one by value, comparing objects by value, for showing a value saved earlier:
+
+```ts
+const country = s.get("signUp").at("country");
+
+country.options;
+// [
+//   { value: "GB", title: "United Kingdom", flag: "gb", region: "europe" },
+//   { value: "NL", title: "Netherlands", flag: "nl", region: "europe" },
+//   { value: "BE", title: "Belgium", hidden: true },
+// ]
+
+country.option("GB")?.title; // "United Kingdom"
+country.option("FR"); // undefined
+```
+
+A plain `enum` without entries gives `[{ value }]`, so a renderer has one path for every list. An array's choices are its items', for a multiple select or a group of checkboxes, so `options` beside an array's `items` labels them.
+
+### What stays yours
+
+Featurevisor computes no label and filters nothing. `hidden`, `disabled`, grouping, icons and prices are your vocabulary's, and so is the language of a title, which can be text or a key for your own translations, so any i18n setup fits:
+
+- `option.title ?? String(option.value)` shows a value that has no title, and says so in code.
+- A hidden choice is still accepted, for data saved before it was retired. Removing it from the `enum` stops validation accepting it.
+
+### Choices in issues
+
+When every choice has a title, an `enum` issue carries them in `params.titles`, beside the values in `params.options`, and the default message names the titles, since those are what a person picks from:
+
+```text
+Value at "country" must be one of United Kingdom, Netherlands, Belgium.
+```
+
+### Reference data
+
+A list such as `country` makes a schema of its own, with its own `optionsSchema`, and forms reference it, each with its own title beside the reference:
+
+```yml
+properties:
+  shippingCountry:
+    schema: country
+    annotations:
+      title: Ship to
+```
+
+One component then serves every form that references it (see [Rendering forms](#rendering-forms)).
+
+### Lint
+
+Lint checks each entry against `optionsSchema` and the built in `title`, each key against the `enum`, and each list of consts for values given twice. It warns with `option_without_title` when some of a field's choices have a title and others do not, since a list would show titles beside raw values.
+
 ## Messages
 
 Every issue carries a message, which a schema, your application and one form can each choose.
 
-**Templates** fill placeholders in braces from the issue's params: `Use at least {minLength} characters`. Lists are joined with commas, and `{{` and `}}` write literal braces.
+**Templates** fill placeholders in braces from the issue's params: `Use at least {minLength} characters`, or `{title} is required`. Lists are joined with commas, and `{{` and `}}` write literal braces.
 
 **In the schema**, `messages` beside an object's `properties` word its fields. A text value is a message for an issue code, and a map is a field. `"[]"` holds the messages of an array's items, and `"*"` those of the values an open object allows:
 
@@ -306,7 +639,7 @@ messages:
   pattern: Enter the 8 letters and digits printed on the coupon
 ```
 
-Messages reach the datafile with the schema. Lint checks that each text key is an issue code, each map key a field, and each placeholder a param of its code. It warns about a message that can never show, such as `maxLength` for a number, and about a field and code worded both beside the rule and in an enclosing object's `messages`, where the outer one wins.
+Messages reach the datafile with the schema. Lint checks that each text key is an issue code, each map key a field, and each placeholder a param of its code, `title` included. It warns about a message that can never show, such as `maxLength` for a number, or anything but `enum` beside a `oneOf` of consts, and about a field and code worded both beside the rule and in an enclosing object's `messages`, where the outer one wins.
 
 **In the application**, `messages` on `createSchemas` gives a message per code for every schema, as a template or a function of the params:
 
@@ -352,7 +685,7 @@ const s = createSchemas(f, {
 });
 ```
 
-A schema can hold translation keys instead of text, such as `maxLength: signUp.displayName.tooLong`, for this function to translate.
+A schema can hold translation keys instead of text, such as `maxLength: signUp.displayName.tooLong`, for this function to translate. Titles and choices' titles can be keys too, which your components translate as they render them.
 
 ## Checks in code
 
@@ -379,12 +712,12 @@ const result = await signUp.validate(input);
 ```
 
 - **What `check` gets.** The value at its path, and `{ input, context, signal }`: the whole value being validated, the context, and an `AbortSignal`, always present, to hand to `fetch`. It returns `true` when the value passes, or a promise of it.
-- **Its path.** Any path `at` takes, from the handle's root. With `[]` or `*` it runs for every item, such as `contacts[].email`, each issue at its item's path. Without a path, it checks the whole value.
+- **Its path.** Any path `at` takes, from the handle's root. With `[]` or `*` it runs for every item or value, such as `contacts[].email`, each issue at its item's path. Without a path, it checks the whole value.
 - **When it runs.** After the schema's rules, and only when nothing at or inside its path has an issue already, so a username that is too short never reaches your API. `reads` names other fields whose issues hold it back too, such as `reads: ["items"]` for a total worked out from the items. The checks that run start together.
-- **Its issue** has `code: "refine"` and `params: { refine: "usernameAvailable" }`, never the value checked. Its own `message` comes first, then the lookup goes on as for any issue, so a schema can word it with `username: { refine: "..." }`.
+- **Its issue** has `code: "refine"` and `params: { refine: "usernameAvailable" }`, with the field's `title` when it has one, never the value checked. Its own `message` comes first, then the lookup goes on as for any issue, so a schema can word it with `username: { refine: "..." }`.
 - **A check that fails to run**, by throwing or rejecting, gives a `refineError` issue, and validation fails closed. A check that should let a value through when it fails catches its own error and returns `true`.
-- **Synchronous or not.** With synchronous checks, the handle stays synchronous. Once a check returns a promise, `validate` and `isValid` return one, typed as Standard Schema's own result or a promise of it. Aborting the `signal` given to `validate` rejects it with the signal's reason.
-- **A field's handle** carries the checks at or inside its path that read nothing else, relative to the field.
+- **Synchronous or not.** With synchronous checks, the handle stays synchronous, even with an aborted signal. Once a check returns a promise, `validate` and `isValid` return one, typed as Standard Schema's own result or a promise of it. Aborting the `signal` given to `validate` rejects it with the signal's reason.
+- **A field's handle** carries the checks at or inside its path that read nothing else, relative to the field. A check on `items[].name` runs in `at("items.0.name")`'s handle, and one on `labels.*` in `at("labels.en")`'s.
 
 What a handle checks is fixed when it is created, so `~standard.validate(value)` alone runs your checks too, and every Standard Schema library gets them. A library can pass a signal or a context through `libraryOptions`.
 
@@ -411,7 +744,7 @@ const result = signUp.validate(value);
 | A name the schema does not describe                             | Left out                                                         |
 | A file                                                          | Left as it is                                                    |
 
-Names the schema does not describe are left out, so a submit button's name or a CSRF token never fails a closed object. A row of objects keeps its index even when every input in it is empty, so an issue such as `items.1.quantity` sits beside the input it is about, and a blank row left for adding an item reports its required fields. A list of plain values, such as `tags[1]`, closes its gaps instead, since an empty value cannot hold a place.
+Names the schema does not describe are left out, so a submit button's name or a CSRF token never fails a closed object. A row of objects keeps its index even when every input in it is empty, so an issue such as `items.1.quantity` sits beside the input it is about, and a blank row left for adding an item reports its required fields. A list of plain values, such as `tags[1]`, closes its gaps instead, since an empty value cannot hold a place. A field typed only by its listed values, such as `enum: [1, 2]`, is read as a number or a boolean too.
 
 ## Server actions
 
@@ -485,7 +818,9 @@ export function SignUpForm() {
 
       <select name="country" {...signUp.constraints.country}>
         {(signUp.options.country ?? []).map((option) => (
-          <option key={option.value}>{option.value}</option>
+          <option key={String(option.value)} value={String(option.value)}>
+            {option.title ?? String(option.value)}
+          </option>
         ))}
       </select>
 
@@ -495,7 +830,7 @@ export function SignUpForm() {
 }
 ```
 
-**`useSchema(key, options)`** returns the handle, and renders the component again when a new datafile changes the schema. Context and flag changes never render it again. Options can be written inline: the hook keeps one handle per key for the component and reads the latest options when it validates. Inside a `FeaturevisorScope`, it validates and parses with the scope's context, as flag hooks do, and a context given to `validate` or `parse` is merged over it. With checks in code, it also:
+**`useSchema(key, options)`** returns the handle, and renders the component again when a new datafile changes the schema, its annotations and choices included. Context and flag changes never render it again. Options can be written inline: the hook keeps one handle per key for the component and reads the latest options when it validates. Inside a `FeaturevisorScope`, it validates and parses with the scope's context, as flag hooks do, and a context given to `validate` or `parse` is merged over it. Its `at` and `fields` give handles that do the same. With checks in code, it also:
 
 - keeps each check's answer for the component's life, per value, per the values its `reads` name and per context, so leaving a field and then submitting asks once, and asks again after a check failed to run,
 - shares one call between validations waiting on the same value, and
@@ -535,11 +870,221 @@ const form = useForm({ defaultValues, validators: { onChange: signUp } });
 
 With a form library, put `noValidate` on the form so its messages show instead of the browser's.
 
-Server code has no hooks. It uses an instance created beside the server's SDK instance, and `formAction` makes server actions from its handles (see [Server actions](#server-actions)).
+There are no hooks for annotations, choices or fields, since each would save one property access: read them from the handle `useSchema` returns. Server code has no hooks either. It uses an instance created beside the server's SDK instance, and `formAction` makes server actions from its handles (see [Server actions](#server-actions)).
+
+## Rendering forms
+
+These recipes use the code `featurevisor generate-code --schemas --react` writes (see [Code generation](#code-generation)), so annotations and choices are typed by your vocabularies. Every one also works with the package's own hooks, which type annotations as `unknown`.
+
+### A field by hand
+
+A form written by hand reads each field's annotations through `at`:
+
+```tsx
+import { useForm } from "react-hook-form";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
+import { useSchema } from "./featurevisor";
+
+export function SignUpForm() {
+  const signUp = useSchema("signUp");
+  const form = useForm({ resolver: standardSchemaResolver(signUp) });
+
+  const email = signUp.at("email");
+  const { title, placeholder, input, autocomplete, help } = email.annotations;
+  const { error } = form.getFieldState("email", form.formState);
+
+  return (
+    <form noValidate onSubmit={form.handleSubmit(createAccount)}>
+      <h1>{signUp.annotations.title}</h1>
+
+      <label>
+        {title}
+        <input
+          {...form.register("email")}
+          {...email.constraints}
+          type={input ?? "text"}
+          placeholder={placeholder}
+          autoComplete={autocomplete}
+        />
+      </label>
+      {help && <small>{help}</small>}
+      {error && <p role="alert">{error.message}</p>}
+
+      <button>{signUp.annotations.submitLabel ?? "Continue"}</button>
+    </form>
+  );
+}
+```
+
+### A generic renderer
+
+One component renders any schema in your vocabulary, following `order`, your own `hidden` and `input` annotations, and the kind a field's rules imply:
+
+```tsx
+export function SchemaForm({ schemaKey, onSubmit }) {
+  const schema = useSchema(schemaKey);
+  const form = useForm({ resolver: standardSchemaResolver(schema) });
+
+  return (
+    <form noValidate onSubmit={form.handleSubmit(onSubmit)}>
+      <h1>{schema.annotations.title}</h1>
+
+      {schema.fields
+        .filter((field) => !field.annotations.hidden)
+        .map((field) => (
+          <SchemaField key={field.path} field={field} form={form} />
+        ))}
+
+      <button>{schema.annotations.submitLabel ?? "Continue"}</button>
+    </form>
+  );
+}
+
+function SchemaField({ field, form }) {
+  const { title, help, placeholder, input } = field.annotations;
+  const { error } = form.getFieldState(field.path, form.formState);
+
+  // An object field, such as an address, renders its own fields in its own order.
+  if (field.fields.length > 0) {
+    return (
+      <fieldset>
+        <legend>{title}</legend>
+        {field.fields
+          .filter((child) => !child.annotations.hidden)
+          .map((child) => (
+            <SchemaField key={child.path} field={child} form={form} />
+          ))}
+      </fieldset>
+    );
+  }
+
+  // The project's own input annotation wins over the kind the rules imply.
+  const kind = input ?? field.kind;
+  const control =
+    kind === "select" ? (
+      <select {...form.register(field.path)} {...field.constraints}>
+        {field.options
+          .filter((option) => !option.hidden)
+          .map((option) => (
+            <option key={String(option.value)} value={String(option.value)}>
+              {option.title ?? String(option.value)}
+            </option>
+          ))}
+      </select>
+    ) : kind === "boolean" || kind === "checkbox" ? (
+      <input type="checkbox" {...form.register(field.path)} {...field.constraints} />
+    ) : (
+      <input
+        {...form.register(field.path, { valueAsNumber: kind === "number" })}
+        {...field.constraints}
+        type={kind === "number" ? "number" : (input ?? "text")}
+        placeholder={placeholder}
+      />
+    );
+
+  return (
+    <label>
+      {title ?? field.name}
+      {control}
+      {help && <small>{help}</small>}
+      {error && <p role="alert">{error.message}</p>}
+    </label>
+  );
+}
+```
+
+A new field, a new title, a reordered form or a retired choice then ships from your Featurevisor project, with no change to the component. A select's values are text in the DOM, so a field whose choices are numbers reads them back with `setValueAs`, and a `multiselect` renders checkboxes or a `<select multiple>` from the same `options`.
+
+### Rows of an array
+
+Rows are data, so your form library keeps them, and each row's handle comes from `at(index)`:
+
+```tsx
+import { useFieldArray } from "react-hook-form";
+
+function ItemsField({ form }) {
+  const items = useSchema("order").at("items");
+  const rows = useFieldArray({ control: form.control, name: "items" });
+
+  return (
+    <fieldset>
+      <legend>{items.annotations.title}</legend>
+      {rows.fields.map((row, index) => (
+        <div key={row.id}>
+          {items.at(`${index}`).fields.map((field) => (
+            <SchemaField key={field.path} field={field} form={form} />
+          ))}
+          <button type="button" onClick={() => rows.remove(index)}>
+            Remove
+          </button>
+        </div>
+      ))}
+      <button type="button" onClick={() => rows.append({})}>
+        Add an item
+      </button>
+    </fieldset>
+  );
+}
+```
+
+Each row's fields have paths such as `items.0.name`, the names React Hook Form registers, and issues sit at the same paths.
+
+### Reference data
+
+Since `country` is a schema of its own, one select serves every form that references it, and one badge shows any plan saved earlier:
+
+```tsx
+export function CountrySelect(props) {
+  const country = useSchema("country");
+
+  return (
+    <select {...props} {...country.constraints}>
+      {country.options
+        .filter((option) => !option.hidden)
+        .map((option) => (
+          <option key={String(option.value)} value={String(option.value)}>
+            {option.title ?? String(option.value)}
+          </option>
+        ))}
+    </select>
+  );
+}
+
+export function PlanBadge({ plan }) {
+  const option = useSchema("plan").option(plan);
+
+  return <Badge tone={option?.tone}>{option?.title ?? plan}</Badge>;
+}
+```
+
+### Without React
+
+A web component, a page rendered on a server, or a native app reads the same handle. The DOM's own `Option` fills a select, and `subscribe` keeps it current:
+
+```js
+const country = s.get("signUp").at("country");
+const select = document.querySelector("select[name=country]");
+
+function render() {
+  select.required = Boolean(country.constraints.required);
+  select.replaceChildren(
+    ...country.options
+      .filter((option) => !option.hidden)
+      .map((option) => new Option(option.title ?? String(option.value), String(option.value))),
+  );
+}
+
+render();
+const stop = country.subscribe(render);
+```
+
+### Without JavaScript
+
+A form that posts to a [server action](#server-actions) works before its JavaScript loads. Render it from the server's handle, with `defaultValue` from `state.values`, and its issues from `state.errors.fieldErrors`, keyed by the same paths as `fields` gives.
 
 ## Code generation
 
-`featurevisor generate-code` writes a type per schema in `schemas.ts`, and a `SchemaTypes` interface from key to type for the schemas the selected targets deliver. With `--schemas`, it adds a typed `createSchemas`, and with `--react` as well, typed hooks in `schemas-react.ts`:
+`featurevisor generate-code` writes a type per schema in `schemas.ts`, a `SchemaTypes` interface from key to type for the schemas the selected targets deliver, and a `SchemaVocabularies` interface with what each one's `annotationsSchema` and `optionsSchema` declare. With `--schemas`, it adds a typed `createSchemas`, and with `--react` as well, typed hooks in `schemas-react.ts`:
 
 ```bash
 npx featurevisor generate-code --language typescript --out-dir src/featurevisor --target web --schemas --react
@@ -561,6 +1106,11 @@ if (signUp.isValid(input)) {
 signUp.at("address.city"); // a handle for string
 signUp.at("items[].quantity"); // a handle for number
 signUp.at("displayNam"); // a type error
+
+signUp.at("email").annotations.placeholder; // string | undefined
+signUp.at("email").annotations.placeholdr; // a type error
+signUp.at("country").option("GB")?.flag; // string | undefined
+signUp.at("country").option("FR"); // a type error
 ```
 
 Field paths are typed like React Hook Form's field names, in every form `at` takes, and a field's handle is typed by the field. A nullable field or a `oneOf` is a field of its own, since `at` stops there. So are the paths and `reads` of checks in code, and the value a check gets is typed by its path:
@@ -577,7 +1127,67 @@ s.get("signUp", {
 });
 ```
 
-Without generated code, `createSchemas<SchemaTypes>(f)` and `useSchema<SignUp>("signUp")` take types by hand. `FieldPath<T>` and `FieldValue<T, P>` name a type's paths and the value at one, `InferSchema<typeof signUp>` the type a handle validates, and `SchemaKey<typeof s>` the keys an instance knows, so a type is never written twice. With types, `options` and `option` take only the values a field allows, and `s.has(key)` narrows a string to a known key.
+Annotations are typed by the vocabulary with the built in annotations added, and choices as `{ value, title }` with the option vocabulary's fields, so `option.flg` is a type error and a `switch` over `option.value` is exhaustive. A schema without a vocabulary has the built in annotations only. Every field of a handle is typed with the vocabularies of the schema you got it from, including fields inside a schema it references, whose own vocabulary may differ. `fields` types each field's value as `unknown`, as any generic renderer does.
+
+Without generated code, `createSchemas<SchemaTypes, SchemaVocabularies>(f)` and `useSchema<SignUp, boolean, SignUpVocabularies>("signUp")` take types by hand. `FieldPath<T>` and `FieldValue<T, P>` name a type's paths and the value at one, `InferSchema<typeof signUp>` the type a handle validates, and `SchemaKey<typeof s>` the keys an instance knows, so a type is never written twice. With types, `options` and `option` take only the values a field allows, and `s.has(key)` narrows a string to a known key.
+
+## API reference
+
+### `@featurevisor/schemas`
+
+| Export                                 | What it is                                                                          |
+| -------------------------------------- | ----------------------------------------------------------------------------------- |
+| `createSchemas(f, options?)`           | The instance for an SDK instance, `s`. `options` take `messages` and `message`      |
+| `flattenIssues(issues)`                | Issues grouped by field, as `{ formErrors, fieldErrors }`                           |
+| `SchemaError`                          | What `parse` throws, with `schema`, `issues` and `flattened`                        |
+| `formAction(handle, action, options?)` | A server action or router action from a handle. `options` take `context` and `omit` |
+| `initialFormState`                     | A form action's state before the first submit                                       |
+
+The instance, `s`:
+
+| Member                           | What it is                                                    |
+| -------------------------------- | ------------------------------------------------------------- |
+| `get(key, options?)`             | A schema's handle. `options` take `messages` and `refine`     |
+| `validate(key, value, context?)` | A Standard Schema result                                      |
+| `isValid(key, value, context?)`  | A boolean, and a type guard with types                        |
+| `parse(key, value, context?)`    | The value, or a thrown `SchemaError`                          |
+| `keys()`                         | The keys of the schemas the datafile has                      |
+| `has(key)`                       | Whether the datafile has a schema, narrowing a key with types |
+| `close()`                        | Stops every listener the instance and its handles started     |
+
+A handle's members are in [Handles](#handles). Every one of them reads the current datafile when used.
+
+| Type                                                                        | What it is                                                                           |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `Schemas<TSchemas, TVocabularies>`                                          | The instance, typed by schema and by vocabulary                                      |
+| `SchemaHandle<T, TAsync, V>`                                                | A handle, synchronous unless a check in code can return a promise                    |
+| `SyncSchemaHandle`, `AsyncSchemaHandle`, `SchemaHandleBase`                 | The two kinds of handle, and what both have                                          |
+| `SchemasOptions`                                                            | `messages` per issue code and the `message` translator                               |
+| `HandleOptions`, `Refinement`, `CheckInfo`                                  | A handle's `messages` and `refine`, one check, and what a check gets                 |
+| `ValidateOptions`                                                           | `context` and `signal` for `validate`, `isValid` and `parse`                         |
+| `SchemaResult`, `SchemaSuccess`, `SchemaFailure`                            | A validation's result                                                                |
+| `SchemaIssue`, `IssueCode`, `PathKey`                                       | One issue, its code, and a step of its path                                          |
+| `Message`, `MessageInfo`, `CodeMessages`, `FieldMessages`                   | A message or its function, what the function gets, and messages by code and by field |
+| `FieldConstraints`, `ConstraintsOf<T>`                                      | HTML attributes, for a field or by field path                                        |
+| `SchemaOption<T, V>`, `OptionsOf<T, V>`, `OptionFieldsOf<V>`, `ChoiceOf<T>` | A choice, a handle's choices, what a choice carries, and the value one holds         |
+| `AnnotationsOf<V>`, `BuiltInAnnotations`                                    | A handle's annotations, and the four built in ones                                   |
+| `Vocabulary`, `VocabularyOf<TVocabularies, K>`                              | What a schema's vocabularies declare, and one schema's                               |
+| `FieldKind`                                                                 | What `kind` can be                                                                   |
+| `FieldPath<T>`, `FieldValue<T, P>`                                          | The paths `at` takes, and the value at one                                           |
+| `InferSchema<THandle>`, `SchemaKey<TSchemas>`, `IsAsync<TResult>`           | A handle's type, an instance's keys, and whether checks make a handle asynchronous   |
+| `FlattenedIssues`                                                           | What `flattenIssues` returns                                                         |
+| `FormActionState`, `FormActionInfo`, `FormActionOptions`                    | A form action's state, what its function gets, and its options                       |
+| `StandardSchemaV1`                                                          | The Standard Schema interface, version 1                                             |
+
+### `@featurevisor/schemas/react`
+
+| Export                                                          | What it is                                                                           |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `SchemasProvider`                                               | Configures the instance for the hooks below, with `messages`, `message` or `schemas` |
+| `useSchemas()`                                                  | The instance                                                                         |
+| `useSchema(key, options?)`                                      | A component's handle, which renders again when the schema changes                    |
+| `useValidation(keyOrHandle, value, options?)`                   | A value validated while rendering, with `debounce` for checks in code                |
+| `SchemasProviderProps`, `ValidationOptions`, `ValidationResult` | Their types                                                                          |
 
 ## How values are checked
 
@@ -585,13 +1195,15 @@ Validation applies exactly the rules lint applies to variable values, so a value
 
 - An object with `properties` rejects keys it does not list, unless `additionalProperties` allows them. `additionalProperties: true` allows any other key with any value.
 - An object with neither `properties` nor `additionalProperties` holds strings, numbers, booleans and `null` only.
-- An array without `items` holds strings only.
+- Every node has a `type`, or describes its value with `schema`, `oneOf`, `const` or `enum`, which lint requires.
 - There is no `null` type. A nullable field is a `oneOf` with `const: null` as one branch. When each branch of a `oneOf` takes a different type, the value's type selects a branch, and that branch's own issues are reported, so a nullable name that is too long reports `maxLength`.
+- A `oneOf` whose every branch is a `const` is a list of choices, and reports `enum`.
 - `minLength` and `maxLength` count characters as JSON Schema does, in code points, so an emoji counts one.
 - `pattern` is a regular expression, tested unanchored.
 - `format: date-time` takes the portable timestamps conditions compare, and `format: semver` the versions they compare.
 - A number that is not finite fails, and a key whose value is `undefined` counts as absent.
 - An object is a plain object, as JSON has, so a `Date`, a `File` or a class instance is not one, and an issue names what it got, such as `date`.
+- Annotations never change a result.
 
 One difference remains. Inside a `oneOf` branch, lint lets a flat object hold a nested value, which validation rejects. It goes once lint validates with this package's engine.
 
@@ -605,9 +1217,16 @@ A schema that a target delivers is a contract with every application that loads 
 
 `featurevisor diff` warns when a change widens a schema that a target delivers, directly or through a reference, saying how and naming the targets. Regenerate the applications' types and release them before such a change.
 
+Changing annotations or choices' entries widens nothing, since validation never reads them, and reaches applications at their next datafile. A new name in a vocabulary needs regenerated types before code reads it with types.
+
 ## Not yet
 
-Later releases of this package are planned to add schemas that differ by environment, rules that change under conditions, comparisons between fields, annotations for forms, and conversion to JSON Schema.
+Later releases of this package are planned to add:
+
+- annotations that depend on conditions, such as a title per country, with `for(values)` resolving them for the values typed so far, and `reads`, the fields a schema's conditions read,
+- schemas that differ by environment, rules that change under conditions, and comparisons between fields,
+- choosing between shapes, such as a payment method of card or bank, each an object told apart by a discriminator,
+- annotations in the Catalog and in `featurevisor diff`, and conversion to JSON Schema, with `title` and `examples` as its own keywords.
 
 ## License
 

@@ -1,7 +1,23 @@
 import type { Context } from "@featurevisor/types";
 
-import { EMPTY, EMPTY_LIST, getConstraints, getKind, getOptions } from "./derived.js";
-import { compileNode, report, sameJson, type Position, type Run, type Validate } from "./engine.js";
+import {
+  EMPTY,
+  EMPTY_LIST,
+  fieldKeys,
+  getAnnotations,
+  getConstraints,
+  getKind,
+  getOptions,
+} from "./derived.js";
+import {
+  compileNode,
+  report,
+  sameJson,
+  titleOf,
+  type Position,
+  type Run,
+  type Validate,
+} from "./engine.js";
 import { valueOf } from "./errors.js";
 import { readFormData } from "./formData.js";
 import type { MessageLookup, MessageScope } from "./messages.js";
@@ -143,8 +159,9 @@ export class SchemaHandleImpl {
   readonly "~standard": StandardSchemaV1.Props;
 
   private readonly steps: PathStep[];
-  private readonly fields = new Map<string, SchemaHandleImpl>();
+  private readonly handles = new Map<string, SchemaHandleImpl>();
   private compiledField?: { node: unknown; validate: Validate };
+  private listed?: { keys: ReadonlyArray<string>; fields: SchemaHandleImpl[] };
 
   constructor(
     private readonly context: HandleContext,
@@ -364,7 +381,11 @@ export class SchemaHandleImpl {
       scopes: [...located.scopes] as MessageScope[],
     });
     const lookup: MessageLookup = field
-      ? { mpath: field.mpath, scopes: field.scopes }
+      ? {
+          mpath: field.mpath,
+          scopes: field.scopes,
+          title: titleOf(field.node, this.context.store.resolve),
+        }
       : { mpath: [...located.mpath, ...path.map(String)], scopes: located.scopes };
     const own = code === "refine" ? refinement.message : undefined;
     const before = run.issues.length;
@@ -393,18 +414,73 @@ export class SchemaHandleImpl {
   }
 
   at(path: string): SchemaHandleImpl {
-    let field = this.fields.get(path);
+    return this.handle(path, () => parsePath(path));
+  }
+
+  /**
+   * The handle for one of an object's fields by its key, the same handle `at`
+   * gives when the key reads as itself, and its own for a key such as `a.b`,
+   * `*` or `2024`, which a path would read otherwise.
+   */
+  child(key: string): SchemaHandleImpl {
+    return /^[^.[\]*\d][^.[\]]*$/.test(key)
+      ? this.at(key)
+      : this.handle(`\u0000${key}`, () => [{ kind: "key", key }]);
+  }
+
+  private handle(id: string, steps: () => PathStep[]): SchemaHandleImpl {
+    let field = this.handles.get(id);
     if (!field) {
       field = new SchemaHandleImpl(
         this.context,
         this.key,
         this.getOptions,
-        [...this.steps, ...parsePath(path)],
+        [...this.steps, ...steps()],
         this.wrapCheck,
       );
-      this.fields.set(path, field);
+      this.handles.set(id, field);
     }
     return field;
+  }
+
+  /** Its own key in the object it sits in, such as `city`, or an empty string for the schema itself. */
+  get name(): string {
+    const step = this.steps[this.steps.length - 1];
+    if (!step) return "";
+    return step.kind === "key"
+      ? step.key
+      : step.kind === "index"
+        ? String(step.index)
+        : step.kind === "items"
+          ? "[]"
+          : "*";
+  }
+
+  /** Its annotations, over those of a schema its field references. */
+  get annotations(): Readonly<Record<string, unknown>> {
+    const { store } = this.context;
+    const derived = store.derive(this.key, `annotations${this.path}`, () =>
+      getAnnotations(this.node(), store.resolve),
+    );
+    return derived || EMPTY;
+  }
+
+  /** The keys of an object's fields, in its `order`. */
+  fieldKeys(): ReadonlyArray<string> {
+    const { store } = this.context;
+    const derived = store.derive(this.key, `fields${this.path}`, () =>
+      Object.freeze(fieldKeys(this.node(), store.resolve)),
+    );
+    return derived || EMPTY_LIST;
+  }
+
+  /** An object's fields' handles, in its `order`, or none for any other value. */
+  get fields(): ReadonlyArray<SchemaHandleImpl> {
+    const keys = this.fieldKeys();
+    if (!this.listed || this.listed.keys !== keys) {
+      this.listed = { keys, fields: keys.map((key) => this.child(key)) };
+    }
+    return this.listed.fields;
   }
 
   get constraints() {

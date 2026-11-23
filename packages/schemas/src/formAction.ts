@@ -82,7 +82,7 @@ function withoutFiles(value: unknown): unknown {
  * ```
  */
 export function formAction<T, TResult extends object | void = void>(
-  handle: SchemaHandle<T, boolean>,
+  handle: SchemaHandle<T, boolean, any>,
   action: (value: T, info: FormActionInfo<FormActionState>) => TResult | Promise<TResult>,
   options: FormActionOptions<T> = {},
 ): (

@@ -3,6 +3,7 @@ import type { DatafileContent } from "@featurevisor/types";
 
 import { createSchemas, formAction } from "./index";
 import type {
+  BuiltInAnnotations,
   ConstraintsOf,
   FieldConstraints,
   FieldKind,
@@ -199,6 +200,45 @@ describe("typed field paths", () => {
     expectExactType<
       IsExact<NonNullable<ConstraintsOf<{ city: string }>["city"]>, FieldConstraints>
     >(true);
+  });
+
+  test("annotations and options are typed by the schema's vocabularies", () => {
+    type FormAnnotations = { placeholder?: string; input?: "text" | "email" };
+    type CountryOption = { flag?: string };
+    interface Vocabularies {
+      signUp: { annotations: FormAnnotations; options: CountryOption };
+      // As generated code writes a schema without vocabularies.
+      // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+      coupon: { annotations: {}; options: {} };
+    }
+    const f = createFeaturevisor({ logLevel: "fatal" });
+    const s = createSchemas<SchemaTypes, Vocabularies>(f);
+    const signUp = s.get("signUp");
+    const email = signUp.at("email");
+
+    expectExactType<IsExact<typeof email.annotations.placeholder, string | undefined>>(true);
+    expectExactType<IsExact<typeof email.annotations.input, "text" | "email" | undefined>>(true);
+    expectExactType<IsExact<typeof email.annotations.title, string | undefined>>(true);
+    // @ts-expect-error an annotation the vocabulary does not declare
+    void email.annotations.placeholdr;
+
+    const choice = signUp.at("country").option("GB");
+    expectExactType<IsExact<NonNullable<typeof choice>["value"], "GB" | "NL">>(true);
+    expectExactType<IsExact<NonNullable<typeof choice>["flag"], string | undefined>>(true);
+    // @ts-expect-error a field a choice does not carry
+    void choice?.flg;
+
+    // A schema without vocabularies has the built in annotations only.
+    const coupon = s.get("coupon");
+    expectExactType<IsExact<typeof coupon.annotations, BuiltInAnnotations>>(true);
+    // @ts-expect-error not built in, and no vocabulary declares it
+    void coupon.annotations.placeholder;
+
+    // An untyped handle reads any annotation, and a typed handle fits where one is asked for.
+    const untyped: SchemaHandle<string> = email;
+    expectExactType<IsExact<typeof untyped.annotations.placeholder, unknown>>(true);
+    expect(untyped.path).toBe("email");
+    expect(signUp.fields).toEqual([]);
   });
 
   test("formAction omits fields by the schema's field paths", () => {

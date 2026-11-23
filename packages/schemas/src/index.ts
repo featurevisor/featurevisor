@@ -6,6 +6,8 @@ export { formAction, initialFormState } from "./formAction.js";
 export type { FormActionInfo, FormActionOptions, FormActionState } from "./formAction.js";
 export type { StandardSchemaV1 } from "./standard.js";
 export type {
+  AnnotationsOf,
+  BuiltInAnnotations,
   CheckInfo,
   ChoiceOf,
   CodeMessages,
@@ -21,6 +23,7 @@ export type {
   IsAsync,
   Message,
   MessageInfo,
+  OptionFieldsOf,
   OptionsOf,
   PathKey,
   Refinement,
@@ -37,4 +40,6 @@ export type {
   SchemasOptions,
   SchemaSuccess,
   ValidateOptions,
+  Vocabulary,
+  VocabularyOf,
 } from "./types.js";

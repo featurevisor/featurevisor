@@ -32,10 +32,10 @@ export const INTERNALS = Symbol.for("@featurevisor/schemas/internals");
  * const result = s.validate("signUp", input)
  * ```
  */
-export function createSchemas<TSchemas extends object = Record<string, unknown>>(
-  f: Featurevisor,
-  options: SchemasOptions = {},
-): Schemas<TSchemas> {
+export function createSchemas<
+  TSchemas extends object = Record<string, unknown>,
+  TVocabularies extends object = Record<string, unknown>,
+>(f: Featurevisor, options: SchemasOptions = {}): Schemas<TSchemas, TVocabularies> {
   const store = getStore(f);
   const unsubscribes = new Set<() => void>();
   const listen = (callback: () => void) => {
@@ -88,11 +88,11 @@ export function createSchemas<TSchemas extends object = Record<string, unknown>>
     [INTERNALS]: internals,
   };
 
-  return schemas as unknown as Schemas<TSchemas>;
+  return schemas as unknown as Schemas<TSchemas, TVocabularies>;
 }
 
 /** The internals of an instance made by `createSchemas`. */
-export function getInternals(schemas: Schemas<any>): SchemasInternals {
+export function getInternals(schemas: Schemas<any, any>): SchemasInternals {
   const internals = (schemas as unknown as Record<symbol, SchemasInternals>)[INTERNALS];
   if (!internals)
     throw new Error("Expected an instance made by createSchemas from @featurevisor/schemas.");
