@@ -334,14 +334,36 @@ annotations:
 
 ### Built in annotations
 
-Four annotations need no vocabulary, since Featurevisor uses them itself:
+Four annotations need no vocabulary, since Featurevisor uses them itself. They work in every schema file, with or without an `annotationsSchema`, so you never declare them, and a vocabulary that tries to fails lint, so no project can give them another meaning:
 
-| Annotation | Holds                                      | Used by                                                                       |
-| ---------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
-| `title`    | A field's, a form's or a choice's name     | `params.title` on every issue about the field, and the default `enum` message |
-| `examples` | Values the field could hold                | Lint, which checks each against the field's own rules                         |
-| `order`    | The order of an object's fields            | `fields`                                                                      |
-| `options`  | Beside an `enum`, what each choice carries | `options` and `option(value)` (see [Choices](#choices))                       |
+| Annotation | Must be                                                             | Featurevisor uses it for                                                                       |
+| ---------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `title`    | Text                                                                | `params.title` on every issue about the field, and choices' `titles` (see [Choices](#choices)) |
+| `examples` | A list of values, each passing the field's own rules                | Lint only, for now. Read it from `annotations` for placeholders or docs                        |
+| `order`    | On an object, a list of its own field names, each once              | `fields` (see [Fields in order](#fields-in-order))                                             |
+| `options`  | Beside an `enum`, a map from each value to what that choice carries | `options` and `option(value)` (see [Choices](#choices))                                        |
+
+**Written wrong, lint stops it** before it reaches a datafile:
+
+| Written                                  | Lint says                                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `order` declared in `annotationsSchema`  | `` `order` is built in, so `annotationsSchema` cannot declare it. ``                                                                 |
+| `order: city`, not a list                | `` `order` must be a list of field names. ``                                                                                         |
+| `order` on a field that is not an object | `` `order` lists an object's fields, and this node has no `properties`. ``                                                           |
+| `order: [emial]`, or a number            | `` `order` names emial, which is not a field here. Fields: email, displayName, address. ``                                           |
+| `order: [email, email]`                  | `` `order` names email twice. ``                                                                                                     |
+| `title: 42`, or an empty title           | `` `title` must be text. ``                                                                                                          |
+| `examples: [1]` on a string field        | `Example 1 does not pass the field's own rules.`                                                                                     |
+| `options` beside anything but an `enum`  | `` `options` goes beside an `enum`, keyed by its values. A `oneOf` of consts gives each choice its annotations in its own branch. `` |
+
+An `order` that lists only some fields is fine, and an `order` beside a `schema` reference is checked against the referenced object's fields.
+
+**If a wrong one reaches an application anyway**, from a datafile Featurevisor did not build, the package uses what it can and ignores the rest, so nothing breaks:
+
+- `fields` skips names that are not fields, numbers and repeats, ignores an `order` that is not a list, and still returns every field once. `order: [c, 1, nope, c, a]` gives `c, a, b`.
+- A `title` that is not text never reaches an issue's params.
+- An `options` that is not a map, or an entry that is not one, gives choices with nothing but their values.
+- `annotations` returns every annotation as written, so code that reads `annotations.order` itself sees exactly what the datafile holds. Follow the order through `fields`, which is always safe.
 
 `description` stays for the people who maintain a schema and never reaches a datafile. Help text for the people filling in a form is your own annotation, such as `help`, so the two never mix.
 
@@ -403,7 +425,7 @@ A schema or field the datafile lacks has none, `{}`. The same handle reads the s
 
 ### Fields in order
 
-`fields` gives an object's fields' handles with the fields its `order` lists first, in that order, and then the fields it leaves out, in no particular order. List every field when the whole sequence matters. Each field's handle has its `name`, its own key, and its `path`, the name form libraries, issues and `flattenIssues` all use, so a renderer never maps one name to another:
+`fields` gives an object's fields' handles with the fields its `order` lists first, in that order, and then the fields it leaves out, in no particular order. List every field when the whole sequence matters. Without an `order`, every field comes in no particular order. `order` is built in, so it needs nothing in `annotationsSchema` (see [Built in annotations](#built-in-annotations)). Each field's handle has its `name`, its own key, and its `path`, the name form libraries, issues and `flattenIssues` all use, so a renderer never maps one name to another:
 
 ```ts
 signUp.fields.map((field) => field.path); // ["displayName", "email", "address"]
@@ -438,11 +460,9 @@ A template fills `{title}` with nothing when a field has no title, so a function
 
 Lint checks every annotation in a schema file:
 
-- each name is built in or declared by the vocabulary, and each value matches the vocabulary's rules for it,
-- `title` is text,
-- each of `examples` passes the field's own rules,
-- `order` lists the object's own fields, each once,
-- `options` sits beside an `enum`, its keys name the `enum`'s values, and its entries fit `optionSchema` (see [Choices](#choices)),
+- each name is built in or declared by the vocabulary, and each value matches the vocabulary's rules for it, so `placeholdr` or a `placeholder: 3` fails,
+- the built in annotations have the shapes [above](#built-in-annotations),
+- `options` keys name the `enum`'s values, and its entries fit `optionSchema` (see [Choices](#choices)),
 - the vocabularies are object schemas that leave the built in names alone.
 
 ### Delivery
