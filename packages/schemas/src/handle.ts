@@ -4,7 +4,14 @@ import { getConstraints, getOptions } from "./derived.js";
 import { compileNode, report, type Position, type Run, type Validate } from "./engine.js";
 import { readFormData } from "./formData.js";
 import type { MessageLookup, MessageScope } from "./messages.js";
-import { formatPath, isAtOrInside, matchesSteps, parsePath, type PathStep } from "./paths.js";
+import {
+  formatPath,
+  hasOwn,
+  isAtOrInside,
+  matchesSteps,
+  parsePath,
+  type PathStep,
+} from "./paths.js";
 import { locate, type Store } from "./store.js";
 import type { StandardSchemaV1 } from "./standard.js";
 import type {
@@ -14,7 +21,6 @@ import type {
   SchemaIssue,
   SchemaResult,
   SchemasOptions,
-  SchemaStatus,
   ValidateOptions,
 } from "./types.js";
 
@@ -42,7 +48,7 @@ const neverAborted = (() => {
   return () => (signal ||= new AbortController().signal);
 })();
 
-function isPromise(value: unknown): value is Promise<unknown> {
+export function isPromise(value: unknown): value is Promise<unknown> {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -80,7 +86,8 @@ function expand(
     return found;
   }
   const key = step.kind === "index" ? step.index : step.key;
-  if (value && typeof value === "object") {
+  // An inherited key, such as `constructor`, is never a field.
+  if (value && typeof value === "object" && hasOwn(value, key)) {
     expand(
       (value as Record<string | number, unknown>)[key],
       steps,
@@ -105,6 +112,13 @@ function parsedPaths(refinement: Refinement): { steps: PathStep[]; reads: PathSt
     parsed.set(refinement, paths);
   }
   return paths;
+}
+
+/** The values a check's `reads` name in an input, so its answer can be kept per what it reads. */
+export function readValues(refinement: Refinement, input: unknown): unknown[][] {
+  return parsedPaths(refinement).reads.map((steps) =>
+    expand(input, steps).map((target) => target.value),
+  );
 }
 
 /** The steps of a concrete path, for finding the field it names in a schema. */
@@ -172,10 +186,6 @@ export class SchemaHandleImpl {
       this.compiledField = { node: field.node, validate: compileNode(field.node, store.resolve) };
     }
     return { validate: this.compiledField.validate, mpath: field.mpath, scopes: field.scopes };
-  }
-
-  get status(): SchemaStatus {
-    return this.locate() ? "ready" : "missing";
   }
 
   /** The node this handle validates, for constraints, options and form data. */

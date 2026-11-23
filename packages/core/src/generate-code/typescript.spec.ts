@@ -1320,6 +1320,28 @@ export { every, some };
     expect(fs.readFileSync(path.join(outputPath, "index.ts"), "utf8")).toContain(
       'export * from "./schemas-react.js";',
     );
+    // Field paths are typed, and a field's handle validates in a hook.
+    fs.writeFileSync(
+      path.join(outputPath, "usage.ts"),
+      [
+        'import type { Featurevisor } from "@featurevisor/sdk";',
+        'import { createSchemas, useSchema, useValidation } from "./index.js";',
+        "",
+        'export function countries(f: Featurevisor): ReadonlyArray<"GB" | "NL"> {',
+        '  const signUp = createSchemas(f).get("signUp");',
+        "  // @ts-expect-error a field the schema lacks",
+        '  signUp.at("emial");',
+        '  return signUp.at("country").options;',
+        "}",
+        "",
+        "export function useEmail(value: string): string | undefined {",
+        '  const result = useValidation(useSchema("signUp").at("email"), value);',
+        "  return result.issues ? undefined : result.value;",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });
 });

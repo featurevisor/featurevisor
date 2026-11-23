@@ -404,16 +404,14 @@ describe("handles", () => {
     expect(s.get("signUp", { messages: {} })).not.toBe(s.get("signUp", options));
   });
 
-  test("status is missing until the datafile has the schema, and follows new datafiles", () => {
+  test("a schema the datafile lacks fails validation, and a handle follows new datafiles", () => {
     const f = createFeaturevisor({ logLevel: "fatal" });
     const s = createSchemas(f);
     const handle = s.get("coupon");
 
-    expect(handle.status).toBe("missing");
-    expect(handle.isValid("ABCD1234")).toBe(false);
+    expect(handle.validate("ABCD1234").issues![0]).toMatchObject({ code: "schemaNotFound" });
 
     f.setDatafile(datafile());
-    expect(handle.status).toBe("ready");
     expect(handle.isValid("ABCD1234")).toBe(true);
 
     f.setDatafile(datafile({ coupon: { hash: "c2", type: "string", pattern: "^[0-9]{4}$" } }, "2"));
@@ -442,7 +440,6 @@ describe("handles", () => {
     const city = signUpHandle.at("address.city");
 
     expect(signUpHandle.at("address.city")).toBe(city);
-    expect(city.status).toBe("ready");
     expect(city.path).toBe("address.city");
     expect(city.isValid("Leiden")).toBe(true);
     expect(signUpHandle.at("items.0.quantity").validate(0).issues![0]).toMatchObject({
@@ -455,11 +452,10 @@ describe("handles", () => {
     );
   });
 
-  test("a field the schema lacks is missing, and fails closed", () => {
+  test("a field the schema lacks fails closed", () => {
     const { s } = setup();
     const field = s.get("signUp").at("address.street");
 
-    expect(field.status).toBe("missing");
     expect(field.validate("Main St").issues![0]).toMatchObject({
       code: "schemaNotFound",
       params: { schema: "signUp", field: "address.street" },

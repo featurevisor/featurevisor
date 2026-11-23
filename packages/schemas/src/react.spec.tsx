@@ -1,7 +1,7 @@
 import * as React from "react";
 import { act, render } from "@testing-library/react";
 import { createFeaturevisor } from "@featurevisor/sdk";
-import { FeaturevisorProvider } from "@featurevisor/react";
+import { FeaturevisorProvider, FeaturevisorScope } from "@featurevisor/react";
 import type { DatafileContent, DatafileSchema } from "@featurevisor/types";
 
 import { createSchemas } from "./index";
@@ -185,6 +185,113 @@ describe("useSchema", () => {
 
     await handle.validate({ username: "fahad" });
     expect(asked).toEqual(["fah", "fahad"]);
+  });
+});
+
+describe("scope context and kept answers", () => {
+  const order: DatafileSchema = {
+    hash: "o1",
+    type: "object",
+    properties: {
+      quantity: { type: "integer" },
+      total: { type: "number" },
+      note: { type: "string" },
+    },
+  };
+
+  test("a FeaturevisorScope's context reaches checks and messages, under the context given", async () => {
+    const f = sdk();
+    const seen: unknown[] = [];
+    let handle: any;
+    function Form() {
+      handle = useSchema("coupon", {
+        refine: [
+          {
+            key: "sameCountry",
+            check: (_value: string, { context }) => {
+              seen.push(context);
+              return context.country === "nl";
+            },
+          },
+        ],
+      });
+      return null;
+    }
+    render(
+      <FeaturevisorProvider instance={f}>
+        <FeaturevisorScope context={{ country: "nl", plan: "pro" }}>
+          <Form />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+
+    expect(await handle.isValid("ABCD1234")).toBe(true);
+    expect(await handle.isValid("ABCD1234", { context: { country: "de" } })).toBe(false);
+    expect(await handle["~standard"].validate("ABCD1234")).toEqual({ value: "ABCD1234" });
+    expect(seen).toEqual([
+      { userId: "user-1", country: "nl", plan: "pro" },
+      { userId: "user-1", country: "de", plan: "pro" },
+    ]);
+  });
+
+  test("useValidation runs checks again when the scope's context changes", async () => {
+    const f = sdk();
+    let latest: any;
+    function Field() {
+      const handle = useSchema("coupon", {
+        refine: [
+          { key: "dutch", check: (_value: string, { context }) => context.country === "nl" },
+        ],
+      });
+      latest = useValidation(handle, "ABCD1234");
+      return null;
+    }
+    const tree = (country: string) => (
+      <FeaturevisorProvider instance={f}>
+        <FeaturevisorScope context={{ country }}>
+          <Field />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>
+    );
+    const view = render(tree("nl"));
+    await act(() => wait(10));
+    expect(latest).toEqual({ value: "ABCD1234", validating: false });
+
+    view.rerender(tree("de"));
+    await act(() => wait(10));
+    expect(latest.issues[0].params).toEqual({ refine: "dutch" });
+  });
+
+  test("a check's kept answer follows the fields its reads name, and no others", async () => {
+    const f = createFeaturevisor({ datafile: datafile({ order }), logLevel: "fatal" });
+    const asked: unknown[] = [];
+    let handle: any;
+    function Form() {
+      handle = useSchema("order", {
+        refine: [
+          {
+            key: "totalMatches",
+            path: "total",
+            reads: ["quantity"],
+            check: (total: number, { input }) => {
+              asked.push(total);
+              return total === (input as { quantity: number }).quantity * 5;
+            },
+          },
+        ],
+      });
+      return null;
+    }
+    render(
+      <FeaturevisorProvider instance={f}>
+        <Form />
+      </FeaturevisorProvider>,
+    );
+
+    expect(handle.isValid({ quantity: 2, total: 10 })).toBe(true);
+    expect(handle.isValid({ quantity: 3, total: 10 })).toBe(false);
+    expect(handle.isValid({ quantity: 3, total: 10, note: "x" })).toBe(false);
+    expect(asked).toEqual([10, 10]);
   });
 });
 

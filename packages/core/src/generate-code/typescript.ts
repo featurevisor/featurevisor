@@ -422,7 +422,8 @@ export function useSchema<
   key: K,
   options?: HandleOptions<SchemaTypes[K], TResult>,
 ): SchemaHandle<SchemaTypes[K], IsAsync<TResult>> {
-  return useSchemaBase<SchemaTypes[K], TResult>(key, options);
+  // Typed by this wrapper's own signature, which the base hook cannot relate for an open K.
+  return useSchemaBase<SchemaTypes[K], TResult>(key, options as never);
 }
 
 /** useSchemas from @featurevisor/schemas/react, with keys and values typed. */
@@ -430,13 +431,23 @@ export function useSchemas(): Schemas<SchemaTypes> {
   return useSchemasBase<SchemaTypes>();
 }
 
-/** useValidation from @featurevisor/schemas/react, with keys and values typed. */
+/** useValidation from @featurevisor/schemas/react, with keys and values typed, for a schema's key or any handle, such as a field's. */
 export function useValidation<K extends keyof SchemaTypes & string>(
-  keyOrHandle: K | SchemaHandle<SchemaTypes[K], boolean>,
+  key: K,
   value: unknown,
   options?: ValidationOptions,
-): ValidationResult<SchemaTypes[K]> {
-  return useValidationBase<SchemaTypes[K]>(keyOrHandle, value, options);
+): ValidationResult<SchemaTypes[K]>;
+export function useValidation<T>(
+  handle: SchemaHandle<T, boolean>,
+  value: unknown,
+  options?: ValidationOptions,
+): ValidationResult<T>;
+export function useValidation(
+  keyOrHandle: string | SchemaHandle<unknown, boolean>,
+  value: unknown,
+  options?: ValidationOptions,
+): ValidationResult<unknown> {
+  return useValidationBase(keyOrHandle, value, options);
 }
 `.trimStart();
 }

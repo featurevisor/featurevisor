@@ -179,7 +179,6 @@ A handle is stable, and reads the current datafile whenever it is used, so you c
 | -------------------- | ----------------------------------------------------------------------------- |
 | `["~standard"]`      | The Standard Schema interface                                                 |
 | `key`                | The schema's key, such as `signUp`                                            |
-| `status`             | `"ready"` once the datafile has the schema, and `"missing"` until then        |
 | `validate(value)`    | The same result as `s.validate`, with the handle's checks in code             |
 | `isValid(value)`     | A boolean, and a type guard with generated types                              |
 | `at(path)`           | The handle for one field, such as `at("displayName")` or `at("items[].name")` |
@@ -188,7 +187,7 @@ A handle is stable, and reads the current datafile whenever it is used, so you c
 | `fromFormData(data)` | A value read from `FormData` or `URLSearchParams`                             |
 | `path`               | Where a field's handle sits, such as `address.city`                           |
 
-**Fields.** `at` takes a field name as form libraries write it: `address.city`, `items.0.name` or `items[0].name`. Since a schema describes every item of an array alike, `items[].name` means the same, and `labels.*` steps into the values of an object that allows any key. It follows references, and stops at `oneOf`. A field's handle reports issues with paths relative to the field, and a path the schema lacks gives a handle whose `status` is `missing`, which fails closed.
+**Fields.** `at` takes a field name as form libraries write it: `address.city`, `items.0.name` or `items[0].name`. Since a schema describes every item of an array alike, `items[].name` means the same, and `labels.*` steps into the values of an object that allows any key. It follows references, and stops at `oneOf`. A field's handle reports issues with paths relative to the field, and a path the schema lacks fails closed with `schemaNotFound`.
 
 **Constraints**, named after HTML attributes, so they spread onto an input:
 
@@ -218,7 +217,7 @@ signUp.options.country; // ["GB", "NL"]
 signUp.at("country").options; // ["GB", "NL"]
 ```
 
-Until the handle is `ready`, `constraints` and `options` are empty, so code that renders before the datafile arrives writes `signUp.options.country ?? []`.
+A field without `enum` or `const` has no options, so code writes `signUp.options.country ?? []`. A schema the datafile lacks has no constraints and no options.
 
 ## Messages
 
@@ -384,19 +383,19 @@ export function SignUpForm() {
         ))}
       </select>
 
-      <button disabled={signUp.status !== "ready"}>Sign up</button>
+      <button>Sign up</button>
     </form>
   );
 }
 ```
 
-**`useSchema(key, options)`** returns the handle, and renders the component again when a new datafile changes the schema. Context and flag changes never render it again. Options can be written inline: the hook keeps one handle per key for the component and reads the latest options when it validates. With checks in code, it also:
+**`useSchema(key, options)`** returns the handle, and renders the component again when a new datafile changes the schema. Context and flag changes never render it again. Options can be written inline: the hook keeps one handle per key for the component and reads the latest options when it validates. Inside a `FeaturevisorScope`, it validates with the scope's context, as flag hooks do, and a context given to `validate` is merged over it. With checks in code, it also:
 
-- keeps each check's answer per value for the component's life, so leaving a field and then submitting asks once, and asks again after a check failed to run,
+- keeps each check's answer for the component's life, per value, per the values its `reads` name and per context, so leaving a field and then submitting asks once, and asks again after a check failed to run,
 - shares one call between validations waiting on the same value, and
 - lets the latest validation win: a newer one aborts the older one's checks, and the older one settles with the newer one's result.
 
-**`useValidation(keyOrHandle, value, { debounce })`** validates a value while rendering, for a field checked as the user types. Rules answer at once. Checks in code wait for `debounce` milliseconds, and the result's `validating` is true while they run:
+**`useValidation(keyOrHandle, value, { debounce })`** validates a value while rendering, for a field checked as the user types, with the context of any `FeaturevisorScope` around it. Rules answer at once. Checks in code wait for `debounce` milliseconds, and the result's `validating` is true while they run, and run again when the value, the datafile or the scope's context changes:
 
 ```tsx
 export function UsernameField({ value, onChange }) {
@@ -473,9 +472,27 @@ s.get("singUp"); // a type error
 if (signUp.isValid(input)) {
   input.displayName; // string
 }
+
+signUp.at("address.city"); // a handle for string
+signUp.at("items[].quantity"); // a handle for number
+signUp.at("displayNam"); // a type error
 ```
 
-Without generated code, `createSchemas<SchemaTypes>(f)` and `useSchema<SignUp>("signUp")` take types by hand.
+Field paths are typed like React Hook Form's field names, in every form `at` takes, and a field's handle is typed by the field. A nullable field or a `oneOf` is a field of its own, since `at` stops there. So are the paths and `reads` of checks in code, and the value a check gets is typed by its path:
+
+```ts
+s.get("signUp", {
+  refine: [
+    {
+      key: "usernameAvailable",
+      path: "username",
+      check: async (username) => isFree(username), // username is a string
+    },
+  ],
+});
+```
+
+Without generated code, `createSchemas<SchemaTypes>(f)` and `useSchema<SignUp>("signUp")` take types by hand. `FieldPath<T>` and `FieldValue<T, P>` name a type's paths and the value at one.
 
 ## How values are checked
 
@@ -490,6 +507,10 @@ Validation applies exactly the rules lint applies to variable values, so a value
 - `format: date-time` takes the portable timestamps conditions compare, and `format: semver` the versions they compare.
 - A number that is not finite fails, and a key whose value is `undefined` counts as absent.
 - An object is a plain object, as JSON has, so a `Date`, a `File` or a class instance is not one, and an issue names what it got, such as `date`.
+
+One difference remains. Inside a `oneOf` branch, lint lets a flat object hold a nested value, which validation rejects. It goes once lint validates with this package's engine.
+
+The rules are portable: `conformance/schemas-validation.json` in the Featurevisor repository holds a case for each, with the issues expected, and this package runs every one.
 
 Compiled schemas are kept until the datafile changes them. Compiling builds functions without `new Function`, so the package works under a strict Content Security Policy.
 

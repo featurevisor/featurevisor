@@ -8,6 +8,8 @@ export type {
   ConstraintsOf,
   FieldConstraints,
   FieldMessages,
+  FieldPath,
+  FieldValue,
   HandleOptions,
   IssueCode,
   IsAsync,
@@ -25,7 +27,6 @@ export type {
   SchemaResult,
   Schemas,
   SchemasOptions,
-  SchemaStatus,
   SchemaSuccess,
   ValidateOptions,
 } from "./types.js";

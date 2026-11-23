@@ -3,9 +3,11 @@
 
 import * as React from "react";
 import type { Featurevisor } from "@featurevisor/sdk";
-import { useSdk } from "@featurevisor/react";
+import type { Context } from "@featurevisor/types";
+import { useScopeContext, useSdk } from "@featurevisor/react";
 
-import type { CheckWrapper, SchemaHandleImpl } from "./handle.js";
+import { isPromise, readValues, type CheckWrapper, type SchemaHandleImpl } from "./handle.js";
+import { setOwn } from "./paths.js";
 import { createSchemas, getInternals } from "./instance.js";
 import type {
   CodeMessages,
@@ -17,6 +19,9 @@ import type {
   SchemasOptions,
   ValidateOptions,
 } from "./types.js";
+
+/** `T` as written, never inferred from where it is used, so options never type the schema. */
+type Uninferred<T> = [T][T extends unknown ? 0 : never];
 
 const SchemasContext = React.createContext<Schemas<any> | undefined>(undefined);
 
@@ -107,20 +112,25 @@ function useSchemaVersion(schemas: Schemas<any>, key: string): unknown {
   return version;
 }
 
-function isPromise(value: unknown): value is Promise<unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as Promise<unknown>).then === "function"
-  );
-}
-
 function valueKey(value: unknown): string {
   try {
     return JSON.stringify(value) ?? "undefined";
   } catch {
     return String(value);
   }
+}
+
+/**
+ * A hook's context: the one given merged over the enclosing scopes', as the
+ * flag hooks merge theirs. Keys are defined, so `__proto__` stays a key.
+ */
+function withScope(scope: Context | undefined, context: Context | undefined): Context | undefined {
+  if (!scope) return context;
+  const merged: Context = {};
+  for (const source of [scope, context || {}]) {
+    for (const key of Object.keys(source)) setOwn(merged, key, source[key]);
+  }
+  return merged;
 }
 
 interface Call {
@@ -131,14 +141,16 @@ interface Call {
 }
 
 /**
- * Keeps each check's answer per value for the component's life, and shares one
- * call between validations waiting on the same value. A call nobody waits for
- * any more is aborted, and a call that failed is asked again next time.
+ * Keeps each check's answer for the component's life, per value, per the
+ * values its `reads` name and per context, and shares one call between
+ * validations waiting on the same answer. A call nobody waits for any more is
+ * aborted, and a call that failed is asked again next time.
  */
 function createAnswerKeeper(): CheckWrapper {
   const calls = new Map<string, Call>();
   return (refinement, check) => (value, info) => {
-    const id = `${refinement.key}\u0000${valueKey(value)}`;
+    const read = readValues(refinement, info.input);
+    const id = [refinement.key, value, read, info.context].map(valueKey).join("\u0000");
     const kept = calls.get(id);
     if (kept && kept.answer !== undefined) return kept.answer;
 
@@ -198,7 +210,11 @@ class HookHandle {
   private readonly fields = new Map<string, HookHandle>();
   readonly "~standard": SchemaHandleImpl["~standard"];
 
-  constructor(readonly inner: SchemaHandleImpl) {
+  constructor(
+    readonly inner: SchemaHandleImpl,
+    /** The enclosing scopes' context where the hook was called, read when validating. */
+    private readonly scope: () => Context | undefined,
+  ) {
     this["~standard"] = {
       ...inner["~standard"],
       validate: (value, options) => {
@@ -217,9 +233,6 @@ class HookHandle {
   get path() {
     return this.inner.path;
   }
-  get status() {
-    return this.inner.status;
-  }
   get constraints() {
     return this.inner.constraints;
   }
@@ -229,8 +242,11 @@ class HookHandle {
   fromFormData(data: FormData | URLSearchParams) {
     return this.inner.fromFormData(data);
   }
-  validateRules(value: unknown, options?: ValidateOptions) {
-    return this.inner.validateRules(value, options);
+  validateRules(value: unknown, options: ValidateOptions = {}) {
+    return this.inner.validateRules(value, {
+      ...options,
+      context: withScope(this.scope(), options.context),
+    });
   }
   hasChecks() {
     return this.inner.hasChecks();
@@ -239,7 +255,7 @@ class HookHandle {
   at(path: string): HookHandle {
     let field = this.fields.get(path);
     if (!field) {
-      field = new HookHandle(this.inner.at(path));
+      field = new HookHandle(this.inner.at(path), this.scope);
       this.fields.set(path, field);
     }
     return field;
@@ -256,7 +272,7 @@ class HookHandle {
     const previous = this.current;
     this.current = undefined;
     const result = this.inner.validate(value, {
-      context: options.context,
+      context: withScope(this.scope(), options.context),
       signal: controller.signal,
     });
     if (previous) {
@@ -293,21 +309,25 @@ class HookHandle {
  * The handle for a schema, which renders the component again when the
  * datafile changes the schema. Options can be written inline: the hook keeps
  * one handle per key for the component and reads the latest options when it
- * validates. Checks in code keep their answers per value, share calls and let
- * the latest validation win.
+ * validates. It validates with the context of any FeaturevisorScope around
+ * it, under a context given to `validate`. Checks in code keep their answers,
+ * share calls and let the latest validation win.
  */
 export function useSchema<T = unknown, TResult extends boolean | Promise<boolean> = boolean>(
   key: string,
-  options?: HandleOptions<T, TResult>,
+  options?: HandleOptions<Uninferred<T>, TResult>,
 ): SchemaHandle<T, IsAsync<TResult>> {
   const schemas = useSchemas();
   const latest = React.useRef(options);
   latest.current = options;
+  const scope = useScopeContext();
+  const latestScope = React.useRef(scope);
+  latestScope.current = scope;
 
   const handle = React.useMemo(() => {
     const internals = getInternals(schemas);
     const inner = internals.createHandle(key, () => latest.current, createAnswerKeeper());
-    return new HookHandle(inner);
+    return new HookHandle(inner, () => latestScope.current);
   }, [schemas, key]);
 
   useSchemaVersion(schemas, key);
@@ -324,15 +344,19 @@ export type ValidationResult<T> = SchemaResult<T> & { readonly validating: boole
 
 interface RulesHandle {
   readonly key: string;
-  validateRules(value: unknown): SchemaResult<unknown>;
+  validateRules(value: unknown, options?: ValidateOptions): SchemaResult<unknown>;
   hasChecks(): boolean;
-  validate(value: unknown): SchemaResult<unknown> | Promise<SchemaResult<unknown>>;
+  validate(
+    value: unknown,
+    options?: ValidateOptions,
+  ): SchemaResult<unknown> | Promise<SchemaResult<unknown>>;
 }
 
 /**
  * Validates a value while rendering, for a field checked as the user types. The
  * first argument is a schema's key or a handle, such as `signUp.at("username")`.
- * Checks in code wait for `debounce`, and the result says when they run.
+ * It validates with the context of any FeaturevisorScope around it. Checks in
+ * code wait for `debounce`, and the result says when they run.
  */
 export function useValidation<T = unknown>(
   keyOrHandle: string | SchemaHandle<T, boolean>,
@@ -345,10 +369,11 @@ export function useValidation<T = unknown>(
     [schemas, keyOrHandle],
   ) as unknown as RulesHandle;
   const version = useSchemaVersion(schemas, handle.key);
+  const scope = useScopeContext();
   const key = valueKey(value);
 
   // Rules are worked out on every render, so the result holds the value as it is now.
-  const rules = handle.validateRules(value);
+  const rules = handle.validateRules(value, { context: scope });
   const needsChecks = !rules.issues && handle.hasChecks();
 
   const [checked, setChecked] = React.useState<
@@ -356,13 +381,15 @@ export function useValidation<T = unknown>(
   >();
   const latestValue = React.useRef(value);
   latestValue.current = value;
-  const forKey = `${key}\u0000${String(version)}`;
+  // Checks run again when the value, the datafile or the scope's context changes.
+  const forKey = `${key}\u0000${String(version)}\u0000${valueKey(scope)}`;
 
   React.useEffect(() => {
     if (!needsChecks) return;
     let active = true;
     const timer = setTimeout(() => {
-      const outcome = handle.validate(latestValue.current);
+      // The scope is current here, since a new scope's context changes forKey.
+      const outcome = handle.validate(latestValue.current, { context: scope });
       Promise.resolve(outcome).then(
         (result) => {
           if (active) setChecked({ for: forKey, result });

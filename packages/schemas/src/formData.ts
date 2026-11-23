@@ -1,5 +1,5 @@
 import { isPlainObject, resolveNode, type Resolve } from "./engine.js";
-import { hasOwn, parsePath, type PathStep } from "./paths.js";
+import { hasOwn, parsePath, setOwn, type PathStep } from "./paths.js";
 import { locate } from "./store.js";
 
 type Container = Record<string, unknown> | unknown[];
@@ -42,23 +42,6 @@ function readText(raw: FormDataEntryValue, type: string | undefined): unknown {
     if (raw === "false") return false;
   }
   return raw;
-}
-
-/**
- * Sets an own property, so a form name such as `__proto__` can never reach a
- * prototype, whatever the schema allows.
- */
-function setOwn(
-  holder: Record<string | number, unknown>,
-  key: string | number,
-  value: unknown,
-): void {
-  Object.defineProperty(holder, key, {
-    value,
-    enumerable: true,
-    configurable: true,
-    writable: true,
-  });
 }
 
 function getOwn(holder: Record<string | number, unknown>, key: string | number): unknown {

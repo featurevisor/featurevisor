@@ -92,11 +92,116 @@ export interface CheckInfo<TInput> {
   readonly signal: AbortSignal;
 }
 
-/** A check only the application can make, such as whether a username is free. */
-export interface Refinement<
-  TInput = unknown,
-  TResult extends boolean | Promise<boolean> = boolean | Promise<boolean>,
-> {
+type Primitive = string | number | boolean | bigint | symbol | null | undefined;
+
+/** One level less, so field paths of a recursive type end. */
+type Shallower = [never, 0, 1, 2, 3, 4, 5, 6];
+
+type IsUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : never;
+
+/** The object or array `at` steps into, or never for a leaf, or for a nullable value or a `oneOf`, where `at` stops. */
+type Steppable<T> = [T] extends [Primitive]
+  ? never
+  : true extends IsUnion<T>
+    ? never
+    : T extends object
+      ? T
+      : never;
+
+/** An object's own keys, without its index signature. */
+type KnownKeys<T> = keyof {
+  [K in keyof T as string extends K ? never : number extends K ? never : K]: unknown;
+} &
+  string;
+
+type Join<Prefix extends string, Step extends string> = Prefix extends ""
+  ? Step
+  : Step extends `[${string}`
+    ? `${Prefix}${Step}`
+    : `${Prefix}.${Step}`;
+
+interface FieldEntry<P extends string, V> {
+  path: P;
+  value: V;
+}
+
+/** Every field path below a value, each with the type of the value there. */
+type FieldEntries<T, P extends string, D extends number> =
+  | (P extends "" ? never : FieldEntry<P, T>)
+  | ([D] extends [never] ? never : StepEntries<Steppable<T>, P, Shallower[D]>);
+
+type StepEntries<C, P extends string, D extends number> = [C] extends [never]
+  ? never
+  : C extends readonly (infer Item)[]
+    ?
+        | FieldEntries<Exclude<Item, undefined>, Join<P, `${number}`>, D>
+        | FieldEntries<Exclude<Item, undefined>, Join<P, `[${number}]`>, D>
+        | FieldEntries<Exclude<Item, undefined>, Join<P, "[]">, D>
+    :
+        | {
+            [K in KnownKeys<C>]-?: FieldEntries<
+              Exclude<K extends keyof C ? C[K] : never, undefined>,
+              Join<P, K>,
+              D
+            >;
+          }[KnownKeys<C>]
+        | (string extends keyof C
+            ? unknown extends C[string]
+              ? never
+              :
+                  | FieldEntries<Exclude<C[string], undefined>, Join<P, "*">, D>
+                  | FieldEntries<Exclude<C[string], undefined>, Join<P, string>, D>
+            : never);
+
+/**
+ * The field paths `at` takes for a value of type `T`, such as `address.city`,
+ * `items.0.name`, `items[0].name`, `items[].name` or `labels.*`, typed like
+ * React Hook Form's field names. Any string when `T` is unknown.
+ */
+export type FieldPath<T> = unknown extends T ? string : FieldEntries<T, "", 6>["path"];
+
+/** The type of the value at a field path of `T`. */
+export type FieldValue<T, P extends string> = unknown extends T
+  ? unknown
+  : FieldEntries<T, "", 6> extends infer E
+    ? E extends FieldEntry<infer EP, infer V>
+      ? P extends EP
+        ? V
+        : never
+      : never
+    : never;
+
+interface RefinementBase<TInput> {
+  /** Names the check in its issue's params, `{ refine: key }`. */
+  key: string;
+  /** Other fields whose issues hold the check back too, such as `items` for a total. */
+  reads?: ReadonlyArray<FieldPath<TInput>>;
+  /** Its own message, which wins over every other. */
+  message?: string;
+}
+
+/** A check of the whole value. */
+type RootRefinement<TInput, TResult> = RefinementBase<TInput> & {
+  path?: "";
+  /** Returns true when the value passes, or a promise of it. */
+  check: (value: TInput, info: CheckInfo<TInput>) => TResult;
+};
+
+/** A check of one field, whose value is typed by its path. */
+type FieldRefinement<TInput, P, TResult> = P extends string
+  ? RefinementBase<TInput> & {
+      /**
+       * The field it checks, as `at` takes it, such as `username` or
+       * `contacts[].email`, which checks every item.
+       */
+      path: P;
+      /** Returns true when the value passes, or a promise of it. */
+      check: (value: FieldValue<TInput, P>, info: CheckInfo<TInput>) => TResult;
+    }
+  : never;
+
+/** A check whose value's type is not known. */
+interface UntypedRefinement<TInput, TResult> {
   /** Names the check in its issue's params, `{ refine: key }`. */
   key: string;
   /**
@@ -105,12 +210,24 @@ export interface Refinement<
    */
   path?: string;
   /** Other fields whose issues hold the check back too, such as `items` for a total. */
-  reads?: string[];
+  reads?: ReadonlyArray<string>;
   /** Returns true when the value passes, or a promise of it. */
   check: (value: any, info: CheckInfo<TInput>) => TResult;
   /** Its own message, which wins over every other. */
   message?: string;
 }
+
+/**
+ * A check only the application can make, such as whether a username is free.
+ * With a typed schema, `path` and `reads` are its field paths, and the value a
+ * check gets is typed by its path.
+ */
+export type Refinement<
+  TInput = unknown,
+  TResult extends boolean | Promise<boolean> = boolean | Promise<boolean>,
+> = unknown extends TInput
+  ? UntypedRefinement<TInput, TResult>
+  : RootRefinement<TInput, TResult> | FieldRefinement<TInput, FieldPath<TInput>, TResult>;
 
 export interface HandleOptions<
   TInput = unknown,
@@ -128,9 +245,6 @@ export interface ValidateOptions {
   /** Aborts the checks in code, and rejects the validation with its reason. */
   signal?: AbortSignal;
 }
-
-/** `ready` once the current datafile has the schema, or the field for a field's handle, and `missing` until then. */
-export type SchemaStatus = "ready" | "missing";
 
 /** The HTML validation attributes a field's rules imply. */
 export interface FieldConstraints {
@@ -181,11 +295,13 @@ export interface SchemaHandleBase<
   readonly key: string;
   /** Where a field's handle sits, such as `address.city`, or an empty string for the schema itself. */
   readonly path: string;
-  readonly status: SchemaStatus;
   /** The value itself on success, or the issues found. Never coerces. */
   validate(value: unknown, options?: ValidateOptions): Awaitable<TAsync, SchemaResult<T>>;
-  /** The handle for one field, such as `at("displayName")`, `at("items.0")` or `at("items[].name")`. */
-  at(path: string): SchemaHandle<unknown, TAsync>;
+  /**
+   * The handle for one field, such as `at("displayName")`, `at("items.0")` or
+   * `at("items[].name")`, typed by the field with a typed schema.
+   */
+  at<P extends FieldPath<T>>(path: P): SchemaHandle<FieldValue<T, P>, TAsync>;
   /** The HTML validation attributes its rules imply: by field path for an object, or for the value itself. */
   readonly constraints: ConstraintsOf<T>;
   /** The values its `enum` or `const` allows: by field path for an object, or for the value itself. */

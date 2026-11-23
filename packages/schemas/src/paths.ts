@@ -5,6 +5,16 @@ export function hasOwn(object: object, key: PropertyKey): boolean {
   return Object.prototype.hasOwnProperty.call(object, key);
 }
 
+/** Sets an own property, so a key such as `__proto__` stays a key and never reaches a prototype. */
+export function setOwn(object: object, key: PropertyKey, value: unknown): void {
+  Object.defineProperty(object, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+}
+
 /**
  * One step of a field path: an object key, an array index, every item of an
  * array (`[]`), or every value of an object that allows any key (`*`).
