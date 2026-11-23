@@ -395,7 +395,7 @@ properties:
 
 - **Closed, so typos fail.** An object with `properties` rejects names it does not list, so `placeholdr` fails lint. A vocabulary that wants to stay open says `additionalProperties: true`.
 - **Every node in the file.** The vocabulary covers the root and every field the file describes. A referenced schema such as `address` uses its own, so one form can mix vocabularies. A schema without one carries only the built in annotations.
-- **For forms and fields alike.** `submitLabel` suits a form and `placeholder` a field, and one object schema cannot tell them apart, so leave every property optional.
+- **Optional unless you say otherwise.** Every property is optional, since `submitLabel` suits a form and `placeholder` a field, and one object schema cannot tell them apart. A name you list in the vocabulary's `required` must then be on the schema itself and on every field, item and value a handle can reach in the file: everything `at` and `fields` reach, nothing inside a `oneOf`. A field beside a `schema` reference can carry it through the referenced schema's own annotations. So `required: [help]` makes lint fail any field without help text, from the form's root down.
 - **Never the built in names.** A vocabulary cannot declare `title`, `examples`, `order` or `options`.
 - **Never in a datafile.** Lint has checked every annotation against the vocabulary, so only the annotations travel.
 - **Families of schemas.** Web forms, mobile forms, a back office and CMS content can each have a vocabulary, and a schema that only checks API bodies needs none.
@@ -461,6 +461,7 @@ A template fills `{title}` with nothing when a field has no title, so a function
 Lint checks every annotation in a schema file:
 
 - each name is built in or declared by the vocabulary, and each value matches the vocabulary's rules for it, so `placeholdr` or a `placeholder: 3` fails,
+- each name the vocabulary lists in `required` is on the schema and on every field, item and value a handle reaches, or lint says `` `annotationsSchema` requires `help`, which this node does not have. ``,
 - the built in annotations have the shapes [above](#built-in-annotations),
 - `options` keys name the `enum`'s values, and its entries fit `optionSchema` (see [Choices](#choices)),
 - the vocabularies are object schemas that leave the built in names alone.
@@ -503,6 +504,41 @@ properties:
 ```
 
 A field has a placeholder and an input, and a choice has a flag and a region, so each vocabulary stays closed and precise. `optionSchema` cannot declare `title`, which is built in, or `value`, which holds the choice itself. Without one, a schema's choices carry only titles.
+
+**What a choice can carry** is anything a schema describes: text, numbers, an `enum` such as `region`, a list, or an object, such as a price:
+
+```yml
+# schemas/planOption.yml
+description: What a plan choice carries
+
+type: object
+
+properties:
+  price:
+    type: object
+    properties:
+      amount:
+        type: number
+      currency:
+        type: string
+        enum: [EUR, GBP, USD]
+    required: [amount, currency]
+  features:
+    type: array
+    items:
+      type: string
+  tone:
+    type: string
+    enum: [grey, blue, gold]
+
+required: [price]
+```
+
+Lint checks each entry with the same rules it checks variables with. A vocabulary that stays open says `additionalProperties: true`.
+
+**Required fields.** Every field is optional unless the vocabulary lists it in `required`, as `price` is above. Every value of every `enum` in the file then needs an entry with it in `options`, and every branch of a `oneOf` of consts needs it in its own annotations, so a renderer can rely on every plan having a price. Two kinds of choice carry no entry, so `required` never reaches them: the one value of a field that is a single `const`, and the `null` of a nullable field written as a `oneOf` with `const: null`.
+
+**One vocabulary per file.** Every list of choices in a file shares its `optionSchema`. A list whose choices carry fields of their own, such as countries with flags beside plans with prices, makes a schema of its own, with its own `optionSchema`, which forms reference (see [Reference data](#reference-data)).
 
 ### Two ways to write choices
 
@@ -587,6 +623,10 @@ country.option("FR"); // undefined
 
 A plain `enum` without entries gives `[{ value }]`, so a renderer has one path for every list. An array's choices are its items', for a multiple select or a group of checkboxes, so `options` beside an array's `items` labels them.
 
+### What a choice holds
+
+A choice is a flat object, and it only ever holds `value`, `title` and your vocabulary's fields. Featurevisor never adds another name to it: anything it works out about a choice later goes on the handle instead, so no field of yours is ever shadowed. A new built in name on choices, or on the four built in annotations, would be a breaking change. For the same reason, `value` and `title` keep Featurevisor's types whatever a vocabulary's type says.
+
 ### What stays yours
 
 Featurevisor computes no label and filters nothing. `hidden`, `disabled`, grouping, icons and prices are your vocabulary's, and so is the language of a title, which can be text or a key for your own translations, so any i18n setup fits:
@@ -618,7 +658,15 @@ One component then serves every form that references it (see [Rendering forms](#
 
 ### Lint
 
-Lint checks each entry against `optionSchema` and the built in `title`, each key against the `enum`, and each list of consts for values given twice. It warns with `option_without_title` when some of a field's choices have a title and others do not, since a list would show titles beside raw values.
+Lint checks each entry against `optionSchema` and the built in `title`, each key against the `enum`, every choice for the fields `optionSchema` lists in `required`, and each list of consts for values given twice. It warns with `option_without_title` when some of a field's choices have a title and others do not, since a list would show titles beside raw values.
+
+| Written                                                    | Lint says                                                                              |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| An `enum` value without an entry, when `price` is required | `` `optionSchema` requires `price`, and the choice team has no entry in `options`. ``  |
+| An entry or a `const` branch without `price`               | `` `optionSchema` requires `price`, which this choice does not have. ``                |
+| `value` in `optionSchema`                                  | `` `value` holds each choice's own value, so `optionSchema` cannot declare it. ``      |
+| `value` in a choice's entry                                | `` `value` is the choice's own value, so a choice cannot set it. ``                    |
+| A name `optionSchema` does not declare                     | ``Unknown choice field `colour`. `optionSchema` declares `flag`, `region`, `hidden`.`` |
 
 ## Messages
 
@@ -1147,7 +1195,7 @@ s.get("signUp", {
 });
 ```
 
-Annotations are typed by the vocabulary with the built in annotations added, and choices as `{ value, title }` with the option vocabulary's fields, so `option.flg` is a type error and a `switch` over `option.value` is exhaustive. A schema without a vocabulary has the built in annotations only. Every field of a handle is typed with the vocabularies of the schema you got it from, including fields inside a schema it references, whose own vocabulary may differ. `fields` types each field's value as `unknown`, as any generic renderer does.
+Annotations are typed by the vocabulary with the built in annotations added, and choices as `{ value, title }` with the option vocabulary's fields, so `option.flg` is a type error and a `switch` over `option.value` is exhaustive. A schema without a vocabulary has the built in annotations only. Every annotation and every field of a choice stays optional in types, even one a vocabulary lists in `required`, since a target with `includeAnnotations: false` delivers none, and a single `const` or a nullable field's `null` carries no entry, so code writes `??` where lint has done the guaranteeing. Every field of a handle is typed with the vocabularies of the schema you got it from, including fields inside a schema it references, whose own vocabulary may differ. `fields` types each field's value as `unknown`, as any generic renderer does.
 
 Without generated code, `createSchemas<SchemaTypes, SchemaVocabularies>(f)` and `useSchema<SignUp, boolean, SignUpVocabularies>("signUp")` take types by hand. `FieldPath<T>` and `FieldValue<T, P>` name a type's paths and the value at one, `InferSchema<typeof signUp>` the type a handle validates, and `SchemaKey<typeof s>` the keys an instance knows, so a type is never written twice. With types, `options` and `option` take only the values a field allows, and `s.has(key)` narrows a string to a known key.
 

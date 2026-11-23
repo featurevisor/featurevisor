@@ -303,16 +303,27 @@ export type BuiltInAnnotations = {
 /**
  * A handle's annotations: the built in ones, and what its schema's vocabulary
  * declares, or any name for an untyped handle, since only the datafile knows.
+ * Every annotation is optional, even one `required` lists, since a target with
+ * `includeAnnotations: false` delivers none, and the built in names keep their
+ * own types whatever a vocabulary's type says.
  */
 export type AnnotationsOf<V = unknown> = unknown extends V
   ? BuiltInAnnotations & Readonly<Record<string, unknown>>
-  : BuiltInAnnotations & (V extends { annotations?: infer A } ? Readonly<Partial<A>> : unknown);
+  : BuiltInAnnotations &
+      (V extends { annotations?: infer A }
+        ? Readonly<Partial<Omit<A, keyof BuiltInAnnotations>>>
+        : unknown);
 
-/** What a choice carries besides its value and title: its vocabulary's fields, or any for an untyped handle. */
+/**
+ * What a choice carries besides its value and title: its vocabulary's fields,
+ * or any for an untyped handle. Every field is optional, even one `required`
+ * lists, since a few choices cannot carry an entry, and `value` and `title`
+ * stay Featurevisor's whatever a vocabulary's type says.
+ */
 export type OptionFieldsOf<V = unknown> = unknown extends V
   ? Readonly<Record<string, unknown>>
   : V extends { options?: infer O }
-    ? Readonly<Partial<O>>
+    ? Readonly<Partial<Omit<O, "value" | "title">>>
     : unknown;
 
 /**

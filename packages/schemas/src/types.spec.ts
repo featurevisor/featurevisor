@@ -241,6 +241,28 @@ describe("typed field paths", () => {
     expect(signUp.fields).toEqual([]);
   });
 
+  test("a vocabulary's type cannot change value, title or the other built in names", () => {
+    interface Clashing {
+      signUp: {
+        annotations: { title?: number; order?: boolean; placeholder?: string };
+        options: { value?: number; title?: boolean; flag?: string };
+      };
+    }
+    const f = createFeaturevisor({ logLevel: "fatal" });
+    const signUp = createSchemas<SchemaTypes, Clashing>(f).get("signUp");
+    const choice = signUp.at("country").option("GB");
+
+    expectExactType<IsExact<NonNullable<typeof choice>["value"], "GB" | "NL">>(true);
+    expectExactType<IsExact<NonNullable<typeof choice>["title"], string | undefined>>(true);
+    expectExactType<IsExact<NonNullable<typeof choice>["flag"], string | undefined>>(true);
+    expectExactType<IsExact<typeof signUp.annotations.title, string | undefined>>(true);
+    expectExactType<IsExact<typeof signUp.annotations.order, ReadonlyArray<string> | undefined>>(
+      true,
+    );
+    expectExactType<IsExact<typeof signUp.annotations.placeholder, string | undefined>>(true);
+    expect(choice).toBeUndefined();
+  });
+
   test("formAction omits fields by the schema's field paths", () => {
     const signUp = typed().get("signUp");
 
