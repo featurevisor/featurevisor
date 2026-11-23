@@ -403,7 +403,7 @@ A schema or field the datafile lacks has none, `{}`. The same handle reads the s
 
 ### Fields in order
 
-`fields` gives an object's fields' handles in its `order`, then the fields `order` leaves out, in the order the schema writes them. Each field's handle has its `name`, its own key, and its `path`, the name form libraries, issues and `flattenIssues` all use, so a renderer never maps one name to another:
+`fields` gives an object's fields' handles with the fields its `order` lists first, in that order, and then the fields it leaves out, in no particular order. List every field when the whole sequence matters. Each field's handle has its `name`, its own key, and its `path`, the name form libraries, issues and `flattenIssues` all use, so a renderer never maps one name to another:
 
 ```ts
 signUp.fields.map((field) => field.path); // ["displayName", "email", "address"]
@@ -417,7 +417,7 @@ signUp.at("address").fields.map((field) => field.path);
 - Rows of an array are data, not schema, so they come from your form library, with `at(index)` for each row's handle, whose `fields` are the row's (see [Rendering forms](#rendering-forms)).
 - `order` is the sequence and nothing else. Whether a field shows, which section it sits in, or which step of a wizard asks for it belongs to your vocabulary, such as `hidden`, so neither does the other's job.
 
-Order is a list, never the order keys are written in, since JavaScript moves a key such as `2024` to the front of an object, Go and Swift keep no key order at all, and formatting tools can reorder keys without anyone meaning to change a form.
+Order is a list, never the order keys are written in, since JavaScript moves a key such as `2024` to the front of an object, Go and Swift keep no key order at all, and formatting tools can reorder keys without anyone meaning to change a form. That is also why the fields `order` leaves out come in no particular order: an SDK on any platform can keep the promise.
 
 ### Titles in messages
 
@@ -1223,7 +1223,7 @@ Changing annotations or choices' entries widens nothing, since validation never 
 
 Later releases of this package are planned to add:
 
-- annotations that depend on conditions, such as a title per country, with `for(values)` resolving them for the values typed so far, and `reads`, the fields a schema's conditions read,
+- annotations that change under conditions, through mutations, such as a title per country or an address ordered by its own country, with `for(values)` resolving them for the values typed so far, and `reads`, the fields a schema's conditions read,
 - schemas that differ by environment, rules that change under conditions, and comparisons between fields,
 - choosing between shapes, such as a payment method of card or bank, each an object told apart by a discriminator,
 - annotations in the Catalog and in `featurevisor diff`, and conversion to JSON Schema, with `title` and `examples` as its own keywords.

@@ -379,7 +379,7 @@ export interface SchemaHandleBase<
    * Validation never reads them.
    */
   readonly annotations: AnnotationsOf<V>;
-  /** An object's fields' handles, in its `order`, then the fields it leaves out as written. None for any other value. */
+  /** An object's fields' handles, the ones its `order` lists first, then the rest in no particular order. None for any other value. */
   readonly fields: ReadonlyArray<SchemaHandle<unknown, TAsync, V>>;
   /** The value itself on success, or the issues found. Never coerces. */
   validate(value: unknown, options?: ValidateOptions): Awaitable<TAsync, SchemaResult<T>>;

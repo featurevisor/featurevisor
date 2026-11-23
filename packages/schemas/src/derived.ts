@@ -174,7 +174,7 @@ function optionsOf(node: unknown, resolve: Resolve): ReadonlyArray<SchemaOption>
   return choices && Object.freeze(choices);
 }
 
-/** The keys of an object's fields, in its `order`, then the ones `order` leaves out, as written. */
+/** The keys of an object's fields, the ones its `order` lists first, then the rest, here as written, which nothing promises. */
 export function fieldKeys(node: unknown, resolve: Resolve): string[] {
   const resolved = resolveNode(node, resolve);
   if (!resolved || !isPlainObject(resolved.properties)) return [];
