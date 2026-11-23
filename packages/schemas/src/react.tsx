@@ -279,34 +279,56 @@ class HookHandle {
   validate(value: unknown, options: ValidateOptions = {}) {
     const controller = new AbortController();
     const outer = options.signal;
+    const forward = () => controller.abort(outer!.reason);
     if (outer) {
-      if (outer.aborted) controller.abort(outer.reason);
-      else outer.addEventListener("abort", () => controller.abort(outer.reason), { once: true });
+      if (outer.aborted) forward();
+      else outer.addEventListener("abort", forward, { once: true });
     }
+    const release = () => outer && outer.removeEventListener("abort", forward);
 
     const previous = this.current;
     this.current = undefined;
-    const result = this.inner.validate(value, {
-      context: withScope(this.scope(), options.context),
-      signal: controller.signal,
-    });
+    let result: SchemaResult<unknown> | Promise<SchemaResult<unknown>>;
+    try {
+      result = this.inner.validate(value, {
+        context: withScope(this.scope(), options.context),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      // The older validation waits on this one, so it fails with it.
+      if (previous) {
+        previous.controller.abort(SUPERSEDED);
+        previous.settleWith(Promise.reject(error));
+      }
+      release();
+      throw error;
+    }
     if (previous) {
       previous.controller.abort(SUPERSEDED);
       previous.settleWith(result);
     }
-    if (!isPromise(result)) return result;
+    if (!isPromise(result)) {
+      release();
+      return result;
+    }
 
     let settleWith!: (next: SchemaResult<unknown> | Promise<SchemaResult<unknown>>) => void;
     const settled = new Promise<SchemaResult<unknown>>((resolve, reject) => {
-      settleWith = (next) => Promise.resolve(next).then(resolve, reject);
+      settleWith = (next) => {
+        release();
+        Promise.resolve(next).then(resolve, reject);
+      };
       result.then(
         (answer) => {
+          release();
           if (this.current && this.current.controller === controller) this.current = undefined;
           resolve(answer);
         },
         (error) => {
           // A newer validation settles this one through settleWith.
-          if (error !== SUPERSEDED) reject(error);
+          if (error === SUPERSEDED) return;
+          release();
+          reject(error);
         },
       );
     });

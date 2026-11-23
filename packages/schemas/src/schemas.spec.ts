@@ -8,6 +8,7 @@ import {
   initialFormState,
   SchemaError,
   type SchemaIssue,
+  type SchemaResult,
 } from "./index";
 
 const signUp: DatafileSchema = {
@@ -374,6 +375,12 @@ describe("messages", () => {
     );
   });
 
+  test("a template reads only an issue's own params", () => {
+    const { s } = setup({ messages: { required: "Missing {key}{constructor}" } });
+
+    expect(s.validate("signUp", { email: "a@b.c" }).issues![0].message).toBe("Missing displayName");
+  });
+
   test("templates write literal braces, and lists with commas", () => {
     const { s } = setup({ messages: { enum: "{{one of}} {options}" } });
 
@@ -500,7 +507,57 @@ describe("handles", () => {
       tags: [{ value: "new" }, { value: "vip" }],
     });
     expect(s.get("signUp").at("country").options).toEqual([{ value: "GB" }, { value: "NL" }]);
-    expect(s.get("missing").options).toEqual({});
+    expect(s.get("missing").options).toEqual([]);
+  });
+
+  test("constraints say required only where an input left empty fails", () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        prefs: {
+          hash: "p1",
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            newsletter: { type: "boolean" },
+            acceptTerms: { const: true },
+            either: { enum: [true, false] },
+            topics: { type: "array", items: { type: "string", enum: ["news", "deals"] } },
+            picks: { type: "array", minItems: 1, items: { type: "string" } },
+            nickname: { oneOf: [{ type: "string" }, { const: null }] },
+          },
+          required: ["name", "newsletter", "acceptTerms", "either", "topics", "picks", "nickname"],
+        },
+      }),
+    );
+
+    // An unchecked box reads as false, a list with nothing chosen as [] and an empty nullable field as null.
+    expect(s.get("prefs").constraints).toEqual({
+      name: { required: true },
+      newsletter: {},
+      acceptTerms: { required: true },
+      either: {},
+      topics: { multiple: true },
+      picks: { required: true, multiple: true },
+      nickname: {},
+    });
+  });
+
+  test("constraints and options are frozen, and a schema the datafile lacks has none", () => {
+    const { s } = setup();
+    const signUpHandle = s.get("signUp");
+
+    expect(Object.isFrozen(signUpHandle.constraints)).toBe(true);
+    expect(Object.isFrozen(signUpHandle.constraints.email)).toBe(true);
+    expect(Object.isFrozen(signUpHandle.options)).toBe(true);
+    expect(Object.isFrozen(signUpHandle.at("country").options)).toBe(true);
+    expect(Object.isFrozen(signUpHandle.at("country").options[0])).toBe(true);
+
+    const missing = s.get("missing");
+    expect(missing.options.map((option: { value: unknown }) => option.value)).toEqual([]);
+    expect(missing.options.country).toBeUndefined();
+    expect(missing.constraints).toEqual({});
+    expect(signUpHandle.at("nope").options).toEqual([]);
   });
 
   test("option finds one choice by value, comparing objects by value", () => {
@@ -543,6 +600,8 @@ describe("form data", () => {
       email: "ada@example.com",
       displayName: "Ada",
       age: 36,
+      // Clearing a nullable field is how a form sets it to null.
+      nickname: null,
       tags: ["new", "vip"],
       items: [{ name: "Pen", quantity: 2 }, { name: "Ink" }],
       address: { city: "Leiden" },
@@ -560,6 +619,53 @@ describe("form data", () => {
     expect(value.marketingConsent).toBe(true);
     expect(value.age).toBe("old");
     expect(codes(s.validate("signUp", value).issues)).toEqual([["type", "age"]]);
+  });
+
+  test("a row left empty keeps its index, so issues sit at the inputs they are about", () => {
+    const { s } = setup();
+    const data = new URLSearchParams(
+      "email=a@b.c&displayName=Ada&items[0].name=&items[0].quantity=&items[1].name=Ink&items[1].quantity=0&tags[1]=vip",
+    );
+
+    const value = s.get("signUp").fromFormData(data) as Record<string, unknown>;
+
+    expect(value.items).toEqual([{}, { name: "Ink", quantity: 0 }]);
+    // A list of values closes its gaps, since an empty value cannot hold a place.
+    expect(value.tags).toEqual(["vip"]);
+    expect(codes(s.validate("signUp", value).issues)).toEqual([
+      ["required", "items.0.name"],
+      ["minimum", "items.1.quantity"],
+    ]);
+
+    // A row no input names at all is kept too.
+    const gap = s.get("signUp").fromFormData(new URLSearchParams("items[1].name=Ink")) as Record<
+      string,
+      unknown
+    >;
+    expect(gap.items).toEqual([{}, { name: "Ink" }]);
+  });
+
+  test("a required list with nothing chosen reads as [], and an optional one stays absent", () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        prefs: {
+          hash: "p1",
+          type: "object",
+          properties: {
+            topics: { type: "array", items: { type: "string", enum: ["news", "deals"] } },
+            extras: { type: "array", items: { type: "string" } },
+            note: { oneOf: [{ type: "string" }, { const: null }] },
+          },
+          required: ["topics"],
+        },
+      }),
+    );
+
+    const value = s.get("prefs").fromFormData(new URLSearchParams("topics=&note="));
+
+    expect(value).toEqual({ topics: [], note: null });
+    expect(s.isValid("prefs", value)).toBe(true);
   });
 });
 
@@ -694,6 +800,50 @@ describe("checks in code", () => {
     controller.abort(new Error("newer input"));
 
     await expect(result).rejects.toThrow("newer input");
+  });
+
+  test("an aborted signal leaves checks that answer at once synchronous", () => {
+    const { s } = setup();
+    const controller = new AbortController();
+    controller.abort(new Error("gone"));
+    const handle = s.get("signUp", {
+      refine: [{ key: "named", path: "displayName", check: (name: string) => name !== "Bob" }],
+    });
+
+    const result = handle.validate({ ...valid, displayName: "Bob" }, { signal: controller.signal });
+
+    expect(codes((result as SchemaResult<unknown>).issues)).toEqual([["refine", "displayName"]]);
+  });
+
+  test("a translator that throws rejects an asynchronous validation, never leaving it pending", async () => {
+    const { s } = setup({
+      message: () => {
+        throw new Error("translator broke");
+      },
+    });
+    const handle = s.get("signUp", {
+      refine: [{ key: "free", path: "email", check: async () => false }],
+    });
+
+    await expect(handle.validate(valid)).rejects.toThrow("translator broke");
+  });
+
+  test("a check on every value of an open object runs in the handle of one value", () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        labels: { hash: "l1", type: "object", additionalProperties: { type: "string" } },
+      }),
+    );
+    const handle = s.get("labels", {
+      refine: [
+        { key: "lower", path: "*", check: (label: string) => label === label.toLowerCase() },
+      ],
+    });
+
+    expect(codes(handle.validate({ en: "Hi" }).issues)).toEqual([["refine", "en"]]);
+    expect(codes(handle.at("en").validate("Hi").issues)).toEqual([["refine", ""]]);
+    expect(handle.at("en").validate("hi").issues).toBeUndefined();
   });
 
   test("a field's handle runs its own checks, relative to the field", () => {
@@ -894,6 +1044,28 @@ describe("conveniences", () => {
     expect(s.get("missing").kind).toBeUndefined();
   });
 
+  test("a choice between booleans has the kind boolean, for a checkbox", () => {
+    const { s } = setup(
+      undefined,
+      datafile({
+        terms: {
+          hash: "t1",
+          type: "object",
+          properties: {
+            acceptTerms: { const: true },
+            either: { enum: [true, false, null] },
+            plan: { enum: ["free", "pro"] },
+          },
+        },
+      }),
+    );
+    const terms = s.get("terms");
+
+    expect(terms.at("acceptTerms").kind).toBe("boolean");
+    expect(terms.at("either").kind).toBe("boolean");
+    expect(terms.at("plan").kind).toBe("select");
+  });
+
   test("a oneOf of consts reports enum, with its values, as an enum does", () => {
     const { s } = setup(
       undefined,
@@ -1023,5 +1195,34 @@ describe("conveniences", () => {
       previouslyOk: false,
     });
     expect(saved).toEqual([{ name: "Ada", newsletter: false }]);
+    expect(Object.isFrozen(initialFormState.errors.formErrors)).toBe(true);
+  });
+
+  test("formAction validates with the request's context, and never sends omitted fields back", async () => {
+    const { s } = setup({
+      // The instance's context says nl, so a request's context has to reach the message.
+      messages: {
+        minimum: (_params, { context }) => (context.locale === "en" ? "Too young" : "Te jong"),
+      },
+    });
+    const accounts = s.get("signUp");
+    const data = new URLSearchParams("email=a@b.c&displayName=Ada&age=5&items[0].name=Pen");
+
+    const english = formAction(accounts, () => undefined, {
+      context: async (formData) => ({ locale: String(formData.get("lang") || "en") }),
+      omit: ["email", "items[].name"],
+    });
+    const state = await english(initialFormState, data);
+
+    expect(state.errors.fieldErrors).toEqual({ age: ["Too young"] });
+    expect(state.values).toEqual({
+      displayName: "Ada",
+      age: 5,
+      items: [{}],
+      marketingConsent: false,
+    });
+
+    const dutch = await formAction(accounts, () => undefined)(initialFormState, data);
+    expect(dutch.errors.fieldErrors).toEqual({ age: ["Te jong"] });
   });
 });

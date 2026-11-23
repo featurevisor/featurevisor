@@ -3,11 +3,15 @@ import type { FieldConstraints, FieldKind, SchemaOption } from "./types.js";
 
 type Node = Record<string, unknown>;
 
+/** What a handle has when the datafile lacks its schema or its field: no constraints and no options. */
+export const EMPTY: Readonly<Record<string, never>> = Object.freeze({});
+export const EMPTY_LIST: ReadonlyArray<never> = Object.freeze([] as never[]);
+
 /**
  * The branch a nullable field's rules come from: a `oneOf` whose other branches
  * only allow `null`, such as `oneOf: [{ type: string, maxLength: 40 }, { const: null }]`.
  */
-function nonNullBranch(node: Node, resolve: Resolve): Node | undefined {
+export function nonNullBranch(node: Node, resolve: Resolve): Node | undefined {
   if (!Array.isArray(node.oneOf)) return node;
   const branches = node.oneOf
     .map((branch) => resolveNode(branch, resolve))
@@ -16,18 +20,54 @@ function nonNullBranch(node: Node, resolve: Resolve): Node | undefined {
   return branches.length === 1 ? (branches[0] as Node) : undefined;
 }
 
-function isObjectNode(node: Node | undefined): boolean {
+export function isObjectNode(node: Node | undefined): boolean {
   return Boolean(
     node && (node.type === "object" || (!node.type && isPlainObject(node.properties))),
   );
 }
 
+/** Whether a node takes `null`: a `const: null`, an `enum` listing it, or a `oneOf` branch that does. */
+export function takesNull(node: unknown, resolve: Resolve, seen = new Set<unknown>()): boolean {
+  const resolved = resolveNode(node, resolve);
+  if (!resolved || seen.has(resolved)) return false;
+  seen.add(resolved);
+  if ("const" in resolved) return resolved.const === null;
+  if (Array.isArray(resolved.enum)) return resolved.enum.indexOf(null) !== -1;
+  return (
+    Array.isArray(resolved.oneOf) &&
+    resolved.oneOf.some((branch) => takesNull(branch, resolve, seen))
+  );
+}
+
+/** Whether a choice is between booleans, such as `const: true` for accepting terms. */
+function isBooleanChoice(values: unknown[] | undefined): values is boolean[] {
+  return Boolean(
+    values &&
+    values.some((value) => typeof value === "boolean") &&
+    values.every((value) => typeof value === "boolean" || value === null),
+  );
+}
+
+/**
+ * Whether an input left empty fails a field's rules, as `required` tells a
+ * browser. An unchecked box reads as `false` and a required list with nothing
+ * chosen as `[]`, so each passes unless its rules say otherwise. A nullable
+ * field, which reads it as `null`, never reaches here.
+ */
+function emptyFails(rules: Node, resolve: Resolve): boolean {
+  if (rules.type === "boolean") return false;
+  if (rules.type === "array") return Number(rules.minItems) > 0;
+  const values = valuesOf(rules, resolve);
+  return !isBooleanChoice(values) || values.indexOf(false) < 0;
+}
+
 function attributesOf(node: unknown, required: boolean, resolve: Resolve): FieldConstraints {
   const constraints: FieldConstraints = {};
-  if (required) constraints.required = true;
   const resolved = resolveNode(node, resolve);
   const rules = resolved && nonNullBranch(resolved, resolve);
-  if (!rules) return constraints;
+  if (required && !takesNull(resolved, resolve) && (!rules || emptyFails(rules, resolve)))
+    constraints.required = true;
+  if (!rules) return Object.freeze(constraints);
   if (rules.type === "string") {
     if (typeof rules.minLength === "number") constraints.minLength = rules.minLength;
     if (typeof rules.maxLength === "number") constraints.maxLength = rules.maxLength;
@@ -38,7 +78,7 @@ function attributesOf(node: unknown, required: boolean, resolve: Resolve): Field
   } else if (rules.type === "array") {
     constraints.multiple = true;
   }
-  return constraints;
+  return Object.freeze(constraints);
 }
 
 function collectConstraints(
@@ -70,7 +110,7 @@ export function getConstraints(
   if (resolved && isObjectNode(resolved)) {
     const result: Record<string, FieldConstraints> = {};
     collectConstraints(resolved, "", resolve, result, new Set());
-    return result;
+    return Object.freeze(result);
   }
   return attributesOf(node, false, resolve);
 }
@@ -102,16 +142,17 @@ function valuesOf(
 }
 
 /** A node's choices as options, in the order its rules list them. */
-function optionsOf(node: unknown, resolve: Resolve): SchemaOption[] | undefined {
+function optionsOf(node: unknown, resolve: Resolve): ReadonlyArray<SchemaOption> | undefined {
   const values = valuesOf(node, resolve);
-  return values && values.map((value) => ({ value }));
+  // Frozen, since every caller shares them. The values stay the datafile's own.
+  return values && Object.freeze(values.map((value) => Object.freeze({ value })));
 }
 
 function collectOptions(
   node: Node,
   prefix: string,
   resolve: Resolve,
-  result: Record<string, SchemaOption[]>,
+  result: Record<string, ReadonlyArray<SchemaOption>>,
   seen: Set<unknown>,
 ): void {
   if (seen.has(node)) return;
@@ -130,14 +171,14 @@ function collectOptions(
 export function getOptions(
   node: unknown,
   resolve: Resolve,
-): Record<string, SchemaOption[]> | SchemaOption[] {
+): Readonly<Record<string, ReadonlyArray<SchemaOption>>> | ReadonlyArray<SchemaOption> {
   const resolved = resolveNode(node, resolve);
   if (resolved && isObjectNode(resolved)) {
-    const result: Record<string, SchemaOption[]> = {};
+    const result: Record<string, ReadonlyArray<SchemaOption>> = {};
     collectOptions(resolved, "", resolve, result, new Set());
-    return result;
+    return Object.freeze(result);
   }
-  return optionsOf(node, resolve) || [];
+  return optionsOf(node, resolve) || EMPTY_LIST;
 }
 
 /** What a node's rules make a field, or undefined for a `oneOf` of shapes. */
@@ -145,7 +186,7 @@ export function getKind(node: unknown, resolve: Resolve): FieldKind | undefined 
   const resolved = resolveNode(node, resolve);
   if (!resolved) return undefined;
   if (Array.isArray(resolved.enum) || "const" in resolved || isConstList(resolved, resolve))
-    return "select";
+    return isBooleanChoice(valuesOf(resolved, resolve)) ? "boolean" : "select";
   if (Array.isArray(resolved.oneOf)) {
     // A nullable field is what its other branch is.
     const rules = nonNullBranch(resolved, resolve);

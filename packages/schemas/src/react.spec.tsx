@@ -342,6 +342,42 @@ describe("the hook's handle", () => {
     act(() => void f.setDatafile(datafile({ signUp: { ...signUp, hash: "s3" }, coupon }, "3")));
     expect(calls).toEqual(["changed"]);
   });
+
+  test("a validation that throws fails the older one waiting on it, which stops listening", async () => {
+    const f = sdk();
+    let handle: any;
+    function Form() {
+      handle = useSchema("signUp", {
+        refine: [{ key: "slow", path: "username", check: () => new Promise<boolean>(() => {}) }],
+      });
+      return null;
+    }
+    render(
+      <FeaturevisorProvider instance={f}>
+        <SchemasProvider
+          message={(issue) => {
+            if (issue.code === "minLength") throw new Error("translator broke");
+            return undefined;
+          }}
+        >
+          <Form />
+        </SchemasProvider>
+      </FeaturevisorProvider>,
+    );
+    const outer = new AbortController();
+    const removed: string[] = [];
+    const remove = outer.signal.removeEventListener.bind(outer.signal);
+    outer.signal.removeEventListener = (type: string, listener: any, options?: any) => {
+      removed.push(type);
+      remove(type, listener, options);
+    };
+
+    const older = handle.validate({ username: "fahad" }, { signal: outer.signal });
+    expect(() => handle.validate({ username: "fa" })).toThrow("translator broke");
+
+    await expect(older).rejects.toThrow("translator broke");
+    expect(removed).toEqual(["abort"]);
+  });
 });
 
 describe("useValidation", () => {

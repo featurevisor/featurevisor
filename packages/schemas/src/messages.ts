@@ -69,7 +69,7 @@ export function fillTemplate(template: string, params: Readonly<Record<string, u
   return template.replace(/\{\{|\}\}|\{([^{}]*)\}/g, (match, name: string | undefined) => {
     if (match === "{{") return "{";
     if (match === "}}") return "}";
-    return formatParam(params[name as string]);
+    return formatParam(own(params, name as string));
   });
 }
 

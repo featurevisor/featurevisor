@@ -1,3 +1,4 @@
+import { isObjectNode, nonNullBranch, takesNull } from "./derived.js";
 import { isPlainObject, resolveNode, type Resolve } from "./engine.js";
 import { hasOwn, parsePath, setOwn, type PathStep } from "./paths.js";
 import { locate } from "./store.js";
@@ -48,7 +49,13 @@ function getOwn(holder: Record<string | number, unknown>, key: string | number):
   return hasOwn(holder, key) ? holder[key] : undefined;
 }
 
-function setAt(root: Record<string, unknown>, steps: PathStep[], value: unknown): void {
+/** Sets a value at a path, making the objects and arrays on the way. With `keep`, an existing value stays. */
+function setAt(
+  root: Record<string, unknown>,
+  steps: PathStep[],
+  value: unknown,
+  keep?: boolean,
+): void {
   let container: Container = root;
   for (let index = 0; index < steps.length; index++) {
     const step = steps[index];
@@ -71,7 +78,7 @@ function setAt(root: Record<string, unknown>, steps: PathStep[], value: unknown)
     const key = step.kind === "index" ? step.index : step.kind === "key" ? step.key : "*";
     const holder = container as Record<string | number, unknown>;
     if (last) {
-      setOwn(holder, key, value);
+      if (!keep || getOwn(holder, key) === undefined) setOwn(holder, key, value);
     } else {
       const existing = getOwn(holder, key);
       const child = (
@@ -83,48 +90,65 @@ function setAt(root: Record<string, unknown>, steps: PathStep[], value: unknown)
   }
 }
 
-/** Removes the holes that indices leave, keeping the order. */
-function compact(value: unknown): unknown {
-  if (Array.isArray(value)) return value.filter((item) => item !== undefined).map(compact);
-  if (isPlainObject(value)) {
-    for (const key of Object.keys(value)) setOwn(value, key, compact(value[key]));
-  }
-  return value;
-}
-
-/** Sets `false` for every boolean field an object leaves out, as an unchecked checkbox sends nothing. */
-function fillBooleans(
+/** Keeps the row an empty input sits in, so the rows after it keep their indices. */
+function keepRow(
+  root: Record<string, unknown>,
+  steps: PathStep[],
   node: unknown,
-  value: unknown,
   resolve: Resolve,
-  seen = new Set<unknown>(),
 ): void {
-  const resolved = resolveNode(node, resolve);
-  if (!resolved || seen.has(resolved)) return;
-  if (Array.isArray(value)) {
-    if (resolved.type === "array" && resolved.items !== undefined) {
-      for (const item of value) fillBooleans(resolved.items, item, resolve, new Set(seen));
-    }
-    return;
-  }
-  if (!isPlainObject(value) || !isPlainObject(resolved.properties)) return;
-  seen.add(resolved);
-  const properties = resolved.properties;
-  for (const key of Object.keys(properties)) {
-    const property = properties[key];
-    if (getOwn(value, key) === undefined) {
-      if (fieldType(property, resolve) === "boolean") setOwn(value, key, false);
-    } else {
-      fillBooleans(property, value[key], resolve, seen);
+  for (let end = steps.length - 1; end >= 0; end--) {
+    if (steps[end].kind !== "index") continue;
+    const row = steps.slice(0, end + 1);
+    const located = locate(resolve, node, row);
+    if (located && isObjectNode(resolveNode(located.node, resolve))) {
+      setAt(root, row, {}, true);
+      return;
     }
   }
 }
 
 /**
+ * Settles a value read from a form by its schema. A row of objects no input
+ * named reads as `{}`, so every row keeps its index, while other lists close
+ * their gaps. An unchecked box reads as `false`, and a required list with
+ * nothing chosen as `[]`, since neither sends anything.
+ */
+function settle(node: unknown, value: unknown, resolve: Resolve): unknown {
+  const resolved = resolveNode(node, resolve);
+  const rules = resolved && nonNullBranch(resolved, resolve);
+  if (Array.isArray(value)) {
+    const items = rules && rules.type === "array" ? rules.items : undefined;
+    const rows = isObjectNode(resolveNode(items, resolve));
+    const list: unknown[] = [];
+    for (let index = 0; index < value.length; index++) {
+      if (value[index] !== undefined || rows)
+        list.push(settle(items, value[index] === undefined ? {} : value[index], resolve));
+    }
+    return list;
+  }
+  if (!isPlainObject(value) || !rules) return value;
+  const properties = isPlainObject(rules.properties) ? rules.properties : {};
+  const required = Array.isArray(rules.required) ? (rules.required as string[]) : [];
+  for (const key of Object.keys(value)) {
+    const child = hasOwn(properties, key) ? properties[key] : rules.additionalProperties;
+    setOwn(value, key, settle(child, value[key], resolve));
+  }
+  for (const key of Object.keys(properties)) {
+    if (getOwn(value, key) !== undefined) continue;
+    const type = fieldType(properties[key], resolve);
+    if (type === "boolean") setOwn(value, key, false);
+    else if (type === "array" && required.indexOf(key) !== -1) setOwn(value, key, []);
+  }
+  return value;
+}
+
+/**
  * Reads `FormData` or `URLSearchParams` by a schema's types: names such as
  * `address.city` or `items[0].name` nest, a name given several times fills an
- * array field, an empty string is absent, numbers and booleans are read from
- * their text, and names the schema does not describe are left out.
+ * array field, an empty string is absent, or `null` for a nullable field,
+ * numbers and booleans are read from their text, and names the schema does
+ * not describe are left out.
  */
 export function readFormData(
   node: unknown,
@@ -137,12 +161,19 @@ export function readFormData(
   ).entries();
 
   for (const [name, raw] of entries) {
-    if (raw === "") continue;
     let steps = parsePath(name);
     if (steps.length === 0) continue;
 
     let field = locate(resolve, node, steps);
     if (!field) continue;
+
+    if (raw === "") {
+      // Clearing a nullable field is how a form sets it to null.
+      if (takesNull(field.node, resolve) && fieldType(field.node, resolve) !== "array")
+        setAt(result, steps, null);
+      else keepRow(result, steps, node, resolve);
+      continue;
+    }
 
     const resolved = resolveNode(field.node, resolve);
     // A name given several times, or written `tags[]`, fills an array field.
@@ -155,7 +186,5 @@ export function readFormData(
     setAt(result, steps, readText(raw, fieldType(field.node, resolve)));
   }
 
-  compact(result);
-  fillBooleans(node, result, resolve);
-  return result;
+  return settle(node, result, resolve);
 }

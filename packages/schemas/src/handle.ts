@@ -1,6 +1,6 @@
 import type { Context } from "@featurevisor/types";
 
-import { getConstraints, getKind, getOptions } from "./derived.js";
+import { EMPTY, EMPTY_LIST, getConstraints, getKind, getOptions } from "./derived.js";
 import { compileNode, report, sameJson, type Position, type Run, type Validate } from "./engine.js";
 import { valueOf } from "./errors.js";
 import { readFormData } from "./formData.js";
@@ -66,7 +66,7 @@ function toResult<T>(value: unknown, issues: SchemaIssue[]): SchemaResult<T> {
 }
 
 /** The concrete paths a check's steps reach in a value, with the value at each. */
-function expand(
+export function expand(
   value: unknown,
   steps: PathStep[],
   index = 0,
@@ -213,9 +213,11 @@ export class SchemaHandleImpl {
       }
       // A field's handle carries the checks at or inside it that read nothing else.
       if (reads.length > 0 || steps.length < this.steps.length) continue;
+      // A check's `[]` and `*` reach every item and value, so one at an index or a key too.
       const inside = this.steps.every((own, index) => {
         const step = steps[index];
-        if (own.kind === "key") return step.kind === "key" && step.key === own.key;
+        if (own.kind === "key")
+          return step.kind === "values" || (step.kind === "key" && step.key === own.key);
         if (own.kind === "values") return step.kind === "values";
         if (step.kind === "items") return true;
         return own.kind === "index" && step.kind === "index" && step.index === own.index;
@@ -288,9 +290,7 @@ export class SchemaHandleImpl {
     const checks = located ? this.checks() : [];
     if (checks.length === 0) return toResult(value, run.issues);
     const context = run.sources.info.context;
-
     const signal = options.signal || neverAborted();
-    if (signal.aborted) return Promise.reject(signal.reason);
 
     const ruleIssues = run.issues.slice();
     // Each check's issues keep their place, whatever order answers arrive in.
@@ -335,16 +335,19 @@ export class SchemaHandleImpl {
     }
 
     const finish = () => toResult<unknown>(value, ruleIssues.concat(...slots));
+    // Checks that answered at once have nothing left to abort.
     if (pending.length === 0) return finish();
+    if (signal.aborted) return Promise.reject(signal.reason);
 
     return new Promise((resolve, reject) => {
       const abort = () => reject(signal.reason);
       signal.addEventListener("abort", abort, { once: true });
+      // Wording an issue can throw too, such as in a translator, which rejects the validation.
       Promise.all(pending).then(() => {
         signal.removeEventListener("abort", abort);
         if (signal.aborted) reject(signal.reason);
         else resolve(finish());
-      });
+      }, reject);
     });
   }
 
@@ -409,7 +412,7 @@ export class SchemaHandleImpl {
     const derived = store.derive(this.key, `constraints${this.path}`, () =>
       getConstraints(this.node(), store.resolve),
     );
-    return derived || {};
+    return derived || EMPTY;
   }
 
   get options() {
@@ -417,7 +420,8 @@ export class SchemaHandleImpl {
     const derived = store.derive(this.key, `options${this.path}`, () =>
       getOptions(this.node(), store.resolve),
     );
-    return derived || (this.steps.length === 0 ? {} : []);
+    // An empty list for a missing schema suits both shapes: `options.map` works, and `options.country` is undefined.
+    return derived || EMPTY_LIST;
   }
 
   option(value: unknown): SchemaOption | undefined {

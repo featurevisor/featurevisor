@@ -1,8 +1,10 @@
 import { createFeaturevisor } from "@featurevisor/sdk";
 import type { DatafileContent } from "@featurevisor/types";
 
-import { createSchemas } from "./index";
+import { createSchemas, formAction } from "./index";
 import type {
+  ConstraintsOf,
+  FieldConstraints,
   FieldKind,
   FieldPath,
   FieldValue,
@@ -188,5 +190,23 @@ describe("typed field paths", () => {
     const key: string = "coupon";
     if (s.has(key)) expectExactType<IsExact<typeof key, "signUp" | "coupon">>(true);
     expect(s.has("coupon")).toBe(true);
+  });
+
+  test("a union's constraints are its own, as the runtime gives a oneOf's", () => {
+    // The repository compiles without strictNullChecks, so a union with a string stands in for a nullable object.
+    expectExactType<IsExact<ConstraintsOf<{ city: string } | string>, FieldConstraints>>(true);
+    expectExactType<IsExact<ConstraintsOf<string[] | number>, FieldConstraints>>(true);
+    expectExactType<
+      IsExact<NonNullable<ConstraintsOf<{ city: string }>["city"]>, FieldConstraints>
+    >(true);
+  });
+
+  test("formAction omits fields by the schema's field paths", () => {
+    const signUp = typed().get("signUp");
+
+    const action = formAction(signUp, () => undefined, { omit: ["email", "items[].name"] });
+    // @ts-expect-error a field the schema lacks
+    formAction(signUp, () => undefined, { omit: ["emial"] });
+    expect(typeof action).toBe("function");
   });
 });

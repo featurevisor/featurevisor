@@ -260,14 +260,15 @@ export interface FieldConstraints {
 type Awaitable<TAsync extends boolean, T> = TAsync extends true ? T | Promise<T> : T;
 
 /**
- * An object's constraints are by field path, and any other value's are its own.
- * Untyped handles allow both, since only the datafile knows the schema's type.
+ * An object's constraints are by field path, and any other value's are its own,
+ * a nullable object's too. Untyped handles allow both, since only the datafile
+ * knows the schema's type.
  */
 export type ConstraintsOf<T> = unknown extends T
   ? any
-  : T extends readonly unknown[]
+  : [T] extends [readonly unknown[]]
     ? FieldConstraints
-    : T extends object
+    : [T] extends [object]
       ? { readonly [K in keyof T & string]?: FieldConstraints } & Readonly<
           Record<string, FieldConstraints>
         >

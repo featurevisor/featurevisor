@@ -223,15 +223,15 @@ signUp.constraints;
 // }
 ```
 
-| Attribute                | From                                  |
-| ------------------------ | ------------------------------------- |
-| `required`               | The key is in its object's `required` |
-| `minLength`, `maxLength` | The same keywords on a string         |
-| `min`, `max`             | `minimum` and `maximum` on a number   |
-| `step`                   | `1` for an `integer`                  |
-| `multiple`               | An array, such as a multiple select   |
+| Attribute                | From                                                                 |
+| ------------------------ | -------------------------------------------------------------------- |
+| `required`               | The key is in its object's `required`, and an input left empty fails |
+| `minLength`, `maxLength` | The same keywords on a string                                        |
+| `min`, `max`             | `minimum` and `maximum` on a number                                  |
+| `step`                   | `1` for an `integer`                                                 |
+| `multiple`               | An array, such as a multiple select                                  |
 
-An object's constraints go by field path, through nested objects, such as `address.city`, and stop at arrays, whose rows have handles of their own, `at("items.0")`. Any other schema's constraints are its own. `pattern` is left out, since a browser anchors and compiles patterns its own way, and validation still checks it. Browsers count `maxlength` in UTF-16 code units, which stops typing at an emoji sooner than the schema would, never later.
+An input left empty fails only some fields: a nullable field reads it as `null`, an unchecked box as `false` and a required list with nothing chosen as `[]` (see [Reading form data](#reading-form-data)), so `required` is left out for those, unless `const: true` or `minItems` say otherwise. An object's constraints go by field path, through nested objects, such as `address.city`, and stop at arrays, whose rows have handles of their own, `at("items.0")`. Any other schema's constraints are its own. `pattern` is left out, since a browser anchors and compiles patterns its own way, and validation still checks it. Browsers count `maxlength` in UTF-16 code units, which stops typing at an emoji sooner than the schema would, never later.
 
 **Options** come from an `enum`, a `const`, or `oneOf` branches that each list values, so a nullable choice lists `null` too. They come in the order the schema lists them, each as an object, so what a later release says about a choice, such as its title, joins its value. An array's options are its items', for a multiple select:
 
@@ -241,21 +241,21 @@ signUp.at("country").options; // [{ value: "GB" }, { value: "NL" }]
 signUp.at("country").option("NL"); // { value: "NL" }
 ```
 
-A field without `enum` or `const` has no options, so code writes `signUp.options.country ?? []`. A schema the datafile lacks has no constraints and no options. A `oneOf` whose every branch is a `const` is a list of choices too, and a value it does not list reports `enum`, as an `enum` does.
+A field without `enum` or `const` has no options, so code writes `signUp.options.country ?? []`. A schema the datafile lacks has no constraints and an empty list of options, so `options.map` works before the datafile arrives. Constraints and options are frozen, since every caller shares them. A `oneOf` whose every branch is a `const` is a list of choices too, and a value it does not list reports `enum`, as an `enum` does.
 
 **Kinds.** Every generic form writes the same switch over a field's rules, so `kind` answers it, from the rules alone. A project's own way of choosing an input still wins.
 
-| `kind`        | From                                         |
-| ------------- | -------------------------------------------- |
-| `text`        | `type: string`                               |
-| `date-time`   | `type: string` with `format: date-time`      |
-| `version`     | `type: string` with `format: semver`         |
-| `number`      | `type: integer` or `type: number`            |
-| `boolean`     | `type: boolean`                              |
-| `select`      | An `enum`, a `const`, or a `oneOf` of consts |
-| `multiselect` | An array whose items are choices             |
-| `object`      | `type: object`                               |
-| `list`        | Any other array                              |
+| `kind`        | From                                                                |
+| ------------- | ------------------------------------------------------------------- |
+| `text`        | `type: string`                                                      |
+| `date-time`   | `type: string` with `format: date-time`                             |
+| `version`     | `type: string` with `format: semver`                                |
+| `number`      | `type: integer` or `type: number`                                   |
+| `boolean`     | `type: boolean`, or a choice between booleans such as `const: true` |
+| `select`      | Any other `enum`, `const` or `oneOf` of consts                      |
+| `multiselect` | An array whose items are choices                                    |
+| `object`      | `type: object`                                                      |
+| `list`        | Any other array                                                     |
 
 A nullable field has its other branch's kind, so a nullable name is `text`. Any other `oneOf` has no kind, and `kind` is `undefined`.
 
@@ -399,17 +399,19 @@ const value = signUp.fromFormData(formData);
 const result = signUp.validate(value);
 ```
 
-| Form data                                                       | Value                                                        |
-| --------------------------------------------------------------- | ------------------------------------------------------------ |
-| Names such as `address.city`, `items.0.name` or `items[0].name` | Nested objects and arrays                                    |
-| A name given several times, or written `tags[]`                 | An array, for an array field                                 |
-| An empty string                                                 | Absent, so `required` reports it                             |
-| A field typed `integer` or `number`                             | The number its trimmed text spells, or the text itself       |
-| A field typed `boolean`                                         | `true` for `on` or `true`, and `false` for `false` or absent |
-| A name the schema does not describe                             | Left out                                                     |
-| A file                                                          | Left as it is                                                |
+| Form data                                                       | Value                                                            |
+| --------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Names such as `address.city`, `items.0.name` or `items[0].name` | Nested objects and arrays                                        |
+| A name given several times, or written `tags[]`                 | An array, for an array field                                     |
+| An empty string                                                 | Absent, so `required` reports it, or `null` for a nullable field |
+| A row of objects with every input empty                         | `{}`, so the rows after it keep their indices                    |
+| A field typed `integer` or `number`                             | The number its trimmed text spells, or the text itself           |
+| A field typed `boolean`                                         | `true` for `on` or `true`, and `false` for `false` or absent     |
+| A required array field with nothing chosen                      | `[]`, as a multiple select sends nothing                         |
+| A name the schema does not describe                             | Left out                                                         |
+| A file                                                          | Left as it is                                                    |
 
-Names the schema does not describe are left out, so a submit button's name or a CSRF token never fails a closed object.
+Names the schema does not describe are left out, so a submit button's name or a CSRF token never fails a closed object. A row of objects keeps its index even when every input in it is empty, so an issue such as `items.1.quantity` sits beside the input it is about, and a blank row left for adding an item reports its required fields. A list of plain values, such as `tags[1]`, closes its gaps instead, since an empty value cannot hold a place.
 
 ## Server actions
 
@@ -418,14 +420,22 @@ Names the schema does not describe are left out, so a submit button's name or a 
 ```ts
 "use server";
 
+import { headers } from "next/headers";
 import { formAction, type FormActionState } from "@featurevisor/schemas";
 import { s } from "../featurevisor";
 
-const signUp = formAction(s.get("signUp"), async (value) => {
-  const account = await createAccount(value);
+const signUp = formAction(
+  s.get("signUp"),
+  async (value) => {
+    const account = await createAccount(value);
 
-  return { accountId: account.id };
-});
+    return { accountId: account.id };
+  },
+  {
+    context: async () => ({ locale: (await headers()).get("accept-language") ?? "en" }),
+    omit: ["password"],
+  },
+);
 
 export async function signUpAction(previous: FormActionState, formData: FormData) {
   return signUp(previous, formData);
@@ -454,7 +464,9 @@ export function SignUpForm() {
 
 - A failed submit answers `{ ok: false, errors, values }`. `errors` has `formErrors` and `fieldErrors`, as `flattenIssues` gives them, and `values` holds what was read, without files, so a form that works before its JavaScript loads can show what was typed again.
 - A passing submit answers `{ ok: true, errors }`, with what your function returns merged in. Your function gets the value, which has passed every rule and check, and `{ formData, previousState }`.
-- `initialFormState` is the state before the first submit.
+- `context` is merged over the instance's for this submit, as an object or a function of the form data that can return a promise. One SDK instance serves every request on a server, so this is how messages follow the request's language and checks see its user.
+- `omit` lists fields a failed submit never sends back in `values`, such as a password, by field path as `at` takes them, so `items[].secret` leaves it out of every row.
+- `initialFormState` is the state before the first submit, frozen, since every form shares it.
 - A React Router action calls it with `await request.formData()`.
 
 ## React
