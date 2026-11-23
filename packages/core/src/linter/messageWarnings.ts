@@ -41,29 +41,26 @@ function resolve(
   return node;
 }
 
-/** The value kinds a node takes, or undefined when it does not say. */
-function kindsOf(node: Node | undefined, schemas: Record<string, Schema>): string[] | undefined {
-  if (!node) return undefined;
+function kindOfValue(value: unknown): string {
+  return value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
+}
+
+/**
+ * The kinds of value a `oneOf` branch takes, or undefined when the branch alone
+ * cannot say, as `@featurevisor/schemas` works them out: by its `type`, its
+ * `const` or its `enum`, and never through a `oneOf` of its own.
+ */
+function kindsOf(node: Node | undefined): string[] | undefined {
+  if (!node || Array.isArray(node.oneOf)) return undefined;
   if (typeof node.type === "string") return [node.type === "integer" ? "number" : node.type];
-  if ("const" in node)
-    return [node.const === null ? "null" : Array.isArray(node.const) ? "array" : typeof node.const];
-  if (Array.isArray(node.oneOf)) {
-    const kinds: string[] = [];
-    for (const branch of node.oneOf) {
-      const branchKinds = kindsOf(resolve(branch, schemas), schemas);
-      if (!branchKinds) return undefined;
-      kinds.push(...branchKinds);
-    }
-    return kinds;
-  }
+  if ("const" in node) return [kindOfValue(node.const)];
+  if (Array.isArray(node.enum)) return Array.from(new Set(node.enum.map(kindOfValue)));
   return undefined;
 }
 
 /** Whether each branch of a `oneOf` takes a type no other branch does, so the value's type selects one. */
 function typeSelectsBranch(node: Node, schemas: Record<string, Schema>): boolean {
-  const kinds = (node.oneOf as unknown[]).map((branch) =>
-    kindsOf(resolve(branch, schemas), schemas),
-  );
+  const kinds = (node.oneOf as unknown[]).map((branch) => kindsOf(resolve(branch, schemas)));
   if (kinds.some((set) => !set)) return false;
   const all = kinds.flat() as string[];
   return new Set(all).size === all.length;

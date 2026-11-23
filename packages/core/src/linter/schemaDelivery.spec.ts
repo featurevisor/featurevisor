@@ -277,6 +277,21 @@ properties:
       - type: string
         maxLength: 10
       - const: null
+  code:
+    oneOf:
+      - type: string
+        minLength: 3
+      - enum: [1, 2]
+    messages:
+      minLength: At least {minLength} letters
+  mixed:
+    oneOf:
+      - oneOf:
+          - type: string
+          - type: integer
+      - type: boolean
+        messages:
+          type: Yes or no
 
 messages:
   quantity:
@@ -291,6 +306,9 @@ messages:
       { code: "message_never_shown", at: "messages.quantity.maxLength" },
       { code: "message_worded_twice", at: "properties.quantity.messages.minimum" },
       { code: "message_never_shown", at: "properties.note.oneOf.0.messages.maxLength" },
+      // An enum branch takes its values' types, so the value's type selects a branch.
+      // A branch that is a oneOf itself takes no one type, so none is selected.
+      { code: "message_never_shown", at: "properties.mixed.oneOf.1.messages.type" },
     ]);
   });
 
