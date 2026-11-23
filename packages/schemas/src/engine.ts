@@ -7,7 +7,7 @@ import {
   type MessageScope,
   type MessageSources,
 } from "./messages.js";
-import { hasOwn } from "./paths.js";
+import { assignOwn, hasOwn } from "./paths.js";
 import type { IssueCode, PathKey, SchemaIssue, SchemasOptions } from "./types.js";
 
 type SchemaMessagesTranslator = NonNullable<SchemasOptions["message"]>;
@@ -123,7 +123,7 @@ export function annotationsOf(
   if (typeof node.schema !== "string" || seen.has(node.schema)) return own;
   seen.add(node.schema);
   const referenced = annotationsOf(resolve(node.schema)?.node, resolve, seen);
-  return referenced && own ? { ...referenced, ...own } : own || referenced;
+  return referenced && own ? assignOwn({}, referenced, own) : own || referenced;
 }
 
 /** A node's `title` annotation, through the schema it references. */

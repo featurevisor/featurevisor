@@ -6,6 +6,7 @@ import {
   resolveNode,
   type Resolve,
 } from "./engine.js";
+import { assignOwn } from "./paths.js";
 import type { FieldConstraints, FieldKind, SchemaOption } from "./types.js";
 
 type Node = Record<string, unknown>;
@@ -139,9 +140,9 @@ function choicesOf(
   if (!resolved || seen.has(resolved)) return undefined;
   seen.add(resolved);
   // Frozen, since every caller shares them. Values and the entries' values stay the datafile's own.
-  // `value` first, as a console shows it, and last too, so an entry can never replace it.
+  // `value` comes first, as a console shows it, and again last, so an entry can never replace it.
   const choice = (value: unknown, entry: Node | undefined) =>
-    Object.freeze(Object.assign({ value }, entry, { value })) as SchemaOption;
+    Object.freeze(assignOwn({ value }, entry, { value })) as SchemaOption;
   if (Array.isArray(resolved.enum))
     return resolved.enum.map((value) => choice(value, optionEntry(resolved, value)));
   if ("const" in resolved)
@@ -187,7 +188,7 @@ export function fieldKeys(node: unknown, resolve: Resolve): string[] {
 
 /** A node's annotations, over those of a schema it references, frozen. */
 export function getAnnotations(node: unknown, resolve: Resolve): Readonly<Record<string, unknown>> {
-  return Object.freeze({ ...annotationsOf(node, resolve) });
+  return Object.freeze(assignOwn({}, annotationsOf(node, resolve)));
 }
 
 function collectOptions(

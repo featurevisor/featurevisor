@@ -1142,6 +1142,26 @@ describe("hardening", () => {
     expect(s.isValid("named", { constructor: "Ada" })).toBe(true);
   });
 
+  test("annotations and a choice's entry can never set a prototype, nor a choice's value", () => {
+    // JSON reads `__proto__` as an own key, as a datafile does.
+    const { plan, plans } = JSON.parse(
+      '{"plan":{"hash":"p1","enum":["free"],"annotations":{"__proto__":{"polluted":true},"options":{"free":{"title":"Free","value":"paid","__proto__":{"polluted":true}}}}},' +
+        '"plans":{"hash":"p2","type":"object","properties":{"plan":{"schema":"plan","annotations":{"title":"Plan","__proto__":{"polluted":true}}}}}}',
+    );
+    const { s } = setup(undefined, datafile({ plan, plans }));
+    const option = s.get("plan").option("free") as Record<string, unknown>;
+
+    expect(option.value).toBe("free");
+    expect(option.title).toBe("Free");
+    // A field's annotations merge over the referenced schema's, and the schema's own are copied.
+    for (const made of [option, s.get("plan").annotations, s.get("plans").at("plan").annotations]) {
+      expect(Object.getPrototypeOf(made)).toBe(Object.prototype);
+      expect((made as Record<string, unknown>).polluted).toBeUndefined();
+    }
+    expect(s.get("plans").at("plan").annotations.title).toBe("Plan");
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
   test("a form name can never reach a prototype", () => {
     const { s } = setup(
       undefined,

@@ -16,6 +16,21 @@ export function setOwn(object: object, key: PropertyKey, value: unknown): void {
 }
 
 /**
+ * Copies each source's own keys onto the target, as `setOwn` sets them, so a
+ * key such as `__proto__` from a datafile stays a key. Object spread would do
+ * it too, but the build compiles spread to `Object.assign`, which sets keys
+ * and so lets `__proto__` replace the target's prototype.
+ */
+export function assignOwn<T extends object>(target: T, ...sources: unknown[]): T {
+  for (const source of sources) {
+    if (!source || typeof source !== "object") continue;
+    for (const key of Object.keys(source))
+      setOwn(target, key, (source as Record<string, unknown>)[key]);
+  }
+  return target;
+}
+
+/**
  * One step of a field path: an object key, an array index, every item of an
  * array (`[]`), or every value of an object that allows any key (`*`).
  */
