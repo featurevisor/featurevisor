@@ -1,0 +1,941 @@
+{
+  "kind": "featurevisor.sdk-sections",
+  "schemaVersion": 1,
+  "evaluationCases": [
+    {
+      "name": "a schemas section changes no evaluation",
+      "datafile": {
+        "schemaVersion": "4",
+        "revision": "1",
+        "segments": {},
+        "features": {
+          "checkout": {
+            "hash": "checkout-1",
+            "bucketBy": "userId",
+            "traffic": [
+              {
+                "key": "all",
+                "conditions": "*",
+                "percentage": 100000,
+                "variation": "treatment"
+              }
+            ],
+            "variablesSchema": {
+              "label": {
+                "type": "string",
+                "defaultValue": "Pay"
+              }
+            },
+            "variations": [
+              {
+                "value": "control"
+              },
+              {
+                "value": "treatment",
+                "variables": {
+                  "label": "Pay now"
+                }
+              }
+            ]
+          },
+          "off": {
+            "hash": "off-1",
+            "bucketBy": "userId",
+            "traffic": []
+          }
+        },
+        "variables": {
+          "banner": {
+            "hash": "banner-1",
+            "type": "string",
+            "defaultValue": "Hello"
+          }
+        },
+        "schemas": {
+          "signUp": {
+            "hash": "signUp-1",
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "email"
+            ]
+          }
+        }
+      },
+      "context": {
+        "userId": "user-1"
+      },
+      "results": [
+        {
+          "method": "isEnabled",
+          "args": [
+            "checkout"
+          ],
+          "value": true
+        },
+        {
+          "method": "getVariation",
+          "args": [
+            "checkout"
+          ],
+          "value": "treatment"
+        },
+        {
+          "method": "getVariable",
+          "args": [
+            "checkout",
+            "label"
+          ],
+          "value": "Pay now"
+        },
+        {
+          "method": "getVariable",
+          "args": [
+            "banner"
+          ],
+          "value": "Hello"
+        },
+        {
+          "method": "isEnabled",
+          "args": [
+            "off"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "a section of any name, and top level values that are not objects, change no evaluation",
+      "datafile": {
+        "schemaVersion": "4",
+        "revision": "1",
+        "segments": {},
+        "features": {
+          "checkout": {
+            "hash": "checkout-1",
+            "bucketBy": "userId",
+            "traffic": [
+              {
+                "key": "all",
+                "conditions": "*",
+                "percentage": 100000,
+                "variation": "treatment"
+              }
+            ],
+            "variablesSchema": {
+              "label": {
+                "type": "string",
+                "defaultValue": "Pay"
+              }
+            },
+            "variations": [
+              {
+                "value": "control"
+              },
+              {
+                "value": "treatment",
+                "variables": {
+                  "label": "Pay now"
+                }
+              }
+            ]
+          },
+          "off": {
+            "hash": "off-1",
+            "bucketBy": "userId",
+            "traffic": []
+          }
+        },
+        "variables": {
+          "banner": {
+            "hash": "banner-1",
+            "type": "string",
+            "defaultValue": "Hello"
+          }
+        },
+        "schemas": {
+          "signUp": {
+            "hash": "signUp-1",
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "email"
+            ]
+          }
+        },
+        "flows": {
+          "onboarding": {
+            "hash": "onboarding-1",
+            "steps": [
+              "welcome",
+              "plan"
+            ]
+          }
+        },
+        "note": "kept",
+        "list": [
+          1,
+          2
+        ]
+      },
+      "context": {
+        "userId": "user-1"
+      },
+      "results": [
+        {
+          "method": "isEnabled",
+          "args": [
+            "checkout"
+          ],
+          "value": true
+        },
+        {
+          "method": "getVariation",
+          "args": [
+            "checkout"
+          ],
+          "value": "treatment"
+        },
+        {
+          "method": "getVariable",
+          "args": [
+            "checkout",
+            "label"
+          ],
+          "value": "Pay now"
+        },
+        {
+          "method": "getVariable",
+          "args": [
+            "banner"
+          ],
+          "value": "Hello"
+        },
+        {
+          "method": "isEnabled",
+          "args": [
+            "off"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "a datafile given as a string with sections evaluates the same",
+      "datafile": "{\"schemaVersion\":\"4\",\"revision\":\"1\",\"segments\":{},\"features\":{\"checkout\":{\"hash\":\"checkout-1\",\"bucketBy\":\"userId\",\"traffic\":[{\"key\":\"all\",\"conditions\":\"*\",\"percentage\":100000,\"variation\":\"treatment\"}],\"variablesSchema\":{\"label\":{\"type\":\"string\",\"defaultValue\":\"Pay\"}},\"variations\":[{\"value\":\"control\"},{\"value\":\"treatment\",\"variables\":{\"label\":\"Pay now\"}}]},\"off\":{\"hash\":\"off-1\",\"bucketBy\":\"userId\",\"traffic\":[]}},\"variables\":{\"banner\":{\"hash\":\"banner-1\",\"type\":\"string\",\"defaultValue\":\"Hello\"}},\"schemas\":{\"signUp\":{\"hash\":\"signUp-1\",\"type\":\"object\",\"properties\":{\"email\":{\"type\":\"string\"}},\"required\":[\"email\"]}}}",
+      "context": {
+        "userId": "user-1"
+      },
+      "results": [
+        {
+          "method": "isEnabled",
+          "args": [
+            "checkout"
+          ],
+          "value": true
+        },
+        {
+          "method": "getVariation",
+          "args": [
+            "checkout"
+          ],
+          "value": "treatment"
+        },
+        {
+          "method": "getVariable",
+          "args": [
+            "checkout",
+            "label"
+          ],
+          "value": "Pay now"
+        },
+        {
+          "method": "getVariable",
+          "args": [
+            "banner"
+          ],
+          "value": "Hello"
+        },
+        {
+          "method": "isEnabled",
+          "args": [
+            "off"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "a schema 2 datafile with a schemas section evaluates as before",
+      "datafile": {
+        "schemaVersion": "2",
+        "revision": "1",
+        "segments": {},
+        "features": {
+          "legacy": {
+            "hash": "legacy-1",
+            "bucketBy": "userId",
+            "traffic": [
+              {
+                "key": "all",
+                "segments": "*",
+                "percentage": 100000
+              }
+            ]
+          }
+        },
+        "schemas": {
+          "signUp": {
+            "hash": "signUp-1",
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "email"
+            ]
+          }
+        }
+      },
+      "context": {
+        "userId": "user-1"
+      },
+      "results": [
+        {
+          "method": "isEnabled",
+          "args": [
+            "legacy"
+          ],
+          "value": true
+        }
+      ]
+    }
+  ],
+  "carriageCases": [
+    {
+      "name": "a merge keeps every section and merges it by entry, and a replace keeps exactly what came",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "4",
+          "revision": "1",
+          "segments": {},
+          "features": {
+            "checkout": {
+              "hash": "checkout-1",
+              "bucketBy": "userId",
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000,
+                  "variation": "treatment"
+                }
+              ],
+              "variablesSchema": {
+                "label": {
+                  "type": "string",
+                  "defaultValue": "Pay"
+                }
+              },
+              "variations": [
+                {
+                  "value": "control"
+                },
+                {
+                  "value": "treatment",
+                  "variables": {
+                    "label": "Pay now"
+                  }
+                }
+              ]
+            },
+            "off": {
+              "hash": "off-1",
+              "bucketBy": "userId",
+              "traffic": []
+            }
+          },
+          "variables": {
+            "banner": {
+              "hash": "banner-1",
+              "type": "string",
+              "defaultValue": "Hello"
+            }
+          },
+          "schemas": {
+            "signUp": {
+              "hash": "s1"
+            },
+            "address": {
+              "hash": "a1"
+            }
+          }
+        }
+      },
+      "expectInitial": {
+        "entryKeys": {
+          "schemas": [
+            "signUp",
+            "address"
+          ],
+          "flows": []
+        },
+        "entries": [
+          {
+            "section": "schemas",
+            "key": "signUp",
+            "value": {
+              "hash": "s1"
+            }
+          }
+        ]
+      },
+      "operations": [
+        {
+          "action": "setDatafile",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "2",
+            "segments": {},
+            "features": {
+              "checkout": {
+                "hash": "checkout-1",
+                "bucketBy": "userId",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000,
+                    "variation": "treatment"
+                  }
+                ],
+                "variablesSchema": {
+                  "label": {
+                    "type": "string",
+                    "defaultValue": "Pay"
+                  }
+                },
+                "variations": [
+                  {
+                    "value": "control"
+                  },
+                  {
+                    "value": "treatment",
+                    "variables": {
+                      "label": "Pay now"
+                    }
+                  }
+                ]
+              },
+              "off": {
+                "hash": "off-1",
+                "bucketBy": "userId",
+                "traffic": []
+              }
+            },
+            "variables": {
+              "banner": {
+                "hash": "banner-1",
+                "type": "string",
+                "defaultValue": "Hello"
+              }
+            },
+            "schemas": {
+              "signUp": {
+                "hash": "s2"
+              }
+            }
+          },
+          "expect": {
+            "sections": {
+              "schemas": [
+                "signUp"
+              ]
+            },
+            "entryKeys": {
+              "schemas": [
+                "signUp",
+                "address"
+              ]
+            },
+            "entries": [
+              {
+                "section": "schemas",
+                "key": "signUp",
+                "value": {
+                  "hash": "s2"
+                }
+              },
+              {
+                "section": "schemas",
+                "key": "address",
+                "value": {
+                  "hash": "a1"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "3",
+            "segments": {},
+            "features": {
+              "checkout": {
+                "hash": "checkout-1",
+                "bucketBy": "userId",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000,
+                    "variation": "treatment"
+                  }
+                ],
+                "variablesSchema": {
+                  "label": {
+                    "type": "string",
+                    "defaultValue": "Pay"
+                  }
+                },
+                "variations": [
+                  {
+                    "value": "control"
+                  },
+                  {
+                    "value": "treatment",
+                    "variables": {
+                      "label": "Pay now"
+                    }
+                  }
+                ]
+              },
+              "off": {
+                "hash": "off-1",
+                "bucketBy": "userId",
+                "traffic": []
+              }
+            },
+            "variables": {
+              "banner": {
+                "hash": "banner-1",
+                "type": "string",
+                "defaultValue": "Hello"
+              }
+            }
+          },
+          "expect": {
+            "sections": {
+              "schemas": []
+            },
+            "entryKeys": {
+              "schemas": [
+                "signUp",
+                "address"
+              ]
+            }
+          }
+        },
+        {
+          "action": "setDatafile",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "4",
+            "segments": {},
+            "features": {
+              "checkout": {
+                "hash": "checkout-1",
+                "bucketBy": "userId",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000,
+                    "variation": "treatment"
+                  }
+                ],
+                "variablesSchema": {
+                  "label": {
+                    "type": "string",
+                    "defaultValue": "Pay"
+                  }
+                },
+                "variations": [
+                  {
+                    "value": "control"
+                  },
+                  {
+                    "value": "treatment",
+                    "variables": {
+                      "label": "Pay now"
+                    }
+                  }
+                ]
+              },
+              "off": {
+                "hash": "off-1",
+                "bucketBy": "userId",
+                "traffic": []
+              }
+            },
+            "variables": {
+              "banner": {
+                "hash": "banner-1",
+                "type": "string",
+                "defaultValue": "Hello"
+              }
+            },
+            "schemas": {
+              "coupon": {
+                "hash": "c1"
+              }
+            }
+          },
+          "expect": {
+            "sections": {
+              "schemas": [
+                "signUp",
+                "address",
+                "coupon"
+              ]
+            },
+            "entryKeys": {
+              "schemas": [
+                "coupon"
+              ]
+            },
+            "entries": [
+              {
+                "section": "schemas",
+                "key": "signUp",
+                "value": null
+              }
+            ]
+          }
+        },
+        {
+          "action": "setDatafile",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "5",
+            "segments": {},
+            "features": {
+              "checkout": {
+                "hash": "checkout-1",
+                "bucketBy": "userId",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000,
+                    "variation": "treatment"
+                  }
+                ],
+                "variablesSchema": {
+                  "label": {
+                    "type": "string",
+                    "defaultValue": "Pay"
+                  }
+                },
+                "variations": [
+                  {
+                    "value": "control"
+                  },
+                  {
+                    "value": "treatment",
+                    "variables": {
+                      "label": "Pay now"
+                    }
+                  }
+                ]
+              },
+              "off": {
+                "hash": "off-1",
+                "bucketBy": "userId",
+                "traffic": []
+              }
+            },
+            "variables": {
+              "banner": {
+                "hash": "banner-1",
+                "type": "string",
+                "defaultValue": "Hello"
+              }
+            }
+          },
+          "expect": {
+            "sections": {
+              "schemas": [
+                "coupon"
+              ]
+            },
+            "entryKeys": {
+              "schemas": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "datafiles without sections report none",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "4",
+          "revision": "1",
+          "segments": {},
+          "features": {
+            "checkout": {
+              "hash": "checkout-1",
+              "bucketBy": "userId",
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000,
+                  "variation": "treatment"
+                }
+              ],
+              "variablesSchema": {
+                "label": {
+                  "type": "string",
+                  "defaultValue": "Pay"
+                }
+              },
+              "variations": [
+                {
+                  "value": "control"
+                },
+                {
+                  "value": "treatment",
+                  "variables": {
+                    "label": "Pay now"
+                  }
+                }
+              ]
+            },
+            "off": {
+              "hash": "off-1",
+              "bucketBy": "userId",
+              "traffic": []
+            }
+          },
+          "variables": {
+            "banner": {
+              "hash": "banner-1",
+              "type": "string",
+              "defaultValue": "Hello"
+            }
+          }
+        }
+      },
+      "expectInitial": {
+        "entryKeys": {
+          "schemas": []
+        }
+      },
+      "operations": [
+        {
+          "action": "setDatafile",
+          "replace": false,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "2",
+            "segments": {},
+            "features": {
+              "checkout": {
+                "hash": "checkout-1",
+                "bucketBy": "userId",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000,
+                    "variation": "treatment"
+                  }
+                ],
+                "variablesSchema": {
+                  "label": {
+                    "type": "string",
+                    "defaultValue": "Pay"
+                  }
+                },
+                "variations": [
+                  {
+                    "value": "control"
+                  },
+                  {
+                    "value": "treatment",
+                    "variables": {
+                      "label": "Pay now"
+                    }
+                  }
+                ]
+              },
+              "off": {
+                "hash": "off-1",
+                "bucketBy": "userId",
+                "traffic": []
+              }
+            },
+            "variables": {
+              "banner": {
+                "hash": "banner-1",
+                "type": "string",
+                "defaultValue": "Hello"
+              }
+            }
+          },
+          "expect": {
+            "sections": {}
+          }
+        },
+        {
+          "action": "setDatafile",
+          "replace": true,
+          "datafile": {
+            "schemaVersion": "4",
+            "revision": "3",
+            "segments": {},
+            "features": {
+              "checkout": {
+                "hash": "checkout-1",
+                "bucketBy": "userId",
+                "traffic": [
+                  {
+                    "key": "all",
+                    "conditions": "*",
+                    "percentage": 100000,
+                    "variation": "treatment"
+                  }
+                ],
+                "variablesSchema": {
+                  "label": {
+                    "type": "string",
+                    "defaultValue": "Pay"
+                  }
+                },
+                "variations": [
+                  {
+                    "value": "control"
+                  },
+                  {
+                    "value": "treatment",
+                    "variables": {
+                      "label": "Pay now"
+                    }
+                  }
+                ]
+              },
+              "off": {
+                "hash": "off-1",
+                "bucketBy": "userId",
+                "traffic": []
+              }
+            },
+            "variables": {
+              "banner": {
+                "hash": "banner-1",
+                "type": "string",
+                "defaultValue": "Hello"
+              }
+            }
+          },
+          "expect": {
+            "sections": {}
+          }
+        }
+      ]
+    },
+    {
+      "name": "the SDK's own keys and top level values that are not objects are never sections",
+      "initial": {
+        "datafile": {
+          "schemaVersion": "4",
+          "revision": "1",
+          "segments": {},
+          "features": {
+            "checkout": {
+              "hash": "checkout-1",
+              "bucketBy": "userId",
+              "traffic": [
+                {
+                  "key": "all",
+                  "conditions": "*",
+                  "percentage": 100000,
+                  "variation": "treatment"
+                }
+              ],
+              "variablesSchema": {
+                "label": {
+                  "type": "string",
+                  "defaultValue": "Pay"
+                }
+              },
+              "variations": [
+                {
+                  "value": "control"
+                },
+                {
+                  "value": "treatment",
+                  "variables": {
+                    "label": "Pay now"
+                  }
+                }
+              ]
+            },
+            "off": {
+              "hash": "off-1",
+              "bucketBy": "userId",
+              "traffic": []
+            }
+          },
+          "variables": {
+            "banner": {
+              "hash": "banner-1",
+              "type": "string",
+              "defaultValue": "Hello"
+            }
+          },
+          "note": "kept",
+          "list": [
+            1,
+            2
+          ]
+        }
+      },
+      "expectInitial": {
+        "entryKeys": {
+          "note": [],
+          "list": [],
+          "features": [],
+          "segments": [],
+          "variables": []
+        },
+        "entries": [
+          {
+            "section": "features",
+            "key": "checkout",
+            "value": null
+          }
+        ]
+      },
+      "operations": []
+    }
+  ]
+}

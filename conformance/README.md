@@ -228,6 +228,44 @@ Keep the baseline untouched during this JavaScript migration. After the native
 ports are authorised, review fixture changes deliberately, update every adapter,
 then change the guard to the current contract and rerun native tests.
 
+## Datafile sections
+
+`sdk-sections.json` uses `kind: "featurevisor.sdk-sections"` and
+`schemaVersion: 1`. A datafile can carry top level keys besides the SDK's own,
+such as `schemas` for `@featurevisor/schemas`. Reject an unsupported kind or
+version before running any case.
+
+`evaluationCases` are for every SDK. Create an instance from each case's
+datafile, which may be a JSON string, and context, then evaluate every result
+twice. Sections change no answer, and a decoder never rejects an unknown top
+level key, whatever its value, including a string or a list.
+
+`carriageCases` are for SDKs with the module API of the SDK extension points,
+which only JavaScript has today. Apply the operations in order. After the
+initial datafile and after each operation, compare `sections` in the
+`datafile_set` details, the entry keys and the entries. Compare lists as
+unordered. An entry expected as `null` is absent. A section the instance holds
+or the new datafile has is listed, empty when nothing in it changed.
+
+The native copy guard does not yet require this file. Native SDKs run the
+evaluation cases when they next sync their fixtures.
+
+## Schemas validation
+
+`schemas-validation.json` uses `kind: "featurevisor.schemas-validation"` and
+`schemaVersion: 1`. Each case has a datafile's `schemas` section, the key to
+validate, a value, and the expected issues, each with its `code`, `path` and
+`params`. An empty list means the value passes. Validate every case twice and
+compare issues as an unordered list. Messages are not part of the contract.
+Preserve the raw `2.0` and `1.0` spellings, which check that numbers compare
+by value, and the emoji, whose lengths count code points.
+
+`@featurevisor/schemas` runs every case. Lint's value check runs them too,
+apart from the differences named in
+`packages/core/src/linter/schemaConformance.spec.ts`, which go once lint
+validates with the package's engine. Native validators run the same file when
+they come.
+
 ## Native CLI runner contract
 
 `test-checks.json` contains portable check operator and evaluation cases. The

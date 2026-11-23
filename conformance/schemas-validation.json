@@ -1,0 +1,1400 @@
+{
+  "kind": "featurevisor.schemas-validation",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "a string passes type string",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string"
+        }
+      },
+      "schema": "subject",
+      "value": "a",
+      "issues": []
+    },
+    {
+      "name": "a number fails type string",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string"
+        }
+      },
+      "schema": "subject",
+      "value": 1,
+      "issues": [
+        {
+          "code": "type",
+          "path": [],
+          "params": {
+            "type": "string",
+            "received": "number"
+          }
+        }
+      ]
+    },
+    {
+      "name": "integer rejects a fraction",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "integer"
+        }
+      },
+      "schema": "subject",
+      "value": 1.5,
+      "issues": [
+        {
+          "code": "type",
+          "path": [],
+          "params": {
+            "type": "integer",
+            "received": "number"
+          }
+        }
+      ]
+    },
+    {
+      "name": "integer takes a whole number written with a decimal point",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "integer"
+        }
+      },
+      "schema": "subject",
+      "value": 2.0,
+      "issues": []
+    },
+    {
+      "name": "number takes an integer",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "number"
+        }
+      },
+      "schema": "subject",
+      "value": 3,
+      "issues": []
+    },
+    {
+      "name": "boolean rejects the string true",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "boolean"
+        }
+      },
+      "schema": "subject",
+      "value": "true",
+      "issues": [
+        {
+          "code": "type",
+          "path": [],
+          "params": {
+            "type": "boolean",
+            "received": "string"
+          }
+        }
+      ]
+    },
+    {
+      "name": "null is not an object",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object"
+        }
+      },
+      "schema": "subject",
+      "value": null,
+      "issues": [
+        {
+          "code": "type",
+          "path": [],
+          "params": {
+            "type": "object",
+            "received": "null"
+          }
+        }
+      ]
+    },
+    {
+      "name": "an array is not an object",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object"
+        }
+      },
+      "schema": "subject",
+      "value": [],
+      "issues": [
+        {
+          "code": "type",
+          "path": [],
+          "params": {
+            "type": "object",
+            "received": "array"
+          }
+        }
+      ]
+    },
+    {
+      "name": "an object is not an array",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "array"
+        }
+      },
+      "schema": "subject",
+      "value": {},
+      "issues": [
+        {
+          "code": "type",
+          "path": [],
+          "params": {
+            "type": "array",
+            "received": "object"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a type issue stops the node's other keywords",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "minLength": 5
+        }
+      },
+      "schema": "subject",
+      "value": 1,
+      "issues": [
+        {
+          "code": "type",
+          "path": [],
+          "params": {
+            "type": "string",
+            "received": "number"
+          }
+        }
+      ]
+    },
+    {
+      "name": "const rejects another value",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "const": "GB"
+        }
+      },
+      "schema": "subject",
+      "value": "NL",
+      "issues": [
+        {
+          "code": "const",
+          "path": [],
+          "params": {
+            "const": "GB"
+          }
+        }
+      ]
+    },
+    {
+      "name": "const null takes null",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "const": null
+        }
+      },
+      "schema": "subject",
+      "value": null,
+      "issues": []
+    },
+    {
+      "name": "const compares objects by value, in any key order",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "const": {
+            "a": 1,
+            "b": [
+              1,
+              2
+            ]
+          }
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "b": [
+          1,
+          2
+        ],
+        "a": 1
+      },
+      "issues": []
+    },
+    {
+      "name": "const compares arrays in order",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "const": [
+            1,
+            2
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": [
+        2,
+        1
+      ],
+      "issues": [
+        {
+          "code": "const",
+          "path": [],
+          "params": {
+            "const": [
+              1,
+              2
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "enum rejects an unlisted value",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "enum": [
+            "GB",
+            "NL"
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": "BE",
+      "issues": [
+        {
+          "code": "enum",
+          "path": [],
+          "params": {
+            "options": [
+              "GB",
+              "NL"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "enum compares numbers numerically",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "number",
+          "enum": [
+            1,
+            2
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": 1.0,
+      "issues": []
+    },
+    {
+      "name": "minimum is inclusive",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "schema": "subject",
+      "value": 1,
+      "issues": []
+    },
+    {
+      "name": "below minimum",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "schema": "subject",
+      "value": 0,
+      "issues": [
+        {
+          "code": "minimum",
+          "path": [],
+          "params": {
+            "minimum": 1,
+            "value": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "maximum is inclusive",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "number",
+          "maximum": 10
+        }
+      },
+      "schema": "subject",
+      "value": 10,
+      "issues": []
+    },
+    {
+      "name": "above maximum",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "number",
+          "maximum": 10
+        }
+      },
+      "schema": "subject",
+      "value": 10.5,
+      "issues": [
+        {
+          "code": "maximum",
+          "path": [],
+          "params": {
+            "maximum": 10,
+            "value": 10.5
+          }
+        }
+      ]
+    },
+    {
+      "name": "too short",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "minLength": 2
+        }
+      },
+      "schema": "subject",
+      "value": "a",
+      "issues": [
+        {
+          "code": "minLength",
+          "path": [],
+          "params": {
+            "minLength": 2,
+            "length": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "too long",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "maxLength": 3
+        }
+      },
+      "schema": "subject",
+      "value": "abcd",
+      "issues": [
+        {
+          "code": "maxLength",
+          "path": [],
+          "params": {
+            "maxLength": 3,
+            "length": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "lengths count code points, so an emoji with a skin tone is two",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "maxLength": 2
+        }
+      },
+      "schema": "subject",
+      "value": "👋🏽",
+      "issues": []
+    },
+    {
+      "name": "a length over by code points reports code points",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "maxLength": 1
+        }
+      },
+      "schema": "subject",
+      "value": "👋🏽",
+      "issues": [
+        {
+          "code": "maxLength",
+          "path": [],
+          "params": {
+            "maxLength": 1,
+            "length": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "a pattern that does not match",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        }
+      },
+      "schema": "subject",
+      "value": "gb",
+      "issues": [
+        {
+          "code": "pattern",
+          "path": [],
+          "params": {
+            "pattern": "^[A-Z]{2}$"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a pattern without anchors matches anywhere in the string",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "pattern": "[0-9]"
+        }
+      },
+      "schema": "subject",
+      "value": "a1b",
+      "issues": []
+    },
+    {
+      "name": "a timestamp",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "schema": "subject",
+      "value": "2026-01-31T09:00:00Z",
+      "issues": []
+    },
+    {
+      "name": "a date alone is not a timestamp",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "schema": "subject",
+      "value": "2026-01-31",
+      "issues": [
+        {
+          "code": "format",
+          "path": [],
+          "params": {
+            "format": "date-time"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a version",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "format": "semver"
+        }
+      },
+      "schema": "subject",
+      "value": "1.2.3",
+      "issues": []
+    },
+    {
+      "name": "a version can be short, as the version operators read it",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "format": "semver"
+        }
+      },
+      "schema": "subject",
+      "value": "1.2",
+      "issues": []
+    },
+    {
+      "name": "five parts are not a version",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "format": "semver"
+        }
+      },
+      "schema": "subject",
+      "value": "1.2.3.4.5",
+      "issues": [
+        {
+          "code": "format",
+          "path": [],
+          "params": {
+            "format": "semver"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a version with a trailing newline is not a version",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "format": "semver"
+        }
+      },
+      "schema": "subject",
+      "value": "1.0.0\n",
+      "issues": [
+        {
+          "code": "format",
+          "path": [],
+          "params": {
+            "format": "semver"
+          }
+        }
+      ]
+    },
+    {
+      "name": "too few items",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "array",
+          "minItems": 1
+        }
+      },
+      "schema": "subject",
+      "value": [],
+      "issues": [
+        {
+          "code": "minItems",
+          "path": [],
+          "params": {
+            "minItems": 1,
+            "count": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "too many items",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "array",
+          "maxItems": 2
+        }
+      },
+      "schema": "subject",
+      "value": [
+        "a",
+        "b",
+        "c"
+      ],
+      "issues": [
+        {
+          "code": "maxItems",
+          "path": [],
+          "params": {
+            "maxItems": 2,
+            "count": 3
+          }
+        }
+      ]
+    },
+    {
+      "name": "a repeated item names the first repeat",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "uniqueItems": true
+        }
+      },
+      "schema": "subject",
+      "value": [
+        1,
+        2,
+        1
+      ],
+      "issues": [
+        {
+          "code": "uniqueItems",
+          "path": [],
+          "params": {
+            "index": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "repeats compare objects by value",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "a": {
+                "type": "integer"
+              }
+            }
+          },
+          "uniqueItems": true
+        }
+      },
+      "schema": "subject",
+      "value": [
+        {
+          "a": 1
+        },
+        {
+          "a": 1
+        }
+      ],
+      "issues": [
+        {
+          "code": "uniqueItems",
+          "path": [],
+          "params": {
+            "index": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "an array without items holds strings",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "array"
+        }
+      },
+      "schema": "subject",
+      "value": [
+        "a",
+        1
+      ],
+      "issues": [
+        {
+          "code": "type",
+          "path": [
+            1
+          ],
+          "params": {
+            "type": "string",
+            "received": "number"
+          }
+        }
+      ]
+    },
+    {
+      "name": "each item's issues carry its index",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "schema": "subject",
+      "value": [
+        1,
+        -1,
+        "x"
+      ],
+      "issues": [
+        {
+          "code": "minimum",
+          "path": [
+            1
+          ],
+          "params": {
+            "minimum": 0,
+            "value": -1
+          }
+        },
+        {
+          "code": "type",
+          "path": [
+            2
+          ],
+          "params": {
+            "type": "integer",
+            "received": "string"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a missing required key is reported at the key",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {},
+      "issues": [
+        {
+          "code": "required",
+          "path": [
+            "email"
+          ],
+          "params": {
+            "key": "email"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a key named like an inherited property is not present until given",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "constructor": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "constructor"
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {},
+      "issues": [
+        {
+          "code": "required",
+          "path": [
+            "constructor"
+          ],
+          "params": {
+            "key": "constructor"
+          }
+        }
+      ]
+    },
+    {
+      "name": "an unlisted key is reported at the key",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "a": "x",
+        "b": 1
+      },
+      "issues": [
+        {
+          "code": "additionalProperties",
+          "path": [
+            "b"
+          ],
+          "params": {
+            "key": "b"
+          }
+        }
+      ]
+    },
+    {
+      "name": "properties with no keys take no keys",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "a": "x"
+      },
+      "issues": [
+        {
+          "code": "additionalProperties",
+          "path": [
+            "a"
+          ],
+          "params": {
+            "key": "a"
+          }
+        }
+      ]
+    },
+    {
+      "name": "additionalProperties true takes any other key and value",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "a": "x",
+        "b": {
+          "c": [
+            1
+          ]
+        }
+      },
+      "issues": []
+    },
+    {
+      "name": "additionalProperties rules every other key's value",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "en": "Hi",
+        "nl": 1
+      },
+      "issues": [
+        {
+          "code": "type",
+          "path": [
+            "nl"
+          ],
+          "params": {
+            "type": "string",
+            "received": "number"
+          }
+        }
+      ]
+    },
+    {
+      "name": "an object without properties is flat, taking primitive values",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object"
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "a": 1,
+        "b": "x",
+        "c": null,
+        "d": true
+      },
+      "issues": []
+    },
+    {
+      "name": "a flat object rejects a nested value",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object"
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "a": [
+          1
+        ]
+      },
+      "issues": [
+        {
+          "code": "type",
+          "path": [
+            "a"
+          ],
+          "params": {
+            "type": "primitive",
+            "received": "array"
+          }
+        }
+      ]
+    },
+    {
+      "name": "nested issues carry the full path",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "object",
+              "properties": {
+                "city": {
+                  "type": "string",
+                  "minLength": 2
+                }
+              }
+            }
+          }
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "address": {
+          "city": "A"
+        }
+      },
+      "issues": [
+        {
+          "code": "minLength",
+          "path": [
+            "address",
+            "city"
+          ],
+          "params": {
+            "minLength": 2,
+            "length": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "every issue is reported",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "age": {
+              "type": "integer",
+              "minimum": 18
+            }
+          },
+          "required": [
+            "email"
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "age": 12,
+        "extra": true
+      },
+      "issues": [
+        {
+          "code": "required",
+          "path": [
+            "email"
+          ],
+          "params": {
+            "key": "email"
+          }
+        },
+        {
+          "code": "minimum",
+          "path": [
+            "age"
+          ],
+          "params": {
+            "minimum": 18,
+            "value": 12
+          }
+        },
+        {
+          "code": "additionalProperties",
+          "path": [
+            "extra"
+          ],
+          "params": {
+            "key": "extra"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a reference validates with the referenced schema, at the field's path",
+      "schemas": {
+        "address": {
+          "hash": "address-1",
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "city"
+          ]
+        },
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "address": {
+              "schema": "address"
+            }
+          }
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "address": {}
+      },
+      "issues": [
+        {
+          "code": "required",
+          "path": [
+            "address",
+            "city"
+          ],
+          "params": {
+            "key": "city"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a reference to a schema the section lacks fails closed",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "address": {
+              "schema": "address"
+            }
+          }
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "address": {
+          "city": "Leiden"
+        }
+      },
+      "issues": [
+        {
+          "code": "schemaNotFound",
+          "path": [
+            "address"
+          ],
+          "params": {
+            "schema": "address"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a key the section lacks fails closed",
+      "schemas": {},
+      "schema": "missing",
+      "value": "x",
+      "issues": [
+        {
+          "code": "schemaNotFound",
+          "path": [],
+          "params": {
+            "schema": "missing"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a nullable value takes null",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "oneOf": [
+            {
+              "type": "string",
+              "maxLength": 3
+            },
+            {
+              "const": null
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": null,
+      "issues": []
+    },
+    {
+      "name": "a nullable value's own branch reports its issues",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "oneOf": [
+            {
+              "type": "string",
+              "maxLength": 3
+            },
+            {
+              "const": null
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": "abcd",
+      "issues": [
+        {
+          "code": "maxLength",
+          "path": [],
+          "params": {
+            "maxLength": 3,
+            "length": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "a value no branch's type takes fails the oneOf",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "oneOf": [
+            {
+              "type": "string",
+              "maxLength": 3
+            },
+            {
+              "const": null
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": 1,
+      "issues": [
+        {
+          "code": "oneOf",
+          "path": [],
+          "params": {
+            "matches": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "an integer branch selected by a fraction reports its type",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": 1.5,
+      "issues": [
+        {
+          "code": "type",
+          "path": [],
+          "params": {
+            "type": "integer",
+            "received": "number"
+          }
+        }
+      ]
+    },
+    {
+      "name": "branches of one type count the matches, and two is too many",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 2
+            },
+            {
+              "type": "string",
+              "pattern": "^a"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": "ab",
+      "issues": [
+        {
+          "code": "oneOf",
+          "path": [],
+          "params": {
+            "matches": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "branches of one type count the matches, and none fails",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 2
+            },
+            {
+              "type": "string",
+              "pattern": "^a"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": "b",
+      "issues": [
+        {
+          "code": "oneOf",
+          "path": [],
+          "params": {
+            "matches": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "branches of one type count the matches, and one passes",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 2
+            },
+            {
+              "type": "string",
+              "pattern": "^a"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": "a",
+      "issues": []
+    },
+    {
+      "name": "an object branch selected by type reports its fields' issues",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code"
+              ]
+            },
+            {
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {},
+      "issues": [
+        {
+          "code": "required",
+          "path": [
+            "code"
+          ],
+          "params": {
+            "key": "code"
+          }
+        }
+      ]
+    }
+  ]
+}
