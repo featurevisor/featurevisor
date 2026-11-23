@@ -57,7 +57,7 @@ export interface Schema {
   /** Only at the root: what this file's `annotations` hold, as one object schema, inline or by reference. */
   annotationsSchema?: Schema;
   /** Only at the root: what each choice in this file carries, as one object schema, inline or by reference. */
-  optionsSchema?: Schema;
+  optionSchema?: Schema;
 
   // General validation keywords
   type?: SchemaType;
@@ -112,7 +112,7 @@ export interface Schema {
  */
 export type DatafileSchema = Omit<
   Schema,
-  "description" | "metadata" | "promotable" | "tags" | "annotationsSchema" | "optionsSchema"
+  "description" | "metadata" | "promotable" | "tags" | "annotationsSchema" | "optionSchema"
 > & {
   hash?: string;
 };

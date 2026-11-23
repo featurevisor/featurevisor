@@ -337,7 +337,7 @@ properties:
 `,
       "schemas/country.yml": `description: Countries we sell to
 
-optionsSchema:
+optionSchema:
   schema: countryOption
 
 oneOf:
@@ -362,7 +362,7 @@ messages:
 annotationsSchema:
   schema: formAnnotations
 
-optionsSchema:
+optionSchema:
   type: object
   properties:
     badge:
@@ -437,7 +437,7 @@ annotationsSchema:
     title:
       type: string
 
-optionsSchema:
+optionSchema:
   type: object
   properties:
     tone:
@@ -491,7 +491,7 @@ annotations:
 
     expect(errors.map(({ at }) => at.join("."))).toEqual([
       "annotationsSchema.properties.title",
-      "optionsSchema.properties.value",
+      "optionSchema.properties.value",
       "annotations.order.1",
       "annotations.order.2",
       "properties.email.annotations.placeholdr",

@@ -64,7 +64,7 @@ function show(value: unknown): string {
 
 /**
  * Checks a schema file's annotations against its vocabularies and the built in
- * annotations: `annotationsSchema` for fields and objects, `optionsSchema` for
+ * annotations: `annotationsSchema` for fields and objects, `optionSchema` for
  * choices, `examples` against the field's own rules, `order` against its
  * fields, and the keys of `options` against its `enum`. It warns when some of
  * a field's choices have a `title` and others do not. Referenced schemas are
@@ -78,7 +78,7 @@ export function getSchemaAnnotationFindings(
   const warnings: AnnotationFinding[] = [];
   if (!isNode(root)) return { errors, warnings };
 
-  const vocabulary = (field: "annotationsSchema" | "optionsSchema", reserved: string[]) => {
+  const vocabulary = (field: "annotationsSchema" | "optionSchema", reserved: string[]) => {
     const given = root[field];
     if (given === undefined) return undefined;
     const resolved = resolve(given, schemas);
@@ -97,19 +97,19 @@ export function getSchemaAnnotationFindings(
         path: isNode(given) && given.schema === undefined ? [field, "properties", name] : [field],
         message:
           name === "value"
-            ? "`value` holds each choice's own value, so `optionsSchema` cannot declare it."
+            ? "`value` holds each choice's own value, so `optionSchema` cannot declare it."
             : `\`${name}\` is built in, so \`${field}\` cannot declare it.`,
       });
     }
     return resolved;
   };
   const fieldVocabulary = vocabulary("annotationsSchema", FIELD_BUILT_INS);
-  const optionVocabulary = vocabulary("optionsSchema", OPTION_BUILT_INS);
+  const optionVocabulary = vocabulary("optionSchema", OPTION_BUILT_INS);
 
   /** One name a vocabulary declares, checked against its rules. */
   const checkNamed = (
     vocab: Node | undefined,
-    field: "annotationsSchema" | "optionsSchema",
+    field: "annotationsSchema" | "optionSchema",
     name: string,
     value: unknown,
     path: Path,
@@ -146,7 +146,7 @@ export function getSchemaAnnotationFindings(
     }
   };
 
-  /** A choice's own annotations: its `title` and what `optionsSchema` declares. */
+  /** A choice's own annotations: its `title` and what `optionSchema` declares. */
   const checkChoice = (entry: Node, path: Path) => {
     for (const [name, value] of Object.entries(entry)) {
       if (name === "title") checkTitle(value, [...path, name]);
@@ -155,7 +155,7 @@ export function getSchemaAnnotationFindings(
           path: [...path, name],
           message: "`value` is the choice's own value, so a choice cannot set it.",
         });
-      } else checkNamed(optionVocabulary, "optionsSchema", name, value, [...path, name]);
+      } else checkNamed(optionVocabulary, "optionSchema", name, value, [...path, name]);
     }
   };
 

@@ -277,7 +277,7 @@ export type ConstraintsOf<T> = unknown extends T
 /**
  * What a schema's vocabularies declare, as generated code writes them for each
  * schema: what its `annotationsSchema` lets annotations hold, and what its
- * `optionsSchema` lets each choice carry, with `{}` for one it lacks.
+ * `optionSchema` lets each choice carry, with `{}` for one it lacks.
  */
 export interface Vocabulary {
   readonly annotations?: object;
@@ -317,7 +317,7 @@ export type OptionFieldsOf<V = unknown> = unknown extends V
 
 /**
  * One value an `enum`, a `const` or a `oneOf` of consts allows, with what the
- * schema says about it: its `title` and the fields its `optionsSchema` declares.
+ * schema says about it: its `title` and the fields its `optionSchema` declares.
  */
 export type SchemaOption<T = unknown, V = unknown> = {
   readonly value: T;

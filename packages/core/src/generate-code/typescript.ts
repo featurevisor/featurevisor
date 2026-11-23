@@ -392,7 +392,7 @@ function generateSchemasFileContent(
   // What each delivered schema's vocabularies declare, so annotations and options are typed too.
   lines.push(
     "",
-    "/** What each schema's annotationsSchema and optionsSchema declare, by key. */",
+    "/** What each schema's annotationsSchema and optionSchema declare, by key. */",
     "export interface SchemaVocabularies {",
   );
   for (const key of delivered.keys) {
@@ -401,7 +401,7 @@ function generateSchemasFileContent(
     const parts = (
       [
         ["annotationsSchema", "annotations"],
-        ["optionsSchema", "options"],
+        ["optionSchema", "options"],
       ] as const
     ).map(([field, name]) => {
       const vocabulary = schema?.[field];

@@ -9,7 +9,7 @@ const MAINTAINER_FIELDS = ["description", "promotable"];
  * Fields only a schema's root has, never delivered. The vocabularies never
  * reach a datafile, since lint has checked every annotation against them.
  */
-const ROOT_ONLY_FIELDS = ["metadata", "tags", "annotationsSchema", "optionsSchema"];
+const ROOT_ONLY_FIELDS = ["metadata", "tags", "annotationsSchema", "optionSchema"];
 
 export interface DatafileSchemaOptions {
   /** False leaves `annotations` out at every depth, for a target that only serves a backend. */

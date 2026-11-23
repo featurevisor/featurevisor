@@ -442,7 +442,7 @@ Lint checks every annotation in a schema file:
 - `title` is text,
 - each of `examples` passes the field's own rules,
 - `order` lists the object's own fields, each once,
-- `options` sits beside an `enum`, its keys name the `enum`'s values, and its entries fit `optionsSchema` (see [Choices](#choices)),
+- `options` sits beside an `enum`, its keys name the `enum`'s values, and its entries fit `optionSchema` (see [Choices](#choices)),
 - the vocabularies are object schemas that leave the built in names alone.
 
 ### Delivery
@@ -464,7 +464,7 @@ Its applications still validate the same, since validation never reads annotatio
 
 ## Choices
 
-A choice needs more than its value: a label, a flag, a region, a price, a badge. Every choice can carry a built in `title`, and whatever the schema's `optionsSchema` declares. `optionsSchema` sits at the root, inline or by reference, as `annotationsSchema` does, and follows the same rules: one object schema, closed, per file, never in a datafile:
+A choice needs more than its value: a label, a flag, a region, a price, a badge. Every choice can carry a built in `title`, and whatever the schema's `optionSchema` declares. `optionSchema` sits at the root, inline or by reference, as `annotationsSchema` does, and follows the same rules: one object schema, closed, per file, never in a datafile:
 
 ```yml
 # schemas/countryOption.yml
@@ -482,7 +482,7 @@ properties:
     type: boolean
 ```
 
-A field has a placeholder and an input, and a choice has a flag and a region, so each vocabulary stays closed and precise. `optionsSchema` cannot declare `title`, which is built in, or `value`, which holds the choice itself. Without one, a schema's choices carry only titles.
+A field has a placeholder and an input, and a choice has a flag and a region, so each vocabulary stays closed and precise. `optionSchema` cannot declare `title`, which is built in, or `value`, which holds the choice itself. Without one, a schema's choices carry only titles.
 
 ### Two ways to write choices
 
@@ -490,7 +490,7 @@ Beside an `enum`, under the built in `options` annotation, keyed by value:
 
 ```yml
 # schemas/signUp.yml
-optionsSchema:
+optionSchema:
   schema: countryOption
 
 properties:
@@ -520,7 +520,7 @@ Or as a `oneOf` of `const` branches, each with its own `annotations`, the way JS
 # schemas/country.yml
 description: Countries we sell to
 
-optionsSchema:
+optionSchema:
   schema: countryOption
 
 oneOf:
@@ -584,7 +584,7 @@ Value at "country" must be one of United Kingdom, Netherlands, Belgium.
 
 ### Reference data
 
-A list such as `country` makes a schema of its own, with its own `optionsSchema`, and forms reference it, each with its own title beside the reference:
+A list such as `country` makes a schema of its own, with its own `optionSchema`, and forms reference it, each with its own title beside the reference:
 
 ```yml
 properties:
@@ -598,7 +598,7 @@ One component then serves every form that references it (see [Rendering forms](#
 
 ### Lint
 
-Lint checks each entry against `optionsSchema` and the built in `title`, each key against the `enum`, and each list of consts for values given twice. It warns with `option_without_title` when some of a field's choices have a title and others do not, since a list would show titles beside raw values.
+Lint checks each entry against `optionSchema` and the built in `title`, each key against the `enum`, and each list of consts for values given twice. It warns with `option_without_title` when some of a field's choices have a title and others do not, since a list would show titles beside raw values.
 
 ## Messages
 
@@ -1084,7 +1084,7 @@ A form that posts to a [server action](#server-actions) works before its JavaScr
 
 ## Code generation
 
-`featurevisor generate-code` writes a type per schema in `schemas.ts`, a `SchemaTypes` interface from key to type for the schemas the selected targets deliver, and a `SchemaVocabularies` interface with what each one's `annotationsSchema` and `optionsSchema` declare. With `--schemas`, it adds a typed `createSchemas`, and with `--react` as well, typed hooks in `schemas-react.ts`:
+`featurevisor generate-code` writes a type per schema in `schemas.ts`, a `SchemaTypes` interface from key to type for the schemas the selected targets deliver, and a `SchemaVocabularies` interface with what each one's `annotationsSchema` and `optionSchema` declare. With `--schemas`, it adds a typed `createSchemas`, and with `--react` as well, typed hooks in `schemas-react.ts`:
 
 ```bash
 npx featurevisor generate-code --language typescript --out-dir src/featurevisor --target web --schemas --react

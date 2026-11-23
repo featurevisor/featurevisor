@@ -757,7 +757,7 @@ export function getSchemaZodSchema(
               tags: getSchemaTagsZodSchema(projectConfig).optional(),
               // Vocabularies, checked with the annotations they declare (schemaAnnotations.ts).
               annotationsSchema: schemaZodSchema.optional(),
-              optionsSchema: schemaZodSchema.optional(),
+              optionSchema: schemaZodSchema.optional(),
             }
           : {}),
         // Schema files carry annotations at any node. Variables' schemas present nothing.

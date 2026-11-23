@@ -1280,7 +1280,7 @@ export { every, some };
         "  - sign-up",
         "annotationsSchema:",
         "  schema: formAnnotations",
-        "optionsSchema:",
+        "optionSchema:",
         "  type: object",
         "  properties:",
         "    flag:",

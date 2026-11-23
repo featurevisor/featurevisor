@@ -83,7 +83,7 @@ describe("the schemas section", () => {
     const annotated: Schema = {
       description: "A plan",
       annotationsSchema: { schema: "formAnnotations" },
-      optionsSchema: { type: "object", properties: { tone: { type: "string" } } },
+      optionSchema: { type: "object", properties: { tone: { type: "string" } } },
       type: "object",
       properties: {
         plan: {
