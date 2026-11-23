@@ -104,11 +104,29 @@ function field(
   return undefined;
 }
 
+/** Whether a node is a `oneOf` whose every branch is a `const`, which reports `enum` as one node. */
+function isChoiceList(node: Node | undefined, schemas: Record<string, Schema>): boolean {
+  return Boolean(
+    node &&
+    Array.isArray(node.oneOf) &&
+    node.oneOf.length > 0 &&
+    node.oneOf.every((branch) => {
+      const resolved = resolve(branch, schemas);
+      return Boolean(resolved && "const" in resolved);
+    }),
+  );
+}
+
 function neverShown(
   code: string,
   node: Node | undefined,
   schemas: Record<string, Schema>,
 ): string | undefined {
+  if (isChoiceList(node, schemas)) {
+    if (code === "enum" || code === "required" || code === "refine" || code === "refineError")
+      return undefined;
+    return "a oneOf whose every branch is a const reports enum for itself, as an enum does, so word it with the enum code";
+  }
   const types = nodeTypes(node, schemas);
   if (!types) return undefined;
   if (node && Array.isArray(node.oneOf) && types.length === 0) {
@@ -215,7 +233,8 @@ export function getMessageWarnings(
       );
     }
     if (Array.isArray(node.oneOf)) {
-      const selects = typeSelectsBranch(node, schemas);
+      // A list of choices validates as one node, so its branches' messages never show either.
+      const selects = !isChoiceList(node, schemas) && typeSelectsBranch(node, schemas);
       node.oneOf.forEach((branch, index) =>
         visit(
           branch,

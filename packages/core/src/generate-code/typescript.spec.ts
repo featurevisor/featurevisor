@@ -1278,19 +1278,51 @@ export { every, some };
         "description: A sign up form",
         "tags:",
         "  - sign-up",
+        "annotationsSchema:",
+        "  schema: formAnnotations",
+        "optionsSchema:",
+        "  type: object",
+        "  properties:",
+        "    flag:",
+        "      type: string",
         "type: object",
         "properties:",
         "  email:",
         "    type: string",
+        "    annotations:",
+        "      title: Email address",
+        "      placeholder: ada@example.com",
         "  country:",
         "    type: string",
         "    enum: [GB, NL]",
+        "    annotations:",
+        "      options:",
+        "        GB:",
+        "          title: United Kingdom",
+        "          flag: gb",
+        "        NL:",
+        "          title: Netherlands",
+        "          flag: nl",
         "  nickname:",
         "    oneOf:",
         "      - type: string",
         "      - const: null",
         "required: [email]",
         "additionalProperties: true",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(tempProjectPath, "schemas", "formAnnotations.yml"),
+      [
+        "description: What our forms say about a field",
+        "type: object",
+        "properties:",
+        "  placeholder:",
+        "    type: string",
+        "  input:",
+        "    type: string",
+        "    enum: [text, email, select]",
       ].join("\n"),
       "utf8",
     );
@@ -1315,7 +1347,13 @@ export { every, some };
     expect(schemasContent).toContain(
       "export interface SchemaTypes {\n  money: MoneySchema;\n  signUp: SignUpSchema;\n}",
     );
-    expect(schemasContent).toContain("return createSchemasBase<SchemaTypes>(f, options);");
+    // The vocabularies type annotations and options, and never reach a schema's own type.
+    expect(schemasContent).toContain(
+      "export interface SchemaVocabularies {\n  money: { annotations: {}; options: {} };\n  signUp: { annotations: FormAnnotationsSchema; options: { flag?: string } };\n}",
+    );
+    expect(schemasContent).toContain(
+      "return createSchemasBase<SchemaTypes, SchemaVocabularies>(f, options);",
+    );
     expect(fs.existsSync(path.join(outputPath, "schemas-react.ts"))).toBe(true);
     expect(fs.readFileSync(path.join(outputPath, "index.ts"), "utf8")).toContain(
       'export * from "./schemas-react.js";',
@@ -1333,6 +1371,14 @@ export { every, some };
         '  signUp.at("emial");',
         "  // @ts-expect-error a value the field does not allow",
         '  signUp.at("country").option("FR");',
+        '  const placeholder: string | undefined = signUp.at("email").annotations.placeholder;',
+        '  const title: string | undefined = signUp.at("email").annotations.title;',
+        "  // @ts-expect-error an annotation the vocabulary does not declare",
+        '  signUp.at("email").annotations.placeholdr;',
+        '  const flag: string | undefined = signUp.at("country").option("GB")?.flag;',
+        "  // @ts-expect-error a field a choice does not carry",
+        '  signUp.at("country").option("GB")?.flg;',
+        "  void [placeholder, title, flag];",
         '  return signUp.at("country").options.map((option) => option.value);',
         "}",
         "",

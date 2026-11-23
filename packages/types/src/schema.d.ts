@@ -28,6 +28,23 @@ export interface SchemaMessages {
   [codeOrField: string]: string | SchemaMessages;
 }
 
+/**
+ * Values beside a node's rules, for forms and anything else that presents a
+ * schema, which validation never reads. `title`, `examples`, `order` and
+ * `options` are built in, and a schema's `annotationsSchema` declares the rest.
+ */
+export interface SchemaAnnotations {
+  /** A field's or a form's name for people. */
+  title?: string;
+  /** Values the field could hold, each checked against its own rules. */
+  examples?: Value[];
+  /** The order of an object's fields. Fields it leaves out come last. */
+  order?: string[];
+  /** Beside an `enum`: what each choice carries, keyed by its value, or a value's JSON text. */
+  options?: { [value: string]: { [name: string]: Value } };
+  [name: string]: Value | undefined;
+}
+
 // adapted JSON Schema for Featurevisor
 export interface Schema {
   // Basic metadata
@@ -37,6 +54,10 @@ export interface Schema {
   metadata?: Metadata;
   /** Only at the root. Tag based targets deliver the schema in their datafiles. */
   tags?: Tag[];
+  /** Only at the root: what this file's `annotations` hold, as one object schema, inline or by reference. */
+  annotationsSchema?: Schema;
+  /** Only at the root: what each choice in this file carries, as one object schema, inline or by reference. */
+  optionsSchema?: Schema;
 
   // General validation keywords
   type?: SchemaType;
@@ -77,14 +98,21 @@ export interface Schema {
 
   /** Messages for this node's issues and its fields' issues. */
   messages?: SchemaMessages;
+
+  /** Values beside the rules, for forms and tools, which validation never reads. */
+  annotations?: SchemaAnnotations;
 }
 
 /**
- * A schema as a datafile carries it, in its `schemas` section: the rules and
- * messages as authored, `schema` references resolving by key in the same
- * datafile, without `description`, `metadata`, `promotable` and `tags`, and
- * with a `hash` that covers every schema it references.
+ * A schema as a datafile carries it, in its `schemas` section: the rules,
+ * messages and annotations as authored, `schema` references resolving by key
+ * in the same datafile, without `description`, `metadata`, `promotable`,
+ * `tags` and the vocabularies, and with a `hash` that covers every schema it
+ * references. A target with `includeAnnotations: false` leaves annotations out.
  */
-export type DatafileSchema = Omit<Schema, "description" | "metadata" | "promotable" | "tags"> & {
+export type DatafileSchema = Omit<
+  Schema,
+  "description" | "metadata" | "promotable" | "tags" | "annotationsSchema" | "optionsSchema"
+> & {
   hash?: string;
 };

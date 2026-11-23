@@ -19,6 +19,7 @@ export const LINT_WARNING_CODES = [
   "message_worded_twice",
   "mixed_list",
   "mutation_order_changed",
+  "option_without_title",
   "untyped_condition",
 ] as const;
 

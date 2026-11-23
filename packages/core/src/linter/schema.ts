@@ -534,27 +534,28 @@ export function refineArrayItems(
 
 /**
  * The params each issue code fills a message's placeholders from, as
- * `@featurevisor/schemas` reports them. A text message in a schema's `messages`
- * is keyed by one of these codes.
+ * `@featurevisor/schemas` reports them, with `title` when the field has one. A
+ * text message in a schema's `messages` is keyed by one of these codes.
  */
 export const SCHEMA_ISSUE_PARAMS: Record<string, readonly string[]> = {
-  type: ["type", "received"],
-  const: ["const"],
-  enum: ["options"],
-  minimum: ["minimum", "value"],
-  maximum: ["maximum", "value"],
-  minLength: ["minLength", "length"],
-  maxLength: ["maxLength", "length"],
-  pattern: ["pattern"],
-  format: ["format"],
-  minItems: ["minItems", "count"],
-  maxItems: ["maxItems", "count"],
-  uniqueItems: ["index"],
-  required: ["key"],
+  type: ["type", "received", "title"],
+  const: ["const", "title"],
+  // `titles` when every choice has a `title`.
+  enum: ["options", "titles", "title"],
+  minimum: ["minimum", "value", "title"],
+  maximum: ["maximum", "value", "title"],
+  minLength: ["minLength", "length", "title"],
+  maxLength: ["maxLength", "length", "title"],
+  pattern: ["pattern", "title"],
+  format: ["format", "title"],
+  minItems: ["minItems", "count", "title"],
+  maxItems: ["maxItems", "count", "title"],
+  uniqueItems: ["index", "title"],
+  required: ["key", "title"],
   additionalProperties: ["key"],
-  oneOf: ["matches"],
-  refine: ["refine"],
-  refineError: ["refine"],
+  oneOf: ["matches", "title"],
+  refine: ["refine", "title"],
+  refineError: ["refine", "title"],
 };
 
 /** The placeholders of a message template: `{name}`, with `{{` and `}}` for literal braces. */
@@ -754,8 +755,13 @@ export function getSchemaZodSchema(
           ? {
               metadata: getMetadataZodSchema(projectConfig).optional(),
               tags: getSchemaTagsZodSchema(projectConfig).optional(),
+              // Vocabularies, checked with the annotations they declare (schemaAnnotations.ts).
+              annotationsSchema: schemaZodSchema.optional(),
+              optionsSchema: schemaZodSchema.optional(),
             }
           : {}),
+        // Schema files carry annotations at any node. Variables' schemas present nothing.
+        ...(projectConfig ? { annotations: z.record(z.string(), z.unknown()).optional() } : {}),
         type: propertyTypeEnum.optional(),
         // `null` is how a nullable value's `oneOf` branch is written: `const: null`.
         enum: z.array(z.union([valueZodSchema, z.null()])).optional(),

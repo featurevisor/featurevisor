@@ -142,6 +142,7 @@ export async function buildTargetDatafile({
       excludeSchemas: target.excludeSchemas,
       // Schema "2" datafiles are for the v3 SDK, which no schemas package runs beside.
       withSchemas: target.schemaVersion !== SCHEMA_V2,
+      includeAnnotations: target.includeAnnotations,
       inflate,
       featurevisorVersion,
       dependencyGraph,
@@ -234,6 +235,7 @@ export async function buildProject(deps: Dependencies, cliOptions: BuildCLIOptio
       includeSchemas: target?.includeSchemas,
       excludeSchemas: target?.excludeSchemas,
       withSchemas: target?.schemaVersion !== SCHEMA_V2,
+      includeAnnotations: target?.includeAnnotations,
       featurevisorVersion: getFeaturevisorVersion(),
       revisionFromHash: target?.context ? false : cliOptions.revisionFromHash,
     });

@@ -33,6 +33,8 @@ export interface Target {
   includeSchemas?: TargetSchemas;
   /** Schemas never to deliver, winning over tags and `includeSchemas`. Their references still come along. */
   excludeSchemas?: TargetSchemas;
+  /** False leaves annotations out of delivered schemas, for a target that only serves a backend. True by default. */
+  includeAnnotations?: boolean;
   context?: Context;
   /**
    * Datafile schema to write. "4" by default. "2" writes datafiles that the

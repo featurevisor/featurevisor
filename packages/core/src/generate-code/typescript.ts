@@ -389,12 +389,34 @@ function generateSchemasFileContent(
   }
   lines.push("}");
 
+  // What each delivered schema's vocabularies declare, so annotations and options are typed too.
+  lines.push(
+    "",
+    "/** What each schema's annotationsSchema and optionsSchema declare, by key. */",
+    "export interface SchemaVocabularies {",
+  );
+  for (const key of delivered.keys) {
+    const schema = schemasByKey[key];
+    // Both keys always, `{}` for a vocabulary the schema lacks, so it reads as typed in every compiler mode.
+    const parts = (
+      [
+        ["annotationsSchema", "annotations"],
+        ["optionsSchema", "options"],
+      ] as const
+    ).map(([field, name]) => {
+      const vocabulary = schema?.[field];
+      return `${name}: ${vocabulary ? schemaToTypeScriptType(vocabulary, schemasByKey, schemaTypeNames) : "{}"}`;
+    });
+    lines.push(`  ${formatObjectKey(key)}: { ${parts.join("; ")} };`);
+  }
+  lines.push("}");
+
   if (delivered.createSchemas) {
     lines.push(
       "",
-      "/** createSchemas from @featurevisor/schemas, with keys and values typed. */",
+      "/** createSchemas from @featurevisor/schemas, with keys, values, annotations and options typed. */",
       "export function createSchemas(f: Featurevisor, options?: SchemasOptions) {",
-      "  return createSchemasBase<SchemaTypes>(f, options);",
+      "  return createSchemasBase<SchemaTypes, SchemaVocabularies>(f, options);",
       "}",
     );
   }
@@ -412,23 +434,23 @@ import {
 } from ${JSON.stringify(`${importSchemasPath}/react`)};
 import type { HandleOptions, IsAsync, SchemaHandle, Schemas } from ${JSON.stringify(importSchemasPath)};
 
-import type { SchemaTypes } from "./schemas.js";
+import type { SchemaTypes, SchemaVocabularies } from "./schemas.js";
 
-/** useSchema from @featurevisor/schemas/react, with keys and values typed. */
+/** useSchema from @featurevisor/schemas/react, with keys, values, annotations and options typed. */
 export function useSchema<
   K extends keyof SchemaTypes & string,
   TResult extends boolean | Promise<boolean> = boolean,
 >(
   key: K,
   options?: HandleOptions<SchemaTypes[K], TResult>,
-): SchemaHandle<SchemaTypes[K], IsAsync<TResult>> {
+): SchemaHandle<SchemaTypes[K], IsAsync<TResult>, SchemaVocabularies[K]> {
   // Typed by this wrapper's own signature, which the base hook cannot relate for an open K.
-  return useSchemaBase<SchemaTypes[K], TResult>(key, options as never);
+  return useSchemaBase<SchemaTypes[K], TResult, SchemaVocabularies[K]>(key, options as never);
 }
 
-/** useSchemas from @featurevisor/schemas/react, with keys and values typed. */
-export function useSchemas(): Schemas<SchemaTypes> {
-  return useSchemasBase<SchemaTypes>();
+/** useSchemas from @featurevisor/schemas/react, with keys, values, annotations and options typed. */
+export function useSchemas(): Schemas<SchemaTypes, SchemaVocabularies> {
+  return useSchemasBase<SchemaTypes, SchemaVocabularies>();
 }
 
 /** useValidation from @featurevisor/schemas/react, with keys and values typed, for a schema's key or any handle, such as a field's. */

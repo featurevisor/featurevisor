@@ -175,6 +175,8 @@ export interface CustomDatafileOptions {
   excludeSchemas?: "*" | SchemaKey[];
   /** False for targets whose datafiles cannot carry schemas, such as schema "2" ones. */
   withSchemas?: boolean;
+  /** False leaves annotations out of delivered schemas. */
+  includeAnnotations?: boolean;
   featurevisorVersion?: string;
   revisionFromHash?: boolean;
 }
@@ -200,6 +202,7 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
       includeSchemas: options.includeSchemas,
       excludeSchemas: options.excludeSchemas,
       withSchemas: options.withSchemas,
+      includeAnnotations: options.includeAnnotations,
       featurevisorVersion: options.featurevisorVersion,
       revisionFromHash: options.revisionFromHash,
     },
@@ -271,6 +274,8 @@ export interface BuildOptions {
   excludeSchemas?: "*" | SchemaKey[];
   /** False for targets whose datafiles cannot carry schemas, such as schema "2" ones. */
   withSchemas?: boolean;
+  /** False leaves annotations out of delivered schemas, for a target that only serves a backend. */
+  includeAnnotations?: boolean;
   features?: FeatureKey[];
   variables?: VariableKey[];
   inflate?: number;
@@ -1028,7 +1033,9 @@ export async function buildDatafile(
 
   // Datafiles without schemas have no `schemas` key, so their bytes and revisions stay as they were.
   if (deliveredSchemaKeys.length > 0) {
-    datafileContent.schemas = buildSchemasSection(deliveredSchemaKeys, schemasByKey);
+    datafileContent.schemas = buildSchemasSection(deliveredSchemaKeys, schemasByKey, {
+      annotations: options.includeAnnotations,
+    });
   }
 
   datafileContent.variables = variables.reduce(

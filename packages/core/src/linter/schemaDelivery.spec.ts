@@ -312,6 +312,283 @@ messages:
     ]);
   });
 
+  test("annotations that fit their vocabularies lint clean", async () => {
+    const warnings = await lintWarnings({
+      "schemas/formAnnotations.yml": `description: What our forms say about a field
+
+type: object
+
+properties:
+  placeholder:
+    type: string
+  input:
+    type: string
+    enum: [text, email, select]
+`,
+      "schemas/countryOption.yml": `description: What a country choice carries
+
+type: object
+
+properties:
+  flag:
+    type: string
+  hidden:
+    type: boolean
+`,
+      "schemas/country.yml": `description: Countries we sell to
+
+optionsSchema:
+  schema: countryOption
+
+oneOf:
+  - const: GB
+    annotations:
+      title: United Kingdom
+      flag: gb
+  - const: NL
+    annotations:
+      title: Netherlands
+      flag: nl
+  - const: null
+    annotations:
+      title: Prefer not to say
+      hidden: true
+
+messages:
+  enum: Choose a country from the list
+`,
+      "schemas/signUp.yml": `description: A sign up form
+
+annotationsSchema:
+  schema: formAnnotations
+
+optionsSchema:
+  type: object
+  properties:
+    badge:
+      type: string
+
+type: object
+
+properties:
+  email:
+    type: string
+    annotations:
+      title: Email address
+      placeholder: ada@example.com
+      input: email
+      examples: [ada@example.com]
+  plan:
+    type: string
+    enum: [free, pro]
+    annotations:
+      title: Plan
+      input: select
+      options:
+        free:
+          title: Free
+        pro:
+          title: Pro
+          badge: popular
+  seats:
+    enum: [1, 5, null]
+    annotations:
+      options:
+        "1":
+          title: Just me
+        "5":
+          title: A small team
+        "null":
+          title: Not sure yet
+  country:
+    schema: country
+    annotations:
+      title: Country
+  address:
+    type: object
+    properties:
+      city:
+        type: string
+      zip:
+        type: string
+    annotations:
+      order: [zip, city]
+
+required: [email]
+
+annotations:
+  title: Create your account
+  order: [plan, email]
+`,
+    });
+
+    expect(warnings).toEqual([]);
+  });
+
+  test("annotations are checked against the vocabularies and the built in ones", async () => {
+    const errors = await lint({
+      "schemas/form.yml": `description: A form
+
+annotationsSchema:
+  type: object
+  properties:
+    placeholder:
+      type: string
+    title:
+      type: string
+
+optionsSchema:
+  type: object
+  properties:
+    tone:
+      type: string
+    value:
+      type: string
+
+type: object
+
+properties:
+  email:
+    type: string
+    annotations:
+      placeholdr: ada
+      placeholder: 3
+      title: ""
+      examples: [1]
+  plan:
+    type: string
+    enum: [free, pro]
+    annotations:
+      options:
+        gold:
+          title: Gold
+        free:
+          title: Free
+          tone: 1
+          value: free
+          colour: red
+  size:
+    type: integer
+    annotations:
+      options: {}
+  mixed:
+    enum: [1, "1"]
+    annotations:
+      options:
+        "1":
+          title: One
+  tier:
+    oneOf:
+      - const: 1
+        annotations:
+          title: One
+      - const: 1
+
+annotations:
+  order: [plan, plan, nope]
+`,
+    });
+
+    expect(errors.map(({ at }) => at.join("."))).toEqual([
+      "annotationsSchema.properties.title",
+      "optionsSchema.properties.value",
+      "annotations.order.1",
+      "annotations.order.2",
+      "properties.email.annotations.placeholdr",
+      "properties.email.annotations.placeholder",
+      "properties.email.annotations.title",
+      "properties.email.annotations.examples.0",
+      "properties.plan.annotations.options.gold",
+      "properties.plan.annotations.options.free.tone",
+      "properties.plan.annotations.options.free.value",
+      "properties.plan.annotations.options.free.colour",
+      "properties.size.annotations.options",
+      "properties.mixed.annotations.options.1",
+      "properties.tier.oneOf.1",
+    ]);
+    expect(errors.map(({ message }) => message)).toEqual(
+      expect.arrayContaining([
+        "`title` is built in, so `annotationsSchema` cannot declare it.",
+        "Unknown annotation `placeholdr`. `annotationsSchema` declares `placeholder`, `title`.",
+        "`placeholder` does not match what `annotationsSchema` declares for it.",
+        "Example 1 does not pass the field's own rules.",
+        "gold is not one of the `enum`'s values: free, pro.",
+        '1 names 1 and "1" at once, so it cannot say which.',
+        "1 is a choice already, at `oneOf[0]`.",
+        "`order` names nope, which is not a field here. Fields: email, plan, size, mixed, tier.",
+      ]),
+    );
+  });
+
+  test("without a vocabulary only the built in annotations are allowed, and a vocabulary is an object", async () => {
+    const errors = await lint({
+      "schemas/plain.yml": `description: A plain schema
+
+annotationsSchema:
+  type: string
+
+type: string
+
+annotations:
+  title: Plain
+  placeholder: Type here
+`,
+    });
+
+    expect(errors.map(({ message }) => message)).toEqual([
+      "`annotationsSchema` must be an object schema, whose properties are the names annotations can have.",
+      "`placeholder` is not a built in annotation, and this schema has no `annotationsSchema` to declare it.",
+    ]);
+  });
+
+  test("warns when some choices have a title and others do not, and a choice list words its issue as enum", async () => {
+    const warnings = await lintWarnings({
+      "schemas/plan.yml": `description: A plan
+
+type: object
+
+properties:
+  plan:
+    type: string
+    enum: [free, pro, team]
+    annotations:
+      options:
+        free:
+          title: Free
+  tier:
+    oneOf:
+      - const: 1
+        annotations:
+          title: One
+      - const: 2
+    messages:
+      enum: Choose a tier
+      minLength: Never raised
+`,
+    });
+
+    expect(warnings).toEqual([
+      { code: "option_without_title", at: "properties.plan.annotations.options" },
+      { code: "option_without_title", at: "properties.tier.oneOf" },
+      { code: "message_never_shown", at: "properties.tier.messages.minLength" },
+    ]);
+  });
+
+  test("targets take includeAnnotations, and variables' schemas take no annotations", async () => {
+    expect(
+      await lint({
+        "schemas/request.yml": "description: A request\n\ntags:\n  - web\n\ntype: string\n",
+        "targets/api.yml": "description: API\n\ntag: web\n\nincludeAnnotations: false\n",
+      }),
+    ).toEqual([]);
+
+    const errors = await lint({
+      "variables/payload.yml":
+        "description: Payload\n\ntype: object\n\nproperties:\n  email:\n    type: string\n    annotations:\n      title: Email\n\ndefaultValue:\n  email: ada@example.com\n",
+    });
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
   test("a nullable field is a oneOf with const null, in schemas and variables", async () => {
     expect(
       await lint({

@@ -10,7 +10,7 @@ import type {
   Schema,
   Target,
 } from "@featurevisor/types";
-import type { ZodError } from "zod";
+import { ZodError as ZodErrorClass, type ZodError } from "zod";
 
 import { getAttributeZodSchema } from "./attributeSchema";
 import { getConditionsZodSchema } from "./conditionSchema";
@@ -22,6 +22,7 @@ import { getFeatureZodSchema } from "./featureSchema";
 import { assertNoLegacyDatasourceGroups } from "../config/removedGroups";
 import { getSchemaPatterns, getSchemaZodSchema } from "./schema";
 import { getMessageWarnings } from "./messageWarnings";
+import { getSchemaAnnotationFindings } from "./schemaAnnotations";
 import { getBacktrackingError, getPortableRegexError } from "./regexSafety";
 import { getTargetSchemaKeys, matchesFeaturePatterns } from "../targeting";
 import { getScenariosZodSchema, getTestsZodSchema } from "./testSchema";
@@ -1406,6 +1407,33 @@ export async function lintProject(
         if (!result.success && "error" in result) {
           await reportZodValidationError("schema", key, fullPath, result.error);
         } else {
+          // Annotations against the file's vocabularies, which reads values with lint's own value checks.
+          const annotationFindings = getSchemaAnnotationFindings(parsed, schemasByKey);
+          if (annotationFindings.errors.length > 0) {
+            await reportZodValidationError(
+              "schema",
+              key,
+              fullPath,
+              new ZodErrorClass(
+                annotationFindings.errors.map(({ path: at, message }) => ({
+                  code: "custom" as const,
+                  path: at,
+                  message,
+                  input: undefined,
+                })),
+              ),
+            );
+          }
+          for (const warning of annotationFindings.warnings) {
+            await reportWarning({
+              filePath: path.relative(process.cwd(), fullPath),
+              entityType: "schema",
+              key,
+              path: warning.path,
+              code: "option_without_title",
+              message: warning.message,
+            });
+          }
           for (const warning of getMessageWarnings(parsed, schemasByKey)) {
             await reportWarning({
               filePath: path.relative(process.cwd(), fullPath),

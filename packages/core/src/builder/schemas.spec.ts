@@ -26,7 +26,13 @@ const schemas: Record<string, Schema> = {
     type: "object",
     properties: { city: { type: "string", minLength: 1 } },
   },
-  coupon: { description: "A coupon", tags: ["web"], type: "string", pattern: "^[A-Z0-9]{8}$" },
+  coupon: {
+    description: "A coupon",
+    tags: ["web"],
+    type: "string",
+    pattern: "^[A-Z0-9]{8}$",
+    annotations: { title: "Coupon code" },
+  },
   legacyAddress: { description: "Old", tags: ["web"], type: "object" },
 };
 const keys = Object.keys(schemas);
@@ -71,6 +77,71 @@ describe("the schemas section", () => {
       required: ["email"],
       messages: { email: { required: "Tell us your email address" } },
     });
+  });
+
+  test("carries annotations as written, never the vocabularies, and leaves annotations out when asked", () => {
+    const annotated: Schema = {
+      description: "A plan",
+      annotationsSchema: { schema: "formAnnotations" },
+      optionsSchema: { type: "object", properties: { tone: { type: "string" } } },
+      type: "object",
+      properties: {
+        plan: {
+          type: "string",
+          enum: ["free", "pro"],
+          description: "Which plan",
+          annotations: {
+            title: "Plan",
+            options: { free: { title: "Free", description: "kept, as a value" } },
+          },
+        },
+        tier: {
+          oneOf: [
+            { const: 1, annotations: { title: "One" } },
+            { const: 2, annotations: { title: "Two" } },
+          ],
+        },
+      },
+      annotations: { title: "Choose a plan", order: ["tier", "plan"] },
+    };
+
+    expect(toDatafileSchema(annotated)).toEqual({
+      type: "object",
+      properties: {
+        plan: {
+          type: "string",
+          enum: ["free", "pro"],
+          annotations: {
+            title: "Plan",
+            options: { free: { title: "Free", description: "kept, as a value" } },
+          },
+        },
+        tier: {
+          oneOf: [
+            { const: 1, annotations: { title: "One" } },
+            { const: 2, annotations: { title: "Two" } },
+          ],
+        },
+      },
+      annotations: { title: "Choose a plan", order: ["tier", "plan"] },
+    });
+    expect(toDatafileSchema(annotated, { annotations: false })).toEqual({
+      type: "object",
+      properties: {
+        plan: { type: "string", enum: ["free", "pro"] },
+        tier: { oneOf: [{ const: 1 }, { const: 2 }] },
+      },
+    });
+
+    // A change of wording changes the hash, so datafile_set names the schema.
+    const before = buildSchemasSection(["plan"], { plan: annotated });
+    const reworded = buildSchemasSection(["plan"], {
+      plan: { ...annotated, annotations: { title: "Pick a plan", order: ["tier", "plan"] } },
+    });
+    expect(reworded.plan.hash).not.toBe(before.plan.hash);
+    expect(buildSchemasSection(["plan"], { plan: annotated }, { annotations: false }).plan).toEqual(
+      { hash: expect.any(String), ...toDatafileSchema(annotated, { annotations: false }) },
+    );
   });
 
   test("a hash covers every schema an entry references", () => {
@@ -180,6 +251,14 @@ describe("datafiles", () => {
     const withSchemas = await build({ includeSchemas: ["coupon"] });
 
     expect(generateHashForDatafile(withSchemas)).not.toBe(generateHashForDatafile(without));
+  });
+
+  test("annotations are delivered by default, and includeAnnotations false leaves them out", async () => {
+    expect((await build({ includeSchemas: ["coupon"] })).schemas!.coupon.annotations).toEqual({
+      title: "Coupon code",
+    });
+    const backend = await build({ includeSchemas: ["coupon"], includeAnnotations: false });
+    expect("annotations" in backend.schemas!.coupon).toBe(false);
   });
 
   test("withSchemas false delivers none", async () => {
