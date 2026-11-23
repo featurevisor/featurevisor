@@ -1176,6 +1176,92 @@
       ]
     },
     {
+      "name": "an enum without a type takes its values, whatever their types",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "enum": [
+            1,
+            "one",
+            null
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": "one",
+      "issues": []
+    },
+    {
+      "name": "an enum without a type reports enum for any other value",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "enum": [
+            1,
+            "one",
+            null
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": true,
+      "issues": [
+        {
+          "code": "enum",
+          "path": [],
+          "params": {
+            "options": [
+              1,
+              "one",
+              null
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "a const without a type compares an object by value",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "const": {
+            "tier": 2
+          }
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "tier": 2
+      },
+      "issues": []
+    },
+    {
+      "name": "a const without a type reports const for another object",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "const": {
+            "tier": 2
+          }
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "tier": 3
+      },
+      "issues": [
+        {
+          "code": "const",
+          "path": [],
+          "params": {
+            "const": {
+              "tier": 2
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "a nullable value takes null",
       "schemas": {
         "subject": {

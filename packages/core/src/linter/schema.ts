@@ -786,6 +786,21 @@ export function getSchemaZodSchema(
       .strict()
       .superRefine((data, ctx) => refineRemovedSchemaType(data, ctx))
       .superRefine((data, ctx) => {
+        // Without one, a node takes any value its keywords allow, which applications and lint would read apart.
+        if (
+          data.type === undefined &&
+          data.schema === undefined &&
+          data.oneOf === undefined &&
+          data.enum === undefined &&
+          !("const" in data)
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "A schema needs a `type`, or describes its value with `schema`, `oneOf`, `const` or `enum`.",
+            path: ["type"],
+          });
+        }
         if (data.type === "array" && data.items === undefined) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
