@@ -114,18 +114,41 @@ annotations:
 - In the application, `createSchemas(f, { messages, message })` words every schema, and `message` translates each issue. `s.get(key, { messages })` words one form.
 - A check in code's own message wins, then the form's, then the schema's, then the application's, then the English default.
 
+## Rules between fields
+
+A rule two fields must agree on, such as a password typed twice, goes in `issues` on the object that holds both. Each entry reports its issue when its conditions match, so conditions say when a value fails:
+
+```yaml
+issues:
+  - key: passwordsDiffer
+    conditions: input('confirmPassword') != input('password')
+    path: confirmPassword
+    message: The passwords do not match
+
+  - key: dutchShippingCountry
+    conditions: country == 'nl' and input('shippingCountry') != input('billingCountry')
+    path: shippingCountry
+    message: We ship Dutch orders to the billing country only
+```
+
+- **Some users only:** join their condition and the check with `and`, as `dutchShippingCountry` does. A user it does not match never gets the issue.
+- **Write the failure:** `!=` for `==`, `>` for `<=`, `not (...)` for a rule without an opposite, such as `not (input('end') after input('start'))`.
+- **When entries run:** after the node's rules, and only when nothing inside it has an issue of shape, such as a missing required field or a wrong type. A short password and a differing confirmation report both.
+- **The issue** has `code: "refine"` and `params.refine`, the entry's key, so `messages` word it as `confirmPassword: { refine: ... }`. Without `path`, it belongs to the object.
+- **Lint** checks each entry's key, conditions, which must read at least one `input`, paths and message. `issues` goes on object nodes only, and a variable cannot use a schema with them.
+
 ## Checks in code
 
-Rules only the application can answer, such as whether a username is free, and rules where two fields must agree, such as a password typed twice, go in `refine` on a handle:
+Rules only the application can answer, such as whether a username is free, go in `refine` on a handle. A check returns `true` when the value passes, where an entry in `issues` says when it fails:
 
 ```ts
 const signUp = s.get('signUp', {
   refine: [
     {
-      key: 'passwordsMatch',
-      path: 'confirmPassword',
-      check: (confirm, { input }) => confirm === input.password,
-      message: 'The passwords do not match',
+      key: 'usernameAvailable',
+      path: 'username',
+      check: async (username, { signal }) => isFree(username, signal),
+      message: 'That username is taken',
     },
   ],
 })
@@ -185,7 +208,7 @@ mutations:
 - **`input`** reads the value being validated, at a path relative to the node the mutation sits on, with dots into objects ([conditions.md](conditions.md#input-leaves)).
 - **`valueFrom: { input: billingCountry }`** takes the other side of a comparison from another field. `value` is always a value, and a leaf takes one of the two. `matches` and `notMatches` never take their pattern from `valueFrom`.
 - In a project with `conditionExpressions: true`, write `input('accountType') == 'business'`, or `input('shippingCountry') != input('billingCountry')` for two fields ([expressions.md](expressions.md)).
-- `input` goes only in a schema's mutations. `allowedConditions.schemas` limits the kinds there, `input` included ([conditions.md](conditions.md#allowed-condition-kinds)).
+- `input` goes only in a schema's mutations and issues. `allowedConditions.schemas` limits the kinds there, `input` included ([conditions.md](conditions.md#allowed-condition-kinds)).
 - Keys are unique within a node, and no mutation changes a `type`.
 - An environment's entry can add a mutation with `mutations:append`, with its conditions as a tree. Lint checks it as it checks the file's own, under the entry.
 - A target must deliver the features and global variables a schema's conditions read. Segments come along.

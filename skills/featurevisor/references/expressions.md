@@ -55,7 +55,7 @@ conditions: |
 - `and`, `or` and `not` are lowercase. `not` binds tightest, then `and`, then `or`. Use parentheses when mixing `and` and `or`, since lint warns without them.
 - A comment is a whole line starting with `#`. Inside a list, a comment may also end a line, beside an item: `'nl', # the Netherlands`.
 - A variable always needs a comparison. `variable('maintenanceMode')` alone is a lint error.
-- `input('...')` reads the value a schema validates, so it goes only in a schema's `mutations` ([conditions.md](conditions.md#input-leaves)). Its path goes inside the quotes, `input('address.country')`. After the operator it compiles to `valueFrom`, for comparing two fields, and then the subject must be `input(...)` too. It never goes inside a list or after `matches`.
+- `input('...')` reads the value a schema validates, so it goes only in a schema's `mutations` and `issues` ([conditions.md](conditions.md#input-leaves)). Its path goes inside the quotes, `input('address.country')`. After the operator it compiles to `valueFrom`, for comparing two fields, and then the subject must be `input(...)` too. It never goes inside a list or after `matches`.
 
 ## Missing values
 

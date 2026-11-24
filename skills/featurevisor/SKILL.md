@@ -89,7 +89,7 @@ Also note `metadataSchema` and `requireMetadataIn` (the owner names and deadline
 | Target          | `targets/<key>.yml`    | Which definitions go into a datafile.                                                 |
 | Test spec       | `tests/**/*.spec.yml`  | Feature, segment and variable assertions, and standalone scenarios.                   |
 
-**Conditions** are one grammar used everywhere a definition selects or gates: segments, rules, force entries, root gates and overrides. A leaf compares an attribute, names a segment with a bare string, requires a feature, or compares a variable's value. A list means AND, and `and`, `or` and `not` groups nest. `'*'` matches everyone, but only as the whole value. A project with `conditionExpressions: true` may also write conditions as text, such as `country == 'nl' and payingAccounts` ([expressions.md](references/expressions.md)). Match what the project does. A schema's mutations also read `input`, the value an application validates, and only they do ([conditions.md](references/conditions.md#input-leaves)).
+**Conditions** are one grammar used everywhere a definition selects or gates: segments, rules, force entries, root gates and overrides. A leaf compares an attribute, names a segment with a bare string, requires a feature, or compares a variable's value. A list means AND, and `and`, `or` and `not` groups nest. `'*'` matches everyone, but only as the whole value. A project with `conditionExpressions: true` may also write conditions as text, such as `country == 'nl' and payingAccounts` ([expressions.md](references/expressions.md)). Match what the project does. A schema's mutations and issues also read `input`, the value an application validates, and only they do ([conditions.md](references/conditions.md#input-leaves)).
 
 ```yaml
 conditions:
@@ -281,7 +281,7 @@ Ask whether a configurable value belongs to a feature or stands on its own. A su
 
 ### Validating forms and API bodies
 
-When rules for data users or clients send should change without a deploy, such as a display name's length or the countries checkout accepts, write a schema with `tags` ([templates/schema-form.yml](templates/schema-form.yml)), have a target deliver it, and validate with `@featurevisor/schemas` in the application. Rules per environment go under `environments`, and rules under conditions, such as a tax ID only businesses give, under `mutations`. The package is experimental. Read [schemas-runtime.md](references/schemas-runtime.md) first.
+When rules for data users or clients send should change without a deploy, such as a display name's length or the countries checkout accepts, write a schema with `tags` ([templates/schema-form.yml](templates/schema-form.yml)), have a target deliver it, and validate with `@featurevisor/schemas` in the application. Rules per environment go under `environments`, rules under conditions, such as a tax ID only businesses give, under `mutations`, and rules between fields, such as a password typed twice, under `issues`. The package is experimental. Read [schemas-runtime.md](references/schemas-runtime.md) first.
 
 ### Dependencies between definitions
 

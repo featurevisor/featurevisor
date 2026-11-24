@@ -77,7 +77,7 @@ conditions:
 
 ### Input leaves
 
-`input` reads the value a schema validates in an application, so it goes only in a schema's `mutations` ([schemas-runtime.md](schemas-runtime.md#rules-under-conditions)). Its path is relative to the node the mutation sits on, with dots into objects:
+`input` reads the value a schema validates in an application, so it goes only in a schema's `mutations` and `issues` ([schemas-runtime.md](schemas-runtime.md#rules-under-conditions)). Its path is relative to the node they sit on, with dots into objects:
 
 ```yaml
 conditions:
@@ -95,7 +95,7 @@ conditions:
 - `value` is always a value, even an object. `valueFrom` names another field, and a leaf takes one of the two, never both.
 - `matches` and `notMatches` never take their pattern from `valueFrom`, since a pattern a user typed is one nobody reviewed.
 - Each path must name a field of the node, which lint checks.
-- Anywhere else, lint fails with `` `input` reads the value a schema validates, so it goes only in a schema's mutations. `` Features, segments and global variables read the context, which already carries what an application knows.
+- Anywhere else, lint fails with `` `input` reads the value a schema validates, so it goes only in a schema's mutations and issues. `` Features, segments and global variables read the context, which already carries what an application knows.
 
 ## Lists and groups
 
@@ -131,6 +131,7 @@ A single condition does not need a list. `conditions: netherlands` and `conditio
 | Global variable root                            | no       | Gate for the whole variable, including compositions |
 | Global variable override                        | yes      | Override selection, including nested children       |
 | Schema mutation                                 | yes      | Rules that apply to a value when they match         |
+| Schema issue                                    | yes      | An issue a value gets when they match               |
 
 Use `conditions: '*'` where a selector is required but should always match.
 
@@ -149,7 +150,7 @@ module.exports = {
 }
 ```
 
-- **Locations:** `segments`, `features` (feature root), `rules`, `force`, `featureVariableOverrides`, `variables` (global variable root, compositions included), `variableOverrides` (nested ones included) and `schemas` (schema mutations, those an environment adds included).
+- **Locations:** `segments`, `features` (feature root), `rules`, `force`, `featureVariableOverrides`, `variables` (global variable root, compositions included), `variableOverrides` (nested ones included) and `schemas` (schema mutations and issues, those an environment adds included).
 - **Kinds:** `attribute`, `segment`, `feature` (including `{ feature, variable }`), `variable` (a global variable) and `input`, which only `schemas` takes. Naming `input` for any other location fails when the configuration loads.
 - **Defaults:** a location the config leaves out accepts every kind. `'*'` is always allowed.
 - **Lint:** reports anything else with `disallowed_condition` and suggests a fix. With `rules: ['segment']`, put attribute logic in a segment and reference it from the rule. Archived definitions are not checked.
