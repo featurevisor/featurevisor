@@ -779,6 +779,199 @@ defaultValue:
     );
   });
 
+  test("the flags and global variables a delivered schema's conditions read come along", async () => {
+    const files = {
+      "features/strictNames.yml": `description: Stricter names, rolling out
+
+bucketBy: userId
+
+conditions:
+  - feature: namesV2
+
+rules:
+  dev:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+`,
+      "features/namesV2.yml": `description: The new name rules
+
+bucketBy: userId
+
+rules:
+  dev:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+`,
+      "features/unrelated.yml": `description: Read by nothing
+
+bucketBy: userId
+
+rules:
+  dev:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+`,
+      "variables/relaxedNames.yml":
+        "description: Relaxed names\n\ntype: boolean\n\ndefaultValue: false\n",
+      "schemas/profile.yml": `description: A profile
+
+tags:
+  - web
+
+type: object
+
+properties:
+  name:
+    type: string
+    maxLength: 40
+
+mutations:
+  - key: strict
+    conditions:
+      feature: strictNames
+    mutate:
+      properties.name.pattern: "^[A-Za-z ]+$"
+  - key: relaxed
+    conditions:
+      variable: relaxedNames
+      operator: equals
+      value: true
+    mutate:
+      properties.name.maxLength: 80
+`,
+      "targets/web.yml": "description: Web\ntag: web\n",
+    };
+    expect(await lint(files)).toEqual([]);
+
+    const { root, projectConfig, datasource } = createProject(files);
+    try {
+      const datafile = await getCustomDatafile({
+        projectConfig,
+        datasource,
+        environment: "production",
+        tag: "web",
+        revision: "1",
+      });
+      // None of them is tagged web, so before this a target left them out and the conditions never matched.
+      expect(Object.keys(datafile.features).sort()).toEqual(["namesV2", "strictNames"]);
+      expect(Object.keys(datafile.variables || {})).toEqual(["relaxedNames"]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("an input's operator and value suit the field it reads", async () => {
+    const leaf = (conditions: string) => ({
+      "schemas/typed.yml": `description: Typed fields
+
+type: object
+
+properties:
+  age:
+    type: integer
+  name:
+    type: string
+  tags:
+    type: array
+    items:
+      type: string
+  start:
+    type: string
+    format: date-time
+  end:
+    type: string
+    format: date-time
+
+mutations:
+  - key: probe
+    conditions:
+${conditions}
+    mutate:
+      properties.name.maxLength: 10
+`,
+    });
+    const found = async (conditions: string) =>
+      (await lint(leaf(conditions))).map(({ at, message }) => [at, message]);
+    const at = "mutations.0.conditions";
+
+    expect(await found("      input: age\n      operator: startsWith\n      value: x")).toEqual([
+      [`${at}.value`, 'Operator "startsWith" can only be used with string-like fields.'],
+    ]);
+    expect(await found("      input: name\n      operator: greaterThan\n      value: 3")).toEqual([
+      [`${at}.value`, 'Operator "greaterThan" can only be used with integer or number fields.'],
+    ]);
+    expect(await found("      input: age\n      operator: equals\n      value: x")).toEqual([
+      [`${at}.value`, 'Value does not match the schema of field "age".'],
+    ]);
+    expect(await found("      input: name\n      operator: includes\n      value: a")).toEqual([
+      [`${at}.value`, 'Operator "includes" can only be used with array fields.'],
+    ]);
+    expect(
+      await found(
+        "      input: age\n      operator: equals\n      valueFrom:\n        input: name",
+      ),
+    ).toEqual([
+      [
+        `${at}.valueFrom.input`,
+        'Field "name" is of another type, so "equals" cannot compare "age" with it.',
+      ],
+    ]);
+    expect(
+      await found("      input: name\n      operator: in\n      valueFrom:\n        input: age"),
+    ).toEqual([
+      [
+        `${at}.valueFrom.input`,
+        'Field "age" is not an array, so "in" cannot compare "name" with it.',
+      ],
+    ]);
+    expect(
+      await found(
+        "      input: tags\n      operator: includes\n      valueFrom:\n        input: age",
+      ),
+    ).toEqual([
+      [
+        `${at}.valueFrom.input`,
+        'Field "age" is of another type than its items, so "includes" cannot compare "tags" with it.',
+      ],
+    ]);
+    // Comparisons that suit their fields lint clean.
+    for (const conditions of [
+      "      input: end\n      operator: after\n      valueFrom:\n        input: start",
+      "      input: name\n      operator: in\n      valueFrom:\n        input: tags",
+      "      input: tags\n      operator: includes\n      valueFrom:\n        input: name",
+      "      input: age\n      operator: greaterThanOrEquals\n      value: 18",
+    ]) {
+      expect(await found(conditions)).toEqual([]);
+    }
+  });
+
   test("environments need a project with environments", async () => {
     const errors = await lint({
       "featurevisor.config.js": `module.exports = ${JSON.stringify({ tags: ["web"], conditionExpressions: true })};`,

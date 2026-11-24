@@ -75,6 +75,8 @@ import {
   findUnavailableCompositionDependency,
   readableDependencyChain,
   featureFlagNode,
+  featureVariableNode,
+  segmentNode,
   variableNode,
 } from "../datasource/dependencies";
 import {
@@ -385,8 +387,62 @@ export async function buildDatafile(
       policySegments.set(key, segment);
     }
   }
-  const featureKeysRequiredByVariables = new Set<FeatureKey>();
+  // Schemas, as the environment being built has them, for variables' schema references and delivery.
+  const schemaKeys = await datasource.listSchemas();
+  const schemasByKey: Record<string, Schema> = {};
+  for (const key of schemaKeys) {
+    try {
+      schemasByKey[key] = resolveSchemaEnvironment(
+        await datasource.readSchema(key),
+        options.environment,
+        projectConfig,
+      );
+    } catch {
+      // Schema file may be invalid; skip for datafile build
+    }
+  }
+
+  // Schemas the target delivers, with every schema they reference.
+  const deliveredSchemaKeys =
+    options.withSchemas === false || (options.features && !options.tag && !options.tags)
+      ? []
+      : getTargetSchemaKeys(
+          {
+            tag: options.tag,
+            tags: options.tags,
+            includeSchemas: options.includeSchemas,
+            excludeSchemas: options.excludeSchemas,
+          },
+          schemaKeys,
+          schemasByKey,
+        );
+
+  // What delivered schemas' conditions read comes along, as a feature's dependencies do:
+  // segments, flags, feature variables and global variables, with everything they read.
+  const featureKeysRequiredBySchemas = new Set<FeatureKey>();
   const variableKeysRequiredStructurally = new Set<VariableKey>();
+  const schemaRoots: string[] = [];
+  for (const key of deliveredSchemaKeys) {
+    for (const conditions of getSchemaConditions(schemasByKey[key])) {
+      const references = getConditionReferences(conditions);
+      references.segments.forEach((ref) => schemaRoots.push(segmentNode(ref)));
+      references.features.forEach((ref) => schemaRoots.push(featureFlagNode(ref)));
+      references.featureVariables.forEach(({ feature, variable }) =>
+        schemaRoots.push(featureVariableNode(feature, variable)),
+      );
+      references.variables.forEach((ref) => schemaRoots.push(variableNode(ref)));
+    }
+  }
+  if (schemaRoots.length > 0) {
+    const read = await collectDependencyClosure(datasource, schemaRoots, {
+      graph: dependencyGraph,
+    });
+    read.segments.forEach((key) => segmentKeysUsedByTag.add(key));
+    read.features.forEach((key) => featureKeysRequiredBySchemas.add(key));
+    read.variables.forEach((key) => variableKeysRequiredStructurally.add(key));
+  }
+
+  const featureKeysRequiredByVariables = new Set<FeatureKey>();
   const selectedVariableRoots: string[] = [];
   for (const variableKey of variableFiles) {
     const parsedVariable = await dependencyDatasource.readVariable(variableKey);
@@ -446,22 +502,6 @@ export async function buildDatafile(
         throw new Error(
           `Scenario "${key}" at ${issue.path.join(".")}: operator "${issue.operator}" is disallowed by project configuration.`,
         );
-    }
-  }
-
-  // Load schemas for resolving variable schema references in features
-  const schemaKeys = await datasource.listSchemas();
-  const schemasByKey: Record<string, Schema> = {};
-  for (const key of schemaKeys) {
-    try {
-      // As the environment being built has it, so references resolve in that environment too.
-      schemasByKey[key] = resolveSchemaEnvironment(
-        await datasource.readSchema(key),
-        options.environment,
-        projectConfig,
-      );
-    } catch {
-      // Schema file may be invalid; skip for datafile build
     }
   }
 
@@ -547,7 +587,8 @@ export async function buildDatafile(
 
       const isRequiredByVariable = featureKeysRequiredByVariables.has(featureKey);
       const isRequiredByFeature = featureKeysRequiredByFeatures.has(featureKey);
-      const isRequired = isRequiredByVariable || isRequiredByFeature;
+      const isRequired =
+        isRequiredByVariable || isRequiredByFeature || featureKeysRequiredBySchemas.has(featureKey);
 
       if (!isRequired && options.tag && featureTags.indexOf(options.tag) === -1) {
         continue;
@@ -918,28 +959,6 @@ export async function buildDatafile(
         ...(program ? { overrideProgram: program } : {}),
       },
     });
-  }
-
-  // Schemas the target delivers, with every schema they reference.
-  const deliveredSchemaKeys =
-    options.withSchemas === false || (options.features && !options.tag && !options.tags)
-      ? []
-      : getTargetSchemaKeys(
-          {
-            tag: options.tag,
-            tags: options.tags,
-            includeSchemas: options.includeSchemas,
-            excludeSchemas: options.excludeSchemas,
-          },
-          schemaKeys,
-          schemasByKey,
-        );
-
-  // The segments delivered schemas' mutations read come along, as a feature's do.
-  for (const key of deliveredSchemaKeys) {
-    for (const conditions of getSchemaConditions(schemasByKey[key])) {
-      getConditionReferences(conditions).segments.forEach((ref) => segmentKeysUsedByTag.add(ref));
-    }
   }
 
   // segments

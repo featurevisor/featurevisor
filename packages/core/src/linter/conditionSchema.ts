@@ -539,7 +539,27 @@ function validateAttributeAwareCondition(
   if (!resolvedLeaf) {
     return;
   }
+  validateLeafCondition(
+    { name: data.attribute, operator: data.operator, value: data.value },
+    resolvedLeaf,
+    context,
+    schemasByKey,
+    { noun: "attribute" },
+  );
+}
 
+/**
+ * Checks an operator and its value against the leaf it compares: an
+ * attribute's, or the field of a schema an `input` leaf reads. With
+ * `valueFrom`, the value is another field's, so only the operator is checked.
+ */
+function validateLeafCondition(
+  data: { name: string; operator: string; value?: unknown },
+  resolvedLeaf: ResolvedLeaf,
+  context: z.RefinementCtx,
+  schemasByKey: Record<string, Schema>,
+  { noun, valueFrom = false }: { noun: "attribute" | "field"; valueFrom?: boolean },
+): void {
   const leafType = getLeafType(resolvedLeaf);
   const leafTypes = getLeafTypes(resolvedLeaf, schemasByKey);
 
@@ -547,7 +567,7 @@ function validateAttributeAwareCondition(
     if (leafTypes.length > 0 && !leafTypes.some((type) => emptinessTypes.includes(type))) {
       addIssue(
         context,
-        `Operator "${data.operator}" can only be used with string, array or object attributes.`,
+        `Operator "${data.operator}" can only be used with string, array or object ${noun}s.`,
       );
     }
     return;
@@ -560,7 +580,7 @@ function validateAttributeAwareCondition(
   if (resolvedLeaf.kind === "schema" && leafType === "object") {
     addIssue(
       context,
-      `Attribute "${data.attribute}" resolves to an object. Use a nested attribute path or \`exists\`/\`notExists\` instead.`,
+      `${noun === "attribute" ? "Attribute" : "Field"} "${data.name}" resolves to an object. Use a nested ${noun} path or \`exists\`/\`notExists\` instead.`,
     );
     return;
   }
@@ -571,7 +591,7 @@ function validateAttributeAwareCondition(
   ) {
     addIssue(
       context,
-      `Operator "${data.operator}" can only be used with integer or number attributes.`,
+      `Operator "${data.operator}" can only be used with integer or number ${noun}s.`,
     );
     return;
   }
@@ -580,7 +600,7 @@ function validateAttributeAwareCondition(
     stringOperators.includes(data.operator) &&
     !leafTypes.some((type) => ["string", "semver", "date-time"].includes(type))
   ) {
-    addIssue(context, `Operator "${data.operator}" can only be used with string-like attributes.`);
+    addIssue(context, `Operator "${data.operator}" can only be used with string-like ${noun}s.`);
     return;
   }
 
@@ -590,7 +610,7 @@ function validateAttributeAwareCondition(
   ) {
     addIssue(
       context,
-      `Operator "${data.operator}" can only be used with string attributes, including format: semver.`,
+      `Operator "${data.operator}" can only be used with string ${noun}s, including format: semver.`,
     );
     return;
   }
@@ -601,7 +621,7 @@ function validateAttributeAwareCondition(
   ) {
     addIssue(
       context,
-      `Operator "${data.operator}" can only be used with string attributes, including format: date-time.`,
+      `Operator "${data.operator}" can only be used with string ${noun}s, including format: date-time.`,
     );
     return;
   }
@@ -610,12 +630,12 @@ function validateAttributeAwareCondition(
     if (!supportsMembership(leafTypes)) {
       addIssue(
         context,
-        `Operator "${data.operator}" can only be used with string, integer or number attributes, or nested paths declared as one of them.`,
+        `Operator "${data.operator}" can only be used with string, integer or number ${noun}s, or nested paths declared as one of them.`,
       );
       return;
     }
 
-    if (!Array.isArray(data.value)) {
+    if (valueFrom || !Array.isArray(data.value)) {
       return;
     }
 
@@ -625,7 +645,7 @@ function validateAttributeAwareCondition(
         entryIssue = true;
         addIssue(
           context,
-          `Value at index ${index} does not match the schema of attribute "${data.attribute}".`,
+          `Value at index ${index} does not match the schema of ${noun} "${data.name}".`,
           ["value", index],
         );
       }
@@ -639,7 +659,7 @@ function validateAttributeAwareCondition(
   if ([...arrayOperators, ...arrayListOperators].includes(data.operator)) {
     const itemLeaf = getArrayItemLeaf(resolvedLeaf, schemasByKey);
     if (!itemLeaf) {
-      addIssue(context, `Operator "${data.operator}" can only be used with array attributes.`);
+      addIssue(context, `Operator "${data.operator}" can only be used with array ${noun}s.`);
       return;
     }
 
@@ -649,6 +669,7 @@ function validateAttributeAwareCondition(
       return;
     }
 
+    if (valueFrom) return;
     if (arrayListOperators.includes(data.operator)) {
       let entryIssue = false;
       if (Array.isArray(data.value))
@@ -665,7 +686,7 @@ function validateAttributeAwareCondition(
             entryIssue = true;
             addIssue(
               context,
-              `Value at index ${index} does not match the item schema of attribute "${data.attribute}".`,
+              `Value at index ${index} does not match the item schema of ${noun} "${data.name}".`,
               ["value", index],
             );
           }
@@ -673,21 +694,90 @@ function validateAttributeAwareCondition(
       const mixed = !entryIssue && getMixedListMessage(data.operator, data.value);
       if (mixed) addWarning(context, mixed, "mixed_list");
     } else if (!matchesLeafValue(itemLeaf, data.value, schemasByKey)) {
-      addIssue(context, `Value does not match the item schema of attribute "${data.attribute}".`);
+      addIssue(context, `Value does not match the item schema of ${noun} "${data.name}".`);
     }
 
     return;
   }
 
   if (commonOperators.includes(data.operator)) {
-    if (data.value === null) {
+    if (valueFrom || data.value === null) {
       return;
     }
 
     if (!matchesLeafValue(resolvedLeaf, data.value, schemasByKey)) {
-      addIssue(context, `Value does not match the schema of attribute "${data.attribute}".`);
+      addIssue(context, `Value does not match the schema of ${noun} "${data.name}".`);
     }
   }
+}
+
+/**
+ * Issues an `input` leaf's operator and value have against the field it
+ * reads, by the rules attribute conditions follow, with paths relative to the
+ * leaf. With `valueFrom`, the other field's type must suit the comparison too.
+ */
+export function getInputLeafIssues(
+  leaf: { input: string; operator: string; value?: unknown; valueFrom?: { input: string } },
+  field: Schema,
+  other: Schema | undefined,
+  schemasByKey: Record<string, Schema>,
+): { path: (string | number)[]; message: string }[] {
+  const issues: { path: (string | number)[]; message: string }[] = [];
+  const context = {
+    addIssue: (issue: {
+      message?: string;
+      path?: (string | number)[];
+      params?: { warning?: boolean };
+    }) => {
+      if (!issue.params?.warning)
+        issues.push({ path: issue.path || [], message: issue.message || "" });
+    },
+  } as unknown as z.RefinementCtx;
+  const valueFrom = leaf.valueFrom !== undefined;
+  validateLeafCondition(
+    { name: leaf.input, operator: leaf.operator, value: leaf.value },
+    { kind: "schema", schema: field as SchemaNode },
+    context,
+    schemasByKey,
+    { noun: "field", valueFrom },
+  );
+  if (issues.length > 0 || !valueFrom || !other) return issues;
+
+  // The other field holds the value compared: an item for membership, a list for list operators.
+  const types = (schema: Schema) =>
+    getLeafTypes({ kind: "schema", schema: schema as SchemaNode }, schemasByKey);
+  const fieldTypes = types(field);
+  const itemOf = (schema: Schema) =>
+    getArrayItemLeaf({ kind: "schema", schema: schema as SchemaNode }, schemasByKey);
+  const otherName = leaf.valueFrom!.input;
+  const mismatch = (expected: string) =>
+    issues.push({
+      path: ["valueFrom", "input"],
+      message: `Field "${otherName}" is ${expected}, so "${leaf.operator}" cannot compare "${leaf.input}" with it.`,
+    });
+  const shares = (left: string[], right: string[]) => {
+    const kind = (type: string) => (type === "integer" ? "number" : type);
+    return left.some((type) => right.map(kind).includes(kind(type)));
+  };
+  if (arrayMembershipOperators.includes(leaf.operator)) {
+    const item = itemOf(other);
+    if (!item) mismatch("not an array");
+    else if (!shares(fieldTypes, getLeafTypes(item, schemasByKey)))
+      mismatch("a list of another type");
+  } else if (arrayListOperators.includes(leaf.operator)) {
+    const item = itemOf(other);
+    const own = itemOf(field);
+    if (!item) mismatch("not an array");
+    else if (own && !shares(getLeafTypes(own, schemasByKey), getLeafTypes(item, schemasByKey)))
+      mismatch("a list of another type");
+  } else if (arrayOperators.includes(leaf.operator)) {
+    const own = itemOf(field);
+    if (own && !shares(getLeafTypes(own, schemasByKey), types(other)))
+      mismatch("of another type than its items");
+  } else if (!shares(fieldTypes, types(other))) {
+    mismatch("of another type");
+  }
+  return issues;
 }
 
 export function getConditionsZodSchema(

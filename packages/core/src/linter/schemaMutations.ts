@@ -12,6 +12,7 @@ import { mutationEntries, mutationEntryPath } from "../builder/mutationEntries";
 import { compileVariableMutation } from "../builder/variableOverrideProgram";
 import { getSchemaReferences } from "../targeting";
 import { getConditionKindIssues } from "./conditionKinds";
+import { getInputLeafIssues } from "./conditionSchema";
 
 type Node = Record<string, unknown>;
 type Path = (string | number)[];
@@ -246,16 +247,19 @@ export function getSchemaMutationFindings(
     }
   }
 
-  /** Whether a dot path names a field of a node, through references. */
-  const namesField = (node: Node, fieldPath: string): boolean => {
+  /** The field a dot path names in a node, through references, or undefined when there is none. */
+  const fieldAt = (node: Node, fieldPath: string): Node | undefined => {
     let current: Node | undefined = resolve(node);
+    let field: Node | undefined;
     for (const part of fieldPath.split(".")) {
       const properties = current && isNode(current.properties) ? current.properties : undefined;
-      if (!properties || !hasOwn(properties, part)) return false;
-      current = resolve(properties[part]);
+      if (!properties || !hasOwn(properties, part) || !isNode(properties[part])) return undefined;
+      field = properties[part] as Node;
+      current = resolve(field);
     }
-    return true;
+    return field;
   };
+  const namesField = (node: Node, fieldPath: string): boolean => !!fieldAt(node, fieldPath);
   const fieldNames = (node: Node): string => {
     const own = resolve(node);
     return (own && isNode(own.properties) ? Object.keys(own.properties) : []).join(", ") || "none";
@@ -279,6 +283,19 @@ export function getSchemaMutationFindings(
           });
         }
       }
+      // The operator and value must suit the field compared, as an attribute's must.
+      if (typeof value.input !== "string" || typeof value.operator !== "string") return;
+      const own = fieldAt(node, value.input);
+      const from = isNode(value.valueFrom) ? value.valueFrom.input : undefined;
+      const other = typeof from === "string" ? fieldAt(node, from) : undefined;
+      if (!own || (typeof from === "string" && !other)) return;
+      for (const issue of getInputLeafIssues(
+        value as never,
+        own as never,
+        other as never,
+        schemasByKey,
+      ))
+        findings.push({ path: [...at, ...issue.path], message: issue.message });
     };
     visit(conditions, path);
   };
