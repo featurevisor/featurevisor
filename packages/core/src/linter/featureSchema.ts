@@ -14,6 +14,7 @@ import {
   refineRemovedSchemaType,
   valueMatchesFormat,
 } from "./schemaFormats";
+import { validatesWithEngine } from "./schemaEngine";
 
 import { DEFAULT_RESERVED_KEYS, ProjectConfig } from "../config";
 import { writesEnvironment } from "../config/environmentSettings";
@@ -194,139 +195,16 @@ function schemaUsesTimestampFormat(
 }
 
 /**
- * Returns true if the value matches the given schema (const, enum, type, object properties, array items, or exactly one of oneOf).
- * Used for oneOf validation: value must match exactly one branch.
+ * Whether a value meets a schema's rules, by `@featurevisor/schemas`'s engine,
+ * so lint and the applications that validate with the package always agree.
+ * Used for `oneOf` branches, annotation rules and examples.
  */
 export function valueMatchesSchema(
   schema: { [k: string]: unknown },
   value: unknown,
   schemasByKey?: Record<string, Schema>,
 ): boolean {
-  const resolved = resolveSchemaRefs(schema, schemasByKey) as {
-    type?: string;
-    const?: unknown;
-    enum?: unknown[];
-    oneOf?: unknown[];
-    properties?: Record<string, unknown>;
-    additionalProperties?: unknown;
-    required?: string[];
-    items?: unknown;
-    minimum?: number;
-    maximum?: number;
-    minLength?: number;
-    maxLength?: number;
-    pattern?: string;
-    format?: string;
-    minItems?: number;
-    maxItems?: number;
-    uniqueItems?: boolean;
-  };
-
-  if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
-    const matchCount = resolved.oneOf.filter((branch) =>
-      valueMatchesSchema(branch as { [k: string]: unknown }, value, schemasByKey),
-    ).length;
-    return matchCount === 1;
-  }
-
-  if (resolved.const !== undefined) {
-    if (!valueDeepEqual(value, resolved.const)) return false;
-    if (!schemaUsesTimestampFormat(resolved, schemasByKey)) return true;
-  }
-
-  if (resolved.enum !== undefined && Array.isArray(resolved.enum)) {
-    if (!resolved.enum.some((e) => valueDeepEqual(value, e))) return false;
-    if (!schemaUsesTimestampFormat(resolved, schemasByKey)) return true;
-  }
-
-  const type = resolved.type;
-  if (!type) return false;
-
-  if (type === "string") {
-    if (typeof value !== "string") return false;
-    if (!valueMatchesFormat(resolved.format, value)) return false;
-    const s = value as string;
-    if (resolved.minLength !== undefined && codePointLength(s) < resolved.minLength) return false;
-    if (resolved.maxLength !== undefined && codePointLength(s) > resolved.maxLength) return false;
-    if (resolved.pattern !== undefined) {
-      try {
-        if (!new RegExp(resolved.pattern).test(s)) return false;
-      } catch {
-        return true;
-      }
-    }
-    return true;
-  }
-  if (type === "boolean") return typeof value === "boolean";
-  if (type === "integer") {
-    if (typeof value !== "number" || !Number.isInteger(value)) return false;
-    if (resolved.minimum !== undefined && (value as number) < resolved.minimum) return false;
-    if (resolved.maximum !== undefined && (value as number) > resolved.maximum) return false;
-    return true;
-  }
-  if (type === "number") {
-    if (typeof value !== "number") return false;
-    if (resolved.minimum !== undefined && (value as number) < resolved.minimum) return false;
-    if (resolved.maximum !== undefined && (value as number) > resolved.maximum) return false;
-    return true;
-  }
-  if (type === "json") return typeof value === "string";
-
-  if (type === "object") {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-    const props = resolved.properties;
-    const additional = resolved.additionalProperties;
-    const obj = value as Record<string, unknown>;
-    if ((!props || typeof props !== "object") && (!additional || typeof additional !== "object")) {
-      return true;
-    }
-    if (!props || typeof props !== "object") {
-      return Object.keys(obj).every((key) =>
-        valueMatchesSchema(additional as { [k: string]: unknown }, obj[key], schemasByKey),
-      );
-    }
-    const required = new Set(resolved.required || []);
-    for (const key of required) {
-      if (!Object.prototype.hasOwnProperty.call(obj, key)) return false;
-      if (!valueMatchesSchema(props[key] as { [k: string]: unknown }, obj[key], schemasByKey))
-        return false;
-    }
-    for (const key of Object.keys(obj)) {
-      const propSchema = props[key];
-      if (propSchema) {
-        if (!valueMatchesSchema(propSchema as { [k: string]: unknown }, obj[key], schemasByKey))
-          return false;
-      } else if (additional && typeof additional === "object") {
-        if (!valueMatchesSchema(additional as { [k: string]: unknown }, obj[key], schemasByKey))
-          return false;
-      } else if (additional !== true) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  if (type === "array") {
-    if (!Array.isArray(value)) return false;
-    const arr = value as unknown[];
-    if (resolved.minItems !== undefined && arr.length < resolved.minItems) return false;
-    if (resolved.maxItems !== undefined && arr.length > resolved.maxItems) return false;
-    if (resolved.uniqueItems) {
-      for (let i = 0; i < arr.length; i++) {
-        for (let j = i + 1; j < arr.length; j++) {
-          if (valueDeepEqual(arr[i], arr[j])) return false;
-        }
-      }
-    }
-    const itemSchema = resolved.items;
-    if (!itemSchema || typeof itemSchema !== "object")
-      return arr.every((v) => typeof v === "string");
-    return arr.every((item) =>
-      valueMatchesSchema(itemSchema as { [k: string]: unknown }, item, schemasByKey),
-    );
-  }
-
-  return false;
+  return validatesWithEngine(schema, value, schemasByKey);
 }
 
 /** Deep equality for variable values (primitives, plain objects, arrays). */

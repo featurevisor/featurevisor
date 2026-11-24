@@ -270,12 +270,11 @@ changed its rule, and an issue entry reports `code: "refine"` with its key in
 Preserve the raw `2.0` and `1.0` spellings, which check that numbers compare
 by value, and the emoji, whose lengths count code points.
 
-`@featurevisor/schemas` runs every case. Lint's value check runs those without
-mutations or issue entries, which read conditions it does not evaluate, apart
-from the differences named in
-`packages/core/src/linter/schemaConformance.spec.ts`, which go once lint
-validates with the package's engine. Native validators run the same file when
-they come.
+`@featurevisor/schemas` runs every case. Lint runs those without mutations or
+issue entries, which read conditions it does not evaluate, through both its
+checks: the yes or no check, which validates with the package's engine, and the
+check that words issues for variable values, which must pass and fail alike.
+Native validators run the same file when they come.
 
 ## Native CLI runner contract
 

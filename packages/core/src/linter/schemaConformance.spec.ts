@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import type { Schema } from "@featurevisor/types";
 
-import { valueMatchesSchema } from "./featureSchema";
+import { superRefineVariableValue, valueMatchesSchema } from "./featureSchema";
 
 interface ValidationCase {
   name: string;
@@ -19,13 +19,6 @@ const fixture = JSON.parse(
   ),
 ) as { cases: ValidationCase[] };
 
-/**
- * Where lint's boolean value path still answers otherwise than the shared
- * fixture. Lint moves onto the schemas package's engine later, which removes
- * these, and then this list empties.
- */
-const KNOWN_DIFFERENCES = new Set(["a flat object rejects a nested value"]);
-
 describe("lint against the shared schemas validation fixture", () => {
   // Lint checks a value against a schema's base rules, so cases whose rules change under
   // conditions, or that report issue entries, are the package's alone.
@@ -35,23 +28,50 @@ describe("lint against the shared schemas validation fixture", () => {
       !/"(mutations|issues)":/.test(JSON.stringify(testCase.schemas)),
   );
 
-  test.each(cases.map((testCase) => [testCase.name, testCase] as const))("%s", (name, testCase) => {
-    const schemas: Record<string, Schema> = {};
-    // A datafile's entries carry a hash, which lint's schemas never have.
-    for (const [key, entry] of Object.entries(testCase.schemas)) {
-      const schema = { ...entry };
-      delete schema.hash;
-      schemas[key] = schema;
-    }
+  test.each(cases.map((testCase) => [testCase.name, testCase] as const))(
+    "%s",
+    (_name, testCase) => {
+      const schemas: Record<string, Schema> = {};
+      // A datafile's entries carry a hash, which lint's schemas never have.
+      for (const [key, entry] of Object.entries(testCase.schemas)) {
+        const schema = { ...entry };
+        delete schema.hash;
+        schemas[key] = schema;
+      }
 
-    const accepted = valueMatchesSchema(
-      schemas[testCase.schema] as Record<string, unknown>,
-      testCase.value,
-      schemas,
-    );
-    const expected = testCase.issues.length === 0;
+      const accepted = valueMatchesSchema(
+        schemas[testCase.schema] as Record<string, unknown>,
+        testCase.value,
+        schemas,
+      );
+      const expected = testCase.issues.length === 0;
 
-    // A known difference that no longer differs should leave the list.
-    expect(accepted === expected).toBe(!KNOWN_DIFFERENCES.has(name));
-  });
+      expect(accepted).toBe(expected);
+    },
+  );
+
+  test.each(cases.map((testCase) => [testCase.name, testCase] as const))(
+    "%s, as a variable's value",
+    (_name, testCase) => {
+      const schemas: Record<string, Schema> = {};
+      for (const [key, entry] of Object.entries(testCase.schemas)) {
+        const schema = { ...entry };
+        delete schema.hash;
+        schemas[key] = schema;
+      }
+      const issues: unknown[] = [];
+      superRefineVariableValue(
+        {} as never,
+        schemas[testCase.schema] as never,
+        testCase.value,
+        [],
+        { addIssue: (issue: unknown) => issues.push(issue) } as never,
+        "subject",
+        schemas,
+      );
+
+      // Lint's own wording for variables, which must still pass and fail what the package does.
+      expect(issues.length === 0).toBe(testCase.issues.length === 0);
+    },
+  );
 });
