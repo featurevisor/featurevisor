@@ -243,14 +243,14 @@ export function getSchemaMutationFindings(
       for (const group of ["and", "or", "not"])
         if (Array.isArray(value[group])) visit(value[group], [...at, group]);
       for (const [field, read] of [
-        ["input", value.input],
-        ["value", isNode(value.value) ? value.value.input : undefined],
+        [["input"], value.input],
+        [["valueFrom", "input"], isNode(value.valueFrom) ? value.valueFrom.input : undefined],
       ] as const) {
         if (typeof read === "string" && !fields(read)) {
           const own = resolve(node);
           const known = own && isNode(own.properties) ? Object.keys(own.properties) : [];
           findings.push({
-            path: [...at, field],
+            path: [...at, ...field],
             message: `\`input('${read}')\` names no field of this node, whose fields are ${known.join(", ") || "none"}. Paths are relative to the node a mutation sits on.`,
           });
         }

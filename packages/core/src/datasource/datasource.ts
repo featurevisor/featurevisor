@@ -70,7 +70,8 @@ export class Datasource {
   }
 
   getExpressionOptions() {
-    return { namespaceCharacter: this.config.namespaceCharacter };
+    // `input(...)` reads, which lint keeps to a schema's mutations with its own message.
+    return { namespaceCharacter: this.config.namespaceCharacter, input: true };
   }
 
   /**

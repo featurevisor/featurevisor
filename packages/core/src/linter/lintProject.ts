@@ -1412,6 +1412,15 @@ export async function lintProject(
 
       try {
         const parsed = await datasource.readSchema(key);
+        // A mutation's conditions can be expressions, so issues inside them point at their text.
+        expressionContext = { fullPath, records: getConditionExpressions(parsed) };
+        await reportConditionExpressions(
+          "schema",
+          key,
+          fullPath,
+          expressionContext.records,
+          parsed,
+        );
 
         const result = schemaZodSchema.safeParse(parsed, diagnosticParseOptions);
 
@@ -1468,6 +1477,8 @@ export async function lintProject(
         await reportConditionKinds("schema", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("schema", key, fullPath, error);
+      } finally {
+        expressionContext = undefined;
       }
     }
   }

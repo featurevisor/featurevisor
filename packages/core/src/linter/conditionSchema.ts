@@ -920,7 +920,8 @@ export function getConditionsZodSchema(
       );
     });
 
-  // An input leaf reads the value a schema validates, and can compare it with another input.
+  // An input leaf reads the value a schema validates. `value` is always a value,
+  // and `valueFrom` reads the other side from another input.
   const inputConditionZodSchema = z
     .object({
       input: z.string().min(1),
@@ -936,26 +937,31 @@ export function getConditionsZodSchema(
         ...operatorsWithoutValue,
       ]),
       value: z
-        .union([
-          z.string(),
-          z.array(z.unknown()),
-          z.number(),
-          z.boolean(),
-          z.null(),
-          z.object({ input: z.string().min(1) }).strict(),
-        ])
+        .union([z.string(), z.array(z.unknown()), z.number(), z.boolean(), z.null()], {
+          message:
+            "A value is text, a number, a boolean, null or a list. To compare with another field, use `valueFrom: { input: ... }`.",
+        })
+        .optional(),
+      valueFrom: z
+        .object({ input: z.string().min(1) })
+        .strict()
         .optional(),
       regexFlags: z.string().optional(),
     })
     .strict()
     .superRefine((data, context) => {
-      const readsInput =
-        !!data.value && typeof data.value === "object" && !Array.isArray(data.value);
-      if (readsInput && (data.operator === "matches" || data.operator === "notMatches")) {
+      if (data.valueFrom === undefined) return;
+      if (data.value !== undefined) {
+        addIssue(context, "A condition takes `value` or `valueFrom`, not both.", ["valueFrom"]);
+      } else if (operatorsWithoutValue.includes(data.operator)) {
+        addIssue(context, `when operator is "${data.operator}", valueFrom is not needed`, [
+          "valueFrom",
+        ]);
+      } else if (data.operator === "matches" || data.operator === "notMatches") {
         addIssue(
           context,
-          `\`${data.operator}\` never takes an input as its pattern, since a pattern from a user is one nobody reviewed.`,
-          ["value"],
+          `\`${data.operator}\` never takes its pattern from \`valueFrom\`, since a pattern from a user is one nobody reviewed.`,
+          ["valueFrom"],
         );
       }
     });
@@ -1004,8 +1010,18 @@ export function getConditionsZodSchema(
             })
             .strict();
         else if (owns("variable")) selected = variableSchema;
-        else if (input && owns("input")) selected = inputConditionZodSchema;
-        else if (owns("feature")) {
+        else if (owns("input")) {
+          if (!input) {
+            ctx.addIssue({
+              code: "custom",
+              message:
+                "`input` reads the value a schema validates, so it goes only in a schema's mutations.",
+              path: ["input"],
+            });
+            return z.NEVER;
+          }
+          selected = inputConditionZodSchema;
+        } else if (owns("feature")) {
           if (owns("operator")) {
             ctx.addIssue({
               code: "custom",

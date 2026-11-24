@@ -240,6 +240,283 @@ defaultValue:
     );
   });
 
+  test("valueFrom compares one field with another, and value is always a value", async () => {
+    const shipping = (conditions: string) => ({
+      "schemas/shipping.yml": `description: Shipping
+
+tags:
+  - web
+
+type: object
+
+properties:
+  billingCountry:
+    type: string
+  shippingCountry:
+    type: string
+  customsDescription:
+    type: string
+
+required: [billingCountry]
+
+mutations:
+  - key: shipsAbroad
+    conditions:
+      input: shippingCountry
+${conditions}
+    mutate:
+      required:appendUnique: customsDescription
+`,
+    });
+    const found = async (conditions: string) =>
+      (await lint(shipping(conditions))).map(({ at, message }) => ({ at, message }));
+    const at = "mutations.0.conditions";
+
+    expect(
+      await found("      operator: notEquals\n      valueFrom:\n        input: billingCountry"),
+    ).toEqual([]);
+    expect(
+      await found("      operator: notEquals\n      valueFrom:\n        input: billing"),
+    ).toEqual([
+      {
+        at: `${at}.valueFrom.input`,
+        message:
+          "`input('billing')` names no field of this node, whose fields are billingCountry, shippingCountry, customsDescription. Paths are relative to the node a mutation sits on.",
+      },
+    ]);
+    expect(
+      await found("      operator: notEquals\n      value:\n        input: billingCountry"),
+    ).toEqual([
+      {
+        at: `${at}.value`,
+        message:
+          "A value is text, a number, a boolean, null or a list. To compare with another field, use `valueFrom: { input: ... }`.",
+      },
+    ]);
+    expect(
+      await found(
+        "      operator: notEquals\n      value: GB\n      valueFrom:\n        input: billingCountry",
+      ),
+    ).toEqual([
+      { at: `${at}.valueFrom`, message: "A condition takes `value` or `valueFrom`, not both." },
+    ]);
+    expect(
+      await found("      operator: matches\n      valueFrom:\n        input: billingCountry"),
+    ).toEqual([
+      {
+        at: `${at}.valueFrom`,
+        message:
+          "`matches` never takes its pattern from `valueFrom`, since a pattern from a user is one nobody reviewed.",
+      },
+    ]);
+    expect(
+      await found("      operator: exists\n      valueFrom:\n        input: billingCountry"),
+    ).toEqual([
+      { at: `${at}.valueFrom`, message: 'when operator is "exists", valueFrom is not needed' },
+    ]);
+  });
+
+  test("valueFrom reaches the datafile as written", async () => {
+    const { root, projectConfig, datasource } = createProject({
+      "schemas/signUp.yml": `description: A sign up form
+
+tags:
+  - web
+
+type: object
+
+properties:
+  billingCountry:
+    type: string
+  shippingCountry:
+    type: string
+  customsDescription:
+    type: string
+
+required: [billingCountry]
+
+mutations:
+  - key: shipsAbroad
+    conditions:
+      input: shippingCountry
+      operator: notEquals
+      valueFrom:
+        input: billingCountry
+    mutate:
+      required:appendUnique: customsDescription
+`,
+    });
+    try {
+      const datafile = await getCustomDatafile({
+        projectConfig,
+        datasource,
+        environment: "production",
+        tag: "web",
+        revision: "1",
+      });
+      const mutation = (datafile.schemas!.signUp as any).mutations[0];
+      expect(JSON.parse(mutation.conditions)).toEqual({
+        input: "shippingCountry",
+        operator: "notEquals",
+        valueFrom: { input: "billingCountry" },
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("input(...) in expressions compiles to input leaves and valueFrom", async () => {
+    const shipping = (conditions: string) => ({
+      "schemas/shipping.yml": `description: Shipping
+
+tags:
+  - web
+
+type: object
+
+properties:
+  billingCountry:
+    type: string
+  shippingCountry:
+    type: string
+  customsDescription:
+    type: string
+
+required: [billingCountry]
+
+mutations:
+  - key: shipsAbroad
+    conditions: ${conditions}
+    mutate:
+      required:appendUnique: customsDescription
+`,
+    });
+    const located = async (conditions: string) => {
+      const { root, projectConfig, datasource } = createProject(shipping(conditions));
+      try {
+        const deps = { rootDirectoryPath: root, projectConfig, datasource, options: {} };
+        const result = await lintProject(deps as any, { json: true });
+        return result.errors.map(({ message, line, column, endColumn }) => ({
+          message,
+          line,
+          column,
+          endColumn,
+        }));
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    };
+
+    const clean = "input('shippingCountry') != input('billingCountry') and plan == 'paid'";
+    expect(await located(clean)).toEqual([]);
+    const { root, projectConfig, datasource } = createProject(shipping(clean));
+    try {
+      const datafile = await getCustomDatafile({
+        projectConfig,
+        datasource,
+        environment: "production",
+        tag: "web",
+        revision: "1",
+      });
+      expect(JSON.parse((datafile.schemas!.shipping as any).mutations[0].conditions)).toEqual([
+        {
+          input: "shippingCountry",
+          operator: "notEquals",
+          valueFrom: { input: "billingCountry" },
+        },
+        { attribute: "plan", operator: "equals", value: "paid" },
+      ]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+
+    // A path that names no field points at the call that reads it, on the conditions line.
+    const conditionsLine = 20;
+    const conditionsColumn = "    conditions: ".length + 1;
+    const wrong = "input('shippingCountry') != input('billing')";
+    expect(await located(wrong)).toEqual([
+      {
+        message:
+          "`input('billing')` names no field of this node, whose fields are billingCountry, shippingCountry, customsDescription. Paths are relative to the node a mutation sits on.",
+        line: conditionsLine,
+        column: conditionsColumn + wrong.indexOf("input('billing')"),
+        endColumn: conditionsColumn + wrong.length,
+      },
+    ]);
+    expect(await located("input('shippingCountry') matches input('billingCountry')")).toEqual([
+      expect.objectContaining({
+        message:
+          "`matches` never takes its pattern from `input(...)`, since a pattern from a user is one nobody reviewed.",
+      }),
+    ]);
+  });
+
+  test("input(...) anywhere but a schema's mutations says where it goes", async () => {
+    const errors = await lint({
+      "features/checkout.yml": `description: Checkout
+
+tags:
+  - web
+
+bucketBy: userId
+
+rules:
+  dev:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+  production:
+    - key: inputs
+      conditions: input('accountType') == 'business'
+      percentage: 100
+`,
+    });
+
+    expect(errors.map(({ key, message }) => ({ key, message }))).toEqual([
+      {
+        key: "checkout",
+        message:
+          "`input` reads the value a schema validates, so it goes only in a schema's mutations.",
+      },
+    ]);
+  });
+
+  test("a schema's expressions need a project that allows them", async () => {
+    const errors = await lint({
+      "featurevisor.config.js": `module.exports = ${JSON.stringify({
+        tags: ["web"],
+        environments: ["dev", "staging", "production"],
+      })};`,
+      "segments/paying.yml":
+        "description: Paying accounts\nconditions:\n  attribute: plan\n  operator: equals\n  value: paid\n",
+      "segments/unused.yml": "description: Not read\nconditions: '*'\n",
+      "schemas/signUp.yml": `description: A sign up form
+
+type: object
+
+properties:
+  password:
+    type: string
+  confirmPassword:
+    type: string
+
+mutations:
+  - key: differs
+    conditions: input('password') != input('confirmPassword')
+    mutate:
+      properties.confirmPassword.maxLength: 0
+`,
+    });
+
+    expect(errors.map(({ key, message }) => ({ key, message }))).toEqual([
+      { key: "signUp", message: "Condition expressions are not allowed in this project." },
+    ]);
+  });
+
   test("environments need a project with environments", async () => {
     const errors = await lint({
       "featurevisor.config.js": `module.exports = ${JSON.stringify({ tags: ["web"], conditionExpressions: true })};`,
@@ -263,15 +540,15 @@ bucketBy: userId
 rules:
   dev:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
   staging:
     - key: everyone
-      segments: "*"
+      conditions: "*"
       percentage: 100
   production:
     - key: inputs
-      segments:
+      conditions:
         input: accountType
         operator: equals
         value: business
@@ -279,7 +556,12 @@ rules:
 `,
     });
 
-    expect(errors.length).toBeGreaterThan(0);
-    expect(errors.every(({ key }) => key === "checkout")).toBe(true);
+    expect(errors.map(({ key, message }) => ({ key, message }))).toEqual([
+      {
+        key: "checkout",
+        message:
+          "`input` reads the value a schema validates, so it goes only in a schema's mutations.",
+      },
+    ]);
   });
 });

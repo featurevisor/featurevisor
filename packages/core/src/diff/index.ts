@@ -180,7 +180,7 @@ export function diffDefinitions(
     rewritten: [],
   };
   const view: ConditionsView = {
-    options: { namespaceCharacter: config.namespaceCharacter },
+    options: { namespaceCharacter: config.namespaceCharacter, input: true },
     expressions: config.conditionExpressions === true,
   };
   const parse = (file: string, content: string | undefined, endpoint: string): unknown => {

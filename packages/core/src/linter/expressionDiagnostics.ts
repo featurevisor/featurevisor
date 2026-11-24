@@ -41,10 +41,11 @@ export function findExpressionRange(
       if (best && best.depth >= span.path.length) continue;
       const rest = path.slice(span.path.length);
       let range: { start: ExpressionPosition; end: ExpressionPosition } = span;
-      if (["attribute", "variable", "feature", "path"].includes(String(rest[0])))
+      if (["attribute", "variable", "feature", "path", "input"].includes(String(rest[0])))
         range = span.subject;
       else if (rest[0] === "operator" && span.operator) range = span.operator;
-      else if ((rest[0] === "value" || rest[0] === "regexFlags") && span.value) range = span.value;
+      else if (["value", "valueFrom", "regexFlags"].includes(String(rest[0])) && span.value)
+        range = span.value;
       best = { record, start: range.start, end: range.end, depth: span.path.length };
     }
   }

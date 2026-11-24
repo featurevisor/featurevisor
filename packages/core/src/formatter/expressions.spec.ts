@@ -46,6 +46,34 @@ describe("formatting expressions", () => {
     );
   });
 
+  it("writes a schema's mutation conditions in the house style, input(...) included", () => {
+    const source = [
+      "description: Shipping",
+      "type: object",
+      "properties:",
+      "  billingCountry:",
+      "    type: string",
+      "  shippingCountry:",
+      "    type: string",
+      "mutations:",
+      "  - key: shipsAbroad",
+      "    conditions: input('shippingCountry')!=input('billingCountry')",
+      "    mutate:",
+      "      required:appendUnique: shippingCountry",
+      "",
+    ].join("\n");
+    const options = {
+      expressions: getFormatExpressionOptions({ conditionExpressions: true } as never)!,
+    };
+    const { output, changed } = formatDefinition("schema", source, yml, undefined, options);
+
+    expect(changed).toBe(true);
+    expect(parse(output).mutations[0].conditions).toBe(
+      "input('shippingCountry') != input('billingCountry')",
+    );
+    expect(formatDefinition("schema", output, yml, undefined, options).changed).toBe(false);
+  });
+
   it("writes a long expression, or one with comments, as a literal block", () => {
     const source = [
       "description: Staff",
@@ -188,7 +216,10 @@ describe("formatting expressions", () => {
   it("formats expressions only in projects that allow them", () => {
     const config = (conditionExpressions?: boolean) =>
       ({ conditionExpressions, namespaceCharacter: ":" }) as never;
-    expect(getFormatExpressionOptions(config(true))).toEqual({ namespaceCharacter: ":" });
+    expect(getFormatExpressionOptions(config(true))).toEqual({
+      namespaceCharacter: ":",
+      input: true,
+    });
     expect(getFormatExpressionOptions(config(false))).toBeUndefined();
   });
 });
