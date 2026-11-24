@@ -6,9 +6,21 @@ Each schema comes as a [Standard Schema](https://standardschema.dev), so it plug
 
 This package is experimental: its API may change in a minor release.
 
+**What you can build with it:**
+
+- Sign up, checkout and settings forms whose limits, choices and wording change without a deploy ([Choices](#choices), [Annotations](#annotations)).
+- The same rules in the browser and on the server, from one definition ([Validating](#validating), [Server actions](#server-actions)).
+- Rules by market or by plan, such as a postcode per country or more seats on a business plan ([Recipes](#recipes)).
+- A stricter rule rolled out to a share of users first, or relaxed during an incident by a kill switch ([Recipes](#recipes)).
+- Checks between fields, such as a password typed twice or a booking that ends after it starts ([Rules between fields](#rules-between-fields)).
+- Forms rendered from the schema itself, in order, with titles, placeholders and help text ([Rendering forms](#rendering-forms)).
+- Reference data, such as countries with flags or plans with prices, shared by every form that needs it ([Reference data](#reference-data)).
+
 ## Contents
 
 - [Installation](#installation)
+- [A first schema, end to end](#a-first-schema-end-to-end)
+- [Writing schemas](#writing-schemas)
 - [Delivering schemas](#delivering-schemas)
 - [Validating](#validating)
 - [Issues](#issues)
@@ -26,6 +38,7 @@ This package is experimental: its API may change in a minor release.
 - [React](#react)
 - [Rendering forms](#rendering-forms)
 - [Code generation](#code-generation)
+- [Recipes](#recipes)
 - [API reference](#api-reference)
 - [How values are checked](#how-values-are-checked)
 - [Changing a delivered schema](#changing-a-delivered-schema)
@@ -42,6 +55,198 @@ The React entry, `@featurevisor/schemas/react`, also needs `react` and `@feature
 ```bash
 npm install @featurevisor/react
 ```
+
+## A first schema, end to end
+
+A sign up form whose name length and countries change without a deploy. In your Featurevisor project, declare the tag your web app's datafile selects, and turn on condition expressions:
+
+```js
+// featurevisor.config.js
+module.exports = {
+  tags: ["web"],
+  environments: ["staging", "production"],
+  conditionExpressions: true,
+};
+```
+
+Write the schema, tagged for the web app:
+
+```yml
+# schemas/signUp.yml
+description: A sign up form
+
+tags:
+  - web
+
+type: object
+
+properties:
+  email:
+    type: string
+    pattern: "^[^@\\s]+@[^@\\s]+$"
+    annotations:
+      title: Email address
+  displayName:
+    type: string
+    minLength: 2
+    maxLength: 40
+    annotations:
+      title: Display name
+  country:
+    type: string
+    enum: [GB, NL]
+    annotations:
+      title: Country
+
+required: [email, displayName, country]
+```
+
+Let the web app's target deliver it:
+
+```yml
+# targets/web.yml
+description: Web app
+
+tag: web
+```
+
+Say what it accepts in a spec, then check, test and build as for flags:
+
+```yml
+# tests/schemas/signUp.spec.yml
+schema: signUp
+
+assertions:
+  - description: A complete sign up passes
+    environment: production
+    value:
+      email: user-1@example.com
+      displayName: Ada
+      country: NL
+    expectedToBeValid: true
+
+  - description: A one letter name is too short
+    environment: production
+    value:
+      email: user-1@example.com
+      displayName: A
+      country: NL
+    expectedIssues:
+      - path: [displayName]
+        code: minLength
+```
+
+```bash
+npx featurevisor lint
+npx featurevisor test
+npx featurevisor build
+```
+
+`datafiles/production/featurevisor-web.json` now carries the schema. Deploy the datafiles as you deploy them for flags, then validate in the app with the instance it already has:
+
+```ts
+import { createFeaturevisor } from "@featurevisor/sdk";
+import { createSchemas } from "@featurevisor/schemas";
+
+const datafile = await fetch("https://cdn.example.com/production/featurevisor-web.json").then(
+  (response) => response.json(),
+);
+
+const f = createFeaturevisor({ datafile });
+const s = createSchemas(f);
+
+s.validate("signUp", { email: "ada@example.com", displayName: "A", country: "NL" }).issues;
+// [{ path: ["displayName"], code: "minLength", message: "Value at \"displayName\" must be ...", ... }]
+```
+
+A server checks the same rules on the data it receives, with `s.parse`, and `formAction` reads a submitted form ([Server actions](#server-actions)). To let Germans sign up next week, add `DE` to the `enum` in a pull request. Once it merges and the datafile is deployed, every app accepts it, with no release.
+
+## Writing schemas
+
+A schema file describes one value with the keywords variables use, a subset of JSON Schema (see [Schemas](https://featurevisor.com/docs/schemas/) in the Featurevisor docs). An order shows most of them:
+
+```yml
+# schemas/order.yml
+description: An order placed at checkout
+
+tags:
+  - web
+
+type: object
+
+properties:
+  items:
+    type: array
+    minItems: 1
+    maxItems: 20
+    items:
+      type: object
+      properties:
+        sku:
+          type: string
+          pattern: "^[A-Z0-9-]+$"
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 9
+      required: [sku, quantity]
+  couponCode:
+    schema: couponCode
+  giftMessage:
+    oneOf:
+      - type: string
+        maxLength: 200
+      - const: null
+  tags:
+    type: array
+    uniqueItems: true
+    items:
+      type: string
+  notes:
+    type: object
+    additionalProperties:
+      type: string
+      maxLength: 500
+  deliverAfter:
+    type: string
+    format: date-time
+
+required: [items]
+```
+
+An order of 12 of one item, a coupon code of the wrong shape and a tag given twice reports three issues at once, at `items.0.quantity`, `couponCode` and `tags`.
+
+| Keyword                                       | Describes                                                               |
+| --------------------------------------------- | ----------------------------------------------------------------------- |
+| `type`                                        | `string`, `integer`, `number`, `boolean`, `object` or `array`           |
+| `properties`, `required`                      | An object's keys, and the ones that must be present                     |
+| `additionalProperties`                        | Any other key, with one schema for every value, or `true` for any value |
+| `items`                                       | Every item of an array, which `type: array` needs                       |
+| `schema`                                      | Another schema, by key, such as `couponCode`                            |
+| `oneOf`                                       | One of two or more shapes, such as a nullable field with `const: null`  |
+| `enum`, `const`                               | The values allowed                                                      |
+| `minimum`, `maximum`                          | A number's range                                                        |
+| `minLength`, `maxLength`, `pattern`, `format` | A string's length, its shape, and `date-time` or `semver`               |
+| `minItems`, `maxItems`, `uniqueItems`         | An array's size, and no item twice                                      |
+
+Beside its rules, a schema file holds what only schema files have:
+
+| Field                               | Where        | What it holds                                                                                           |
+| ----------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------- |
+| `description`                       | Any node     | Notes for the people who maintain it, which never reach a datafile                                      |
+| `tags`                              | The root     | The targets that deliver it (see [Delivering schemas](#delivering-schemas))                             |
+| `metadata`                          | The root     | An owner and deadlines, as features have them (see [Metadata](https://featurevisor.com/docs/metadata/)) |
+| `promotable`                        | The root     | `false` keeps a set's copy out of [promotions](https://featurevisor.com/docs/promotions/)               |
+| `annotations`                       | Any node     | Titles, placeholders and your own vocabulary (see [Annotations](#annotations))                          |
+| `annotationsSchema`, `optionSchema` | The root     | The vocabularies of annotations and choices (see [Choices](#choices))                                   |
+| `messages`                          | Any node     | Wording per issue code, and per field on an object (see [Messages](#messages))                          |
+| `environments`                      | The root     | Changes per environment (see [Rules per environment](#rules-per-environment))                           |
+| `mutations`                         | Any node     | Changes under conditions (see [Rules under conditions](#rules-under-conditions))                        |
+| `issues`                            | Object nodes | Rules between fields (see [Rules between fields](#rules-between-fields))                                |
+
+- **A schema file is never `json`,** the type variables use for a string that holds JSON, since an application validates the values it has.
+- **One file, two uses.** A global or feature variable can use a schema with `schema: order` too, as long as the schema neither varies by environment nor has mutations or issues.
+- **The fine print**, such as how a nullable field picks its branch or how lengths are counted, is in [How values are checked](#how-values-are-checked).
 
 ## Delivering schemas
 
@@ -850,7 +1055,9 @@ Dev accepts names up to 60 characters and German sign ups, staging the longer na
 
 ## Rules under conditions
 
-Some rules hold only under conditions: a tax ID that businesses must give, a seat limit per plan, a stricter rule rolled out to a percentage of users first, a kill switch that relaxes a rule during an incident. Any node of a schema can carry `mutations`, each with a `key`, `conditions` and a `mutate` in the same notation, and every mutation whose conditions match applies, in order, when a value is validated:
+Some rules hold only under conditions: a tax ID that businesses must give, a seat limit per plan, a stricter rule rolled out to a percentage of users first, a kill switch that relaxes a rule during an incident. Any node of a schema can carry `mutations`, each with a `key`, `conditions` and a `mutate` in the same notation, and every mutation whose conditions match applies, in order, when a value is validated.
+
+Conditions in this README are written as [condition expressions](https://featurevisor.com/docs/conditions/), which read like the rule they state and need `conditionExpressions: true` in `featurevisor.config.js`. Every one has a tree form too, shown in the table below, for projects that write trees:
 
 ```yml
 # schemas/signUp.yml
@@ -872,10 +1079,7 @@ required: [accountType, displayName]
 
 mutations:
   - key: business
-    conditions:
-      input: accountType
-      operator: equals
-      value: business
+    conditions: input('accountType') == 'business'
     mutate:
       required:appendUnique: taxId
       properties.taxId.pattern: "^[A-Z]{2}[0-9]{9}$"
@@ -888,43 +1092,30 @@ mutations:
       properties.displayName.maxLength: 80
 
   - key: strictNames
-    conditions:
-      feature: strictNames
+    conditions: feature('strictNames')
     mutate:
       properties.displayName.pattern: "^[A-Za-z ]+$"
 ```
 
 A business account needs a tax ID in the right shape, with its own message, paying accounts get longer names, and a stricter pattern reaches the users the `strictNames` feature is enabled for, so it can roll out by percentage like any change.
 
-**Conditions** are the ones features and global variables use, in trees or expressions, so a segment means the same in a schema as in a flag:
+**Conditions** are the ones features and global variables use, so a segment means the same in a schema as in a flag:
 
-| Leaf                                   | Reads                                                                          |
-| -------------------------------------- | ------------------------------------------------------------------------------ |
-| An attribute, such as `plan == 'paid'` | The context validation uses                                                    |
-| A segment, such as `payingAccounts`    | The context, through the segment's own conditions                              |
-| `feature: strictNames`, or a variation | The flag, through the SDK's getters, sticky values and modules included        |
-| `variable: relaxedRules`               | A global variable's value                                                      |
-| `input: accountType`                   | The value being validated, at a path relative to the node the mutation sits on |
+| Reads                                                        | Expression                              | Tree                                                                   |
+| ------------------------------------------------------------ | --------------------------------------- | ---------------------------------------------------------------------- |
+| An attribute of the context                                  | `plan == 'paid'`                        | `{ attribute: plan, operator: equals, value: paid }`                   |
+| A segment, through its own conditions                        | `payingAccounts`                        | `payingAccounts`                                                       |
+| A flag, through the SDK's getters, sticky values and modules | `feature('strictNames')`                | `{ feature: strictNames }`                                             |
+| A global variable's value                                    | `variable('relaxedRules') == true`      | `{ variable: relaxedRules, operator: equals, value: true }`            |
+| A field of the value being validated                         | `input('accountType') == 'business'`    | `{ input: accountType, operator: equals, value: business }`            |
+| Two fields compared                                          | `input('confirm') == input('password')` | `{ input: confirm, operator: equals, valueFrom: { input: password } }` |
 
-- **`input` is the one addition.** It reads the value being validated, as Standard Schema calls it, so rules can depend on what was typed. Paths are relative to the node a mutation sits on, with dots into objects, so a mutation inside `address` reads the address's own `country`, in every form that uses `address`. A rule across two parts of a form goes on the node that holds both, usually the root.
-- **In expressions,** `input('...')` reads a field as `feature('...')` reads a flag, in projects with `conditionExpressions: true`: `conditions: input('accountType') == 'business' and plan == 'paid'`. Its path goes inside the quotes, `input('address.country')`.
-- **The context** is the SDK instance's, with any given to `validate` merged over it, and a `FeaturevisorScope`'s in React: `s.validate("signUp", input, { plan: "paid" })`.
+Join them with `and`, `or` and `not`, and group them with parentheses, so one condition can say who it is for and what the value holds: `payingAccounts and input('seats') > 10`.
 
-**Comparing two fields.** `valueFrom` takes the other side of a comparison from another field, in place of `value`. Goods shipped to another country than the one billed need a customs description:
+- **`input` is the one addition.** It reads the value being validated, as Standard Schema calls it, so rules can depend on what was typed. Paths are relative to the node a mutation sits on, with dots into objects inside the quotes, `input('address.country')`, so a mutation inside `address` reads the address's own `country`, in every form that uses `address`. A rule across two parts of a form goes on the node that holds both, usually the root.
+- **The context** is the SDK instance's, with any given to `validate` merged over it, and a `FeaturevisorScope`'s in React: `s.validate("signUp", input, { plan: "paid" })`. A flag that buckets by `userId` needs it there, as it does for `isEnabled`.
 
-```yml
-mutations:
-  - key: shipsAbroad
-    conditions:
-      input: shippingAddress.country
-      operator: notEquals
-      valueFrom:
-        input: billingAddress.country
-    mutate:
-      required:appendUnique: customsDescription
-```
-
-In an expression, `input(...)` after the operator is `valueFrom`, so the same mutation reads:
+**Comparing two fields.** `input(...)` after the operator reads the other side of a comparison from another field. Goods shipped to another country than the one billed need a customs description:
 
 ```yml
 mutations:
@@ -934,7 +1125,18 @@ mutations:
       required:appendUnique: customsDescription
 ```
 
+As a tree, the other field goes in `valueFrom`, in place of `value`:
+
+```yml
+conditions:
+  input: shippingAddress.country
+  operator: notEquals
+  valueFrom:
+    input: billingAddress.country
+```
+
 - `value` is always a value, and `valueFrom` always names a field, by a path relative to the same node as `input`. A condition takes one of the two, never both. In an expression, `input(...)` after the operator needs `input(...)` before it, and never goes inside a list: `input('primaryTag') in input('tags')` compares with a list field as a whole.
+- Versions read from two fields compare in a tree only, such as `operator: semverGreaterThan` with `valueFrom`, since `semver('...')` takes a written version.
 - `matches` and `notMatches` never take their pattern from `valueFrom`, or from `input(...)` in an expression, since a pattern from a user is one nobody reviewed.
 - A rule that two fields must agree, such as a password typed twice, changes no rule, so it is not a mutation. It goes in [`issues`](#rules-between-fields).
 
@@ -1486,6 +1688,352 @@ Annotations are typed by the vocabulary with the built in annotations added, and
 
 Without generated code, `createSchemas<SchemaTypes, SchemaVocabularies>(f)` and `useSchema<SignUp, boolean, SignUpVocabularies>("signUp")` take types by hand. `FieldPath<T>` and `FieldValue<T, P>` name a type's paths and the value at one, `InferSchema<typeof signUp>` the type a handle validates, and `SchemaKey<typeof s>` the keys an instance knows, so a type is never written twice. With types, `options` and `option` take only the values a field allows, and `s.has(key)` narrows a string to a known key.
 
+## Recipes
+
+Real cases, each a schema with its conditions written as expressions. Each passes lint, and a [spec](#testing-schemas) proves it, as the first one shows.
+
+### A postcode per country
+
+An address checks its postcode by its own country, and a US address needs a state:
+
+```yml
+# schemas/address.yml
+description: A postal address
+
+type: object
+
+properties:
+  street:
+    type: string
+  postcode:
+    type: string
+  city:
+    type: string
+  state:
+    type: string
+  country:
+    type: string
+    enum: [NL, GB, US]
+
+required: [street, postcode, city, country]
+
+mutations:
+  - key: netherlands
+    conditions: input('country') == 'NL'
+    mutate:
+      properties.postcode.pattern: "^[1-9][0-9]{3} ?[A-Z]{2}$"
+      properties.postcode.messages:
+        pattern: Enter a postcode such as 1011 AB
+
+  - key: unitedStates
+    conditions: input('country') == 'US'
+    mutate:
+      required:appendUnique: state
+      properties.postcode.pattern: "^[0-9]{5}$"
+      properties.postcode.messages:
+        pattern: Enter a 5 digit ZIP code
+```
+
+Every form that references it gets the same rules, and each address reads its own country, so a Dutch billing address and a US shipping address in one checkout each get theirs:
+
+```yml
+# schemas/checkout.yml
+description: Checkout
+
+tags:
+  - web
+
+type: object
+
+properties:
+  billingAddress:
+    schema: address
+  shippingAddress:
+    schema: address
+
+required: [billingAddress]
+```
+
+```yml
+# tests/schemas/checkout.spec.yml
+schema: checkout
+
+assertions:
+  - description: A US address needs a state and a ZIP code
+    environment: production
+    value:
+      billingAddress:
+        street: 1 Main St
+        postcode: 1012 LG
+        city: Springfield
+        country: US
+    expectedIssues:
+      - path: [billingAddress, state]
+        code: required
+        mutation: unitedStates
+      - path: [billingAddress, postcode]
+        code: pattern
+        message: Enter a 5 digit ZIP code
+```
+
+### Limits by plan
+
+A free plan holds up to 5 seats and a business plan 50, and the message changes with the limit, so a free account sees why it stopped:
+
+```yml
+# schemas/team.yml
+description: A team's settings
+
+tags:
+  - web
+
+type: object
+
+properties:
+  name:
+    type: string
+  seats:
+    type: integer
+    minimum: 1
+    maximum: 5
+    messages:
+      maximum: The free plan holds up to {maximum} seats. Upgrade for more
+
+required: [name, seats]
+
+mutations:
+  - key: businessPlan
+    conditions: plan == 'business'
+    mutate:
+      properties.seats.maximum: 50
+      properties.seats.messages.maximum: Business plans hold up to {maximum} seats
+```
+
+The plan comes from the context, the SDK instance's or one given to the call: `s.validate("team", value, { plan: account.plan })`. A segment reads the same, `conditions: businessAccounts`, and so does a spec, with `context: { plan: business }`.
+
+### A field another field makes required
+
+Texting a customer needs a phone number, and emailing one an email address:
+
+```yml
+# schemas/contact.yml
+description: How we reach a customer
+
+type: object
+
+properties:
+  contactBy:
+    type: string
+    enum: [email, phone, text]
+  email:
+    type: string
+  phone:
+    type: string
+
+required: [contactBy]
+
+mutations:
+  - key: byPhone
+    conditions: input('contactBy') in ['phone', 'text']
+    mutate:
+      required:appendUnique: phone
+
+  - key: byEmail
+    conditions: input('contactBy') == 'email'
+    mutate:
+      required:appendUnique: email
+```
+
+`in` takes a list, so one mutation serves both ways of reaching a phone. The `required` issue names the mutation, `mutation: byPhone`, so a form can say why the field is suddenly needed. A business account's tax ID is the same recipe (see [Rules under conditions](#rules-under-conditions)).
+
+### A booking form
+
+A room's size limits the guests, and the stay must end after it starts:
+
+```yml
+# schemas/booking.yml
+description: A hotel booking
+
+tags:
+  - web
+
+type: object
+
+properties:
+  checkIn:
+    type: string
+    format: date-time
+  checkOut:
+    type: string
+    format: date-time
+  room:
+    type: string
+    enum: [single, double, family]
+  guests:
+    type: integer
+    minimum: 1
+    maximum: 6
+
+required: [checkIn, checkOut, room, guests]
+
+mutations:
+  - key: singleRoom
+    conditions: input('room') == 'single'
+    mutate:
+      properties.guests.maximum: 1
+
+  - key: doubleRoom
+    conditions: input('room') == 'double'
+    mutate:
+      properties.guests.maximum: 2
+
+issues:
+  - key: checkOutNotAfterCheckIn
+    conditions: not (input('checkOut') after input('checkIn'))
+    path: checkOut
+    message: Check out must come after check in
+```
+
+A room's size changes a rule, the most guests, so it is a mutation, and three guests in a double room report `maximum` with `mutation: doubleRoom`. Dates in order change no rule, so they go in `issues`, which say when a value fails. `after` compares the two timestamps. A missing date holds the entry back, as every issue of shape does, while a date that is not a timestamp reports `format` and the entry both, since `format` holds nothing back.
+
+### Roll out a stricter rule
+
+Longer passwords reach a quarter of users first, through a flag, and everyone once its rule says 100:
+
+```yml
+# features/strictPasswords.yml
+description: Passwords of 12 characters or more, rolling out
+
+bucketBy: userId
+
+rules:
+  staging:
+    - key: everyone
+      conditions: "*"
+      percentage: 100
+
+  production:
+    - key: quarter
+      conditions: "*"
+      percentage: 25
+```
+
+```yml
+# schemas/signUp.yml
+mutations:
+  - key: strictPasswords
+    conditions: feature('strictPasswords')
+    mutate:
+      properties.password.minLength: 12
+```
+
+The flag comes along into every datafile that delivers the schema, with no tag of its own. Validation buckets as flags do, so the context needs what the flag buckets by, `s.validate("signUp", value, { userId })`. Staging, at 100%, proves the rule in a spec:
+
+```yml
+# tests/schemas/signUp.spec.yml
+schema: signUp
+
+assertions:
+  - description: Everyone in staging needs 12 characters
+    environment: staging
+    context:
+      userId: user-1
+    value:
+      email: user-1@example.com
+      password: correcthors
+    expectedIssues:
+      - path: [password]
+        code: minLength
+        mutation: strictPasswords
+```
+
+### A kill switch
+
+Sign ups that verify a phone by text message stop working when texts cannot be sent. One global variable makes the phone optional, in every schema that reads it, without reverting a rule:
+
+```yml
+# variables/phoneOptional.yml
+description: Lets sign ups skip the phone number while text messages cannot be sent
+
+type: boolean
+
+defaultValue: false
+```
+
+```yml
+# schemas/signUp.yml
+required: [email, password, phone]
+
+mutations:
+  - key: phoneOptional
+    conditions: variable('phoneOptional') == true
+    mutate:
+      required:removeValue: phone
+```
+
+During an incident, a pull request turns it on in production, and every app has it at its next datafile:
+
+```yml
+# variables/phoneOptional.yml
+overrides:
+  production:
+    - key: incident
+      conditions: "*"
+      value: true
+```
+
+Removing the override ends it. The variable comes along into the datafile with the schema, as the flag above does.
+
+### Try a rule in staging first
+
+A change reaches one environment, then the next, then the base:
+
+```yml
+# schemas/displayName.yml
+description: A display name
+
+type: string
+
+minLength: 2
+
+maxLength: 40
+
+environments:
+  staging:
+    mutate:
+      maxLength: 60
+```
+
+Staging accepts names up to 60 characters while production keeps 40. Once staging has proved it, write 60 into the base and remove the entry (see [Rules per environment](#rules-per-environment)). A flag rolls a rule out to users, and an environment entry to environments, and a schema can use both.
+
+### The same rules on the server
+
+A handle is a Standard Schema, so a server's router validates with it as it would with Zod. Give it to the router once, at start up, since a handle reads the current datafile whenever it validates:
+
+```ts
+// tRPC
+export const appRouter = t.router({
+  signUp: t.procedure.input(s.get("signUp")).mutation(({ input }) => createAccount(input)),
+});
+```
+
+```ts
+// Hono, with @hono/standard-validator
+import { sValidator } from "@hono/standard-validator";
+
+app.post("/sign-up", sValidator("json", s.get("signUp")), async (c) => {
+  const signUp = c.req.valid("json");
+
+  return c.json(await createAccount(signUp));
+});
+```
+
+A rule changed in the project reaches the browser and the server at their next datafile, so the two never disagree. A schema whose conditions read who is asking, such as a plan, validates in the handler instead, with that context: `s.parse("team", body, { plan: account.plan })`. Without a router, `s.parse` throws a `SchemaError` for one error handler to answer (see [Validating](#validating)), and a form posted without JavaScript goes through [`formAction`](#server-actions).
+
+### Choices that change without a deploy
+
+Countries with flags, plans with prices and badges, and retired choices kept for data saved earlier live in the schema, and every select and badge reads them (see [Choices](#choices) and [Reference data](#reference-data)). Adding a country is a pull request that adds a value to the `enum` and its entry to `options`.
+
 ## API reference
 
 ### `@featurevisor/schemas`
@@ -1580,6 +2128,7 @@ Later releases of this package are planned to add:
 - versions a schema points to per environment, each a whole schema of its own, and a warning when a change reaches an environment before the one before it,
 - rendering again in React when a context a schema's conditions read changes,
 - choosing between shapes, such as a payment method of card or bank, each an object told apart by a discriminator,
+- messages and annotations that depend on conditions, written as a list of variants where the first that matches wins, such as "ZIP code" in the US and "postcode" elsewhere, and handles whose annotations follow the mutations that match,
 - annotations in the Catalog and in `featurevisor diff`, and conversion to JSON Schema, with `title` and `examples` as its own keywords.
 
 ## License
