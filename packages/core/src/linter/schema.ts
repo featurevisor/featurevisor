@@ -804,7 +804,7 @@ export function getSchemaZodSchema(
             })
         ).optional(),
         oneOf: z.array(schemaZodSchema).min(2).optional(),
-        // Schema files change their rules under conditions, checked by schemaMutations.ts.
+        // Schema files change their rules and report issues under conditions, checked by schemaMutations.ts.
         ...(projectConfig
           ? {
               mutations: z
@@ -815,6 +815,19 @@ export function getSchemaZodSchema(
                       description: z.string().optional(),
                       conditions: z.unknown(),
                       mutate: z.unknown(),
+                    })
+                    .strict(),
+                )
+                .optional(),
+              issues: z
+                .array(
+                  z
+                    .object({
+                      key: z.string().min(1),
+                      description: z.string().optional(),
+                      conditions: z.unknown(),
+                      path: z.string().min(1).optional(),
+                      message: z.string().min(1),
                     })
                     .strict(),
                 )

@@ -2,6 +2,7 @@ import type {
   Conditions,
   DatafileSchema,
   Schema,
+  SchemaIssueEntry,
   SchemaMutation,
   VariableMutationOperation,
   VariableMutations,
@@ -52,6 +53,7 @@ const DATAFILE_KEY_ORDER = [
   "messages",
   "annotations",
   "mutations",
+  "issues",
 ];
 
 function datafileKeys(node: Record<string, unknown>): string[] {
@@ -125,6 +127,14 @@ function stripNode(node: unknown, options: DatafileSchemaOptions): unknown {
             ? { ...operation, value: stripNode(operation.value, options) }
             : operation,
         ),
+      }));
+    } else if (key === "issues" && Array.isArray(value)) {
+      // Conditions written as features' are, and no maintainer's description.
+      result[key] = (value as SchemaIssueEntry[]).map((entry) => ({
+        key: entry.key,
+        conditions: compileConditions(entry.conditions, options.stringify),
+        ...(entry.path !== undefined ? { path: entry.path } : {}),
+        message: entry.message,
       }));
     } else if (key === "items" || key === "additionalProperties")
       result[key] = stripNode(value, options);

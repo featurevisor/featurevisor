@@ -10,7 +10,7 @@ import { HOUSE_STYLE } from "./style";
  * This file keeps the promise that formatting never changes a datafile. Only objects the
  * builder rebuilds key by key are given a key order here: features, rules, force entries,
  * variations, variablesSchema entries, segments, global variables and their overrides, schemas
- * and their mutations, which the builder writes in an order of its own, and everything in test
+ * with their mutations and issues, which the builder writes in an order of its own, and everything in test
  * specs, which datafiles never hold. Values stay as written: variable
  * values, context, condition leaves, compose references, and maps keyed by the author, such
  * as variablesSchema or properties. Lists are never reordered, since rules, overrides,
@@ -75,8 +75,9 @@ function schemaChildren(): Record<string, Shape> {
     properties: dict(schema, blankLines.schemaProperties),
     items: schema,
     oneOf: list(schema),
-    // The builder writes each mutation key by key, so its authored order never reaches a datafile.
+    // The builder writes each mutation and issue key by key, so their authored order never reaches a datafile.
     mutations: list(map(keyOrder.schemaMutation)),
+    issues: list(map(keyOrder.schemaIssue)),
   };
 }
 

@@ -92,16 +92,17 @@ export function visitConditionLocations(
     visitGlobalOverrides(definition.overrides, ["overrides"]);
   }
 
-  // A schema's mutations, at any node a value is validated against.
+  // A schema's mutations and issues, at any node a value is validated against.
   if (entityType === "schema") {
     const walk = (node: unknown, path: ConditionPath) => {
       if (!isObject(node)) return;
-      if (Array.isArray(node.mutations))
-        node.mutations.forEach(
-          (mutation, i) =>
-            isObject(mutation) &&
-            visit("schemas", mutation.conditions, [...path, "mutations", i, "conditions"]),
-        );
+      for (const list of ["mutations", "issues"])
+        if (Array.isArray(node[list]))
+          (node[list] as unknown[]).forEach(
+            (entry, i) =>
+              isObject(entry) &&
+              visit("schemas", entry.conditions, [...path, list, i, "conditions"]),
+          );
       if (isObject(node.properties))
         for (const [key, property] of Object.entries(node.properties))
           walk(property, [...path, "properties", key]);

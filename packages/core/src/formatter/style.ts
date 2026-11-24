@@ -156,7 +156,8 @@ export const HOUSE_STYLE = {
     /**
      * A schema file, and every schema nested in a schema, attribute or variable. Only a schema
      * file's root has `tags`, the vocabularies and `environments`, and only schema files have
-     * `messages`, `annotations` and `mutations`, after the rules they word, describe and change.
+     * `messages`, `annotations`, `mutations` and `issues`, after the rules they word, describe,
+     * change and add to.
      */
     schema: [
       ...LIFECYCLE,
@@ -170,9 +171,12 @@ export const HOUSE_STYLE = {
       "annotations",
       "environments",
       "mutations",
+      "issues",
     ],
     /** A mutation in a schema's mutations, at any node */
     schemaMutation: ["key", "description", "conditions", "mutate"],
+    /** An entry in a schema's issues, at any object node */
+    schemaIssue: ["key", "description", "conditions", "path", "message"],
     target: [
       "promotable",
       "description",

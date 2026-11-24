@@ -1015,7 +1015,7 @@ export function getConditionsZodSchema(
             ctx.addIssue({
               code: "custom",
               message:
-                "`input` reads the value a schema validates, so it goes only in a schema's mutations.",
+                "`input` reads the value a schema validates, so it goes only in a schema's mutations and issues.",
               path: ["input"],
             });
             return z.NEVER;

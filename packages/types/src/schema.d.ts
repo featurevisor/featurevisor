@@ -69,6 +69,27 @@ export interface DatafileSchemaMutation {
   operations: VariableMutationOperation[];
 }
 
+/**
+ * An issue an object reports when its conditions match, as authored: after
+ * the node's own rules, unless an issue of shape sits anywhere inside it. Its
+ * conditions say when a value fails, so one meant for some users joins their
+ * condition and its check with `and`.
+ */
+export interface SchemaIssueEntry {
+  /** Unique within its node, and the issue's `params.refine`. */
+  key: string;
+  description?: string;
+  /** Context attributes, segments, features and variables, and `input` leaves over the value validated. */
+  conditions: Conditions;
+  /** The field the issue belongs to, by dots relative to the node, or the node itself when absent. */
+  path?: string;
+  /** The schema's message for the issue, as a template. */
+  message: string;
+}
+
+/** An issue entry as a datafile carries it, with its conditions written as features' are. */
+export type DatafileSchemaIssueEntry = Omit<SchemaIssueEntry, "description">;
+
 /** What one environment changes in a schema, or `{}` for its base. */
 export interface SchemaEnvironment {
   mutate?: VariableMutations;
@@ -135,6 +156,9 @@ export interface Schema {
 
   /** Changes to this node's rules when conditions match, at validation time. */
   mutations?: SchemaMutation[] | DatafileSchemaMutation[];
+
+  /** Issues an object reports when their conditions match, after its own rules. */
+  issues?: SchemaIssueEntry[] | DatafileSchemaIssueEntry[];
 }
 
 /**

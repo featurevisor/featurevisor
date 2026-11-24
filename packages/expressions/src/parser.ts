@@ -486,7 +486,7 @@ class Parser {
     if (this.options.input) return;
     this.fail(
       "expression_input_location",
-      "`input(...)` reads the value a schema validates, so it goes only in a schema's mutations.",
+      "`input(...)` reads the value a schema validates, so it goes only in a schema's mutations and issues.",
       start,
       start + "input(".length,
     );

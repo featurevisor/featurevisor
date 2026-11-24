@@ -992,7 +992,7 @@ describe("input()", () => {
     expect(error("input('accountType') == 'business'")).toMatchObject({
       code: "expression_input_location",
       message:
-        "`input(...)` reads the value a schema validates, so it goes only in a schema's mutations.",
+        "`input(...)` reads the value a schema validates, so it goes only in a schema's mutations and issues.",
     });
     expect(error("country == input('country')").code).toBe("expression_input_location");
     // A name that happens to be `input`, with no call, is an attribute as before.

@@ -34,6 +34,7 @@ function hasChangingRules(node: unknown): boolean {
   if (!isNode(node)) return false;
   if (node.environments !== undefined) return true;
   if (Array.isArray(node.mutations) && node.mutations.length > 0) return true;
+  if (Array.isArray(node.issues) && node.issues.length > 0) return true;
   if (isNode(node.properties) && Object.values(node.properties).some(hasChangingRules)) return true;
   if (Array.isArray(node.oneOf) && node.oneOf.some(hasChangingRules)) return true;
   return hasChangingRules(node.items) || hasChangingRules(node.additionalProperties);
@@ -245,17 +246,23 @@ export function getSchemaMutationFindings(
     }
   }
 
-  /** Checks the `input` leaves of a mutation's conditions against the fields of its node. */
+  /** Whether a dot path names a field of a node, through references. */
+  const namesField = (node: Node, fieldPath: string): boolean => {
+    let current: Node | undefined = resolve(node);
+    for (const part of fieldPath.split(".")) {
+      const properties = current && isNode(current.properties) ? current.properties : undefined;
+      if (!properties || !hasOwn(properties, part)) return false;
+      current = resolve(properties[part]);
+    }
+    return true;
+  };
+  const fieldNames = (node: Node): string => {
+    const own = resolve(node);
+    return (own && isNode(own.properties) ? Object.keys(own.properties) : []).join(", ") || "none";
+  };
+
+  /** Checks the `input` leaves of a mutation's or an issue's conditions against the fields of its node. */
   const checkInputs = (conditions: unknown, node: Node, path: Path) => {
-    const fields = (fieldPath: string): boolean => {
-      let current: Node | undefined = resolve(node);
-      for (const part of fieldPath.split(".")) {
-        const properties = current && isNode(current.properties) ? current.properties : undefined;
-        if (!properties || !hasOwn(properties, part)) return false;
-        current = resolve(properties[part]);
-      }
-      return true;
-    };
     const visit = (value: unknown, at: Path) => {
       if (Array.isArray(value)) return value.forEach((child, i) => visit(child, [...at, i]));
       if (!isNode(value)) return;
@@ -265,17 +272,61 @@ export function getSchemaMutationFindings(
         [["input"], value.input],
         [["valueFrom", "input"], isNode(value.valueFrom) ? value.valueFrom.input : undefined],
       ] as const) {
-        if (typeof read === "string" && !fields(read)) {
-          const own = resolve(node);
-          const known = own && isNode(own.properties) ? Object.keys(own.properties) : [];
+        if (typeof read === "string" && !namesField(node, read)) {
           findings.push({
             path: [...at, ...field],
-            message: `\`input('${read}')\` names no field of this node, whose fields are ${known.join(", ") || "none"}. Paths are relative to the node a mutation sits on.`,
+            message: `\`input('${read}')\` names no field of this node, whose fields are ${fieldNames(node)}. Paths are relative to the node a mutation or an issue sits on.`,
           });
         }
       }
     };
     visit(conditions, path);
+  };
+
+  /** Issues an object reports when their conditions match, after its own rules. */
+  const checkIssues = (node: Node, path: Path) => {
+    const own = resolve(node);
+    if (!own || (own.type !== "object" && !isNode(own.properties))) {
+      findings.push({
+        path: [...path, "issues"],
+        message:
+          "`issues` goes on object nodes only, since its entries compare an object's fields.",
+      });
+      return;
+    }
+    const keys = new Set<string>();
+    (node.issues as unknown[]).forEach((entry, index) => {
+      const at: Path = [...path, "issues", index];
+      if (!isNode(entry)) return;
+      if (keys.has(entry.key as string)) {
+        findings.push({
+          path: [...at, "key"],
+          message: `Issue key "${entry.key}" is used twice in this node.`,
+        });
+      }
+      keys.add(entry.key as string);
+      const conditions = conditionsZodSchema.safeParse(entry.conditions);
+      if (!conditions.success) {
+        for (const issue of conditions.error.issues) {
+          findings.push({
+            path: [...at, "conditions", ...(issue.path as Path)],
+            message: issue.message,
+          });
+        }
+      } else if (!readsInput(entry.conditions)) {
+        findings.push({
+          path: [...at, "conditions"],
+          message:
+            "An issue's conditions read at least one `input`, or it would fail every value for everyone they match. They say when a value fails, such as `input('confirmPassword') != input('password')`.",
+        });
+      } else checkInputs(entry.conditions, node, [...at, "conditions"]);
+      if (typeof entry.path === "string" && !namesField(node, entry.path)) {
+        findings.push({
+          path: [...at, "path"],
+          message: `\`${entry.path}\` names no field of this node, whose fields are ${fieldNames(node)}. An issue's path is relative to the node it sits on.`,
+        });
+      }
+    });
   };
 
   // Mutations under conditions, at any node, applied when validating.
@@ -321,6 +372,7 @@ export function getSchemaMutationFindings(
         );
       }
     }
+    if (Array.isArray(node.issues)) checkIssues(node, path);
     if (isNode(node.properties))
       for (const [key, property] of Object.entries(node.properties))
         visitNode(property, [...path, "properties", key]);
@@ -333,6 +385,14 @@ export function getSchemaMutationFindings(
   visitNode(root, []);
 
   return findings;
+}
+
+/** Whether conditions read the value validated, through any group. */
+function readsInput(conditions: unknown): boolean {
+  if (Array.isArray(conditions)) return conditions.some(readsInput);
+  if (!isNode(conditions)) return false;
+  if (typeof conditions.input === "string") return true;
+  return ["and", "or", "not"].some((group) => readsInput(conditions[group]));
 }
 
 /** A copy of the root with the node at a path replaced, so the whole file can be validated. */

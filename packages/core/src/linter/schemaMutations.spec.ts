@@ -231,7 +231,7 @@ defaultValue:
       expect.arrayContaining([
         'Unknown environment "qa". Environments: dev, staging, production.',
         "`properties.nam.minLength` reaches nothing: `properties.nam` is not there. A mutation changes what exists, and creates no objects on the way.",
-        "`input('agee')` names no field of this node, whose fields are name, age. Paths are relative to the node a mutation sits on.",
+        "`input('agee')` names no field of this node, whose fields are name, age. Paths are relative to the node a mutation or an issue sits on.",
         expect.stringContaining("A mutation cannot change a `type`"),
         'Mutation key "older" is used twice in this node.',
         expect.stringContaining("In staging, the schema fails:"),
@@ -281,7 +281,7 @@ ${conditions}
       {
         at: `${at}.valueFrom.input`,
         message:
-          "`input('billing')` names no field of this node, whose fields are billingCountry, shippingCountry, customsDescription. Paths are relative to the node a mutation sits on.",
+          "`input('billing')` names no field of this node, whose fields are billingCountry, shippingCountry, customsDescription. Paths are relative to the node a mutation or an issue sits on.",
       },
     ]);
     expect(
@@ -437,7 +437,7 @@ mutations:
     expect(await located(wrong)).toEqual([
       {
         message:
-          "`input('billing')` names no field of this node, whose fields are billingCountry, shippingCountry, customsDescription. Paths are relative to the node a mutation sits on.",
+          "`input('billing')` names no field of this node, whose fields are billingCountry, shippingCountry, customsDescription. Paths are relative to the node a mutation or an issue sits on.",
         line: conditionsLine,
         column: conditionsColumn + wrong.indexOf("input('billing')"),
         endColumn: conditionsColumn + wrong.length,
@@ -480,7 +480,7 @@ rules:
       {
         key: "checkout",
         message:
-          "`input` reads the value a schema validates, so it goes only in a schema's mutations.",
+          "`input` reads the value a schema validates, so it goes only in a schema's mutations and issues.",
       },
     ]);
   });
@@ -548,7 +548,7 @@ overrides:
 `,
     };
     const where =
-      "`input` reads the value a schema validates, so it goes only in a schema's mutations.";
+      "`input` reads the value a schema validates, so it goes only in a schema's mutations and issues.";
 
     expect(
       (await lint({ ...config(), ...segment })).map(({ key, message }) => [key, message]),
@@ -567,12 +567,12 @@ overrides:
       [
         "signUp",
         "mutations.0.conditions",
-        'Input conditions are not allowed in schema mutations. Remove this condition, or allow "input" in allowedConditions.schemas.',
+        'Input conditions are not allowed in schema mutations and issues. Remove this condition, or allow "input" in allowedConditions.schemas.',
       ],
       [
         "signUp",
         "mutations.2.conditions",
-        'Attribute conditions are not allowed in schema mutations. Move this condition into a segment and reference the segment, or allow "attribute" in allowedConditions.schemas.',
+        'Attribute conditions are not allowed in schema mutations and issues. Move this condition into a segment and reference the segment, or allow "attribute" in allowedConditions.schemas.',
       ],
     ]);
     expect(await lint(config({ schemas: ["segment", "input", "attribute"] }))).toEqual([]);
@@ -623,14 +623,160 @@ environments:
       [
         "form",
         "environments.dev.mutate",
-        "In dev: `input('nam')` names no field of this node, whose fields are name. Paths are relative to the node a mutation sits on. (at mutations.1.conditions.0.input)",
+        "In dev: `input('nam')` names no field of this node, whose fields are name. Paths are relative to the node a mutation or an issue sits on. (at mutations.1.conditions.0.input)",
       ],
       [
         "form",
         "environments.dev.mutate",
-        'In dev: Attribute conditions are not allowed in schema mutations. Move this condition into a segment and reference the segment, or allow "attribute" in allowedConditions.schemas. (at mutations.1.conditions.1)',
+        'In dev: Attribute conditions are not allowed in schema mutations and issues. Move this condition into a segment and reference the segment, or allow "attribute" in allowedConditions.schemas. (at mutations.1.conditions.1)',
       ],
     ]);
+  });
+
+  test("issues report when their conditions match, and reach the datafile compiled", async () => {
+    const files = {
+      "segments/netherlands.yml": "description: Dutch\nconditions: country == 'nl'\n",
+      "schemas/checkout.yml": `description: Checkout
+
+tags:
+  - web
+
+type: object
+
+properties:
+  billingCountry:
+    type: string
+  shippingCountry:
+    type: string
+
+required: [billingCountry]
+
+issues:
+  - key: dutchShippingCountry
+    conditions: netherlands and input('shippingCountry') != input('billingCountry')
+    path: shippingCountry
+    message: We ship Dutch orders to the billing country only
+`,
+    };
+    expect(await lint(files)).toEqual([]);
+
+    const { root, projectConfig, datasource } = createProject(files);
+    try {
+      const datafile = await getCustomDatafile({
+        projectConfig,
+        datasource,
+        environment: "production",
+        tag: "web",
+        revision: "1",
+      });
+      const entry = (datafile.schemas!.checkout as any).issues[0];
+      expect({ ...entry, conditions: JSON.parse(entry.conditions) }).toEqual({
+        key: "dutchShippingCountry",
+        conditions: [
+          "netherlands",
+          {
+            input: "shippingCountry",
+            operator: "notEquals",
+            valueFrom: { input: "billingCountry" },
+          },
+        ],
+        path: "shippingCountry",
+        message: "We ship Dutch orders to the billing country only",
+      });
+      // The segment its conditions read comes along.
+      expect(Object.keys(datafile.segments)).toContain("netherlands");
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("lint checks every issue entry", async () => {
+    const errors = await lint({
+      "schemas/broken.yml": `description: Broken issues
+
+type: object
+
+properties:
+  password:
+    type: string
+  confirmPassword:
+    type: string
+  code:
+    type: string
+    issues:
+      - key: onString
+        conditions:
+          input: code
+          operator: exists
+        message: Never
+
+issues:
+  - key: differs
+    conditions:
+      input: confirmPassword
+      operator: notEquals
+      valueFrom:
+        input: pasword
+    path: confirmPassword
+    message: The passwords do not match
+  - key: differs
+    conditions: paying
+    path: confirmPasword
+    message: Everyone fails
+`,
+      "schemas/silent.yml": `description: An issue without a message
+
+type: object
+
+properties:
+  password:
+    type: string
+
+issues:
+  - key: noMessage
+    conditions:
+      input: password
+      operator: notExists
+`,
+      "variables/form.yml": `description: Uses a schema with issues
+
+schema: broken
+
+defaultValue:
+  password: a
+`,
+    });
+
+    expect(errors.map(({ key, at, message }) => [key, at, message])).toEqual(
+      expect.arrayContaining([
+        ["form", "schema", expect.stringContaining("a variable's schema stays the same")],
+        ["silent", "issues.0.message", "Missing required `message`. Expected string."],
+      ]),
+    );
+    const messages = errors
+      .filter(({ key }) => key === "broken")
+      .map(({ at, message }) => [at, message]);
+    expect(messages).toEqual(
+      expect.arrayContaining([
+        [
+          "properties.code.issues",
+          "`issues` goes on object nodes only, since its entries compare an object's fields.",
+        ],
+        [
+          "issues.0.conditions.valueFrom.input",
+          "`input('pasword')` names no field of this node, whose fields are password, confirmPassword, code. Paths are relative to the node a mutation or an issue sits on.",
+        ],
+        ["issues.1.key", 'Issue key "differs" is used twice in this node.'],
+        [
+          "issues.1.conditions",
+          "An issue's conditions read at least one `input`, or it would fail every value for everyone they match. They say when a value fails, such as `input('confirmPassword') != input('password')`.",
+        ],
+        [
+          "issues.1.path",
+          "`confirmPasword` names no field of this node, whose fields are password, confirmPassword, code. An issue's path is relative to the node it sits on.",
+        ],
+      ]),
+    );
   });
 
   test("environments need a project with environments", async () => {
@@ -676,7 +822,7 @@ rules:
       {
         key: "checkout",
         message:
-          "`input` reads the value a schema validates, so it goes only in a schema's mutations.",
+          "`input` reads the value a schema validates, so it goes only in a schema's mutations and issues.",
       },
     ]);
   });

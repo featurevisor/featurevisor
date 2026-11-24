@@ -203,6 +203,45 @@ describe("the house style", () => {
     );
   });
 
+  it("orders a schema's issue entries, after its mutations", () => {
+    const source = [
+      "issues:",
+      "  - message: The passwords do not match",
+      "    path: confirmPassword",
+      "    conditions: input('confirmPassword') != input('password')",
+      "    key: passwordsDiffer",
+      "mutations:",
+      "  - key: paid",
+      "    conditions: paying",
+      "    mutate:",
+      "      properties.seats.maximum: 10",
+      "type: object",
+      "description: A form",
+      "",
+    ].join("\n");
+
+    expect(formatDefinition("schema", source, parsers.yml).output).toBe(
+      [
+        "description: A form",
+        "",
+        "type: object",
+        "",
+        "mutations:",
+        "  - key: paid",
+        "    conditions: paying",
+        "    mutate:",
+        "      properties.seats.maximum: 10",
+        "",
+        "issues:",
+        "  - key: passwordsDiffer",
+        "    conditions: input('confirmPassword') != input('password')",
+        "    path: confirmPassword",
+        "    message: The passwords do not match",
+        "",
+      ].join("\n"),
+    );
+  });
+
   it("orders a target's schema selectors after its feature and variable ones", () => {
     const source = [
       "includeAnnotations: false",

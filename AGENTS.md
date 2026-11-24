@@ -42,8 +42,8 @@ check runs.
   composables build on. They have no other way to update.
 - packages/schemas holds `@featurevisor/schemas`, which validates data against
   the schemas targets deliver. The SDK carries them, as a datafile section
-  its modules read with `getEntry`, and answers their mutations' conditions
-  through the module API's `matchConditions`. Core resolves environments at
+  its modules read with `getEntry`, and answers the conditions of their
+  mutations and issues through the module API's `matchConditions`. Core resolves environments at
   build time, and Core's lint and the package must agree on every rule.
 
 ## Contribution boundaries

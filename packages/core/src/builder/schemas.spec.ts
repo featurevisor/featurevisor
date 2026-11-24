@@ -200,6 +200,15 @@ describe("the schemas section", () => {
           mutate: { "properties.seats.maximum": 100 },
         },
       ],
+      issues: [
+        {
+          key: "freeSeats",
+          description: "Free plans have one seat",
+          conditions: [{ input: "seats", operator: "greaterThan", value: 1 }] as never,
+          path: "seats",
+          message: "Free plans have one seat",
+        },
+      ],
     };
     const written = buildSchemasSection(["form"], { form });
     const reordered = buildSchemasSection(["form"], { form: reversed(form) as Schema });
@@ -212,6 +221,14 @@ describe("the schemas section", () => {
       "required",
       "annotations",
       "mutations",
+      "issues",
+    ]);
+    // An entry reaches the datafile without its description.
+    expect(Object.keys((written.form.issues as unknown[])[0] as object)).toEqual([
+      "key",
+      "conditions",
+      "path",
+      "message",
     ]);
   });
 
