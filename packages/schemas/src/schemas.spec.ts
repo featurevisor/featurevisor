@@ -541,6 +541,15 @@ describe("handles", () => {
       picks: { required: true, multiple: true },
       nickname: {},
     });
+    // A field's own constraints are its entry in its object's, so spreading `field.constraints` marks it required.
+    const prefs = s.get("prefs");
+    for (const field of prefs.fields) {
+      expect(field.constraints).toEqual((prefs.constraints as Record<string, unknown>)[field.name]);
+    }
+    const signUpHandle = setup().s.get("signUp");
+    expect(signUpHandle.at("address.city").constraints).toEqual({ required: true, minLength: 1 });
+    expect(signUpHandle.at("items.0.name").constraints).toEqual({ required: true });
+    expect(signUpHandle.at("country").constraints).toEqual({});
   });
 
   test("constraints and options are frozen, and a schema the datafile lacks has none", () => {
@@ -1029,6 +1038,220 @@ describe("mutations under conditions", () => {
       maxLength: 10,
     });
     expect(s.get("signUp").constraints.taxId).toEqual({});
+  });
+});
+
+describe("views for the values typed so far", () => {
+  // Conditions as JSON text, as Core writes them with `stringify`, and as trees.
+  const postal = {
+    hash: "p1",
+    type: "object",
+    properties: {
+      country: { type: "string", enum: ["GB", "US"] },
+      postcode: { type: "string", annotations: { title: "Postcode" } },
+      state: { type: "string" },
+    },
+    required: ["country"],
+    annotations: { order: ["country", "postcode", "state"] },
+    mutations: [
+      {
+        key: "unitedStates",
+        conditions: '{"input":"country","operator":"equals","value":"US"}',
+        operations: [
+          { op: "appendUnique", path: ["required"], value: "state" },
+          { op: "set", path: ["properties", "postcode", "pattern"], value: "^[0-9]{5}$" },
+          {
+            op: "set",
+            path: ["properties", "postcode", "annotations", "title"],
+            value: "ZIP code",
+          },
+          { op: "set", path: ["annotations", "order"], value: ["country", "state", "postcode"] },
+        ],
+      },
+    ],
+  } as unknown as DatafileSchema;
+  const order = {
+    hash: "o1",
+    type: "object",
+    properties: {
+      accountType: { type: "string", enum: ["personal", "business"] },
+      taxId: { type: "string" },
+      seats: { type: "integer", minimum: 1, maximum: 5 },
+      billing: { schema: "postal", annotations: { title: "Billing address" } },
+      shipping: { schema: "postal" },
+      pickups: { type: "array", items: { schema: "postal" } },
+      password: { type: "string" },
+      confirmPassword: { type: "string" },
+    },
+    required: ["accountType"],
+    mutations: [
+      {
+        key: "business",
+        conditions: [{ input: "accountType", operator: "equals", value: "business" }],
+        operations: [
+          { op: "appendUnique", path: ["required"], value: "taxId" },
+          { op: "set", path: ["properties", "taxId", "pattern"], value: "^[A-Z]{2}[0-9]{9}$" },
+        ],
+      },
+      {
+        key: "businessPlan",
+        conditions: [{ attribute: "plan", operator: "equals", value: "business" }],
+        operations: [{ op: "set", path: ["properties", "seats", "maximum"], value: 50 }],
+      },
+    ],
+    issues: [
+      {
+        key: "passwordsDiffer",
+        conditions: {
+          input: "confirmPassword",
+          operator: "notEquals",
+          valueFrom: { input: "password" },
+        },
+        path: "confirmPassword",
+        message: "The passwords do not match",
+      },
+    ],
+  } as unknown as DatafileSchema;
+
+  function viewing() {
+    const f = createFeaturevisor({
+      datafile: datafile({ order, postal } as Record<string, DatafileSchema>),
+      logLevel: "fatal",
+      context: { userId: "user-1" },
+    });
+    return { f, s: createSchemas(f) };
+  }
+
+  test("constraints show the rules that apply to the values, while the handle keeps the base", () => {
+    const { s } = viewing();
+    const handle = s.get("order");
+
+    expect(handle.constraints.taxId).toEqual({});
+    expect(handle.for({ accountType: "business" }).constraints.taxId).toEqual({ required: true });
+    expect(handle.for({ accountType: "personal" }).constraints.taxId).toEqual({});
+    expect(handle.for({ accountType: "business" }).at("taxId").constraints).toEqual({
+      required: true,
+    });
+  });
+
+  test("each use of a referenced schema resolves for its own value, and each row of an array for its own", () => {
+    const { s } = viewing();
+    const view = s.get("order").for({
+      accountType: "personal",
+      billing: { country: "US" },
+      shipping: { country: "GB" },
+      pickups: [{ country: "GB" }, { country: "US" }],
+    });
+
+    expect(view.constraints["billing.state"]).toEqual({ required: true });
+    expect(view.constraints["shipping.state"]).toEqual({});
+    expect(view.at("billing").constraints.state).toEqual({ required: true });
+    expect(view.at("pickups.0").constraints.state).toEqual({});
+    expect(view.at("pickups.1").constraints.state).toEqual({ required: true });
+    // `[]` names no one row, so rows keep their base.
+    expect(view.at("pickups[]").constraints.state).toEqual({});
+  });
+
+  test("annotations and the order of fields follow the mutations that match", () => {
+    const { s } = viewing();
+    const billing = s
+      .get("order")
+      .for({ billing: { country: "US" } })
+      .at("billing");
+
+    expect(billing.fields.map((field) => field.name)).toEqual(["country", "state", "postcode"]);
+    expect(billing.at("postcode").annotations.title).toBe("ZIP code");
+    // The reference's own annotations still win over the referenced schema's.
+    expect(billing.annotations.title).toBe("Billing address");
+    expect(
+      s
+        .get("order")
+        .at("billing")
+        .fields.map((field) => field.name),
+    ).toEqual(["country", "postcode", "state"]);
+    expect(s.get("order").at("billing.postcode").annotations.title).toBe("Postcode");
+  });
+
+  test("a field validates as it would inside the values, with the value given in its place", () => {
+    const { s } = viewing();
+    const values = { accountType: "business", billing: { country: "US" } };
+    const view = s.get("order").for(values);
+
+    expect(codes(view.at("taxId").validate("NL1").issues)).toEqual([["pattern", ""]]);
+    expect(view.at("taxId").validate("NL123456789").issues).toBeUndefined();
+    expect(s.get("order").at("taxId").validate("NL1").issues).toBeUndefined();
+    expect(codes(view.at("billing.postcode").validate("1011 AB").issues)).toEqual([
+      ["pattern", ""],
+    ]);
+    // A field's own mutations read the value validated, as outside a view.
+    expect(codes(view.at("billing").validate({ country: "GB" }).issues)).toEqual([]);
+    expect(codes(view.at("billing").validate({ country: "US" }).issues)).toEqual([
+      ["required", "state"],
+    ]);
+    // The whole value validates as it always does, reading itself.
+    expect(codes(view.validate({ accountType: "business" }).issues)).toEqual([
+      ["required", "taxId"],
+    ]);
+  });
+
+  test("a view reads the instance's context, under one given to for, under one given to validate", () => {
+    const { f, s } = viewing();
+    const handle = s.get("order");
+
+    expect(handle.for({}).constraints.seats).toEqual({ min: 1, max: 5, step: 1 });
+    const business = handle.for({}, { context: { plan: "business" } });
+    expect(business.constraints.seats).toEqual({ min: 1, max: 50, step: 1 });
+    expect(business.at("seats").validate(20).issues).toBeUndefined();
+    expect(codes(business.at("seats").validate(20, { context: { plan: "free" } }).issues)).toEqual([
+      ["maximum", ""],
+    ]);
+    f.setContext({ plan: "business" });
+    expect(handle.for({}).constraints.seats).toEqual({ min: 1, max: 50, step: 1 });
+  });
+
+  test("a view keeps what it derives until the datafile changes", () => {
+    const { f, s } = viewing();
+    const view = s.get("order").for({ accountType: "business" });
+
+    expect(view.constraints).toBe(view.constraints);
+    expect(view.fields).toBe(view.fields);
+    f.setDatafile(
+      datafile(
+        {
+          order: { ...order, hash: "o2", required: [] },
+          postal,
+        } as Record<string, DatafileSchema>,
+        "2",
+      ),
+    );
+    expect(view.constraints.accountType).toEqual({});
+    expect(view.constraints.taxId).toEqual({ required: true });
+  });
+
+  test("reads lists the fields conditions read, relative to the handle, at any depth", () => {
+    const { s } = viewing();
+
+    expect(s.get("order").reads).toEqual([
+      "accountType",
+      "confirmPassword",
+      "password",
+      "billing.country",
+      "shipping.country",
+      "pickups[].country",
+    ]);
+    expect(s.get("order").at("billing").reads).toEqual(["country"]);
+    expect(s.get("order").at("taxId").reads).toEqual([]);
+    expect(s.get("postal").reads).toEqual(["country"]);
+    expect(s.get("missing").reads).toEqual([]);
+  });
+
+  test("a schema the datafile lacks has an empty view", () => {
+    const { s } = viewing();
+    const view = s.get("missing").for({});
+
+    expect(view.constraints).toEqual({});
+    expect(view.fields).toEqual([]);
+    expect(codes(view.validate({}).issues)).toEqual([["schemaNotFound", ""]]);
   });
 });
 

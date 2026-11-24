@@ -1271,6 +1271,67 @@ export { every, some };
     expect(featuresContent).not.toContain("discount:");
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });
+  it("types a schema with mutations as the base with whatever they widen", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "schemas", "team.yml"),
+      [
+        "description: A team",
+        "tags:",
+        "  - sign-up",
+        "type: object",
+        "properties:",
+        "  plan:",
+        "    type: string",
+        "    enum: [free, pro]",
+        "  phone:",
+        "    type: string",
+        "  taxId:",
+        "    type: string",
+        "  address:",
+        "    type: object",
+        "    properties:",
+        "      country:",
+        "        type: string",
+        "      state:",
+        "        type: string",
+        "    required: [country]",
+        "    mutations:",
+        "      - key: anywhere",
+        "        conditions: '*'",
+        "        mutate:",
+        "          required:removeValue: country",
+        "required: [plan, phone]",
+        "mutations:",
+        "  - key: business",
+        "    conditions: '*'",
+        "    mutate:",
+        "      properties.plan.enum:append: business",
+        "      required:appendUnique: taxId",
+        "      properties.nickname:",
+        "        type: string",
+        "  - key: phoneOptional",
+        "    conditions: '*'",
+        "    mutate:",
+        "      required:removeValue: phone",
+      ].join("\n"),
+      "utf8",
+    );
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      { rootDirectoryPath: tempProjectPath, projectConfig, datasource, options: {} } as any,
+      outputPath,
+      { tag: "sign-up", schemas: true },
+    );
+
+    // A value a mutation adds joins the union, a field it requires stays optional, and one it no longer requires is optional.
+    expect(fs.readFileSync(path.join(outputPath, "schemas.ts"), "utf8")).toContain(
+      'export type TeamSchema = { plan: "free" | "pro" | "business"; phone?: string; taxId?: string; address?: { country?: string; state?: string }; nickname?: string };',
+    );
+    expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
+  });
+
   it("types the schemas a target delivers, with a typed createSchemas and schema hooks", async () => {
     fs.writeFileSync(
       path.join(tempProjectPath, "schemas", "signUp.yml"),

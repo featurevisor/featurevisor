@@ -113,6 +113,8 @@ function collectConstraints(
 export function getConstraints(
   node: unknown,
   resolve: Resolve,
+  /** Whether the object a field sits in requires it, so a field's own match its entry in that object's. */
+  required = false,
 ): Record<string, FieldConstraints> | FieldConstraints {
   const resolved = resolveNode(node, resolve);
   if (resolved && isObjectNode(resolved)) {
@@ -120,7 +122,7 @@ export function getConstraints(
     collectConstraints(resolved, "", resolve, result, new Set());
     return Object.freeze(result);
   }
-  return attributesOf(node, false, resolve);
+  return attributesOf(node, required, resolve);
 }
 
 /**

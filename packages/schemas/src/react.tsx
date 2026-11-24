@@ -288,6 +288,16 @@ class HookHandle {
     return this.wrap(this.inner.at(path));
   }
 
+  get reads() {
+    return this.inner.reads;
+  }
+
+  /** A view with the enclosing scopes' context, under one given here, so its own handles add no scope again. */
+  for(values: unknown, options: { context?: Context } = {}): HookHandle {
+    const view = this.inner.for(values, { context: withScope(this.scope(), options.context) });
+    return new HookHandle(view, () => undefined);
+  }
+
   child(key: string): HookHandle {
     return this.wrap(this.inner.child(key));
   }

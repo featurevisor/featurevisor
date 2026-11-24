@@ -248,6 +248,12 @@ export interface ValidateOptions {
   signal?: AbortSignal;
 }
 
+/** What `for` takes beside the values. */
+export interface ViewOptions {
+  /** Merged over the instance's context, such as a request's on a server. */
+  context?: Context;
+}
+
 /** The HTML validation attributes a field's rules imply. */
 export interface FieldConstraints {
   required?: boolean;
@@ -422,6 +428,19 @@ export interface SchemaHandleBase<
    * references too. Returns a function that stops it.
    */
   subscribe(listener: () => void): () => void;
+  /**
+   * The same handle for the values typed so far, such as a form's. Its members,
+   * `constraints`, `options`, `annotations`, `fields` and `at` included, describe
+   * the rules with every mutation whose conditions match those values and the
+   * context applied, and a field validates as it would inside those values.
+   */
+  for(values: unknown, options?: ViewOptions): SchemaHandle<T, TAsync, V>;
+  /**
+   * The fields, relative to this handle, that the conditions of its mutations
+   * and issues read, such as `accountType` or `items[].room`, for a form to
+   * watch or validate again when they change.
+   */
+  readonly reads: ReadonlyArray<string>;
 }
 
 /** A handle whose checks, if any, answer at once. */

@@ -33,7 +33,7 @@ Several tags and targets form a union. Like datafiles, the output includes the d
 | `schemas.ts`       | a type per delivered schema, `SchemaTypes` and `SchemaVocabularies`                |
 | `schemas-react.ts` | typed `useSchema`, `useSchemas` and `useValidation`, with `--schemas --react`      |
 
-Types follow the schemas: `enum` and `const` become literal types, `required` properties are non optional, `format: date-time` attributes accept `Date | string`. A composition's type is derived from its sources, read only, and conservatively nullable, because any member can be `null` at runtime. A schema that varies by environment is typed from the environment whose name starts with `prod`, unless `--environment` names another. Using schema types in an application is in [schemas-runtime.md](schemas-runtime.md#typed-code).
+Types follow the schemas: `enum` and `const` become literal types, `required` properties are non optional, `format: date-time` attributes accept `Date | string`. A composition's type is derived from its sources, read only, and conservatively nullable, because any member can be `null` at runtime. A schema that varies by environment is typed from the environment whose name starts with `prod`, unless `--environment` names another. A schema with mutations is typed as its base with whatever a mutation widens, since any can match: an `enum` value one adds joins the union, and a field one requires or stops requiring is optional. Using schema types in an application is in [schemas-runtime.md](schemas-runtime.md#typed-code).
 
 ## Use in an application
 

@@ -12,6 +12,7 @@ import type {
 import { Dependencies } from "../dependencies";
 import { FeaturevisorCLIError } from "../error";
 import { resolveSchemaEnvironment } from "../builder/schemas";
+import { widenSchemaMutations } from "./widenMutations";
 import {
   buildDependencyGraph,
   collectDependencyClosure,
@@ -589,6 +590,10 @@ export async function generateTypeScriptCodeForProject(
     for (const key of Object.keys(schemasByKey)) {
       schemasByKey[key] = resolveSchemaEnvironment(schemasByKey[key], environment, projectConfig);
     }
+  }
+  // Any mutation can match when a value is validated, so types hold whatever one widens.
+  for (const key of Object.keys(schemasByKey)) {
+    schemasByKey[key] = widenSchemaMutations(schemasByKey[key]);
   }
   const schemaKeys = Object.keys(schemasByKey);
   const hasSchemasFile = schemaKeys.length > 0 || Boolean(options.schemas);

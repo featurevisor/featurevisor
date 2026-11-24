@@ -105,6 +105,19 @@ describe("typed field paths", () => {
     address.at("address.city");
   });
 
+  test("a view is the same handle, typed as the one it came from", () => {
+    const signUp = typed().get("signUp");
+    const view = signUp.for({ country: "NL" }, { context: { plan: "paid" } });
+
+    expectExactType<IsExact<typeof view, SchemaHandle<SignUp>>>(true);
+    expectExactType<IsExact<ReturnType<typeof view.at<"address.city">>, SchemaHandle<string>>>(
+      true,
+    );
+    expectExactType<IsExact<typeof signUp.reads, ReadonlyArray<string>>>(true);
+    // @ts-expect-error a field the schema lacks, in a view as anywhere
+    view.at("displayNam");
+  });
+
   test("a value that is not an object or an array has no fields", () => {
     expectExactType<IsExact<FieldPath<string>, never>>(true);
   });

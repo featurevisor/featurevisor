@@ -78,14 +78,15 @@ const packages = [
     name: "@featurevisor/schemas",
     entry: path.join(rootDir, "packages/schemas/src/index.ts"),
     fileName: "featurevisor-schemas",
-    budget: 10_500,
+    // Views for the values typed so far, `for(values)`, with `reads`.
+    budget: 11_500,
     external: ["@featurevisor/sdk"],
   },
   {
     name: "@featurevisor/schemas/react",
     entry: path.join(rootDir, "packages/schemas/src/react.tsx"),
     fileName: "featurevisor-schemas-react",
-    budget: 11_500,
+    budget: 12_500,
     external: ["react", "react-dom", "@featurevisor/sdk", "@featurevisor/react"],
   },
   {

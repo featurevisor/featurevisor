@@ -434,6 +434,77 @@ describe("the hook's handle", () => {
   });
 });
 
+describe("views in React", () => {
+  // A seat limit by plan, read from the scope's context, and a tax ID required by the value.
+  const team = {
+    hash: "t1",
+    type: "object",
+    properties: {
+      accountType: { type: "string", enum: ["personal", "business"] },
+      taxId: { type: "string" },
+      seats: { type: "integer", maximum: 5 },
+    },
+    mutations: [
+      {
+        key: "business",
+        conditions: [{ input: "accountType", operator: "equals", value: "business" }],
+        operations: [{ op: "appendUnique", path: ["required"], value: "taxId" }],
+      },
+      {
+        key: "businessPlan",
+        conditions: [{ attribute: "plan", operator: "equals", value: "business" }],
+        operations: [{ op: "set", path: ["properties", "seats", "maximum"], value: 50 }],
+      },
+    ],
+  } as unknown as DatafileSchema;
+
+  test("a view reads the scope's context, under one given to for, and validates with it", () => {
+    const f = createFeaturevisor({
+      datafile: datafile({ team }),
+      logLevel: "fatal",
+      context: { userId: "user-1" },
+    });
+    let handle: any;
+    function Form({ accountType }: { accountType: string }) {
+      handle = useSchema("team");
+      const rules = handle.for({ accountType });
+      return (
+        <span data-testid="rules">
+          {JSON.stringify([rules.constraints.taxId, rules.at("seats").constraints.max])}
+        </span>
+      );
+    }
+    const view = render(
+      <FeaturevisorProvider instance={f}>
+        <FeaturevisorScope context={{ plan: "business" }}>
+          <Form accountType="business" />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+
+    expect(view.getByTestId("rules").textContent).toBe('[{"required":true},50]');
+    expect(handle.reads).toEqual(["accountType"]);
+    expect(handle.for({}).at("seats").validate(20).issues).toBeUndefined();
+    const free = handle.for({}, { context: { plan: "free" } });
+    expect(free.at("seats").constraints.max).toBe(5);
+    expect(
+      free
+        .at("seats")
+        .validate(20)
+        .issues.map((issue: any) => issue.code),
+    ).toEqual(["maximum"]);
+
+    view.rerender(
+      <FeaturevisorProvider instance={f}>
+        <FeaturevisorScope context={{ plan: "business" }}>
+          <Form accountType="personal" />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+    expect(view.getByTestId("rules").textContent).toBe("[{},50]");
+  });
+});
+
 describe("useValidation", () => {
   test("validates while rendering, and again when the value changes", () => {
     const f = sdk();

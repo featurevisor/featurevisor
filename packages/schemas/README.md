@@ -25,21 +25,81 @@ This package is experimental: its API may change in a minor release.
 - [Validating](#validating)
 - [Issues](#issues)
 - [Handles](#handles)
+  - [Fields](#fields)
+  - [Constraints](#constraints)
+  - [Options](#options)
+  - [Kinds](#kinds)
+  - [Changes](#changes)
 - [Annotations](#annotations)
+  - [Built in annotations](#built-in-annotations)
+  - [Your own annotations](#your-own-annotations)
+  - [Where annotations go](#where-annotations-go)
+  - [Reading annotations](#reading-annotations)
+  - [Fields in order](#fields-in-order)
+  - [Titles in messages](#titles-in-messages)
+  - [Lint](#lint)
+  - [Delivery](#delivery)
 - [Choices](#choices)
+  - [Two ways to write choices](#two-ways-to-write-choices)
+  - [Reading choices](#reading-choices)
+  - [What a choice holds](#what-a-choice-holds)
+  - [What stays yours](#what-stays-yours)
+  - [Choices in issues](#choices-in-issues)
+  - [Reference data](#reference-data)
+  - [Lint](#lint-1)
 - [Messages](#messages)
+  - [Templates](#templates)
+  - [In the schema](#in-the-schema)
+  - [In the application](#in-the-application)
+  - [For one form](#for-one-form)
+  - [Which message wins](#which-message-wins)
+  - [Translating](#translating)
 - [Checks in code](#checks-in-code)
 - [Rules per environment](#rules-per-environment)
 - [Rules under conditions](#rules-under-conditions)
+  - [Conditions](#conditions)
+  - [Comparing two fields](#comparing-two-fields)
+  - [In datafiles](#in-datafiles)
+  - [At runtime](#at-runtime)
+  - [What reads the base](#what-reads-the-base)
+  - [For the values typed so far](#for-the-values-typed-so-far)
+  - [Types](#types)
+  - [Lint](#lint-2)
+  - [With environments](#with-environments)
 - [Rules between fields](#rules-between-fields)
+  - [Conditions say when a value fails](#conditions-say-when-a-value-fails)
+  - [For some users only](#for-some-users-only)
+  - [Common checks](#common-checks)
+  - [How entries run](#how-entries-run)
 - [Testing schemas](#testing-schemas)
 - [Reading form data](#reading-form-data)
 - [Server actions](#server-actions)
 - [React](#react)
+  - [`useSchema`](#useschema)
+  - [`useValidation`](#usevalidation)
+  - [`useSchemas` and `SchemasProvider`](#useschemas-and-schemasprovider)
+  - [Form libraries](#form-libraries)
 - [Rendering forms](#rendering-forms)
+  - [A field by hand](#a-field-by-hand)
+  - [A generic renderer](#a-generic-renderer)
+  - [Rows of an array](#rows-of-an-array)
+  - [Reference data](#reference-data-1)
+  - [Without React](#without-react)
+  - [Without JavaScript](#without-javascript)
 - [Code generation](#code-generation)
 - [Recipes](#recipes)
+  - [A postcode per country](#a-postcode-per-country)
+  - [Limits by plan](#limits-by-plan)
+  - [A field another field makes required](#a-field-another-field-makes-required)
+  - [A booking form](#a-booking-form)
+  - [Roll out a stricter rule](#roll-out-a-stricter-rule)
+  - [A kill switch](#a-kill-switch)
+  - [Try a rule in staging first](#try-a-rule-in-staging-first)
+  - [The same rules on the server](#the-same-rules-on-the-server)
+  - [Choices that change without a deploy](#choices-that-change-without-a-deploy)
 - [API reference](#api-reference)
+  - [`@featurevisor/schemas`](#featurevisorschemas-1)
+  - [`@featurevisor/schemas/react`](#featurevisorschemasreact)
 - [How values are checked](#how-values-are-checked)
 - [Changing a delivered schema](#changing-a-delivered-schema)
 - [Not yet](#not-yet)
@@ -419,28 +479,34 @@ signUp["~standard"].validate(input); // the same result as s.validate("signUp", 
 
 A handle is stable, and reads the current datafile whenever it is used, so you can hand it to a library once, at start up, and still pick up every new datafile.
 
-| Member                | What it is                                                                    |
-| --------------------- | ----------------------------------------------------------------------------- |
-| `["~standard"]`       | The Standard Schema interface                                                 |
-| `key`                 | The schema's key, such as `signUp`                                            |
-| `path`                | Where a field's handle sits, such as `address.city`, or `""` for the schema   |
-| `name`                | Its own key, such as `city`, or `""` for the schema                           |
-| `validate(value)`     | The same result as `s.validate`, with the handle's checks in code             |
-| `isValid(value)`      | A boolean, and a type guard with generated types                              |
-| `parse(value)`        | The value, or a thrown `SchemaError`                                          |
-| `at(path)`            | The handle for one field, such as `at("displayName")` or `at("items[].name")` |
-| `fields`              | An object's fields' handles, in its `order`                                   |
-| `annotations`         | What the schema says beside the field's rules, such as its `title`            |
-| `constraints`         | The HTML validation attributes its rules imply                                |
-| `options`             | Its choices, as `{ value, title, ...fields }`                                 |
-| `option(value)`       | One of its choices by value, for showing a value saved earlier                |
-| `kind`                | What its rules make the field, such as `text` or `select`                     |
-| `fromFormData(data)`  | A value read from `FormData` or `URLSearchParams`                             |
-| `subscribe(listener)` | A call when a new datafile changes the schema                                 |
+| Member                 | What it is                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `["~standard"]`        | The Standard Schema interface                                                 |
+| `key`                  | The schema's key, such as `signUp`                                            |
+| `path`                 | Where a field's handle sits, such as `address.city`, or `""` for the schema   |
+| `name`                 | Its own key, such as `city`, or `""` for the schema                           |
+| `validate(value)`      | The same result as `s.validate`, with the handle's checks in code             |
+| `isValid(value)`       | A boolean, and a type guard with generated types                              |
+| `parse(value)`         | The value, or a thrown `SchemaError`                                          |
+| `at(path)`             | The handle for one field, such as `at("displayName")` or `at("items[].name")` |
+| `fields`               | An object's fields' handles, in its `order`                                   |
+| `annotations`          | What the schema says beside the field's rules, such as its `title`            |
+| `constraints`          | The HTML validation attributes its rules imply                                |
+| `options`              | Its choices, as `{ value, title, ...fields }`                                 |
+| `option(value)`        | One of its choices by value, for showing a value saved earlier                |
+| `kind`                 | What its rules make the field, such as `text` or `select`                     |
+| `fromFormData(data)`   | A value read from `FormData` or `URLSearchParams`                             |
+| `subscribe(listener)`  | A call when a new datafile changes the schema                                 |
+| `for(values, options)` | The same handle for the values typed so far, with the mutations that match    |
+| `reads`                | The fields its mutations' and issues' conditions read                         |
 
-**Fields.** `at` takes a field name as form libraries write it: `address.city`, `items.0.name` or `items[0].name`. Since a schema describes every item of an array alike, `items[].name` means the same, and `labels.*` steps into the values of an object that allows any key. It follows references, and stops at `oneOf`. A field's handle reports issues with paths relative to the field, and a path the schema lacks fails closed with `schemaNotFound`. `fields` and `annotations` have [a section of their own](#annotations).
+### Fields
 
-**Constraints**, named after HTML attributes, so they spread onto an input:
+`at` takes a field name as form libraries write it: `address.city`, `items.0.name` or `items[0].name`. Since a schema describes every item of an array alike, `items[].name` means the same, and `labels.*` steps into the values of an object that allows any key. It follows references, and stops at `oneOf`. A field's handle reports issues with paths relative to the field, and a path the schema lacks fails closed with `schemaNotFound`. `fields` and `annotations` have [a section of their own](#annotations).
+
+### Constraints
+
+Constraints are named after HTML attributes, so they spread onto an input:
 
 ```ts
 signUp.constraints;
@@ -461,9 +527,11 @@ signUp.at("displayName").constraints; // { required: true, minLength: 2, maxLeng
 | `step`                   | `1` for an `integer`                                                 |
 | `multiple`               | An array, such as a multiple select                                  |
 
-An input left empty fails only some fields: a nullable field reads it as `null`, an unchecked box as `false` and a required list with nothing chosen as `[]` (see [Reading form data](#reading-form-data)), so `required` is left out for those, unless `const: true` or `minItems` say otherwise. An object's constraints go by field path, through nested objects, such as `address.city`, and stop at arrays, whose rows have handles of their own, `at("items.0")`. Any other schema's constraints are its own, a field's included. `pattern` is left out, since a browser anchors and compiles patterns its own way, and validation still checks it. Browsers count `maxlength` in UTF-16 code units, which stops typing at an emoji sooner than the schema would, never later.
+An input left empty fails only some fields: a nullable field reads it as `null`, an unchecked box as `false` and a required list with nothing chosen as `[]` (see [Reading form data](#reading-form-data)), so `required` is left out for those, unless `const: true` or `minItems` say otherwise. An object's constraints go by field path, through nested objects, such as `address.city`, and stop at arrays, whose rows have handles of their own, `at("items.0")`. Any other schema's constraints are its own, and a field's are its entry in its object's, `required` included, so `signUp.at("displayName").constraints` is `signUp.constraints.displayName`. `pattern` is left out, since a browser anchors and compiles patterns its own way, and validation still checks it. Browsers count `maxlength` in UTF-16 code units, which stops typing at an emoji sooner than the schema would, never later.
 
-**Options** are the values an `enum`, a `const` or a `oneOf` of consts allows, in the order the schema lists them, each as an object with what the schema says about it (see [Choices](#choices)):
+### Options
+
+Options are the values an `enum`, a `const` or a `oneOf` of consts allows, in the order the schema lists them, each as an object with what the schema says about it (see [Choices](#choices)):
 
 ```ts
 signUp.options.country; // [{ value: "GB", title: "United Kingdom" }, { value: "NL", title: "Netherlands" }]
@@ -473,7 +541,9 @@ signUp.at("country").option("NL"); // { value: "NL", title: "Netherlands" }
 
 An object's options go by field path, and an array's are its items', for a multiple select. A field without choices has none, so code writes `signUp.options.country ?? []`. A schema the datafile lacks has no constraints and an empty list of options, so `options.map` works before the datafile arrives. Constraints, options and annotations are frozen, since every caller shares them.
 
-**Kinds.** Every generic form writes the same switch over a field's rules, so `kind` answers it, from the rules alone. A project's own `input` annotation, or whatever it calls one, still wins.
+### Kinds
+
+Every generic form writes the same switch over a field's rules, so `kind` answers it, from the rules alone. A project's own `input` annotation, or whatever it calls one, still wins.
 
 | `kind`        | From                                                                |
 | ------------- | ------------------------------------------------------------------- |
@@ -489,7 +559,9 @@ An object's options go by field path, and an array's are its items', for a multi
 
 A nullable field has its other branch's kind, so a nullable name is `text`. Any other `oneOf` has no kind, and `kind` is `undefined`.
 
-**Changes.** Code without hooks, such as a web component, renders again from `subscribe`, which calls back when a new datafile changes the schema, through a schema it references too, and returns a function that stops it. A field's handle follows its schema, and `s.close()` stops every listener the instance started:
+### Changes
+
+Code without hooks, such as a web component, renders again from `subscribe`, which calls back when a new datafile changes the schema, through a schema it references too, and returns a function that stops it. A field's handle follows its schema, and `s.close()` stops every listener the instance started:
 
 ```ts
 const country = s.get("signUp").at("country");
@@ -883,9 +955,13 @@ Lint checks each entry against `optionSchema` and the built in `title`, each key
 
 Every issue carries a message, which a schema, your application and one form can each choose.
 
-**Templates** fill placeholders in braces from the issue's params: `Use at least {minLength} characters`, or `{title} is required`. Lists are joined with commas, and `{{` and `}}` write literal braces.
+### Templates
 
-**In the schema**, `messages` beside an object's `properties` word its fields. A text value is a message for an issue code, and a map is a field. `"[]"` holds the messages of an array's items, and `"*"` those of the values an open object allows:
+Templates fill placeholders in braces from the issue's params: `Use at least {minLength} characters`, or `{title} is required`. Lists are joined with commas, and `{{` and `}}` write literal braces.
+
+### In the schema
+
+`messages` beside an object's `properties` word its fields. A text value is a message for an issue code, and a map is a field. `"[]"` holds the messages of an array's items, and `"*"` those of the values an open object allows:
 
 ```yml
 messages:
@@ -920,7 +996,9 @@ messages:
 
 Messages reach the datafile with the schema. Lint checks that each text key is an issue code, each map key a field, and each placeholder a param of its code, `title` included. It warns about a message that can never show, such as `maxLength` for a number, or anything but `enum` beside a `oneOf` of consts, and about a field and code worded both beside the rule and in an enclosing object's `messages`, where the outer one wins.
 
-**In the application**, `messages` on `createSchemas` gives a message per code for every schema, as a template or a function of the params:
+### In the application
+
+`messages` on `createSchemas` gives a message per code for every schema, as a template or a function of the params:
 
 ```ts
 const s = createSchemas(f, {
@@ -931,7 +1009,9 @@ const s = createSchemas(f, {
 });
 ```
 
-**For one form**, a second argument to `s.get` takes messages in the shape a schema's take:
+### For one form
+
+A second argument to `s.get` takes messages in the shape a schema's take:
 
 ```ts
 const leaderboardMessages = {
@@ -947,7 +1027,9 @@ const leaderboardSignUp = s.get("signUp", leaderboardMessages);
 
 The same options object gives the same handle, so define it once, outside a component.
 
-**Which message wins**, for each issue, is the first of these that words it:
+### Which message wins
+
+For each issue, the first of these that words it wins:
 
 1. A check in code's own `message`, then the form's message for the issue's field.
 2. The schema's, looked for from the outside in, so the outermost object that words the field wins, then the `message` of an entry in the schema's [`issues`](#rules-between-fields).
@@ -956,7 +1038,9 @@ The same options object gives the same handle, so define it once, outside a comp
 
 A message is for the field it names, never for the fields inside it. An extra key has no field of its own, so its message comes from the object that rejected it.
 
-**Translating.** `message` on `createSchemas` gets each issue, with the chosen message, and the context, and returns the message the issue carries. Returning `undefined` keeps the chosen one:
+### Translating
+
+`message` on `createSchemas` gets each issue, with the chosen message, and the context, and returns the message the issue carries. Returning `undefined` keeps the chosen one:
 
 ```ts
 const s = createSchemas(f, {
@@ -1051,7 +1135,7 @@ Dev accepts names up to 60 characters and German sign ups, staging the longer na
 - **Inheritance.** Entries inherit as rules do: with `inheritEnvironments: { dev: { from: "staging" } }`, a schema without a `dev` entry uses staging's, or the base when staging has none. An empty entry, `dev: {}`, uses the base and inherits nothing.
 - **Lint** checks that each key is a configured environment, that every path reaches into the base, since a mutation creates no objects on the way, and that each environment's resolved schema is still a valid schema, naming the environment: `In staging, the schema fails: ...`. Delivered patterns an entry sets get the same safe pattern checks as the base's.
 - **Variables cannot use a schema that varies**, at their root or anywhere inside, since a variable's schema, values and type stay the same in every environment. Lint fails at the variable.
-- **Generated types** come from production's version: the environment whose name starts with `prod`. `generate-code --environment=dev` types dev's version instead. A widening change in dev, such as a new `enum` value, is not in production's types, so release regenerated types before such a change reaches production (see [Changing a delivered schema](#changing-a-delivered-schema)).
+- **Generated types** come from production's version: the environment whose name starts with `prod`. `generate-code --environment=dev` types dev's version instead. A widening change in dev, such as a new `enum` value, is not in production's types, so release regenerated types before such a change reaches production (see [Changing a delivered schema](#changing-a-delivered-schema)). Mutations are typed as [under conditions](#rules-under-conditions) says.
 
 ## Rules under conditions
 
@@ -1099,7 +1183,9 @@ mutations:
 
 A business account needs a tax ID in the right shape, with its own message, paying accounts get longer names, and a stricter pattern reaches the users the `strictNames` feature is enabled for, so it can roll out by percentage like any change.
 
-**Conditions** are the ones features and global variables use, so a segment means the same in a schema as in a flag:
+### Conditions
+
+Conditions are the ones features and global variables use, so a segment means the same in a schema as in a flag:
 
 | Reads                                                        | Expression                              | Tree                                                                   |
 | ------------------------------------------------------------ | --------------------------------------- | ---------------------------------------------------------------------- |
@@ -1115,7 +1201,9 @@ Join them with `and`, `or` and `not`, and group them with parentheses, so one co
 - **`input` is the one addition.** It reads the value being validated, as Standard Schema calls it, so rules can depend on what was typed. Paths are relative to the node a mutation sits on, with dots into objects inside the quotes, `input('address.country')`, so a mutation inside `address` reads the address's own `country`, in every form that uses `address`. A rule across two parts of a form goes on the node that holds both, usually the root.
 - **The context** is the SDK instance's, with any given to `validate` merged over it, and a `FeaturevisorScope`'s in React: `s.validate("signUp", input, { plan: "paid" })`. A flag that buckets by `userId` needs it there, as it does for `isEnabled`.
 
-**Comparing two fields.** `input(...)` after the operator reads the other side of a comparison from another field. Goods shipped to another country than the one billed need a customs description:
+### Comparing two fields
+
+`input(...)` after the operator reads the other side of a comparison from another field. Goods shipped to another country than the one billed need a customs description:
 
 ```yml
 mutations:
@@ -1140,13 +1228,56 @@ conditions:
 - `matches` and `notMatches` never take their pattern from `valueFrom`, or from `input(...)` in an expression, since a pattern from a user is one nobody reviewed.
 - A rule that two fields must agree, such as a password typed twice, changes no rule, so it is not a mutation. It goes in [`issues`](#rules-between-fields).
 
-**Datafiles** carry mutations compiled: `conditions` as features have them, and `mutate` as the operations the SDK applies, so applications parse no notation. The segments, flags and global variables a delivered schema's conditions read come along into the datafile, with everything they read, as a feature's dependencies do, so no target has to select them.
+### In datafiles
 
-**At runtime**, each node with mutations is validated against its rules with every matching mutation applied, in order. Each combination that matches compiles once and is kept, so a form validated on every keystroke pays for its conditions, not for compiling. Nodes without mutations validate as before, with nothing added. A condition that cannot be answered, such as a reader that fails, reports an `evaluation_error` diagnostic and does not match.
+Datafiles carry mutations compiled: `conditions` as features have them, and `mutate` as the operations the SDK applies, so applications parse no notation. The segments, flags and global variables a delivered schema's conditions read come along into the datafile, with everything they read, as a feature's dependencies do, so no target has to select them.
 
-**What reads the base.** `constraints`, `options`, `kind`, `annotations` and `fields` describe a schema's base rules, which no condition changes, so a form keeps the same attributes while it is filled in. Validation, `parse`, `formAction` and every Standard Schema library apply the mutations. A field's handle, such as `at("address")`, applies the mutations inside the field, since it cannot see the fields around it.
+### At runtime
 
-**Lint** checks every mutation:
+Each node with mutations is validated against its rules with every matching mutation applied, in order. Each combination that matches compiles once and is kept, so a form validated on every keystroke pays for its conditions, not for compiling. Nodes without mutations validate as before, with nothing added. A condition that cannot be answered, such as a reader that fails, reports an `evaluation_error` diagnostic and does not match.
+
+### What reads the base
+
+A handle's `constraints`, `options`, `kind`, `annotations` and `fields` describe a schema's base rules, which no condition changes. Validation, `parse`, `formAction` and every Standard Schema library apply the mutations. A field's handle, such as `at("address")`, applies the mutations inside the field, since it cannot see the fields around it.
+
+### For the values typed so far
+
+`for(values)` gives the same handle for a form's values, whose members describe the rules that apply to them, so a required tax ID shows as required once a business account is chosen, before anything is submitted:
+
+```tsx
+export function SignUpForm() {
+  const signUp = useSchema("signUp");
+  const form = useForm({ resolver: standardSchemaResolver(signUp) });
+  const rules = signUp.for(form.watch());
+
+  return (
+    <form noValidate onSubmit={form.handleSubmit(createAccount)}>
+      <select {...form.register("accountType", { deps: ["taxId"] })}>
+        <option value="personal">Personal</option>
+        <option value="business">Business</option>
+      </select>
+
+      {rules.constraints.taxId.required && (
+        <input {...form.register("taxId")} {...rules.at("taxId").constraints} />
+      )}
+    </form>
+  );
+}
+```
+
+- **Every member, at every depth.** `constraints`, `options`, `kind`, `annotations`, `fields` and `at` apply each mutation whose conditions match, at each node, for that node's own part of the values. A billing and a shipping address each get their own country's rules, each row of an array its own, and an `order` a mutation sets reorders `fields`.
+- **A field validates as it would inside the values**, with the value given in its place, so `signUp.for(values).at("taxId").validate("NL1")` reports the pattern a business account must match. The form's resolver keeps the handle itself, which reads the whole value it validates.
+- **Context.** A view reads the instance's context, a `FeaturevisorScope`'s in React, and the one given to it, `for(values, { context: { plan } })`, which suits a server rendering a form for a request. A context given to `validate` is merged over it.
+- **Short lived.** A view keeps what it works out until the datafile changes, so make one where you render, `signUp.for(form.watch())`, rather than keeping one.
+- **What to watch.** `reads` lists the fields the conditions of a handle's mutations and issues read, `["accountType"]` above, so a form can render again or validate again only when one changes: `useWatch({ control: form.control, name: signUp.reads })` in React Hook Form, or `deps` on `register`.
+
+### Types
+
+Generated types come from the base with whatever a mutation widens, since any mutation can match when a value is validated: a value a mutation adds to an `enum` joins the union, a field a mutation adds is an optional key, a field a mutation stops requiring is optional, and a field a mutation requires stays optional.
+
+### Lint
+
+Lint checks every mutation:
 
 - its `key` is unique within its node,
 - its `conditions` are valid conditions, each with `value` or `valueFrom` and never both, each `input` path, in `input` and in `valueFrom`, names a field of its node, and each operator and value suit the field compared, as they must an attribute, so `input('age') startsWith 'x'` on an integer fails,
@@ -1167,7 +1298,9 @@ module.exports = {
 
 Variables cannot use a schema with mutations, as for environments.
 
-**Environments and mutations combine.** An environment's entry is applied when its datafile is built, and mutations when a value is validated. So an entry can add a mutation in one environment only, with `mutations:append`, its conditions written as a tree. Lint checks a mutation an entry adds as it checks the file's own, and reports what fails under the entry, such as `In dev: ...`.
+### With environments
+
+Environments and mutations combine. An environment's entry is applied when its datafile is built, and mutations when a value is validated. So an entry can add a mutation in one environment only, with `mutations:append`, its conditions written as a tree. Lint checks a mutation an entry adds as it checks the file's own, and reports what fails under the entry, such as `In dev: ...`.
 
 ## Rules between fields
 
@@ -1197,9 +1330,13 @@ issues:
     message: "{title} does not match the password"
 ```
 
-**Conditions say when a value fails.** Everywhere in Featurevisor, conditions say when something applies, and here what applies is an issue. An entry whose conditions do not match reports nothing.
+### Conditions say when a value fails
 
-**For some users only.** Conditions take every kind of leaf, so an entry meant for some users joins their condition and its check with `and`:
+Everywhere in Featurevisor, conditions say when something applies, and here what applies is an issue. An entry whose conditions do not match reports nothing.
+
+### For some users only
+
+Conditions take every kind of leaf, so an entry meant for some users joins their condition and its check with `and`:
 
 ```yml
 issues:
@@ -1211,6 +1348,8 @@ issues:
 
 A user outside the Netherlands never gets this issue, whatever the countries, and neither does a context without a `country`. A segment, `netherlands and ...`, or a flag, `feature('strictCheckout') and ...`, works the same, so a stricter check can roll out by percentage.
 
+### Common checks
+
 | Issue                                   | Conditions                                              |
 | --------------------------------------- | ------------------------------------------------------- |
 | The passwords differ                    | `input('confirmPassword') != input('password')`         |
@@ -1221,6 +1360,8 @@ A user outside the Netherlands never gets this issue, whatever the countries, an
 | A primary tag outside the chosen tags   | `input('primaryTag') notIn input('tags')`               |
 | No way to reach the user                | `input('email') notExists and input('phone') notExists` |
 | A password holding the user's name      | `input('password') contains input('displayName')`       |
+
+### How entries run
 
 - **Write the failure.** `!=` for `==`, `>` for `<=`, and `not (...)` for a rule without an opposite. A comparison with a missing input does not match, apart from `notEquals`, so an optional field left empty raises nothing, and `required` covers presence.
 - **When entries run.** After the node's own rules, its mutations applied, and only when nothing inside the node has an issue of shape: a missing required field, a value of the wrong type, one outside its `enum` or `const`, a key it does not allow, a `oneOf` no branch fits, or a missing schema. Their values could not be trusted. Other issues hold nothing back, so a password that is too short and a confirmation that differs report both.
@@ -1387,13 +1528,17 @@ export function SignUpForm() {
 }
 ```
 
-**`useSchema(key, options)`** returns the handle, and renders the component again when a new datafile changes the schema, its annotations and choices included. Context and flag changes never render it again. Options can be written inline: the hook keeps one handle per key for the component and reads the latest options when it validates. Inside a `FeaturevisorScope`, it validates and parses with the scope's context, as flag hooks do, and a context given to `validate` or `parse` is merged over it. Its `at` and `fields` give handles that do the same. With checks in code, it also:
+### `useSchema`
+
+`useSchema(key, options)` returns the handle, and renders the component again when a new datafile changes the schema, its annotations and choices included. Context and flag changes never render it again. Options can be written inline: the hook keeps one handle per key for the component and reads the latest options when it validates. Inside a `FeaturevisorScope`, it validates and parses with the scope's context, as flag hooks do, and a context given to `validate` or `parse` is merged over it. Its `at` and `fields` give handles that do the same. With checks in code, it also:
 
 - keeps each check's answer for the component's life, per value, per the values its `reads` name and per context, so leaving a field and then submitting asks once, and asks again after a check failed to run,
 - shares one call between validations waiting on the same value, and
 - lets the latest validation win: a newer one aborts the older one's checks, and the older one settles with the newer one's result.
 
-**`useValidation(keyOrHandle, value, { debounce })`** validates a value while rendering, for a field checked as the user types, with the context of any `FeaturevisorScope` around it. Rules answer at once. Checks in code wait for `debounce` milliseconds, and the result's `validating` is true while they run, and run again when the value, the datafile or the scope's context changes:
+### `useValidation`
+
+`useValidation(keyOrHandle, value, { debounce })` validates a value while rendering, for a field checked as the user types, with the context of any `FeaturevisorScope` around it. Rules answer at once. Checks in code wait for `debounce` milliseconds, and the result's `validating` is true while they run, and run again when the value, the datafile or the scope's context changes:
 
 ```tsx
 export function UsernameField({ value, onChange }) {
@@ -1411,9 +1556,13 @@ export function UsernameField({ value, onChange }) {
 }
 ```
 
-**`useSchemas()`** returns the instance, for event handlers and other code outside rendering.
+### `useSchemas` and `SchemasProvider`
 
-**`SchemasProvider`** is for an application with something to configure: `messages` and `message` for the instance it creates, or `schemas` for an instance created elsewhere, which needs no `FeaturevisorProvider`. The latest `messages` and `message` are used, so a language switch takes effect at the next validation.
+`useSchemas()` returns the instance, for event handlers and other code outside rendering.
+
+`SchemasProvider` is for an application with something to configure: `messages` and `message` for the instance it creates, or `schemas` for an instance created elsewhere, which needs no `FeaturevisorProvider`. The latest `messages` and `message` are used, so a language switch takes effect at the next validation.
+
+### Form libraries
 
 Every form library that takes a Standard Schema takes a handle:
 
@@ -1475,18 +1624,19 @@ export function SignUpForm() {
 
 ### A generic renderer
 
-One component renders any schema in your vocabulary, following `order`, your own `hidden` and `input` annotations, and the kind a field's rules imply:
+One component renders any schema in your vocabulary, following `order`, your own `hidden` and `input` annotations, and the kind a field's rules imply. It renders from a view for the values typed so far, so the fields follow the mutations that match them:
 
 ```tsx
 export function SchemaForm({ schemaKey, onSubmit }) {
   const schema = useSchema(schemaKey);
   const form = useForm({ resolver: standardSchemaResolver(schema) });
+  const rules = schema.for(form.watch());
 
   return (
     <form noValidate onSubmit={form.handleSubmit(onSubmit)}>
-      <h1>{schema.annotations.title}</h1>
+      <h1>{rules.annotations.title}</h1>
 
-      {schema.fields
+      {rules.fields
         .filter((field) => !field.annotations.hidden)
         .map((field) => (
           <SchemaField key={field.path} field={field} form={form} />
@@ -1550,7 +1700,7 @@ function SchemaField({ field, form }) {
 }
 ```
 
-A new field, a new title, a reordered form or a retired choice then ships from your Featurevisor project, with no change to the component. A select's values are text in the DOM, so a field whose choices are numbers reads them back with `setValueAs`, and a `multiselect` renders checkboxes or a `<select multiple>` from the same `options`.
+A new field, a new title, a reordered form or a retired choice then ships from your Featurevisor project, with no change to the component. With the [address](#a-postcode-per-country) from the recipes, choosing a US address marks its state required, also with no line in the component. A select's values are text in the DOM, so a field whose choices are numbers reads them back with `setValueAs`, and a `multiselect` renders checkboxes or a `<select multiple>` from the same `options`.
 
 ### Rows of an array
 
@@ -1844,7 +1994,7 @@ mutations:
       required:appendUnique: email
 ```
 
-`in` takes a list, so one mutation serves both ways of reaching a phone. The `required` issue names the mutation, `mutation: byPhone`, so a form can say why the field is suddenly needed. A business account's tax ID is the same recipe (see [Rules under conditions](#rules-under-conditions)).
+`in` takes a list, so one mutation serves both ways of reaching a phone. The `required` issue names the mutation, `mutation: byPhone`, and in a form `contact.for(values).at("phone").constraints.required` turns true as soon as texts are chosen, so the field can say it is needed before the form is sent. A business account's tax ID is the same recipe (see [Rules under conditions](#rules-under-conditions)).
 
 ### A booking form
 
@@ -2060,27 +2210,27 @@ The instance, `s`:
 
 A handle's members are in [Handles](#handles). Every one of them reads the current datafile when used.
 
-| Type                                                                        | What it is                                                                           |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `Schemas<TSchemas, TVocabularies>`                                          | The instance, typed by schema and by vocabulary                                      |
-| `SchemaHandle<T, TAsync, V>`                                                | A handle, synchronous unless a check in code can return a promise                    |
-| `SyncSchemaHandle`, `AsyncSchemaHandle`, `SchemaHandleBase`                 | The two kinds of handle, and what both have                                          |
-| `SchemasOptions`                                                            | `messages` per issue code and the `message` translator                               |
-| `HandleOptions`, `Refinement`, `CheckInfo`                                  | A handle's `messages` and `refine`, one check, and what a check gets                 |
-| `ValidateOptions`                                                           | `context` and `signal` for `validate`, `isValid` and `parse`                         |
-| `SchemaResult`, `SchemaSuccess`, `SchemaFailure`                            | A validation's result                                                                |
-| `SchemaIssue`, `IssueCode`, `PathKey`                                       | One issue, its code, and a step of its path                                          |
-| `Message`, `MessageInfo`, `CodeMessages`, `FieldMessages`                   | A message or its function, what the function gets, and messages by code and by field |
-| `FieldConstraints`, `ConstraintsOf<T>`                                      | HTML attributes, for a field or by field path                                        |
-| `SchemaOption<T, V>`, `OptionsOf<T, V>`, `OptionFieldsOf<V>`, `ChoiceOf<T>` | A choice, a handle's choices, what a choice carries, and the value one holds         |
-| `AnnotationsOf<V>`, `BuiltInAnnotations`                                    | A handle's annotations, and the four built in ones                                   |
-| `Vocabulary`, `VocabularyOf<TVocabularies, K>`                              | What a schema's vocabularies declare, and one schema's                               |
-| `FieldKind`                                                                 | What `kind` can be                                                                   |
-| `FieldPath<T>`, `FieldValue<T, P>`                                          | The paths `at` takes, and the value at one                                           |
-| `InferSchema<THandle>`, `SchemaKey<TSchemas>`, `IsAsync<TResult>`           | A handle's type, an instance's keys, and whether checks make a handle asynchronous   |
-| `FlattenedIssues`                                                           | What `flattenIssues` returns                                                         |
-| `FormActionState`, `FormActionInfo`, `FormActionOptions`                    | A form action's state, what its function gets, and its options                       |
-| `StandardSchemaV1`                                                          | The Standard Schema interface, version 1                                             |
+| Type                                                                        | What it is                                                                            |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `Schemas<TSchemas, TVocabularies>`                                          | The instance, typed by schema and by vocabulary                                       |
+| `SchemaHandle<T, TAsync, V>`                                                | A handle, synchronous unless a check in code can return a promise                     |
+| `SyncSchemaHandle`, `AsyncSchemaHandle`, `SchemaHandleBase`                 | The two kinds of handle, and what both have                                           |
+| `SchemasOptions`                                                            | `messages` per issue code and the `message` translator                                |
+| `HandleOptions`, `Refinement`, `CheckInfo`                                  | A handle's `messages` and `refine`, one check, and what a check gets                  |
+| `ValidateOptions`, `ViewOptions`                                            | `context` and `signal` for `validate`, `isValid` and `parse`, and `context` for `for` |
+| `SchemaResult`, `SchemaSuccess`, `SchemaFailure`                            | A validation's result                                                                 |
+| `SchemaIssue`, `IssueCode`, `PathKey`                                       | One issue, its code, and a step of its path                                           |
+| `Message`, `MessageInfo`, `CodeMessages`, `FieldMessages`                   | A message or its function, what the function gets, and messages by code and by field  |
+| `FieldConstraints`, `ConstraintsOf<T>`                                      | HTML attributes, for a field or by field path                                         |
+| `SchemaOption<T, V>`, `OptionsOf<T, V>`, `OptionFieldsOf<V>`, `ChoiceOf<T>` | A choice, a handle's choices, what a choice carries, and the value one holds          |
+| `AnnotationsOf<V>`, `BuiltInAnnotations`                                    | A handle's annotations, and the four built in ones                                    |
+| `Vocabulary`, `VocabularyOf<TVocabularies, K>`                              | What a schema's vocabularies declare, and one schema's                                |
+| `FieldKind`                                                                 | What `kind` can be                                                                    |
+| `FieldPath<T>`, `FieldValue<T, P>`                                          | The paths `at` takes, and the value at one                                            |
+| `InferSchema<THandle>`, `SchemaKey<TSchemas>`, `IsAsync<TResult>`           | A handle's type, an instance's keys, and whether checks make a handle asynchronous    |
+| `FlattenedIssues`                                                           | What `flattenIssues` returns                                                          |
+| `FormActionState`, `FormActionInfo`, `FormActionOptions`                    | A form action's state, what its function gets, and its options                        |
+| `StandardSchemaV1`                                                          | The Standard Schema interface, version 1                                              |
 
 ### `@featurevisor/schemas/react`
 
@@ -2124,11 +2274,10 @@ Changing annotations or choices' entries widens nothing, since validation never 
 
 Later releases of this package are planned to add:
 
-- `for(values)`, constraints, options and annotations for the values typed so far, with the mutations that match applied, and `reads`, the fields a schema's conditions read,
 - versions a schema points to per environment, each a whole schema of its own, and a warning when a change reaches an environment before the one before it,
 - rendering again in React when a context a schema's conditions read changes,
 - choosing between shapes, such as a payment method of card or bank, each an object told apart by a discriminator,
-- messages and annotations that depend on conditions, written as a list of variants where the first that matches wins, such as "ZIP code" in the US and "postcode" elsewhere, and handles whose annotations follow the mutations that match,
+- messages and annotations that depend on conditions, written as a list of variants where the first that matches wins, such as "ZIP code" in the US and "postcode" elsewhere,
 - annotations in the Catalog and in `featurevisor diff`, and conversion to JSON Schema, with `title` and `examples` as its own keywords.
 
 ## License

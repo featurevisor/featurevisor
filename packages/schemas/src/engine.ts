@@ -545,7 +545,7 @@ function compileTyped(node: Node, resolve: Resolve): Validate {
 }
 
 /** The value at a dot path inside a value, through own keys only, for `input` leaves. */
-function readInput(value: unknown, path: string): unknown {
+export function readInput(value: unknown, path: string): unknown {
   let current = value;
   for (const part of path.split(".")) {
     if (!current || typeof current !== "object" || !hasOwn(current, part)) return undefined;
@@ -595,6 +595,48 @@ function reaches(operation: ReadonlyArray<unknown>, rule: ReadonlyArray<PathKey>
   return operation.length <= rule.length || whole;
 }
 
+const mutated = new WeakMap<object, Map<string, Node>>();
+
+/** Which of a node's mutations match the value at it, as an id such as `0,2,`. */
+export function matchingMutations(
+  node: Node,
+  value: unknown,
+  context: Context,
+  resolve: Resolve,
+  schema: string,
+): string {
+  const mutations = node.mutations as unknown as DatafileSchemaMutation[];
+  // `input` reads the value at this node, so a mutation in `address` reads the address's own fields.
+  const readers = { input: (path: string) => readInput(value, path) };
+  let id = "";
+  for (let index = 0; index < mutations.length; index++) {
+    if (resolve.match && resolve.match(mutations[index].conditions, context, readers, schema))
+      id += `${index},`;
+  }
+  return id;
+}
+
+/** A node's rules with the mutations an id names applied in order, without `mutations`, the same object for the same id. */
+export function mutatedRules(node: Node, id: string): Node {
+  let byId = mutated.get(node);
+  if (!byId) mutated.set(node, (byId = new Map()));
+  let rules = byId.get(id);
+  if (!rules) {
+    const mutations = node.mutations as unknown as DatafileSchemaMutation[];
+    rules = assignOwn({}, node) as Node;
+    delete rules.mutations;
+    for (const index of id.split(",")) {
+      if (index)
+        rules = applyVariableOperations(
+          rules as never,
+          mutations[Number(index)].operations,
+        ) as Node;
+    }
+    byId.set(id, rules);
+  }
+  return rules;
+}
+
 /**
  * A node whose rules change under conditions: each value is validated against
  * the node with every mutation whose conditions match applied, in order. Each
@@ -603,28 +645,13 @@ function reaches(operation: ReadonlyArray<unknown>, rule: ReadonlyArray<PathKey>
  */
 function compileMutations(node: Node, resolve: Resolve): Validate {
   const mutations = node.mutations as unknown as DatafileSchemaMutation[];
-  const base = assignOwn({}, node) as Node;
-  delete base.mutations;
-  const variants = new Map<string, [Validate, unknown, number[]]>();
+  const variants = new Map<string, [Validate, Node, number[]]>();
   return (value, run, at) => {
-    // `input` reads the value at this node, so a mutation in `address` reads the address's own fields.
-    const readers = { input: (path: string) => readInput(value, path) };
-    let id = "";
-    for (let index = 0; index < mutations.length; index++) {
-      const matched =
-        resolve.match !== undefined &&
-        resolve.match(mutations[index].conditions, run.sources.info.context, readers, run.schema);
-      if (matched) id += `${index},`;
-    }
+    const id = matchingMutations(node, value, run.sources.info.context, resolve, run.schema);
     let variant = variants.get(id);
     if (!variant) {
-      let rules: unknown = base;
-      const matched: number[] = [];
-      for (const index of id.split(",")) {
-        if (!index) continue;
-        matched.push(Number(index));
-        rules = applyVariableOperations(rules as never, mutations[Number(index)].operations);
-      }
+      const rules = mutatedRules(node, id);
+      const matched = id.split(",").filter(Boolean).map(Number);
       variant = [compileNode(rules, resolve), rules, matched];
       variants.set(id, variant);
     }

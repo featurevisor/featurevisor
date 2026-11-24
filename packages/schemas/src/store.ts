@@ -1,14 +1,7 @@
 import type { Featurevisor, FeaturevisorModuleApi } from "@featurevisor/sdk";
-import type { DatafileSchema } from "@featurevisor/types";
+import type { DatafileSchema, SchemaMessages } from "@featurevisor/types";
 
-import {
-  compileNode,
-  isPlainObject,
-  ownScopes,
-  resolveNode,
-  type Resolve,
-  type Validate,
-} from "./engine.js";
+import { compileNode, isPlainObject, type Resolve, type Validate } from "./engine.js";
 import type { MessageScope } from "./messages.js";
 import { hasOwn, type PathStep } from "./paths.js";
 
@@ -22,8 +15,6 @@ export interface Store {
   entry(key: string): DatafileSchema | undefined;
   /** What changes when the schema does, through the schemas it references too, since its hash covers them. */
   version(key: string): unknown;
-  /** Results derived from an entry, such as constraints, kept until the entry changes. */
-  derive<T>(key: string, kind: string, make: (entry: DatafileSchema) => T): T | undefined;
   /** Reports `schema_not_found` once per key. */
   reportMissing(key: string): void;
 }
@@ -63,7 +54,6 @@ export function getStore(f: Featurevisor): Store {
 
   const api = registerModule(f);
   const compiled = new Map<string, { entry: DatafileSchema; validate: Validate }>();
-  const derived = new Map<string, { entry: DatafileSchema; revision: string; value: unknown }>();
   const reported = new Set<string>();
 
   const entry = (key: string): DatafileSchema | undefined => {
@@ -95,20 +85,6 @@ export function getStore(f: Featurevisor): Store {
       const node = entry(key);
       return node ? (node.hash ?? node) : undefined;
     },
-    derive<T>(key: string, kind: string, make: (node: DatafileSchema) => T): T | undefined {
-      const node = entry(key);
-      if (!node) return undefined;
-      const id = `${kind}\u0000${key}`;
-      // Kept by the revision too, since a field's constraints can come from a referenced schema.
-      const revision = api.getRevision();
-      const cached = derived.get(id);
-      if (cached && cached.entry === node && cached.revision === revision) {
-        return cached.value as T;
-      }
-      const value = make(node);
-      derived.set(id, { entry: node, revision, value });
-      return value;
-    },
     reportMissing(key: string) {
       if (reported.has(key)) return;
       reported.add(key);
@@ -130,47 +106,81 @@ export interface FieldLocation {
   readonly mpath: string[];
   /** Schema messages of the nodes on the way, not the field's own, which validating it adds. */
   readonly scopes: MessageScope[];
+  /** The field's value in a view's values. */
+  readonly value?: unknown;
+  /** Whether the object the field sits in requires it, after that object's mutations in a view. */
+  readonly required?: boolean;
+}
+
+/** How a view walks: its values, from which step they apply, and what applies a node's matching mutations. */
+export interface Walk {
+  readonly value: unknown;
+  readonly from: number;
+  readonly adjust: (node: unknown, value: unknown) => unknown;
 }
 
 /**
  * Follows a path from a node, through references, `properties`, array items and
  * the values an open object allows. It stops at `oneOf`, and gives undefined for
- * a path the schema does not describe.
+ * a path the schema does not describe. In a view, each node on the way, and each
+ * schema it references, has its matching mutations applied for the value there.
  */
 export function locate(
   resolve: Resolve,
   root: unknown,
   steps: ReadonlyArray<PathStep>,
   start: { mpath: string[]; scopes: MessageScope[] } = { mpath: [], scopes: [] },
+  walk?: Walk,
 ): FieldLocation | undefined {
   let node = root;
+  let value = walk && walk.value;
+  let required = false;
   const mpath = [...start.mpath];
   const scopes = [...start.scopes];
 
-  for (const step of steps) {
-    ownScopes(node, mpath.length, resolve, scopes);
-    const resolved = resolveNode(node, resolve);
-    if (!resolved || Array.isArray(resolved.oneOf)) return undefined;
+  for (let index = 0; index < steps.length; index++) {
+    const step = steps[index];
+    const adjust = walk && index >= walk.from ? walk.adjust : undefined;
+    // The node's messages, then those of each schema it references, at the same depth.
+    const seen: string[] = [];
+    let resolved = adjust ? adjust(node, value) : node;
+    for (;;) {
+      if (!isPlainObject(resolved)) return undefined;
+      if (isPlainObject(resolved.messages))
+        scopes.push({ messages: resolved.messages as SchemaMessages, base: mpath.length });
+      const key = resolved.schema;
+      if (typeof key !== "string") break;
+      if (seen.indexOf(key) !== -1) return undefined;
+      seen.push(key);
+      const target = resolve(key)?.node;
+      resolved = adjust ? adjust(target, value) : target;
+    }
+    if (Array.isArray(resolved.oneOf)) return undefined;
+    const inView = walk && index >= walk.from;
 
     if (step.kind === "key") {
       const properties = resolved.properties;
+      required = false;
       if (isPlainObject(properties) && hasOwn(properties, step.key)) {
         node = properties[step.key];
         mpath.push(step.key);
-        continue;
-      }
-      if (isPlainObject(resolved.additionalProperties)) {
+        required = Array.isArray(resolved.required) && resolved.required.indexOf(step.key) !== -1;
+      } else if (isPlainObject(resolved.additionalProperties)) {
         node = resolved.additionalProperties;
         mpath.push("*");
-        continue;
-      }
-      return undefined;
+      } else return undefined;
+      if (inView)
+        value = isPlainObject(value) && hasOwn(value, step.key) ? value[step.key] : undefined;
+      continue;
     }
 
+    required = false;
     if (step.kind === "values") {
       if (!isPlainObject(resolved.additionalProperties)) return undefined;
       node = resolved.additionalProperties;
       mpath.push("*");
+      // `*` names no one value.
+      if (inView) value = undefined;
       continue;
     }
 
@@ -178,7 +188,9 @@ export function locate(
     if (resolved.type !== "array") return undefined;
     node = resolved.items === undefined ? { type: "string" } : resolved.items;
     mpath.push("[]");
+    if (inView)
+      value = step.kind === "index" && Array.isArray(value) ? value[step.index] : undefined;
   }
 
-  return { node, mpath, scopes };
+  return { node, mpath, scopes, value, required };
 }

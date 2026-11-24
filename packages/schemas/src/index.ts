@@ -40,6 +40,7 @@ export type {
   SchemasOptions,
   SchemaSuccess,
   ValidateOptions,
+  ViewOptions,
   Vocabulary,
   VocabularyOf,
 } from "./types.js";

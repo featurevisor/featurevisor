@@ -11,6 +11,7 @@ import {
 } from "./derived.js";
 import {
   compileNode,
+  isPlainObject,
   report,
   sameJson,
   titleOf,
@@ -22,6 +23,7 @@ import { valueOf } from "./errors.js";
 import { readFormData } from "./formData.js";
 import type { MessageLookup, MessageScope } from "./messages.js";
 import {
+  assignOwn,
   formatPath,
   hasOwn,
   isAtOrInside,
@@ -41,13 +43,22 @@ import type {
   SchemaResult,
   SchemasOptions,
   ValidateOptions,
+  ViewOptions,
 } from "./types.js";
+import { adjuster, place, readsOf, resolveTree } from "./view.js";
 
 /** A check in code, with its path read once, relative to the handle that runs it. */
 interface Check {
   readonly refinement: Refinement;
   readonly steps: PathStep[];
   readonly reads: PathStep[][];
+}
+
+/** A view's values and context, and the depth of the handle `for` was called on, where the values sit. */
+interface View {
+  readonly values: unknown;
+  readonly context?: Context;
+  readonly from: number;
 }
 
 /** What a handle needs from the instance that made it, read each time it validates. */
@@ -160,8 +171,15 @@ export class SchemaHandleImpl {
 
   private readonly steps: PathStep[];
   private readonly handles = new Map<string, SchemaHandleImpl>();
-  private compiledField?: { node: unknown; validate: Validate };
+  private readonly compiled = new WeakMap<object, Validate>();
   private listed?: { keys: ReadonlyArray<string>; fields: SchemaHandleImpl[] };
+  /** The node, in a view resolved, and what members derived from it, until the datafile changes. */
+  private memo?: {
+    entry: unknown;
+    revision: string;
+    described?: { node: unknown; required?: boolean };
+    made: Map<string, unknown>;
+  };
 
   constructor(
     private readonly context: HandleContext,
@@ -169,6 +187,7 @@ export class SchemaHandleImpl {
     private readonly getOptions: () => HandleOptions<any, any> | undefined,
     steps: PathStep[] = [],
     private readonly wrapCheck?: CheckWrapper,
+    private readonly view?: View,
   ) {
     this.key = key;
     this.steps = steps;
@@ -196,26 +215,81 @@ export class SchemaHandleImpl {
     };
   }
 
-  /** Where this handle's field sits in its schema, or undefined when the datafile lacks it. */
-  private locate(): ({ validate: Validate } & MessageLookup) | undefined {
+  /**
+   * Where this handle's field sits in its schema, or undefined when the datafile
+   * lacks it. In a view, the fields around it read the view's values, with the
+   * value being validated in the field's place.
+   */
+  private locate(
+    value: unknown,
+    run: Run,
+  ): ({ validate: Validate; node: unknown } & MessageLookup) | undefined {
     const { store } = this.context;
     const root = store.resolve(this.key);
     if (!root) return undefined;
-    if (this.steps.length === 0) return { validate: root.validate, mpath: [], scopes: [] };
-    const field = locate(store.resolve, root.node, this.steps);
+    const view = this.view;
+    const field = locate(
+      store.resolve,
+      root.node,
+      this.steps,
+      undefined,
+      view && {
+        value: place(view.values, this.steps.slice(view.from), value),
+        from: view.from,
+        adjust: adjuster(store.resolve, run.sources.info.context, this.key),
+      },
+    );
     if (!field) return undefined;
-    if (!this.compiledField || this.compiledField.node !== field.node) {
-      this.compiledField = { node: field.node, validate: compileNode(field.node, store.resolve) };
+    const node = field.node;
+    // Kept per node, and a view's nodes are the same object for the same mutations.
+    let validate = this.compiled.get(node as object);
+    if (!validate) {
+      validate = compileNode(node, store.resolve);
+      if (isPlainObject(node)) this.compiled.set(node, validate);
     }
-    return { validate: this.compiledField.validate, mpath: field.mpath, scopes: field.scopes };
+    return { validate, node, mpath: field.mpath, scopes: field.scopes };
   }
 
-  /** The node this handle validates, for constraints, options and form data. */
-  private node(): unknown {
+  /**
+   * The node this handle describes, in a view with the matching mutations
+   * applied at every depth, and whether the object it sits in requires it.
+   */
+  private describe(view?: View): { node: unknown; required?: boolean } | undefined {
     const { store } = this.context;
     const root = store.resolve(this.key);
     if (!root) return undefined;
-    return this.steps.length === 0 ? root.node : locate(store.resolve, root.node, this.steps)?.node;
+    const adjust = view && adjuster(store.resolve, store.f.getContext(view.context), this.key);
+    const field = locate(
+      store.resolve,
+      root.node,
+      this.steps,
+      undefined,
+      adjust && { value: view!.values, from: view!.from, adjust },
+    );
+    return adjust && field
+      ? {
+          node: resolveTree(field.node, field.value, adjust, store.resolve),
+          required: field.required,
+        }
+      : field;
+  }
+
+  /**
+   * What a member derives from the node, kept until the datafile changes, since
+   * a field's can come from a referenced schema.
+   */
+  private derive<T>(kind: string, make: (node: unknown, required?: boolean) => T): T | undefined {
+    const { store } = this.context;
+    const entry = store.entry(this.key);
+    if (!entry) return undefined;
+    const revision = store.api.getRevision();
+    let memo = this.memo;
+    if (!memo || memo.entry !== entry || memo.revision !== revision)
+      memo = this.memo = { entry, revision, described: this.describe(this.view), made: new Map() };
+    const { made, described } = memo;
+    if (!made.has(kind))
+      made.set(kind, make(described && described.node, described && described.required));
+    return made.get(kind) as T;
   }
 
   /** The checks in code this handle runs: its own options', or a field's share of them. */
@@ -245,6 +319,9 @@ export class SchemaHandleImpl {
   }
 
   private run(given: Context | undefined): Run {
+    // A view's context, with one given to the call merged over it.
+    const own = this.view && this.view.context;
+    if (own) given = given ? assignOwn({}, own, given) : own;
     const instance = this.context.instanceOptions();
     const { f } = this.context.store;
     let context: Context | undefined;
@@ -276,8 +353,8 @@ export class SchemaHandleImpl {
   private applyRules(
     value: unknown,
     run: Run,
-  ): ({ validate: Validate } & MessageLookup) | undefined {
-    const located = this.locate();
+  ): ({ validate: Validate; node: unknown } & MessageLookup) | undefined {
+    const located = this.locate(value, run);
     if (!located) {
       this.context.store.reportMissing(this.key);
       const position: Position = { path: [], mpath: [], scopes: [] };
@@ -370,13 +447,13 @@ export class SchemaHandleImpl {
 
   private reportCheck(
     run: Run,
-    located: MessageLookup,
+    located: { node: unknown } & MessageLookup,
     slot: SchemaIssue[],
     code: "refine" | "refineError",
     refinement: Refinement,
     path: PathKey[],
   ): void {
-    const field = locate(this.context.store.resolve, this.node(), stepsOf(path), {
+    const field = locate(this.context.store.resolve, located.node, stepsOf(path), {
       mpath: [...located.mpath],
       scopes: [...located.scopes] as MessageScope[],
     });
@@ -437,6 +514,7 @@ export class SchemaHandleImpl {
         this.getOptions,
         [...this.steps, ...steps()],
         this.wrapCheck,
+        this.view,
       );
       this.handles.set(id, field);
     }
@@ -456,22 +534,49 @@ export class SchemaHandleImpl {
           : "*";
   }
 
+  /**
+   * The same handle for the values typed so far, such as a form's: its members
+   * describe the rules with every mutation whose conditions match those values,
+   * and the context, applied at every depth.
+   */
+  for(values: unknown, options: ViewOptions = {}): SchemaHandleImpl {
+    return new SchemaHandleImpl(
+      this.context,
+      this.key,
+      this.getOptions,
+      this.steps,
+      this.wrapCheck,
+      {
+        values,
+        context: options.context,
+        from: this.steps.length,
+      },
+    );
+  }
+
+  /** The fields, relative to this handle, that its mutations' and issues' conditions read. */
+  get reads(): ReadonlyArray<string> {
+    const { resolve } = this.context.store;
+    return (
+      this.derive("reads", () => {
+        const base = this.describe();
+        return Object.freeze(readsOf(base && base.node, resolve));
+      }) || EMPTY_LIST
+    );
+  }
+
   /** Its annotations, over those of a schema its field references. */
   get annotations(): Readonly<Record<string, unknown>> {
     const { store } = this.context;
-    const derived = store.derive(this.key, `annotations${this.path}`, () =>
-      getAnnotations(this.node(), store.resolve),
-    );
-    return derived || EMPTY;
+    return this.derive("annotations", (node) => getAnnotations(node, store.resolve)) || EMPTY;
   }
 
   /** The keys of an object's fields, in its `order`. */
   fieldKeys(): ReadonlyArray<string> {
     const { store } = this.context;
-    const derived = store.derive(this.key, `fields${this.path}`, () =>
-      Object.freeze(fieldKeys(this.node(), store.resolve)),
+    return (
+      this.derive("fields", (node) => Object.freeze(fieldKeys(node, store.resolve))) || EMPTY_LIST
     );
-    return derived || EMPTY_LIST;
   }
 
   /** An object's fields' handles, in its `order`, or none for any other value. */
@@ -485,19 +590,17 @@ export class SchemaHandleImpl {
 
   get constraints() {
     const { store } = this.context;
-    const derived = store.derive(this.key, `constraints${this.path}`, () =>
-      getConstraints(this.node(), store.resolve),
+    return (
+      this.derive("constraints", (node, required) =>
+        getConstraints(node, store.resolve, required),
+      ) || EMPTY
     );
-    return derived || EMPTY;
   }
 
   get options() {
     const { store } = this.context;
-    const derived = store.derive(this.key, `options${this.path}`, () =>
-      getOptions(this.node(), store.resolve),
-    );
     // An empty list for a missing schema suits both shapes: `options.map` works, and `options.country` is undefined.
-    return derived || EMPTY_LIST;
+    return this.derive("options", (node) => getOptions(node, store.resolve)) || EMPTY_LIST;
   }
 
   option(value: unknown): SchemaOption | undefined {
@@ -509,11 +612,12 @@ export class SchemaHandleImpl {
 
   get kind(): FieldKind | undefined {
     const { store } = this.context;
-    return store.derive(this.key, `kind${this.path}`, () => getKind(this.node(), store.resolve));
+    return this.derive("kind", (node) => getKind(node, store.resolve));
   }
 
   fromFormData(data: FormData | URLSearchParams): unknown {
-    return readFormData(this.node(), data, this.context.store.resolve);
+    const node = this.derive("node", (described) => described);
+    return readFormData(node, data, this.context.store.resolve);
   }
 }
 

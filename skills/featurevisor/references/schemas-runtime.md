@@ -70,9 +70,10 @@ if (result.issues) {
 - `validate`, `isValid`, `parse`, and `["~standard"]` for libraries
 - `at(path)` for one field, such as `at('address.city')` or `at('items[].name')`
 - `fields`, an object's fields in its `order`, each with `name` and `path`
-- `annotations`, `constraints` (HTML attributes such as `required` and `maxLength`), `options` and `option(value)` for choices, and `kind`, such as `text`, `select` or `multiselect`
+- `annotations`, `constraints` (HTML attributes such as `required` and `maxLength`, and a field's own match its entry in its object's), `options` and `option(value)` for choices, and `kind`, such as `text`, `select` or `multiselect`
 - `fromFormData(data)`, which reads `FormData` or `URLSearchParams` by the schema's types
 - `subscribe(listener)`, called when a new datafile changes the schema
+- `for(values, { context })`, the same handle for the values typed so far, and `reads`, the fields its conditions read (below)
 
 ## Annotations and choices
 
@@ -214,7 +215,9 @@ mutations:
 - The segments, flags and global variables a schema's conditions read come along into the datafile, as a feature's dependencies do.
 - Lint checks each operator and value against the field it compares, as it does for attributes, so `input('age') startsWith 'x'` on an integer fails.
 - An issue a mutation set the rule of names it in `issue.mutation`, such as `business` for a missing `taxId`.
-- `constraints`, `options`, `kind`, `annotations` and `fields` describe the base rules, so a form keeps its attributes while it is filled in.
+- A handle's `constraints`, `options`, `kind`, `annotations` and `fields` describe the base rules. `handle.for(values)` gives the same members for a form's values, with every matching mutation applied at each node for that node's part of the values, so `signUp.for(form.watch()).constraints.taxId.required` turns true once a business account is chosen. Its field handles validate as they would inside those values. `for(values, { context })` suits a server rendering for a request.
+- `reads` lists the fields a handle's mutations and issues read, such as `["accountType", "address.country"]`, for a form to watch or validate again.
+- Generated types are the base with whatever a mutation widens: an `enum` value a mutation adds joins the union, and a field a mutation requires or stops requiring is optional.
 
 ## Forms, servers and React
 
