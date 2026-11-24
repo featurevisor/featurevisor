@@ -119,8 +119,16 @@ export interface Evaluation {
   variable?: DatafileVariable;
 }
 
+/**
+ * Readers for kinds of condition leaf a package answers itself, such as
+ * `input`: each gets the leaf's path and returns the value to compare.
+ */
+export type ConditionReaders = Readonly<Record<string, (path: string) => unknown>>;
+
 export interface EvaluateDependencies {
   context: Context;
+  /** Readers for leaves only a package can answer, such as `{ input: "country", ... }`. */
+  readers?: ConditionReaders;
   /** Immediate requester for an internal dependency, absent on application calls. */
   dependencyOf?: DependencyOf;
   /** Whether the dependency gates eligibility or supplies a consumed composition value. */

@@ -42,9 +42,12 @@ export function refreshEvaluationState(options: EvaluateDependencies): void {
 }
 
 export interface DependencyOf {
-  type: EvaluationType;
+  /** A getter's type, or a package's own, such as `schema`, for conditions a package answers. */
+  type: EvaluationType | (string & {});
   featureKey?: string;
   variableKey?: string;
+  /** The package's entry, such as a schema's key, when `type` is a package's. */
+  key?: string;
 }
 
 interface Frame {
@@ -103,11 +106,17 @@ export function identity(options: DependencyOf): DependencyOf {
   const result: DependencyOf = { type: options.type };
   if (options.featureKey !== undefined) result.featureKey = options.featureKey;
   if (options.variableKey !== undefined) result.variableKey = options.variableKey;
+  if (options.key !== undefined) result.key = options.key;
   return result;
 }
 
 function sameIdentity(a: DependencyOf, b: DependencyOf): boolean {
-  return a.type === b.type && a.featureKey === b.featureKey && a.variableKey === b.variableKey;
+  return (
+    a.type === b.type &&
+    a.featureKey === b.featureKey &&
+    a.variableKey === b.variableKey &&
+    a.key === b.key
+  );
 }
 
 function keyOf(options: DependencyOf, requester: DependencyOf): string {
@@ -118,6 +127,7 @@ function keyOf(options: DependencyOf, requester: DependencyOf): string {
     requester.type,
     requester.featureKey,
     requester.variableKey,
+    requester.key,
   ]);
 }
 

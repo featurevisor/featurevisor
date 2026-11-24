@@ -1,6 +1,6 @@
-import type { BucketBy, Context, FeatureKey } from "@featurevisor/types";
+import type { BucketBy, Conditions, Context, FeatureKey } from "@featurevisor/types";
 
-import type { Evaluation, EvaluationOptions } from "./evaluate.js";
+import type { ConditionReaders, Evaluation, EvaluationOptions } from "./evaluate.js";
 import type { BucketKey, BucketValue } from "./bucketer.js";
 import type { TrackResult } from "./reads.js";
 import type {
@@ -60,6 +60,22 @@ export interface FeaturevisorModuleApi {
   getEntry: (section: string, key: string) => unknown;
   /** The keys of a datafile section's entries, or an empty list for a missing section. */
   getEntryKeys: (section: string) => string[];
+  /**
+   * Answers conditions as Core writes them in datafiles, for a package's own
+   * entries, with the instance's engine: segments, attributes, and feature and
+   * variable leaves, which read through the getters in one dependency session,
+   * with sticky values and modules, as `dependencyOf: { type, key }`. `readers`
+   * answer leaves only the package knows, such as `{ input: "country", ... }`,
+   * and a value naming a reader, `{ input: "password" }`, compares two reads.
+   * `context` is merged over the instance's, as a getter's is. A condition that
+   * cannot be answered, such as a dependency cycle, reports `evaluation_error`
+   * and does not match.
+   */
+  matchConditions: (
+    conditions: Conditions | string,
+    context: Context,
+    options?: { type?: string; key?: string; readers?: ConditionReaders },
+  ) => boolean;
 }
 
 /**

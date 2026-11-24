@@ -42,7 +42,11 @@ import type {
   EventDetailsByName,
   EventName,
 } from "./events.js";
-import { allConditionsAreMatched, valueIsMatched } from "./conditions.js";
+import {
+  allConditionsAreMatched,
+  parseConditionsIfStringified,
+  valueIsMatched,
+} from "./conditions.js";
 import type {
   FeaturevisorDiagnostic,
   FeaturevisorDiagnosticHandler,
@@ -81,6 +85,7 @@ import {
   type StickyState,
   DependencyError,
   evaluateSegment,
+  type DependencyOf,
 } from "./session.js";
 
 const emptyDatafile: DatafileContent = {
@@ -667,18 +672,20 @@ export class Featurevisor {
     if (typeof conditions !== "object" || conditions === null) return false;
     const cached = this.attributeConditions.get(conditions);
     if (cached !== undefined) return cached;
+    const children = Array.isArray(conditions)
+      ? conditions
+      : "and" in conditions
+        ? conditions.and
+        : "or" in conditions
+          ? conditions.or
+          : "not" in conditions
+            ? conditions.not
+            : undefined;
+    // A leaf of another kind, such as a package's `input`, is answered in matchConditions.
     const result =
       "attribute" in conditions ||
-      ((Array.isArray(conditions)
-        ? conditions
-        : "and" in conditions
-          ? conditions.and
-          : "or" in conditions
-            ? conditions.or
-            : "not" in conditions
-              ? conditions.not
-              : []
-      ).every((condition) => this.isAttributeOnly(condition)) &&
+      (children !== undefined &&
+        children.every((condition) => this.isAttributeOnly(condition)) &&
         !("feature" in conditions || "variable" in conditions));
     this.attributeConditions.set(conditions, result);
     return result;
@@ -734,6 +741,29 @@ export class Featurevisor {
         conditions.variation === undefined ||
         this.evaluateRequiredFeature("variation", conditions.feature, dependencies)
           .variationValue === conditions.variation
+      );
+    }
+    // A leaf only a package knows, such as `input`, is read through the package's reader.
+    const readers = dependencies.readers;
+    const leaf = conditions as unknown as Record<string, never>;
+    const kind = readers && Object.keys(leaf).find((name) => hasOwn(readers, name));
+    if (kind) {
+      const given = leaf.value as Record<string, never> | undefined;
+      // A value naming a reader compares one read with another, such as two inputs.
+      const other =
+        given && typeof given === "object" && !Array.isArray(given)
+          ? Object.keys(given).find((name) => hasOwn(readers!, name))
+          : undefined;
+      // A pattern read from a value is a pattern nobody reviewed, so it never runs.
+      if (other && /atches$/.test(leaf.operator)) return false;
+      return valueIsMatched(
+        readers![kind](leaf[kind]),
+        {
+          operator: leaf.operator,
+          value: (other ? readers![other](given![other]) : given) as never,
+          regexFlags: leaf.regexFlags,
+        },
+        (pattern, flags) => this.getRegex(pattern, flags),
       );
     }
     return matchGroup(
@@ -1070,6 +1100,30 @@ export class Featurevisor {
         const entries = this.getSection(section);
         return entries ? Object.keys(entries) : [];
       },
+      matchConditions: (conditions, context, options = {}) => {
+        const type = options.type || module.name || "package";
+        // A session opens when a leaf first reads a dependency, and goes with this object.
+        const dependencies = this.getEvaluationDependencies(
+          context,
+          {},
+          { type, key: options.key, readers: options.readers },
+        );
+        try {
+          return this.conditionsAreMatched(
+            parseConditionsIfStringified(conditions, this.reportDiagnostic) as Conditions,
+            dependencies,
+          );
+        } catch (error) {
+          this.reportDiagnostic({
+            level: "error",
+            code: "evaluation_error",
+            message: "matchConditions failed",
+            originalError: error,
+            details: { type, key: options.key },
+          });
+          return false;
+        }
+      },
     };
   };
 
@@ -1141,7 +1195,7 @@ export class Featurevisor {
    */
   private getEvaluationDependencies<
     T extends {
-      type: "flag" | "variation" | "variable";
+      type: DependencyOf["type"];
       featureKey?: string;
       variableKey?: string;
     },
