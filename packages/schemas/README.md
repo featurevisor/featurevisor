@@ -19,6 +19,7 @@ This package is experimental: its API may change in a minor release.
 - [Checks in code](#checks-in-code)
 - [Rules per environment](#rules-per-environment)
 - [Rules under conditions](#rules-under-conditions)
+- [Rules between fields](#rules-between-fields)
 - [Reading form data](#reading-form-data)
 - [Server actions](#server-actions)
 - [React](#react)
@@ -162,23 +163,23 @@ Every issue has a `message`, a `path` of object keys and array indices, the `cod
 
 Validation reports every issue it finds, so a form can mark every field at once.
 
-| Code                     | Raised when                               | Params                                            |
-| ------------------------ | ----------------------------------------- | ------------------------------------------------- |
-| `type`                   | The value has another type                | `type`, `received`                                |
-| `const`                  | The value is not the constant             | `const`                                           |
-| `enum`                   | The value is not one of the listed values | `options`, and `titles` when every choice has one |
-| `minimum`, `maximum`     | A number is out of range                  | `minimum` or `maximum`, `value`                   |
-| `minLength`, `maxLength` | A string is too short or too long         | `minLength` or `maxLength`, `length`              |
-| `pattern`                | A string does not match                   | `pattern`                                         |
-| `format`                 | A string is not a timestamp or a version  | `format`                                          |
-| `minItems`, `maxItems`   | An array has too few or too many items    | `minItems` or `maxItems`, `count`                 |
-| `uniqueItems`            | An array repeats an item                  | `index`, of the first repeat                      |
-| `required`               | A key is missing                          | `key`                                             |
-| `additionalProperties`   | An object has a key it does not allow     | `key`                                             |
-| `oneOf`                  | No branch matches, or more than one does  | `matches`                                         |
-| `refine`                 | A check in code returns false             | `refine`, the check's key                         |
-| `refineError`            | A check in code throws or rejects         | `refine`, the check's key                         |
-| `schemaNotFound`         | The datafile has no such schema or field  | `schema`, and `field` for a field                 |
+| Code                     | Raised when                                                          | Params                                            |
+| ------------------------ | -------------------------------------------------------------------- | ------------------------------------------------- |
+| `type`                   | The value has another type                                           | `type`, `received`                                |
+| `const`                  | The value is not the constant                                        | `const`                                           |
+| `enum`                   | The value is not one of the listed values                            | `options`, and `titles` when every choice has one |
+| `minimum`, `maximum`     | A number is out of range                                             | `minimum` or `maximum`, `value`                   |
+| `minLength`, `maxLength` | A string is too short or too long                                    | `minLength` or `maxLength`, `length`              |
+| `pattern`                | A string does not match                                              | `pattern`                                         |
+| `format`                 | A string is not a timestamp or a version                             | `format`                                          |
+| `minItems`, `maxItems`   | An array has too few or too many items                               | `minItems` or `maxItems`, `count`                 |
+| `uniqueItems`            | An array repeats an item                                             | `index`, of the first repeat                      |
+| `required`               | A key is missing                                                     | `key`                                             |
+| `additionalProperties`   | An object has a key it does not allow                                | `key`                                             |
+| `oneOf`                  | No branch matches, or more than one does                             | `matches`                                         |
+| `refine`                 | A check in code returns false, or one of a schema's `issues` matches | `refine`, the check's or the entry's key          |
+| `refineError`            | A check in code throws or rejects                                    | `refine`, the check's key                         |
+| `schemaNotFound`         | The datafile has no such schema or field                             | `schema`, and `field` for a field                 |
 
 Every issue about a field with a `title` annotation also carries it as `params.title`, so a message can name the field (see [Annotations](#annotations)). An `additionalProperties` issue has none, since its key has no field.
 
@@ -741,7 +742,7 @@ The same options object gives the same handle, so define it once, outside a comp
 **Which message wins**, for each issue, is the first of these that words it:
 
 1. A check in code's own `message`, then the form's message for the issue's field.
-2. The schema's, looked for from the outside in, so the outermost object that words the field wins.
+2. The schema's, looked for from the outside in, so the outermost object that words the field wins, then the `message` of an entry in the schema's [`issues`](#rules-between-fields).
 3. The application's, from `messages` on `createSchemas`.
 4. The default, in English.
 
@@ -932,7 +933,7 @@ mutations:
 
 - `value` is always a value, and `valueFrom` always names a field, by a path relative to the same node as `input`. A condition takes one of the two, never both. In an expression, `input(...)` after the operator needs `input(...)` before it, and never goes inside a list: `input('primaryTag') in input('tags')` compares with a list field as a whole.
 - `matches` and `notMatches` never take their pattern from `valueFrom`, or from `input(...)` in an expression, since a pattern from a user is one nobody reviewed.
-- A rule that two fields must agree, such as a password typed twice, changes no rule, so it is not a mutation. For now it goes in a [check in code](#checks-in-code), whose `check` gets the whole value.
+- A rule that two fields must agree, such as a password typed twice, changes no rule, so it is not a mutation. It goes in [`issues`](#rules-between-fields).
 
 **Datafiles** carry mutations compiled: `conditions` as features have them, and `mutate` as the operations the SDK applies, so applications parse no notation. The segments a delivered schema's conditions read come along into the datafile, as a feature's do. A target must deliver the features and global variables they read, as it does for a feature that depends on them, or they read as not found.
 
@@ -948,7 +949,7 @@ mutations:
 - the node's rules stay a valid schema with each mutation applied alone and with all of them together,
 - no mutation changes a `type`, so a field's type, form data reading and generated types are the same whatever matches.
 
-`input` reads only the value a schema validates, so it goes only in a schema's mutations: in a feature, a segment or a global variable it is an error, since the context already carries what those know. `allowedConditions` takes a `schemas` location, and `input` as a kind that only that location takes, so a project can keep schema mutations to segments and input, say:
+`input` reads only the value a schema validates, so it goes only in a schema's mutations and [issues](#rules-between-fields): in a feature, a segment or a global variable it is an error, since the context already carries what those know. `allowedConditions` takes a `schemas` location, and `input` as a kind that only that location takes, so a project can keep schema mutations to segments and input, say:
 
 ```js
 // featurevisor.config.js
@@ -962,6 +963,69 @@ module.exports = {
 Variables cannot use a schema with mutations, as for environments.
 
 **Environments and mutations combine.** An environment's entry is applied when its datafile is built, and mutations when a value is validated. So an entry can add a mutation in one environment only, with `mutations:append`, its conditions written as a tree. Lint checks a mutation an entry adds as it checks the file's own, and reports what fails under the entry, such as `In dev: ...`.
+
+## Rules between fields
+
+A rule that two fields must agree, such as a password typed twice, changes no rule, so it is not a mutation. An object node carries `issues` for those. Each entry has a `key`, `conditions`, the `path` of the field its issue belongs to, and a `message`, and reports its issue when its conditions match:
+
+```yml
+# schemas/signUp.yml
+description: A sign up form
+
+type: object
+
+properties:
+  password:
+    type: string
+    minLength: 8
+  confirmPassword:
+    type: string
+    annotations:
+      title: Confirmation
+
+required: [password, confirmPassword]
+
+issues:
+  - key: passwordsDiffer
+    conditions: input('confirmPassword') != input('password')
+    path: confirmPassword
+    message: "{title} does not match the password"
+```
+
+**Conditions say when a value fails.** Everywhere in Featurevisor, conditions say when something applies, and here what applies is an issue. An entry whose conditions do not match reports nothing.
+
+**For some users only.** Conditions take every kind of leaf, so an entry meant for some users joins their condition and its check with `and`:
+
+```yml
+issues:
+  - key: dutchShippingCountry
+    conditions: country == 'nl' and input('shippingCountry') != input('billingCountry')
+    path: shippingCountry
+    message: We ship Dutch orders to the billing country only
+```
+
+A user outside the Netherlands never gets this issue, whatever the countries, and neither does a context without a `country`. A segment, `netherlands and ...`, or a flag, `feature('strictCheckout') and ...`, works the same, so a stricter check can roll out by percentage.
+
+| Issue                                   | Conditions                                              |
+| --------------------------------------- | ------------------------------------------------------- |
+| The passwords differ                    | `input('confirmPassword') != input('password')`         |
+| An email typed twice differs            | `input('confirmEmail') != input('email')`               |
+| A booking ends when or before it starts | `not (input('end') after input('start'))`               |
+| More guests than the room fits          | `input('guests') > input('room.capacity')`              |
+| A minimum above its maximum             | `input('minimumPrice') > input('maximumPrice')`         |
+| A primary tag outside the chosen tags   | `input('primaryTag') notIn input('tags')`               |
+| No way to reach the user                | `input('email') notExists and input('phone') notExists` |
+| A password holding the user's name      | `input('password') contains input('displayName')`       |
+
+- **Write the failure.** `!=` for `==`, `>` for `<=`, and `not (...)` for a rule without an opposite. A comparison with a missing input does not match, apart from `notEquals`, so an optional field left empty raises nothing, and `required` covers presence.
+- **When entries run.** After the node's own rules, its mutations applied, and only when nothing inside the node has an issue of shape: a missing required field, a value of the wrong type, one outside its `enum` or `const`, a key it does not allow, a `oneOf` no branch fits, or a missing schema. Their values could not be trusted. Other issues hold nothing back, so a password that is too short and a confirmation that differs report both.
+- **The issue** has `code: "refine"`, the entry's `path`, relative to the node, and `params: { refine: "passwordsDiffer" }`, with the field's `title`, as a check in code's has, never the values compared. Without a `path`, it belongs to the object, and `flattenIssues` puts it among `formErrors`.
+- **Messages.** The entry's `message` is a template, and the field's own. The schema's `messages`, from an enclosing object or beside the field's rules, and a form's, can replace it, with `confirmPassword: { refine: "..." }`. The application's `messages` on `createSchemas` cannot, since the entry's message is the schema's.
+- **Reusable schemas** carry their issues into every form that references them, and a field's handle, such as `at("address")`, runs the issues inside the field. Issues on the form's root read fields across the form, so they run when the form is validated.
+- **Mutations and environments** change `issues` as they change any rule, so a new issue can start in dev.
+- **Lint** checks each entry: a key unique within its node, valid conditions that read at least one `input`, each `input` path and the entry's `path` naming fields of the node, and a message. `issues` goes on object nodes only. Variables cannot use a schema with issues, as for mutations.
+
+Checks that need your application, such as whether a username is free, stay [in code](#checks-in-code), whose `check` says what passes where an entry says what fails.
 
 ## Reading form data
 

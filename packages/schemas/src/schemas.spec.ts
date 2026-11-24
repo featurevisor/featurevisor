@@ -1090,6 +1090,202 @@ describe("form data", () => {
   });
 });
 
+describe("issues", () => {
+  // As Core writes them in a datafile: each entry reports its issue when its conditions match.
+  const signUp = {
+    hash: "i1",
+    type: "object",
+    properties: {
+      email: { type: "string" },
+      password: { type: "string", minLength: 8, annotations: { title: "Password" } },
+      confirmPassword: { type: "string", annotations: { title: "Confirmation" } },
+      address: { schema: "address" },
+    },
+    required: ["email", "password"],
+    issues: [
+      {
+        key: "passwordsDiffer",
+        conditions: [
+          { input: "confirmPassword", operator: "notEquals", valueFrom: { input: "password" } },
+        ],
+        path: "confirmPassword",
+        message: "{title} does not match the password",
+      },
+      {
+        key: "dutchWithoutConfirmation",
+        conditions: ["dutch", { input: "confirmPassword", operator: "notExists" }],
+        message: "Dutch sign ups confirm their password",
+      },
+      {
+        key: "cityHoldsPassword",
+        conditions: [
+          { input: "address.city", operator: "equals", valueFrom: { input: "password" } },
+        ],
+        path: "address.city",
+        message: "Choose a password unlike your city",
+      },
+    ],
+  } as unknown as DatafileSchema;
+  const address = {
+    hash: "a1",
+    type: "object",
+    properties: {
+      city: { type: "string", annotations: { title: "City" } },
+      postcode: { type: "string" },
+    },
+    required: ["city"],
+    issues: [
+      {
+        key: "postcodeInCity",
+        conditions: [{ input: "city", operator: "equals", valueFrom: { input: "postcode" } }],
+        path: "postcode",
+        message: "A postcode is not a city",
+      },
+    ],
+    mutations: [
+      {
+        key: "paid",
+        conditions: "paying",
+        operations: [
+          {
+            op: "set",
+            path: ["issues"],
+            value: [
+              {
+                key: "paidCity",
+                conditions: [{ input: "city", operator: "equals", value: "Nowhere" }],
+                path: "city",
+                message: "Paying accounts live somewhere",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  } as unknown as DatafileSchema;
+
+  function setup() {
+    const f = createFeaturevisor({
+      datafile: {
+        schemaVersion: "4",
+        revision: "1",
+        segments: {
+          dutch: {
+            hash: "d1",
+            conditions: [{ attribute: "country", operator: "equals", value: "nl" }],
+          },
+          paying: {
+            hash: "p1",
+            conditions: [{ attribute: "plan", operator: "equals", value: "paid" }],
+          },
+        },
+        features: {},
+        variables: {},
+        schemas: { signUp, address },
+      } as unknown as DatafileContent,
+      logLevel: "fatal",
+    });
+    return createSchemas(f);
+  }
+  const value = {
+    email: "ada@example.com",
+    password: "lovelace",
+    confirmPassword: "lovelace",
+    address: { city: "London" },
+  };
+
+  test("an entry reports its issue when its conditions match, and nothing otherwise", () => {
+    const s = setup();
+
+    expect(s.validate("signUp", value).issues).toBeUndefined();
+    const [issue] = s.validate("signUp", { ...value, confirmPassword: "lovelaced" }).issues!;
+    expect(issue).toEqual({
+      message: "Confirmation does not match the password",
+      path: ["confirmPassword"],
+      code: "refine",
+      params: { refine: "passwordsDiffer", title: "Confirmation" },
+      schema: "signUp",
+    });
+  });
+
+  test("a guard on the context joins the check, so other users never get the issue", () => {
+    const s = setup();
+    const { confirmPassword: _omitted, ...unconfirmed } = value;
+    void _omitted;
+
+    // A missing optional confirmation differs from the password, so passwordsDiffer reports too.
+    expect(codes(s.validate("signUp", unconfirmed, { country: "de" }).issues)).toEqual([
+      ["refine", "confirmPassword"],
+    ]);
+    const dutch = s.validate("signUp", unconfirmed, { country: "nl" }).issues!;
+    expect(dutch.map((issue) => [issue.params.refine, issue.path.join(".")])).toEqual([
+      ["passwordsDiffer", "confirmPassword"],
+      ["dutchWithoutConfirmation", ""],
+    ]);
+    // Without a path, the issue belongs to the object.
+    expect(flattenIssues(dutch).formErrors).toEqual(["Dutch sign ups confirm their password"]);
+  });
+
+  test("an issue of shape holds every entry back, and other issues do not", () => {
+    const s = setup();
+    const { email: _email, ...withoutEmail } = value;
+    void _email;
+
+    expect(
+      codes(s.validate("signUp", { ...withoutEmail, confirmPassword: "other" }).issues),
+    ).toEqual([["required", "email"]]);
+    expect(
+      codes(s.validate("signUp", { ...value, password: "short", confirmPassword: "other" }).issues),
+    ).toEqual([
+      ["minLength", "password"],
+      ["refine", "confirmPassword"],
+    ]);
+  });
+
+  test("a path reaches into a field, with its title, and the schema's messages can replace the entry's", () => {
+    const s = setup();
+    const sameCity = { ...value, address: { city: "lovelace" } };
+
+    expect(s.validate("signUp", sameCity).issues).toEqual([
+      expect.objectContaining({
+        path: ["address", "city"],
+        message: "Choose a password unlike your city",
+        params: { refine: "cityHoldsPassword", title: "City" },
+      }),
+    ]);
+    // A form's messages for the field win over the entry's own.
+    const worded = s.get("signUp", {
+      messages: { confirmPassword: { refine: "The two passwords differ" } },
+    });
+    expect(worded.validate({ ...value, confirmPassword: "x" }).issues![0].message).toBe(
+      "The two passwords differ",
+    );
+  });
+
+  test("a referenced schema's issues run in every form that uses it, and in a field's handle", () => {
+    const s = setup();
+    const postcodeCity = { city: "1012", postcode: "1012" };
+
+    expect(codes(s.validate("signUp", { ...value, address: postcodeCity }).issues)).toEqual([
+      ["refine", "address.postcode"],
+    ]);
+    expect(codes(s.get("signUp").at("address").validate(postcodeCity).issues)).toEqual([
+      ["refine", "postcode"],
+    ]);
+    expect(codes(s.validate("address", postcodeCity).issues)).toEqual([["refine", "postcode"]]);
+  });
+
+  test("a mutation can change a node's issues", () => {
+    const s = setup();
+    const nowhere = { city: "Nowhere" };
+
+    expect(s.validate("address", nowhere).issues).toBeUndefined();
+    expect(codes(s.validate("address", nowhere, { plan: "paid" }).issues)).toEqual([
+      ["refine", "city"],
+    ]);
+  });
+});
+
 describe("checks in code", () => {
   test("run after the rules, only where nothing has an issue, with input, context and a signal", () => {
     const { s } = setup();

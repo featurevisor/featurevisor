@@ -7,6 +7,7 @@ import {
 import type {
   Context,
   DatafileSchema,
+  DatafileSchemaIssueEntry,
   DatafileSchemaMutation,
   SchemaMessages,
 } from "@featurevisor/types";
@@ -36,6 +37,8 @@ export interface Run {
   /** Counting `oneOf` branches only notes whether a branch failed, without wording anything. */
   readonly trial?: boolean;
   failed: boolean;
+  /** How many issues of shape were found, which hold back the `issues` of every object around them. */
+  shape?: number;
 }
 
 export type Validate = (value: unknown, run: Run, at: Position) => void;
@@ -115,6 +118,17 @@ export function kindOf(value: unknown): string {
   return typeof value;
 }
 
+/** Issues after which an object's `issues` could not trust the values they compare. */
+const SHAPE_CODES: ReadonlyArray<string> = [
+  "type",
+  "required",
+  "enum",
+  "const",
+  "additionalProperties",
+  "oneOf",
+  "schemaNotFound",
+];
+
 export function report(
   run: Run,
   at: Position,
@@ -125,6 +139,7 @@ export function report(
   ownMessage?: string,
 ): void {
   run.failed = true;
+  if (SHAPE_CODES.indexOf(code) !== -1) run.shape = (run.shape || 0) + 1;
   if (run.trial) return;
   // The field's title, so a message can say `{title} is required`.
   if (lookup.title !== undefined) params = { ...params, title: lookup.title };
@@ -563,13 +578,51 @@ function compileMutations(node: Node, resolve: Resolve): Validate {
   };
 }
 
+/**
+ * An object's `issues`: after its own rules, unless an issue of shape sits
+ * anywhere inside it, each entry whose conditions match reports its issue at
+ * its path, with that field's title and the messages around it.
+ */
+function compileIssues(node: Node, rules: Validate, resolve: Resolve): Validate {
+  const entries = node.issues as unknown as DatafileSchemaIssueEntry[];
+  return (value, run, at) => {
+    const shape = run.shape;
+    rules(value, run, at);
+    if (run.shape !== shape || !isPlainObject(value) || !resolve.match) return;
+    // `input` reads the value at this node, as a mutation's conditions do.
+    const readers = { input: (path: string) => readInput(value, path) };
+    for (const entry of entries) {
+      if (!resolve.match(entry.conditions, run.sources.info.context, readers, run.schema)) continue;
+      const parts = entry.path ? entry.path.split(".") : [];
+      const scopes = [...at.scopes];
+      let field: unknown = node;
+      parts.forEach((part, index) => {
+        const properties = resolveNode(field, resolve)?.properties;
+        field =
+          isPlainObject(properties) && hasOwn(properties, part) ? properties[part] : undefined;
+        ownScopes(field, at.mpath.length + index + 1, resolve, scopes);
+      });
+      report(run, at, "refine", { refine: entry.key }, [...at.path, ...parts], {
+        mpath: [...at.mpath, ...parts],
+        scopes,
+        title: parts.length > 0 ? titleOf(field, resolve) : at.title,
+        own: entry.message,
+      });
+    }
+  };
+}
+
 /** Compiles a schema node into a function that validates a value, with its messages and title in scope. */
 export function compileNode(node: unknown, resolve: Resolve): Validate {
   if (!isPlainObject(node)) return () => {};
   if (Array.isArray(node.mutations) && node.mutations.length > 0) {
     return compileMutations(node as Node, resolve);
   }
-  const rules = compileRules(node as Node, resolve);
+  const own = compileRules(node as Node, resolve);
+  const rules =
+    Array.isArray(node.issues) && node.issues.length > 0
+      ? compileIssues(node as Node, own, resolve)
+      : own;
   const messages = isPlainObject(node.messages) ? (node.messages as SchemaMessages) : undefined;
   const title =
     isPlainObject(node.annotations) && typeof node.annotations.title === "string"

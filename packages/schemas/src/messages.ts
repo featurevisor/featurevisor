@@ -26,6 +26,8 @@ export interface MessageLookup {
   readonly scopes: ReadonlyArray<MessageScope>;
   /** The field's `title` annotation, which every issue about the field carries in its params. */
   readonly title?: string;
+  /** An issue entry's `message`, the field's own, which the schema's scopes can replace. */
+  readonly own?: string;
 }
 
 /** What wording an instance and a form bring, for one validation. */
@@ -184,6 +186,7 @@ export function chooseMessage(
     const schemaMessage = scopeMessages && own(scopeMessages, code);
     if (typeof schemaMessage === "string") return fillTemplate(schemaMessage, params);
   }
+  if (lookup.own !== undefined) return fillTemplate(lookup.own, params);
 
   const app =
     sources.app && (own(sources.app as Record<string, unknown>, code) as Message | undefined);
