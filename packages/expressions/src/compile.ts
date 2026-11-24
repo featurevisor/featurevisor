@@ -28,6 +28,9 @@ function toConditionValue(value: ExpressionValue): ConditionValue {
       return value.pattern;
     case "semver":
       return value.version;
+    case "input":
+      // The parser keeps `input(...)` out of lists, and a comparison's own compiles to `valueFrom`.
+      throw new Error("`input(...)` reads a field, so it is never a value.");
     default:
       return value.value;
   }
@@ -64,18 +67,23 @@ export function compile(source: string, options: CompileOptions = {}): Expressio
         if (node.enabled !== undefined) return { feature: node.feature, enabled: node.enabled };
         return { feature: node.feature };
       case "attribute":
-      case "variable": {
+      case "variable":
+      case "input": {
         const condition: Record<string, unknown> =
           node.kind === "attribute"
             ? { attribute: node.attribute }
-            : {
-                ...(node.feature !== undefined ? { feature: node.feature } : {}),
-                variable: node.variable,
-                ...(node.path.length ? { path: node.path } : {}),
-              };
+            : node.kind === "input"
+              ? { input: node.input }
+              : {
+                  ...(node.feature !== undefined ? { feature: node.feature } : {}),
+                  variable: node.variable,
+                  ...(node.path.length ? { path: node.path } : {}),
+                };
         const { operator, value } = node.comparison;
         condition.operator = operator;
-        if (value) {
+        if (value?.type === "input") {
+          condition.valueFrom = { input: value.path };
+        } else if (value) {
           condition.value = toConditionValue(value);
           if (value.type === "regex" && value.flags) condition.regexFlags = value.flags;
         }

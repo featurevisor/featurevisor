@@ -25,6 +25,15 @@ console.log(print(conditions));
 
 `treeToExpression` writes a tree as an expression only where the expression builds exactly the same tree, and `formatExpression` lays an expression out one condition a line, as `featurevisor fmt` does. A list stays on its condition's line with up to `listItemsOnOneLine` items, 3 by default, while the line fits `listLineWidth`, 80 by default, and otherwise takes one item a line, keeping its comments above or beside their items.
 
+With `input: true`, every function reads `input('...')`, the value a schema validates, as a schema's mutations take it. Before an operator it is an `input` leaf, and after one it compiles to `valueFrom`, so two fields can be compared:
+
+```ts
+compile("input('password') == input('confirmPassword')", { input: true }).conditions;
+// [{ input: "password", operator: "equals", valueFrom: { input: "confirmPassword" } }]
+```
+
+Without it, `input(...)` is an error that says where it goes.
+
 Errors carry a code, a position and a hint:
 
 ```ts

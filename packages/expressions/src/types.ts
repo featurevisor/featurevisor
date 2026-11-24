@@ -7,6 +7,12 @@ export interface ExpressionOptions {
   maxLength?: number;
   /** Deepest nesting of groups and `not` accepted. Defaults to 64. */
   maxDepth?: number;
+  /**
+   * Reads `input('...')`, the value a schema validates, as a schema's mutations take it:
+   * `input('password') == input('confirmPassword')` compiles to an `input` leaf whose
+   * `valueFrom` reads the other field. Defaults to false.
+   */
+  input?: boolean;
 }
 
 export type ExpressionSeverity = "error" | "warning";
@@ -40,7 +46,9 @@ export type ExpressionValue =
   | { type: "null"; value: null; start: number; end: number }
   | { type: "list"; items: ExpressionValue[]; start: number; end: number }
   | { type: "regex"; pattern: string; flags: string; start: number; end: number }
-  | { type: "semver"; version: string; start: number; end: number };
+  | { type: "semver"; version: string; start: number; end: number }
+  /** `input('...')` on the value side, which compiles to `valueFrom`. */
+  | { type: "input"; path: string; start: number; end: number };
 
 export interface ExpressionComparison {
   operator: Operator;
@@ -93,6 +101,14 @@ export interface ExpressionVariableNode extends ExpressionNodeBase {
   comparison: ExpressionComparison;
 }
 
+/** `input('address.country') == 'NL'`, which reads the value a schema validates. */
+export interface ExpressionInputNode extends ExpressionNodeBase {
+  kind: "input";
+  input: string;
+  subjectEnd: number;
+  comparison: ExpressionComparison;
+}
+
 export interface ExpressionLogicNode extends ExpressionNodeBase {
   kind: "and" | "or";
   children: ExpressionNode[];
@@ -107,7 +123,8 @@ export type ExpressionLeafNode =
   | ExpressionSegmentNode
   | ExpressionAttributeNode
   | ExpressionFeatureNode
-  | ExpressionVariableNode;
+  | ExpressionVariableNode
+  | ExpressionInputNode;
 export type ExpressionNode = ExpressionLeafNode | ExpressionLogicNode | ExpressionNotNode;
 
 export interface ExpressionParseResult {
