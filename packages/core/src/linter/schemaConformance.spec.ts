@@ -27,7 +27,13 @@ const fixture = JSON.parse(
 const KNOWN_DIFFERENCES = new Set(["a flat object rejects a nested value"]);
 
 describe("lint against the shared schemas validation fixture", () => {
-  const cases = fixture.cases.filter((testCase) => testCase.schemas[testCase.schema]);
+  // Lint checks a value against a schema's base rules, so cases whose rules change under
+  // conditions, or that report issue entries, are the package's alone.
+  const cases = fixture.cases.filter(
+    (testCase) =>
+      testCase.schemas[testCase.schema] &&
+      !/"(mutations|issues)":/.test(JSON.stringify(testCase.schemas)),
+  );
 
   test.each(cases.map((testCase) => [testCase.name, testCase] as const))("%s", (name, testCase) => {
     const schemas: Record<string, Schema> = {};

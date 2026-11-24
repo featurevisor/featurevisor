@@ -14,6 +14,8 @@ import type {
   TestVariable,
   VariableAssertion,
   TestScenario,
+  TestSchema,
+  SchemaAssertion,
   ScenarioAssertion,
   Test,
   TestCheckReference,
@@ -633,14 +635,19 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         (test as TestFeature).feature ||
         (test as TestSegment).segment ||
         (test as TestVariable).variable ||
-        (test as TestScenario).scenario;
+        (test as TestScenario).scenario ||
+        (test as unknown as TestSchema).schema;
       const testEntityType = (test as TestSegment).segment
         ? "segment"
         : (test as TestVariable).variable
           ? "variable"
           : (test as TestScenario).scenario
             ? "scenario"
-            : "feature";
+            : (test as unknown as TestSchema).schema
+              ? "schema"
+              : "feature";
+      // Native runners cannot validate schemas yet, so their execution documents leave schema specs out.
+      if (options.executionProtocol && testEntityType === "schema") continue;
       let testAssertions = test.assertions;
       const set =
         typeof options.set === "string"
@@ -753,6 +760,22 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
             );
           }
           testAssertions = assertionsAfterApplyingMatrix;
+        } else if (testEntityType === "schema") {
+          // Schema assertions take no matrix, so each is its own case.
+          testAssertions = (testAssertions as unknown as SchemaAssertion[]).map(
+            (assertion, aIndex) => ({
+              ...assertion,
+              _case: getTestCaseMetadata(
+                set,
+                testEntityType,
+                key,
+                assertion as never,
+                aIndex,
+                null,
+                {},
+              ),
+            }),
+          ) as unknown as typeof testAssertions;
         }
       }
 

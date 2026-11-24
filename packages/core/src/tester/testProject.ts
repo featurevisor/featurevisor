@@ -5,6 +5,7 @@ import type {
   TestFeature,
   TestVariable,
   TestScenario,
+  TestSchema,
   Test,
   DatafileContent,
   TestResult,
@@ -14,6 +15,7 @@ import type { Evaluation } from "@featurevisor/sdk";
 import { testSegment } from "./testSegment";
 import { testFeature } from "./testFeature";
 import { testVariable } from "./testVariable";
+import { testSchema } from "./testSchema";
 import { CLI_FORMAT_BOLD } from "./cliFormat";
 import { Dependencies } from "../dependencies";
 import { prettyDuration } from "./prettyDuration";
@@ -45,7 +47,7 @@ export interface TestProjectOptions {
   showDatafile?: boolean;
   onlyFailures?: boolean;
   quiet?: boolean;
-  entityType?: "feature" | "segment" | "variable" | "scenario";
+  entityType?: "feature" | "segment" | "variable" | "scenario" | "schema";
   inflate?: number;
   target?: string | string[];
   case?: string;
@@ -96,6 +98,8 @@ async function buildTestDatafilesForEnvironment(
       revision: "include-all-features",
       environment,
       inflate: options.inflate,
+      // Every schema, so a schema's spec validates against the version this environment builds.
+      includeSchemas: ["*"],
     },
     existingState,
   );
@@ -152,15 +156,22 @@ export async function executeTest(
   const tAsFeature = test as TestFeature;
   const tAsVariable = test as TestVariable;
   const tAsScenario = test as TestScenario;
+  const tAsSchema = test as TestSchema;
   const key =
-    tAsSegment.segment || tAsFeature.feature || tAsVariable.variable || tAsScenario.scenario;
+    tAsSegment.segment ||
+    tAsFeature.feature ||
+    tAsVariable.variable ||
+    tAsScenario.scenario ||
+    tAsSchema.schema;
   const type = tAsScenario.scenario
     ? "scenario"
     : tAsSegment.segment
       ? "segment"
       : tAsVariable.variable
         ? "variable"
-        : "feature";
+        : tAsSchema.schema
+          ? "schema"
+          : "feature";
 
   const executionResult: ExecutionResult = {
     passed: true,
@@ -179,7 +190,9 @@ export async function executeTest(
   }
 
   let testResult;
-  if (type === "segment") {
+  if (type === "schema") {
+    testResult = await testSchema(datasource, tAsSchema, options, datafileContentByKey);
+  } else if (type === "segment") {
     testResult = await testSegment(datasource, tAsSegment, options, datafileContentByKey);
   } else if (type === "variable" || type === "scenario") {
     testResult = await testVariable(

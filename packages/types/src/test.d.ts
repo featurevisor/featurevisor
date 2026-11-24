@@ -30,7 +30,7 @@ export interface AssertionMatrix {
   [key: string]: AssertionMatrixValue[];
 }
 
-export type TestEntityType = "feature" | "segment" | "variable" | "scenario";
+export type TestEntityType = "feature" | "segment" | "variable" | "scenario" | "schema";
 
 /** Normalized input for CLI test runners, independent of report and datafile versions. */
 export interface TestExecutionDocument {
@@ -332,13 +332,53 @@ export interface TestSegment {
   assertions: SegmentAssertion[];
 }
 
-export type Test = TestSegment | TestFeature | TestVariable | TestScenario;
+/** An issue a schema assertion expects, matched by the fields it gives. */
+export interface ExpectedSchemaIssue {
+  /** Object keys and array indices, such as `[address, city]`. */
+  path?: (string | number)[];
+  /** The keyword that failed, such as `minLength`, or `refine` for an entry in `issues`. */
+  code?: string;
+  /** The mutation that set or changed the rule that failed. */
+  mutation?: string;
+  message?: string;
+  /** Params the issue carries, such as `{ refine: passwordsDiffer }`. */
+  params?: { [name: string]: unknown };
+}
+
+export interface SchemaAssertion {
+  _case?: TestCaseExecutionMetadata;
+  key?: string;
+  promotable?: boolean;
+  description?: string;
+  /** The environment whose version of the schema validates the value. */
+  environment?: EnvironmentKey;
+  /** A target whose datafile delivers the schema. */
+  target?: TargetKey;
+  /** The context a schema's conditions read. */
+  context?: Context;
+  /** The value validated. */
+  value: unknown;
+  expectedToBeValid?: boolean;
+  /** Every issue the value has, in any order. */
+  expectedIssues?: ExpectedSchemaIssue[];
+}
+
+/** A spec for a schema applications validate data against. */
+export interface TestSchema {
+  _test?: TestExecutionMetadata;
+  key?: string;
+  promotable?: boolean;
+  schema: string;
+  assertions: SchemaAssertion[];
+}
+
+export type Test = TestSegment | TestFeature | TestVariable | TestScenario | TestSchema;
 
 /**
  * Used by test runner
  */
 export interface TestResultAssertionError {
-  type: "flag" | "variation" | "variable" | "segment" | "evaluation" | "check";
+  type: "flag" | "variation" | "variable" | "segment" | "evaluation" | "check" | "schema";
   expected: unknown;
   actual: unknown;
   message?: string;
@@ -358,7 +398,7 @@ export interface TestResultAssertion {
 }
 
 export interface TestResult {
-  type: "feature" | "segment" | "variable" | "scenario";
+  type: "feature" | "segment" | "variable" | "scenario" | "schema";
   key: string;
   notFound?: boolean;
   passed: boolean;

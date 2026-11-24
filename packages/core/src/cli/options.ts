@@ -294,7 +294,10 @@ const definitions: Record<string, CLIOptionDefinitions> = {
       type: "array",
       description: "filter features, variables or schemas by one or more targets",
     },
-    entityType: { type: "string", choices: ["feature", "segment", "variable", "scenario"] },
+    entityType: {
+      type: "string",
+      choices: ["feature", "segment", "variable", "scenario", "schema"],
+    },
     applyMatrix: { type: "boolean", description: "expand test assertion matrices" },
     assertionPattern: { type: "string", description: "filter assertion descriptions" },
     keyPattern: { type: "string", description: "filter keys by regular expression" },
@@ -358,7 +361,10 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     ...targetOption,
     keyPattern: { type: "string", description: "filter test keys by regular expression" },
     assertionPattern: { type: "string", description: "filter assertions by regular expression" },
-    entityType: { type: "string", choices: ["feature", "segment", "variable", "scenario"] },
+    entityType: {
+      type: "string",
+      choices: ["feature", "segment", "variable", "scenario", "schema"],
+    },
     onlyFailures: { type: "boolean" },
     quiet: { type: "boolean", description: "suppress SDK warnings" },
     showDatafile: { type: "boolean" },

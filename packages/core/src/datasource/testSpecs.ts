@@ -1,6 +1,6 @@
 import type { TestEntityType } from "@featurevisor/types";
 
-const owners = ["feature", "segment", "variable"] as const;
+const owners = ["feature", "segment", "variable", "schema"] as const;
 
 export function testSpecKeyFromStorageKey(key: string): string {
   return key.endsWith(".spec") ? key.slice(0, -5) : key;
@@ -29,7 +29,9 @@ export function classifyTestSpec(value: unknown): TestEntityType {
 
   const presentOwners = owners.filter((owner) => hasOwn(value, owner));
   if (presentOwners.length > 1) {
-    throw new Error("Test spec must have exactly one root owner: feature, segment or variable");
+    throw new Error(
+      "Test spec must have exactly one root owner: feature, segment, variable or schema",
+    );
   }
   if (presentOwners.length === 1) {
     if (hasOwn(value, "checks")) {
@@ -40,5 +42,7 @@ export function classifyTestSpec(value: unknown): TestEntityType {
   if (isScenarioSpec(value)) {
     return "scenario";
   }
-  throw new Error("Test spec must have a root feature, segment or variable, or scenario checks");
+  throw new Error(
+    "Test spec must have a root feature, segment, variable or schema, or scenario checks",
+  );
 }
