@@ -36,6 +36,8 @@ export interface SchemaIssue extends StandardSchemaV1.Issue {
   readonly params: Readonly<Record<string, unknown>>;
   /** The key of the schema validated, such as `signUp`. */
   readonly schema: string;
+  /** The key of the mutation that set or changed the rule that failed, when one did. */
+  readonly mutation?: string;
 }
 
 export interface SchemaSuccess<T> {

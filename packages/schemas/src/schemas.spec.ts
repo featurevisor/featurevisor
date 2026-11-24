@@ -940,6 +940,40 @@ describe("mutations under conditions", () => {
     ).toBeUndefined();
   });
 
+  test("an issue names the mutation that set or changed its rule", () => {
+    const s = mutating();
+    const business = { accountType: "business", displayName: "Ada", address: { country: "DE" } };
+    const named = (issues: ReadonlyArray<SchemaIssue> | undefined) =>
+      (issues || []).map(({ code, path, mutation }) => [code, path.join("."), mutation]);
+
+    expect(named(s.validate("signUp", business).issues)).toEqual([
+      ["required", "taxId", "germanBusiness"],
+    ]);
+    expect(named(s.validate("signUp", { ...business, taxId: "NL1" }).issues)).toEqual([
+      ["pattern", "taxId", "germanBusiness"],
+    ]);
+    // A rule from the base names no mutation, even beside one a mutation changed.
+    expect(
+      named(s.validate("signUp", { ...business, displayName: "A", taxId: "NL1" }).issues),
+    ).toEqual([
+      ["minLength", "displayName", undefined],
+      ["pattern", "taxId", "germanBusiness"],
+    ]);
+    expect(
+      named(
+        s.validate(
+          "signUp",
+          { ...personal, displayName: "A very long display name" },
+          { plan: "paid" },
+        ).issues,
+      ),
+    ).toEqual([["maxLength", "displayName", "payingAccounts"]]);
+    // In a referenced schema, its own mutation names it.
+    expect(named(s.validate("signUp", { ...personal, address: { country: "US" } }).issues)).toEqual(
+      [["required", "address.state", "unitedStates"]],
+    );
+  });
+
   test("context conditions read segments and features through the SDK", () => {
     const s = mutating();
     const longer = { ...personal, displayName: "Ada Lovelace" };
@@ -1283,6 +1317,7 @@ describe("issues", () => {
     expect(codes(s.validate("address", nowhere, { plan: "paid" }).issues)).toEqual([
       ["refine", "city"],
     ]);
+    expect(s.validate("address", nowhere, { plan: "paid" }).issues![0].mutation).toBe("paid");
   });
 });
 

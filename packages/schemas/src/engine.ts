@@ -66,7 +66,8 @@ type Node = DatafileSchema & Record<string, unknown>;
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
+  // Any realm's `Object.prototype`, as `structuredClone`, a frame or a worker can hand over.
+  return prototype === null || Object.getPrototypeOf(prototype) === null;
 }
 
 /** A string's length in code points, as JSON Schema counts it, so an emoji counts one. */
@@ -545,15 +546,57 @@ function readInput(value: unknown, path: string): unknown {
 }
 
 /**
+ * Where the rule an issue reports sits in a node's rules, such as
+ * `properties.taxId.pattern`, and whether the walk reached it, which it does
+ * not through a reference or a `oneOf`.
+ */
+function ruleOf(rules: unknown, path: ReadonlyArray<PathKey>, code: string): [PathKey[], boolean] {
+  // A missing or an extra key is a rule of the object around it.
+  const parent = code === "required" || code === "additionalProperties";
+  const steps = parent ? path.slice(0, -1) : path;
+  const at: PathKey[] = [];
+  let current = rules;
+  for (const step of steps) {
+    const node = current as Record<string, unknown>;
+    const properties = node.properties;
+    if (typeof step === "string" && isPlainObject(properties) && hasOwn(properties, step)) {
+      at.push("properties", step);
+      current = properties[step];
+    } else if (typeof step === "number" && isPlainObject(node.items)) {
+      at.push("items");
+      current = node.items;
+    } else if (isPlainObject(node.additionalProperties)) {
+      at.push("additionalProperties");
+      current = node.additionalProperties;
+    } else return [at, false];
+  }
+  if (code === "required") at.push("required");
+  else if (code === "additionalProperties") at.push("properties", path[path.length - 1]);
+  else at.push(code);
+  return [at, true];
+}
+
+/** Whether an operation's path reaches a rule, as a prefix of it or, when the rule was reached, beyond it. */
+function reaches(operation: ReadonlyArray<unknown>, rule: ReadonlyArray<PathKey>, whole: boolean) {
+  for (let index = 0; index < Math.min(operation.length, rule.length); index++) {
+    const part = operation[index];
+    // A selector picks an item by its fields, as any item can.
+    if (typeof part !== "object" && part !== rule[index]) return false;
+  }
+  return operation.length <= rule.length || whole;
+}
+
+/**
  * A node whose rules change under conditions: each value is validated against
  * the node with every mutation whose conditions match applied, in order. Each
- * combination of matches compiles once and is kept for the node.
+ * combination of matches compiles once and is kept for the node. An issue
+ * whose rule a matching mutation set or changed names the last such mutation.
  */
 function compileMutations(node: Node, resolve: Resolve): Validate {
   const mutations = node.mutations as unknown as DatafileSchemaMutation[];
   const base = assignOwn({}, node) as Node;
   delete base.mutations;
-  const variants = new Map<string, Validate>();
+  const variants = new Map<string, [Validate, unknown, number[]]>();
   return (value, run, at) => {
     // `input` reads the value at this node, so a mutation in `address` reads the address's own fields.
     const readers = { input: (path: string) => readInput(value, path) };
@@ -564,17 +607,37 @@ function compileMutations(node: Node, resolve: Resolve): Validate {
         resolve.match(mutations[index].conditions, run.sources.info.context, readers, run.schema);
       if (matched) id += `${index},`;
     }
-    let validate = variants.get(id);
-    if (!validate) {
+    let variant = variants.get(id);
+    if (!variant) {
       let rules: unknown = base;
+      const matched: number[] = [];
       for (const index of id.split(",")) {
-        if (index)
-          rules = applyVariableOperations(rules as never, mutations[Number(index)].operations);
+        if (!index) continue;
+        matched.push(Number(index));
+        rules = applyVariableOperations(rules as never, mutations[Number(index)].operations);
       }
-      validate = compileNode(rules, resolve);
-      variants.set(id, validate);
+      variant = [compileNode(rules, resolve), rules, matched];
+      variants.set(id, variant);
     }
+    const [validate, rules, matched] = variant;
+    const start = run.issues.length;
     validate(value, run, at);
+    for (let position = start; position < run.issues.length && matched.length > 0; position++) {
+      const issue = run.issues[position] as { mutation?: string } & SchemaIssue;
+      // A mutation inside the node applies last, so its claim stands.
+      if (issue.mutation !== undefined) continue;
+      const [rule, whole] = ruleOf(rules, issue.path.slice(at.path.length), issue.code);
+      for (let index = matched.length - 1; index >= 0; index--) {
+        const mutation = mutations[matched[index]];
+        // An issue entry's issue sits at its own path, so the mutation is one that changed `issues`.
+        const sets = (path: ReadonlyArray<unknown>) =>
+          issue.code === "refine" ? path.indexOf("issues") !== -1 : reaches(path, rule, whole);
+        if (mutation.operations.some((operation) => sets(operation.path))) {
+          issue.mutation = mutation.key;
+          break;
+        }
+      }
+    }
   };
 }
 
