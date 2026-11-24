@@ -90,9 +90,13 @@ export interface SchemaIssueEntry {
 /** An issue entry as a datafile carries it, with its conditions written as features' are. */
 export type DatafileSchemaIssueEntry = Omit<SchemaIssueEntry, "description">;
 
-/** What one environment changes in a schema, or `{}` for its base. */
-export interface SchemaEnvironment {
-  mutate?: VariableMutations;
+/**
+ * A schema's mutations by environment, as features' rules are: at the root of
+ * a schema in a project with environments. An environment without a list uses
+ * the list of the one it inherits from, and `[]` means none.
+ */
+export interface SchemaMutationsByEnvironment {
+  [environment: string]: SchemaMutation[];
 }
 
 // adapted JSON Schema for Featurevisor
@@ -108,9 +112,6 @@ export interface Schema {
   annotationsSchema?: Schema;
   /** Only at the root: what each choice in this file carries, as one object schema, inline or by reference. */
   optionSchema?: Schema;
-  /** Only at the root, in a project with environments: changes to the schema per environment. */
-  environments?: { [environment: string]: SchemaEnvironment };
-
   // General validation keywords
   type?: SchemaType;
   enum?: Value[];
@@ -154,8 +155,11 @@ export interface Schema {
   /** Values beside the rules, for forms and tools, which validation never reads. */
   annotations?: SchemaAnnotations;
 
-  /** Changes to this node's rules when conditions match, at validation time. */
-  mutations?: SchemaMutation[] | DatafileSchemaMutation[];
+  /**
+   * Changes to this node's rules when conditions match, at validation time. At
+   * a schema's root in a project with environments, a list per environment.
+   */
+  mutations?: SchemaMutation[] | SchemaMutationsByEnvironment | DatafileSchemaMutation[];
 
   /** Issues an object reports when their conditions match, after its own rules. */
   issues?: SchemaIssueEntry[] | DatafileSchemaIssueEntry[];
@@ -176,7 +180,9 @@ export type DatafileSchema = Omit<
   | "tags"
   | "annotationsSchema"
   | "optionSchema"
-  | "environments"
+  | "mutations"
 > & {
   hash?: string;
+  /** The environment's list, compiled, with the mutations that always apply already applied. */
+  mutations?: DatafileSchemaMutation[];
 };

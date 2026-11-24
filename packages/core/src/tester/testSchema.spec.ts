@@ -32,26 +32,45 @@ properties:
 
 required: [accountType, displayName]
 
-environments:
-  dev:
-    mutate:
-      properties.displayName.minLength: 1
-
 mutations:
-  - key: business
-    conditions:
-      input: accountType
-      operator: equals
-      value: business
-    mutate:
-      required:appendUnique: taxId
-  - key: dutch
-    conditions:
-      attribute: country
-      operator: equals
-      value: nl
-    mutate:
-      properties.displayName.minLength: 3
+  dev:
+    - key: shortNames
+      conditions: "*"
+      mutate:
+        properties.displayName.minLength: 1
+
+    - key: business
+      conditions:
+        input: accountType
+        operator: equals
+        value: business
+      mutate:
+        required:appendUnique: taxId
+
+    - key: dutch
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
+      mutate:
+        properties.displayName.minLength: 3
+
+  production:
+    - key: business
+      conditions:
+        input: accountType
+        operator: equals
+        value: business
+      mutate:
+        required:appendUnique: taxId
+
+    - key: dutch
+      conditions:
+        attribute: country
+        operator: equals
+        value: nl
+      mutate:
+        properties.displayName.minLength: 3
 
 issues:
   - key: passwordsDiffer

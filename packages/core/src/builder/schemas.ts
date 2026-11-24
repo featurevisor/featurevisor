@@ -12,7 +12,7 @@ import { applyVariableOperations } from "@featurevisor/sdk";
 import { compileConditions } from "../datasource/conditions";
 import { visitConditionLocations } from "../datasource/conditionLocations";
 import { getSchemaReferences } from "../targeting";
-import { getInheritedEnvironment } from "./environments";
+import { resolveForEnvironment } from "./environments";
 import { generateHashFromString } from "./hashes";
 import { mutationEntries } from "./mutationEntries";
 import { compileVariableMutation } from "./variableOverrideProgram";
@@ -23,7 +23,7 @@ const MAINTAINER_FIELDS = ["description", "promotable"];
  * Fields only a schema's root has, never delivered. The vocabularies never
  * reach a datafile, since lint has checked every annotation against them.
  */
-const ROOT_ONLY_FIELDS = ["metadata", "tags", "annotationsSchema", "optionSchema", "environments"];
+const ROOT_ONLY_FIELDS = ["metadata", "tags", "annotationsSchema", "optionSchema"];
 
 /**
  * The order a datafile writes a schema's keys in, whatever order its file has,
@@ -77,26 +77,51 @@ export function compileMutate(mutate: VariableMutations): VariableMutationOperat
 }
 
 /**
- * A schema as one environment has it: the base with that environment's
- * `mutate` applied, inherited as rules are, and without `environments`. A
- * schema without `environments` is returned as it is.
+ * A schema as one environment has it: its root's mutations for that
+ * environment, inherited as rules are, so an environment without a list uses
+ * the one it inherits from and `[]` means none. A schema whose root lists its
+ * mutations, or has none, is the same in every environment.
  */
 export function resolveSchemaEnvironment(
   schema: Schema,
   environment: string | false | undefined,
-  config: Parameters<typeof getInheritedEnvironment>[0],
+  config: Parameters<typeof resolveForEnvironment>[2],
 ): Schema {
-  if (!schema || typeof schema !== "object" || schema.environments === undefined) return schema;
-  const { environments, ...base } = schema;
-  if (typeof environment !== "string") return base;
-  const own = Object.prototype.hasOwnProperty.call(environments, environment);
-  const from = own ? environment : getInheritedEnvironment(config, environment);
-  const entry =
-    from !== undefined && Object.prototype.hasOwnProperty.call(environments, from)
-      ? environments[from]
+  const byEnvironment = schema && typeof schema === "object" ? schema.mutations : undefined;
+  if (!byEnvironment || typeof byEnvironment !== "object" || Array.isArray(byEnvironment))
+    return schema;
+  const base: Schema = { ...schema };
+  delete base.mutations;
+  const list =
+    typeof environment === "string"
+      ? resolveForEnvironment(byEnvironment, environment, config).value
       : undefined;
-  if (!entry || entry.mutate === undefined) return base;
-  return applyVariableOperations(base as never, compileMutate(entry.mutate)) as unknown as Schema;
+  return Array.isArray(list) && list.length > 0 ? { ...base, mutations: list } : base;
+}
+
+/**
+ * A node with the mutations that always apply, those whose conditions are `*`
+ * before any whose conditions can fail, applied to its rules, so a datafile
+ * holds the changed rules and handles read them as the base. The rest stay
+ * mutations, applied in order when a value is validated.
+ */
+export function applyAlwaysMutations<T>(node: T): T {
+  const record = node as Record<string, unknown> | undefined;
+  const mutations =
+    record && typeof record === "object" && Array.isArray(record.mutations)
+      ? (record.mutations as SchemaMutation[])
+      : undefined;
+  if (!mutations) return node;
+  let count = 0;
+  while (count < mutations.length && mutations[count]?.conditions === "*") count++;
+  if (count === 0) return node;
+  const base: Record<string, unknown> = { ...record };
+  delete base.mutations;
+  let rules: unknown = base;
+  for (const mutation of mutations.slice(0, count))
+    rules = applyVariableOperations(rules as never, compileMutate(mutation.mutate));
+  const rest = mutations.slice(count);
+  return (rest.length > 0 ? { ...(rules as object), mutations: rest } : rules) as T;
 }
 
 /** Every `conditions` a schema's mutations hold, at any node. */
@@ -111,6 +136,7 @@ export function getSchemaConditions(schema: unknown): Conditions[] {
 function stripNode(node: unknown, options: DatafileSchemaOptions): unknown {
   if (!node || typeof node !== "object") return node;
   if (Array.isArray(node)) return node.map((item) => stripNode(item, options));
+  node = applyAlwaysMutations(node);
   const result: Record<string, unknown> = {};
   const record = node as Record<string, unknown>;
   for (const key of datafileKeys(record)) {

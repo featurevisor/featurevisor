@@ -34,7 +34,10 @@ const schema = {
       },
     },
   },
-  environments: { dev: { mutate: { "properties.password.minLength": 1 } }, production: {} },
+  mutations: {
+    dev: [{ key: "short", conditions: "*", mutate: { "properties.password.minLength": 1 } }],
+    production: [],
+  },
   issues: [
     {
       key: "passwordsDiffer",
@@ -54,8 +57,8 @@ describe("a schema's Rules tab", () => {
     expect(getSchemaRuleNodes(schema).map(({ path }) => path)).toEqual(["", "address", "items[]"]);
   });
 
-  test("counts environment entries, mutations and issues", () => {
-    expect(countSchemaRules(schema)).toBe(5);
+  test("counts mutations, in every environment's list, and issues", () => {
+    expect(countSchemaRules(schema)).toBe(4);
     expect(countSchemaRules({ type: "string" })).toBe(0);
   });
 

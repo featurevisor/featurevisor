@@ -71,7 +71,7 @@ npx featurevisor info
 Four values change the **shape of everything you write**:
 
 - `sets`: when `true`, every definition lives under `sets/<set>/` and commands take `--set`. Read [sets-promotions.md](references/sets-promotions.md) first.
-- `environments`: when declared, feature `rules`, `force` and `expose`, and global variable `overrides`, are maps keyed by environment. Without it they are direct lists, and `expose` is a boolean or tag list. With `inheritEnvironments`, an environment left out of a map uses another environment's entry, so check it before saying an environment is off, and before writing entries into definitions that do not need them ([configuration.md](references/configuration.md#add-another-environment-later)).
+- `environments`: when declared, feature `rules`, `force` and `expose`, global variable `overrides`, and a schema's root `mutations` are maps keyed by environment. Without it they are direct lists, and `expose` is a boolean or tag list. With `inheritEnvironments`, an environment left out of a map uses another environment's entry, so check it before saying an environment is off, and before writing entries into definitions that do not need them ([configuration.md](references/configuration.md#add-another-environment-later)).
 - `parser`: author JSON for `"json"`, YAML for `"yml"` (default), or the configured custom format ([custom-parsers.md](references/custom-parsers.md)).
 - `namespaceCharacter`: separator for keys from subdirectories. Default `.`, so `features/checkout/promo.yml` is `checkout.promo`. Some projects use `/`. Every reference must use the project's separator. Confirm against real keys with `npx featurevisor list --segments --json`.
 
@@ -281,7 +281,7 @@ Ask whether a configurable value belongs to a feature or stands on its own. A su
 
 ### Validating forms and API bodies
 
-When rules for data users or clients send should change without a deploy, such as a display name's length or the countries checkout accepts, write a schema with `tags` ([templates/schema-form.yml](templates/schema-form.yml)), have a target deliver it, and validate with `@featurevisor/schemas` in the application. Rules per environment go under `environments`, rules under conditions, such as a tax ID only businesses give, under `mutations`, and rules between fields, such as a password typed twice, under `issues`. Cover it with a schema spec in `tests/schemas/` ([testing.md](references/testing.md#schema-specs)). The package is experimental. Read [schemas-runtime.md](references/schemas-runtime.md) first.
+When rules for data users or clients send should change without a deploy, such as a display name's length or the countries checkout accepts, write a schema with `tags` ([templates/schema-form.yml](templates/schema-form.yml)), have a target deliver it, and validate with `@featurevisor/schemas` in the application. Rules that change go under `mutations`, at the root listed by environment in a project with environments, with `conditions: "*"` for a change one environment always has and other conditions for one such as a tax ID only businesses give, and rules between fields, such as a password typed twice, under `issues`. Cover it with a schema spec in `tests/schemas/` ([testing.md](references/testing.md#schema-specs)). The package is experimental. Read [schemas-runtime.md](references/schemas-runtime.md) first.
 
 ### Dependencies between definitions
 

@@ -1,7 +1,7 @@
 import { applyVariableOperations } from "@featurevisor/sdk";
 import type { Schema, SchemaMutation, VariableMutationOperation } from "@featurevisor/types";
 
-import { compileMutate } from "../builder/schemas";
+import { applyAlwaysMutations, compileMutate } from "../builder/schemas";
 
 type Node = Record<string, unknown>;
 
@@ -93,7 +93,9 @@ function merge(variants: Node[]): Node {
   return merged;
 }
 
-function widen(node: unknown): unknown {
+function widen(authored: unknown): unknown {
+  // Mutations that always apply are the rules a datafile holds, as the builder applies them.
+  const node = applyAlwaysMutations(authored);
   if (!isNode(node)) return node;
   let current = node;
   if (Array.isArray(node.mutations) && node.mutations.length > 0) {

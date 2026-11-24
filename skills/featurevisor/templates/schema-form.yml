@@ -1,6 +1,8 @@
 # schemas/signUp.yml
 # A schema applications validate data against, delivered by a target that selects the web tag.
-# Replace the keys, and declare the tag in featurevisor.config.js.
+# Replace the keys, and declare the tag in featurevisor.config.js. In a project with
+# environments, the root lists its mutations by environment, as a feature lists its rules.
+# Without environments, list them directly under `mutations`.
 description: A sign up form
 
 tags:
@@ -53,13 +55,14 @@ annotations:
     - taxId
 
 mutations:
-  - key: business
-    conditions:
-      input: accountType
-      operator: equals
-      value: business
-    mutate:
-      required:appendUnique: taxId
-      properties.taxId.pattern: ^[A-Z]{2}[0-9]{9}$
-      properties.taxId.messages:
-        pattern: Enter your VAT number, such as DE123456789
+  production:
+    - key: business
+      conditions:
+        input: accountType
+        operator: equals
+        value: business
+      mutate:
+        required:appendUnique: taxId
+        properties.taxId.pattern: ^[A-Z]{2}[0-9]{9}$
+        properties.taxId.messages:
+          pattern: Enter your VAT number, such as DE123456789

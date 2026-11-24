@@ -65,7 +65,7 @@ This package is experimental: its API may change in a minor release.
   - [For the values typed so far](#for-the-values-typed-so-far)
   - [Types](#types)
   - [Lint](#lint-2)
-  - [With environments](#with-environments)
+  - [By environment](#by-environment)
 - [Rules between fields](#rules-between-fields)
   - [Conditions say when a value fails](#conditions-say-when-a-value-fails)
   - [For some users only](#for-some-users-only)
@@ -291,18 +291,17 @@ An order of 12 of one item, a coupon code of the wrong shape and a tag given twi
 
 Beside its rules, a schema file holds what only schema files have:
 
-| Field                               | Where        | What it holds                                                                                           |
-| ----------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------- |
-| `description`                       | Any node     | Notes for the people who maintain it, which never reach a datafile                                      |
-| `tags`                              | The root     | The targets that deliver it (see [Delivering schemas](#delivering-schemas))                             |
-| `metadata`                          | The root     | An owner and deadlines, as features have them (see [Metadata](https://featurevisor.com/docs/metadata/)) |
-| `promotable`                        | The root     | `false` keeps a set's copy out of [promotions](https://featurevisor.com/docs/promotions/)               |
-| `annotations`                       | Any node     | Titles, placeholders and your own vocabulary (see [Annotations](#annotations))                          |
-| `annotationsSchema`, `optionSchema` | The root     | The vocabularies of annotations and choices (see [Choices](#choices))                                   |
-| `messages`                          | Any node     | Wording per issue code, and per field on an object (see [Messages](#messages))                          |
-| `environments`                      | The root     | Changes per environment (see [Rules per environment](#rules-per-environment))                           |
-| `mutations`                         | Any node     | Changes under conditions (see [Rules under conditions](#rules-under-conditions))                        |
-| `issues`                            | Object nodes | Rules between fields (see [Rules between fields](#rules-between-fields))                                |
+| Field                               | Where        | What it holds                                                                                                      |
+| ----------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `description`                       | Any node     | Notes for the people who maintain it, which never reach a datafile                                                 |
+| `tags`                              | The root     | The targets that deliver it (see [Delivering schemas](#delivering-schemas))                                        |
+| `metadata`                          | The root     | An owner and deadlines, as features have them (see [Metadata](https://featurevisor.com/docs/metadata/))            |
+| `promotable`                        | The root     | `false` keeps a set's copy out of [promotions](https://featurevisor.com/docs/promotions/)                          |
+| `annotations`                       | Any node     | Titles, placeholders and your own vocabulary (see [Annotations](#annotations))                                     |
+| `annotationsSchema`, `optionSchema` | The root     | The vocabularies of annotations and choices (see [Choices](#choices))                                              |
+| `messages`                          | Any node     | Wording per issue code, and per field on an object (see [Messages](#messages))                                     |
+| `mutations`                         | Any node     | Changes under conditions, at the root a list per environment (see [Rules per environment](#rules-per-environment)) |
+| `issues`                            | Object nodes | Rules between fields (see [Rules between fields](#rules-between-fields))                                           |
 
 - **A schema file is never `json`,** the type variables use for a string that holds JSON, since an application validates the values it has.
 - **One file, two uses.** A global or feature variable can use a schema with `schema: order` too, as long as the schema neither varies by environment nor has mutations or issues.
@@ -1088,7 +1087,7 @@ The instance keeps no answers and cancels nothing, since a server shares handles
 
 ## Rules per environment
 
-A schema's rules can change one environment at a time, as you roll out a feature: a longer display name in dev first, then staging, then production, each step reviewed before the next. `environments` sits at a schema's root in a project with environments, and each entry's `mutate` changes the schema's own fields, its base, in that environment, in the notation global variable overrides use:
+A schema's rules can change one environment at a time, as you roll out a feature: a longer display name in dev first, then staging, then production, each step reviewed before the next. In a project with environments, a schema's root lists its `mutations` by environment, as a feature lists its rules and a global variable its overrides. Each mutation has a `key`, `conditions` and a `mutate`, which changes the schema's own fields, its base, in the notation global variable overrides use:
 
 ```yml
 # schemas/signUp.yml
@@ -1109,18 +1108,24 @@ properties:
 
 required: [displayName]
 
-environments:
+mutations:
   dev:
-    mutate:
-      properties.displayName.maxLength: 60
-      properties.country.enum:append: DE
+    - key: longerNames
+      conditions: "*"
+      mutate:
+        properties.displayName.maxLength: 60
+        properties.country.enum:append: DE
 
   staging:
-    mutate:
-      properties.displayName.maxLength: 60
+    - key: longerNames
+      conditions: "*"
+      mutate:
+        properties.displayName.maxLength: 60
+
+  production: []
 ```
 
-Dev accepts names up to 60 characters and German sign ups, staging the longer names only, and production, which has no entry, uses the base. A rollout is then a series of small pull requests: add the change under `dev`, then under `staging`, then write it into the base and remove the entries.
+Dev accepts names up to 60 characters and German sign ups, staging the longer names only, and production, whose list is empty, keeps the base. A rollout is then a series of small pull requests: add the mutation under `dev`, then under `staging`, then write the change into the base and remove the mutations. Mutations whose conditions depend on who is asking or what was typed, such as a tax ID only businesses must give, go in the same lists (see [Rules under conditions](#rules-under-conditions)).
 
 | Entry in `mutate`                                     | In that environment                 |
 | ----------------------------------------------------- | ----------------------------------- |
@@ -1131,15 +1136,17 @@ Dev accepts names up to 60 characters and German sign ups, staging the longer na
 | `properties.country:remove: true`                     | The key is no longer accepted       |
 | `properties.displayName.messages.maxLength: Up to 60` | Its own wording in that environment |
 
-- **Applications validate against the same key everywhere.** Each environment's datafile holds the schema as that environment resolves it, so `s.validate("signUp", input)` gives dev's rules in dev and production's in production, and no datafile holds an `environments` block. A change to an environment's entry changes the schema's `hash` in that environment's datafile only.
-- **Inheritance.** Entries inherit as rules do: with `inheritEnvironments: { dev: { from: "staging" } }`, a schema without a `dev` entry uses staging's, or the base when staging has none. An empty entry, `dev: {}`, uses the base and inherits nothing.
-- **Lint** checks that each key is a configured environment, that every path reaches into the base, since a mutation creates no objects on the way, and that each environment's resolved schema is still a valid schema, naming the environment: `In staging, the schema fails: ...`. Delivered patterns an entry sets get the same safe pattern checks as the base's.
+- **Applications validate against the same key everywhere.** Each environment's datafile holds the schema with its own list, so `s.validate("signUp", input)` gives dev's rules in dev and production's in production. A change to one environment's list changes the schema's `hash` in that environment's datafile only.
+- **`*` applies when the datafile is built.** Mutations whose conditions are `"*"`, before any with other conditions, are applied when the environment's datafile is built, so it holds the changed rules. A handle's `constraints` and generated types read them as the base, and their issues name no mutation. The rest apply, in order, when a value is validated.
+- **Inheritance.** Lists inherit as rules do: with `inheritEnvironments: { dev: { from: "staging" } }`, a schema that lists nothing for `dev` uses staging's list. `dev: []` lists none and inherits nothing, and an environment that lists nothing and inherits nothing has no mutations at the root.
+- **Only at the root.** A field's own mutations inside a file are a list, which applies in every environment, and a reusable schema such as `address` lists its own root mutations by environment. In a project without environments, the root lists its mutations directly, `mutations: [...]`.
+- **Lint** checks that each key is a configured environment and checks each list as it checks any mutations: every path reaches into the base, since a mutation creates no objects on the way, and the schema stays valid with each mutation alone and with the whole list, naming the mutation: `With mutation "longerNames", the schema fails: ...`. Delivered patterns a mutation sets get the same safe pattern checks as the base's.
 - **Variables cannot use a schema that varies**, at their root or anywhere inside, since a variable's schema, values and type stay the same in every environment. Lint fails at the variable.
 - **Generated types** come from production's version: the environment whose name starts with `prod`. `generate-code --environment=dev` types dev's version instead. A widening change in dev, such as a new `enum` value, is not in production's types, so release regenerated types before such a change reaches production (see [Changing a delivered schema](#changing-a-delivered-schema)). Mutations are typed as [under conditions](#rules-under-conditions) says.
 
 ## Rules under conditions
 
-Some rules hold only under conditions: a tax ID that businesses must give, a seat limit per plan, a stricter rule rolled out to a percentage of users first, a kill switch that relaxes a rule during an incident. Any node of a schema can carry `mutations`, each with a `key`, `conditions` and a `mutate` in the same notation, and every mutation whose conditions match applies, in order, when a value is validated.
+Some rules hold only under conditions: a tax ID that businesses must give, a seat limit per plan, a stricter rule rolled out to a percentage of users first, a kill switch that relaxes a rule during an incident. Any node of a schema can carry `mutations`, each with a `key`, `conditions` and a `mutate` in the same notation, and every mutation whose conditions match applies, in order, when a value is validated. At the root of a schema in a project with environments, they are listed by environment, and the examples here list production's.
 
 Conditions in this README are written as [condition expressions](https://featurevisor.com/docs/conditions/), which read like the rule they state and need `conditionExpressions: true` in `featurevisor.config.js`. Every one has a tree form too, shown in the table below, for projects that write trees:
 
@@ -1162,23 +1169,24 @@ properties:
 required: [accountType, displayName]
 
 mutations:
-  - key: business
-    conditions: input('accountType') == 'business'
-    mutate:
-      required:appendUnique: taxId
-      properties.taxId.pattern: "^[A-Z]{2}[0-9]{9}$"
-      properties.taxId.messages:
-        pattern: Enter your VAT number, such as DE123456789
+  production:
+    - key: business
+      conditions: input('accountType') == 'business'
+      mutate:
+        required:appendUnique: taxId
+        properties.taxId.pattern: "^[A-Z]{2}[0-9]{9}$"
+        properties.taxId.messages:
+          pattern: Enter your VAT number, such as DE123456789
 
-  - key: payingAccounts
-    conditions: payingAccounts
-    mutate:
-      properties.displayName.maxLength: 80
+    - key: payingAccounts
+      conditions: payingAccounts
+      mutate:
+        properties.displayName.maxLength: 80
 
-  - key: strictNames
-    conditions: feature('strictNames')
-    mutate:
-      properties.displayName.pattern: "^[A-Za-z ]+$"
+    - key: strictNames
+      conditions: feature('strictNames')
+      mutate:
+        properties.displayName.pattern: "^[A-Za-z ]+$"
 ```
 
 A business account needs a tax ID in the right shape, with its own message, paying accounts get longer names, and a stricter pattern reaches the users the `strictNames` feature is enabled for, so it can roll out by percentage like any change.
@@ -1207,10 +1215,11 @@ Join them with `and`, `or` and `not`, and group them with parentheses, so one co
 
 ```yml
 mutations:
-  - key: shipsAbroad
-    conditions: input('shippingAddress.country') != input('billingAddress.country')
-    mutate:
-      required:appendUnique: customsDescription
+  production:
+    - key: shipsAbroad
+      conditions: input('shippingAddress.country') != input('billingAddress.country')
+      mutate:
+        required:appendUnique: customsDescription
 ```
 
 As a tree, the other field goes in `valueFrom`, in place of `value`:
@@ -1296,11 +1305,11 @@ module.exports = {
 };
 ```
 
-Variables cannot use a schema with mutations, as for environments.
+Variables cannot use a schema with mutations, since a variable's schema stays the same everywhere and for everyone.
 
-### With environments
+### By environment
 
-Environments and mutations combine. An environment's entry is applied when its datafile is built, and mutations when a value is validated. So an entry can add a mutation in one environment only, with `mutations:append`, its conditions written as a tree. Lint checks a mutation an entry adds as it checks the file's own, and reports what fails under the entry, such as `In dev: ...`.
+Each environment lists its own root mutations, so a mutation can start in dev and reach production a pull request later, and staging lists production's too, or inherits them with `inheritEnvironments: { staging: { from: "production" } }` (see [Rules per environment](#rules-per-environment)). A field's own mutations are a list, the same in every environment.
 
 ## Rules between fields
 
@@ -1368,7 +1377,7 @@ A user outside the Netherlands never gets this issue, whatever the countries, an
 - **The issue** has `code: "refine"`, the entry's `path`, relative to the node, and `params: { refine: "passwordsDiffer" }`, with the field's `title`, as a check in code's has, never the values compared. Without a `path`, it belongs to the object, and `flattenIssues` puts it among `formErrors`.
 - **Messages.** The entry's `message` is a template, and the field's own. The schema's `messages`, from an enclosing object or beside the field's rules, and a form's, can replace it, with `confirmPassword: { refine: "..." }`. The application's `messages` on `createSchemas` cannot, since the entry's message is the schema's.
 - **Reusable schemas** carry their issues into every form that references them, and a field's handle, such as `at("address")`, runs the issues inside the field. Issues on the form's root read fields across the form, so they run when the form is validated.
-- **Mutations and environments** change `issues` as they change any rule, so a new issue can start in dev.
+- **Mutations** change `issues` as they change any rule, so a mutation in dev's list can add one with `issues:append`, and a new issue starts in dev.
 - **Lint** checks each entry: a key unique within its node, valid conditions that read at least one `input`, each `input` path and the entry's `path` naming fields of the node, and a message. `issues` goes on object nodes only. Variables cannot use a schema with issues, as for mutations.
 
 Checks that need your application, such as whether a username is free, stay [in code](#checks-in-code), whose `check` says what passes where an entry says what fails.
@@ -1419,7 +1428,7 @@ assertions:
 - **Running them:** `featurevisor test` runs schema specs with the rest, and `--entity-type=schema` runs them alone. A failed assertion prints the issues found and a `--case` to rerun it. Lint checks that each spec names a schema, an environment and an expectation.
 - **`matrix`** repeats an assertion for each combination, filling any field, `value` and `expectedIssues` included, as feature specs do.
 - Specs run in JavaScript, with this package. Runners for other languages skip them until those languages have a validator.
-- **In the Catalog**, a schema's page lists its specs on a Tests tab, and its changes per environment, mutations and issues on a Rules tab.
+- **In the Catalog**, a schema's page lists its specs on a Tests tab, and its mutations, by environment, and its issues on a Rules tab.
 
 ## Reading form data
 
@@ -1840,7 +1849,7 @@ Without generated code, `createSchemas<SchemaTypes, SchemaVocabularies>(f)` and 
 
 ## Recipes
 
-Real cases, each a schema with its conditions written as expressions. Each passes lint, and a [spec](#testing-schemas) proves it, as the first one shows.
+Real cases, each a schema with its conditions written as expressions. Each passes lint, and a [spec](#testing-schemas) proves it, as the first one shows. Each lists production's mutations, in a project whose staging inherits them with `inheritEnvironments: { staging: { from: "production" } }`.
 
 ### A postcode per country
 
@@ -1868,20 +1877,21 @@ properties:
 required: [street, postcode, city, country]
 
 mutations:
-  - key: netherlands
-    conditions: input('country') == 'NL'
-    mutate:
-      properties.postcode.pattern: "^[1-9][0-9]{3} ?[A-Z]{2}$"
-      properties.postcode.messages:
-        pattern: Enter a postcode such as 1011 AB
+  production:
+    - key: netherlands
+      conditions: input('country') == 'NL'
+      mutate:
+        properties.postcode.pattern: "^[1-9][0-9]{3} ?[A-Z]{2}$"
+        properties.postcode.messages:
+          pattern: Enter a postcode such as 1011 AB
 
-  - key: unitedStates
-    conditions: input('country') == 'US'
-    mutate:
-      required:appendUnique: state
-      properties.postcode.pattern: "^[0-9]{5}$"
-      properties.postcode.messages:
-        pattern: Enter a 5 digit ZIP code
+    - key: unitedStates
+      conditions: input('country') == 'US'
+      mutate:
+        required:appendUnique: state
+        properties.postcode.pattern: "^[0-9]{5}$"
+        properties.postcode.messages:
+          pattern: Enter a 5 digit ZIP code
 ```
 
 Every form that references it gets the same rules, and each address reads its own country, so a Dutch billing address and a US shipping address in one checkout each get theirs:
@@ -1952,11 +1962,12 @@ properties:
 required: [name, seats]
 
 mutations:
-  - key: businessPlan
-    conditions: plan == 'business'
-    mutate:
-      properties.seats.maximum: 50
-      properties.seats.messages.maximum: Business plans hold up to {maximum} seats
+  production:
+    - key: businessPlan
+      conditions: plan == 'business'
+      mutate:
+        properties.seats.maximum: 50
+        properties.seats.messages.maximum: Business plans hold up to {maximum} seats
 ```
 
 The plan comes from the context, the SDK instance's or one given to the call: `s.validate("team", value, { plan: account.plan })`. A segment reads the same, `conditions: businessAccounts`, and so does a spec, with `context: { plan: business }`.
@@ -1983,15 +1994,16 @@ properties:
 required: [contactBy]
 
 mutations:
-  - key: byPhone
-    conditions: input('contactBy') in ['phone', 'text']
-    mutate:
-      required:appendUnique: phone
+  production:
+    - key: byPhone
+      conditions: input('contactBy') in ['phone', 'text']
+      mutate:
+        required:appendUnique: phone
 
-  - key: byEmail
-    conditions: input('contactBy') == 'email'
-    mutate:
-      required:appendUnique: email
+    - key: byEmail
+      conditions: input('contactBy') == 'email'
+      mutate:
+        required:appendUnique: email
 ```
 
 `in` takes a list, so one mutation serves both ways of reaching a phone. The `required` issue names the mutation, `mutation: byPhone`, and in a form `contact.for(values).at("phone").constraints.required` turns true as soon as texts are chosen, so the field can say it is needed before the form is sent. A business account's tax ID is the same recipe (see [Rules under conditions](#rules-under-conditions)).
@@ -2027,15 +2039,16 @@ properties:
 required: [checkIn, checkOut, room, guests]
 
 mutations:
-  - key: singleRoom
-    conditions: input('room') == 'single'
-    mutate:
-      properties.guests.maximum: 1
+  production:
+    - key: singleRoom
+      conditions: input('room') == 'single'
+      mutate:
+        properties.guests.maximum: 1
 
-  - key: doubleRoom
-    conditions: input('room') == 'double'
-    mutate:
-      properties.guests.maximum: 2
+    - key: doubleRoom
+      conditions: input('room') == 'double'
+      mutate:
+        properties.guests.maximum: 2
 
 issues:
   - key: checkOutNotAfterCheckIn
@@ -2071,13 +2084,14 @@ rules:
 ```yml
 # schemas/signUp.yml
 mutations:
-  - key: strictPasswords
-    conditions: feature('strictPasswords')
-    mutate:
-      properties.password.minLength: 12
+  production:
+    - key: strictPasswords
+      conditions: feature('strictPasswords')
+      mutate:
+        properties.password.minLength: 12
 ```
 
-The flag comes along into every datafile that delivers the schema, with no tag of its own. Validation buckets as flags do, so the context needs what the flag buckets by, `s.validate("signUp", value, { userId })`. Staging, at 100%, proves the rule in a spec:
+The flag comes along into every datafile that delivers the schema, with no tag of its own. Validation buckets as flags do, so the context needs what the flag buckets by, `s.validate("signUp", value, { userId })`. Staging inherits the mutation and has the flag at 100%, so a spec proves the rule there:
 
 ```yml
 # tests/schemas/signUp.spec.yml
@@ -2115,10 +2129,11 @@ defaultValue: false
 required: [email, password, phone]
 
 mutations:
-  - key: phoneOptional
-    conditions: variable('phoneOptional') == true
-    mutate:
-      required:removeValue: phone
+  production:
+    - key: phoneOptional
+      conditions: variable('phoneOptional') == true
+      mutate:
+        required:removeValue: phone
 ```
 
 During an incident, a pull request turns it on in production, and every app has it at its next datafile:
@@ -2148,13 +2163,17 @@ minLength: 2
 
 maxLength: 40
 
-environments:
+mutations:
   staging:
-    mutate:
-      maxLength: 60
+    - key: longerNames
+      conditions: "*"
+      mutate:
+        maxLength: 60
+
+  production: []
 ```
 
-Staging accepts names up to 60 characters while production keeps 40. Once staging has proved it, write 60 into the base and remove the entry (see [Rules per environment](#rules-per-environment)). A flag rolls a rule out to users, and an environment entry to environments, and a schema can use both.
+Staging accepts names up to 60 characters while production keeps 40, and since the mutation always applies, staging's datafile holds `maxLength: 60` as the rule itself. Once staging has proved it, write 60 into the base and remove the mutation (see [Rules per environment](#rules-per-environment)). A flag rolls a rule out to users, and an environment's list to environments, and a schema can use both.
 
 ### The same rules on the server
 

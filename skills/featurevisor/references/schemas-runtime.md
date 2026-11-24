@@ -159,26 +159,36 @@ A check gets the value at its path and `{ input, context, signal }`, runs once t
 
 ## Rules per environment
 
+In a project with environments, a schema's root lists its `mutations` by environment, as a feature lists its rules:
+
 ```yaml
-environments:
+mutations:
   dev:
-    mutate:
-      properties.displayName.maxLength: 60
-      properties.country.enum:append: DE
+    - key: longerNames
+      conditions: "*"
+      mutate:
+        properties.displayName.maxLength: 60
+        properties.country.enum:append: DE
+
   staging:
-    mutate:
-      properties.displayName.maxLength: 60
+    - key: longerNames
+      conditions: "*"
+      mutate:
+        properties.displayName.maxLength: 60
+
+  production: []
 ```
 
-- `mutate` takes the notation of variable mutations ([variables-schemas.md](variables-schemas.md#mutations)). Each environment's datafile holds the schema as that environment resolves it, so applications validate against the same key everywhere.
-- Entries inherit as rules do, with `inheritEnvironments`. `dev: {}` uses the base.
-- Lint checks each key is a configured environment, every path reaches into the base, since a mutation creates no objects on the way, and each resolved schema is valid. Set a whole object to add one, such as `properties.taxId.messages: { pattern: ... }`.
+- `mutate` takes the notation of variable mutations ([variables-schemas.md](variables-schemas.md#mutations)). Each environment's datafile holds the schema with its own list, so applications validate against the same key everywhere.
+- Mutations whose conditions are `"*"`, before any others, are applied when the datafile is built, so the datafile holds the changed rules, handles' `constraints` read them, and their issues name no mutation.
+- Lists inherit as rules do, with `inheritEnvironments`, and `dev: []` lists none. Without environments, the root lists its mutations directly. A field's own mutations are always a list, the same in every environment.
+- Lint checks each key is a configured environment and checks each list as any mutations: every path reaches into the base, since a mutation creates no objects on the way, and the schema stays valid with each mutation and the whole list. Set a whole object to add one, such as `properties.taxId.messages: { pattern: ... }`.
 - A variable cannot use a schema that varies, by environment or under conditions.
 - Generated types come from the environment whose name starts with `prod`, or `generate-code --environment`.
 
 ## Rules under conditions
 
-Any node can carry `mutations`. Every one whose conditions match applies, in order, when a value is validated:
+Any node can carry `mutations`, the root's listed by environment in a project with environments, as production's are here. Every one whose conditions match applies, in order, when a value is validated:
 
 ```yaml
 mutations:
@@ -211,7 +221,7 @@ mutations:
 - In a project with `conditionExpressions: true`, write `input('accountType') == 'business'`, or `input('shippingCountry') != input('billingCountry')` for two fields ([expressions.md](expressions.md)).
 - `input` goes only in a schema's mutations and issues. `allowedConditions.schemas` limits the kinds there, `input` included ([conditions.md](conditions.md#allowed-condition-kinds)).
 - Keys are unique within a node, and no mutation changes a `type`.
-- An environment's entry can add a mutation with `mutations:append`, with its conditions as a tree. Lint checks it as it checks the file's own, under the entry.
+- An environment's list holds that environment's mutations, so one can start in dev and reach production a pull request later.
 - The segments, flags and global variables a schema's conditions read come along into the datafile, as a feature's dependencies do.
 - Lint checks each operator and value against the field it compares, as it does for attributes, so `input('age') startsWith 'x'` on an integer fails.
 - An issue a mutation set the rule of names it in `issue.mutation`, such as `business` for a missing `taxId`.

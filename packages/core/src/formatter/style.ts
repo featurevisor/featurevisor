@@ -155,9 +155,9 @@ export const HOUSE_STYLE = {
     attribute: [...LIFECYCLE, "description", "metadata", ...SCHEMA_KEYS],
     /**
      * A schema file, and every schema nested in a schema, attribute or variable. Only a schema
-     * file's root has `tags`, the vocabularies and `environments`, and only schema files have
-     * `messages`, `annotations`, `mutations` and `issues`, after the rules they word, describe,
-     * change and add to.
+     * file's root has `tags` and the vocabularies, and lists its `mutations` by environment in a
+     * project with environments. Only schema files have `messages`, `annotations`, `mutations`
+     * and `issues`, after the rules they word, describe, change and add to.
      */
     schema: [
       ...LIFECYCLE,
@@ -169,7 +169,6 @@ export const HOUSE_STYLE = {
       ...SCHEMA_KEYS,
       "messages",
       "annotations",
-      "environments",
       "mutations",
       "issues",
     ],
@@ -272,6 +271,10 @@ export const HOUSE_STYLE = {
     variableOverrideEnvironments: true,
     /** Between the properties of a schema */
     schemaProperties: false,
+    /** Between a schema's mutations, in a list or under each environment, as between rules */
+    schemaMutations: true,
+    /** Between the environments that group a schema's mutations at its root */
+    schemaMutationEnvironments: true,
     /** Between the deadlines in a definition's metadata */
     deadlines: true,
     /** Between a spec's assertions */

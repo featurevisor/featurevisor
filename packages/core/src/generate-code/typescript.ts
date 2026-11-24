@@ -585,7 +585,9 @@ export async function generateTypeScriptCodeForProject(
     }
   }
   // A schema that varies by environment is typed from one environment's version.
-  if (Object.values(schemasByKey).some((schema) => schema?.environments !== undefined)) {
+  const byEnvironment = (schema: Schema) =>
+    !!schema?.mutations && typeof schema.mutations === "object" && !Array.isArray(schema.mutations);
+  if (Object.values(schemasByKey).some(byEnvironment)) {
     const environment = getTypesEnvironment(projectConfig.environments, options.environment);
     for (const key of Object.keys(schemasByKey)) {
       schemasByKey[key] = resolveSchemaEnvironment(schemasByKey[key], environment, projectConfig);

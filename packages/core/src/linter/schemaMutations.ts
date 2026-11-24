@@ -1,9 +1,4 @@
-import type {
-  Schema,
-  SchemaMutation,
-  VariableMutationOperation,
-  VariableMutations,
-} from "@featurevisor/types";
+import type { Schema, VariableMutationOperation, VariableMutations } from "@featurevisor/types";
 import { applyVariableOperations } from "@featurevisor/sdk";
 import type { z } from "zod";
 
@@ -11,7 +6,6 @@ import type { AllowedConditions } from "../config";
 import { mutationEntries, mutationEntryPath } from "../builder/mutationEntries";
 import { compileVariableMutation } from "../builder/variableOverrideProgram";
 import { getSchemaReferences } from "../targeting";
-import { getConditionKindIssues } from "./conditionKinds";
 import { getInputLeafIssues } from "./conditionSchema";
 
 type Node = Record<string, unknown>;
@@ -30,11 +24,16 @@ function hasOwn(object: object, key: PropertyKey): boolean {
   return Object.prototype.hasOwnProperty.call(object, key);
 }
 
+/** A node's lists of mutations: its list, or at a schema's root its list per environment. */
+function mutationLists(mutations: unknown): unknown[][] {
+  if (Array.isArray(mutations)) return [mutations];
+  return isNode(mutations) ? Object.values(mutations).filter(Array.isArray) : [];
+}
+
 /** Whether a schema has rules that change, by environment or under conditions, at any node. */
 function hasChangingRules(node: unknown): boolean {
   if (!isNode(node)) return false;
-  if (node.environments !== undefined) return true;
-  if (Array.isArray(node.mutations) && node.mutations.length > 0) return true;
+  if (mutationLists(node.mutations).some((list) => list.length > 0)) return true;
   if (Array.isArray(node.issues) && node.issues.length > 0) return true;
   if (isNode(node.properties) && Object.values(node.properties).some(hasChangingRules)) return true;
   if (Array.isArray(node.oneOf) && node.oneOf.some(hasChangingRules)) return true;
@@ -198,55 +197,6 @@ export function getSchemaMutationFindings(
     return false;
   };
 
-  /** Every check a schema's own mutations get, by path and message, to tell what an environment adds. */
-  const rulesOf = (schema: unknown): MutationFinding[] => [
-    ...getSchemaMutationFindings(schema, options),
-    ...getConditionKindIssues("schema", schema, options.projectConfig.allowedConditions),
-  ];
-  const keyOf = (finding: MutationFinding) => JSON.stringify([finding.path, finding.message]);
-  let baseRules: Set<string> | undefined;
-
-  // Changes per environment, resolved at build time.
-  if (root.environments !== undefined) {
-    const configured = Array.isArray(projectConfig.environments)
-      ? (projectConfig.environments as string[])
-      : undefined;
-    if (!configured) {
-      findings.push({
-        path: ["environments"],
-        message:
-          "`environments` needs a project with environments. In a project with sets, each set has its own schema files.",
-      });
-    } else if (isNode(root.environments)) {
-      const { environments, ...base } = root;
-      for (const [environment, entry] of Object.entries(environments as Node)) {
-        const at: Path = ["environments", environment];
-        if (!configured.includes(environment)) {
-          findings.push({
-            path: at,
-            message: `Unknown environment "${environment}". Environments: ${configured.join(", ")}.`,
-          });
-          continue;
-        }
-        if (!isNode(entry) || entry.mutate === undefined) continue;
-        const operations = compile(entry.mutate, base, [...at, "mutate"], false);
-        if (!operations) continue;
-        const resolved = applyVariableOperations(base as never, operations);
-        // An environment whose rules already fail says so once, rather than once per mutation.
-        if (!validate(resolved, [...at, "mutate"], `In ${environment}`)) continue;
-        // A mutation the entry adds or changes gets every check the file's own mutations get.
-        baseRules ??= new Set(rulesOf(base).map(keyOf));
-        for (const finding of rulesOf(resolved)) {
-          if (baseRules.has(keyOf(finding))) continue;
-          findings.push({
-            path: [...at, "mutate"],
-            message: `In ${environment}: ${finding.message} (at ${finding.path.join(".") || "the root"})`,
-          });
-        }
-      }
-    }
-  }
-
   /** The field a dot path names in a node, through references, or undefined when there is none. */
   const fieldAt = (node: Node, fieldPath: string): Node | undefined => {
     let current: Node | undefined = resolve(node);
@@ -346,47 +296,87 @@ export function getSchemaMutationFindings(
     });
   };
 
+  /** One list of a node's mutations, at a path: each mutation, then all of them together. */
+  const checkMutations = (node: Node, path: Path, list: unknown[], at: Path) => {
+    const keys = new Set<string>();
+    const compiled: VariableMutationOperation[][] = [];
+    list.forEach((mutation, index) => {
+      const own: Path = [...at, index];
+      if (!isNode(mutation)) return;
+      if (keys.has(mutation.key as string)) {
+        findings.push({
+          path: [...own, "key"],
+          message: `Mutation key "${mutation.key}" is used twice in this node.`,
+        });
+      }
+      keys.add(mutation.key as string);
+      const conditions = conditionsZodSchema.safeParse(mutation.conditions);
+      if (!conditions.success) {
+        for (const issue of conditions.error.issues) {
+          findings.push({
+            path: [...own, "conditions", ...(issue.path as Path)],
+            message: issue.message,
+          });
+        }
+      } else checkInputs(mutation.conditions, node, [...own, "conditions"]);
+      const operations = compile(mutation.mutate, node, [...own, "mutate"], true);
+      if (!operations) return;
+      compiled.push(operations);
+      validate(
+        withNode(root, path, applyVariableOperations(node as never, operations)),
+        own,
+        `With mutation "${mutation.key}"`,
+      );
+    });
+    // Every mutation can match together, so the rules must hold with all of them applied.
+    if (compiled.length > 1 && compiled.length === list.length) {
+      validate(
+        withNode(root, path, applyVariableOperations(node as never, compiled.flat())),
+        at,
+        "With every mutation applied",
+      );
+    }
+  };
+
+  const configured = Array.isArray(projectConfig.environments)
+    ? (projectConfig.environments as string[])
+    : undefined;
+
   // Mutations under conditions, at any node, applied when validating.
   const visitNode = (node: unknown, path: Path) => {
     if (!isNode(node)) return;
-    if (Array.isArray(node.mutations)) {
-      const keys = new Set<string>();
-      const compiled: VariableMutationOperation[][] = [];
-      (node.mutations as SchemaMutation[]).forEach((mutation, index) => {
-        const at: Path = [...path, "mutations", index];
-        if (!isNode(mutation)) return;
-        if (keys.has(mutation.key)) {
-          findings.push({
-            path: [...at, "key"],
-            message: `Mutation key "${mutation.key}" is used twice in this node.`,
-          });
-        }
-        keys.add(mutation.key);
-        const conditions = conditionsZodSchema.safeParse(mutation.conditions);
-        if (!conditions.success) {
-          for (const issue of conditions.error.issues) {
+    const mutations = node.mutations;
+    if (Array.isArray(mutations)) {
+      if (path.length === 0 && configured) {
+        findings.push({
+          path: ["mutations"],
+          message: `In a project with environments, a schema's root \`mutations\` go under environment names, as features' rules do, such as \`mutations: { ${configured[configured.length - 1]}: [...] }\`. A field's own mutations stay a list.`,
+        });
+      }
+      checkMutations(node, path, mutations, [...path, "mutations"]);
+    } else if (isNode(mutations)) {
+      if (path.length > 0) {
+        findings.push({
+          path: [...path, "mutations"],
+          message:
+            "Only a schema's root lists its mutations by environment. A field's mutations are a list, the same in every environment.",
+        });
+      } else if (!configured) {
+        findings.push({
+          path: ["mutations"],
+          message:
+            "Mutations by environment need a project with environments, so this schema's `mutations` are a list. In a project with sets, each set has its own schema files.",
+        });
+      } else {
+        for (const [environment, list] of Object.entries(mutations)) {
+          const at: Path = ["mutations", environment];
+          if (!configured.includes(environment)) {
             findings.push({
-              path: [...at, "conditions", ...(issue.path as Path)],
-              message: issue.message,
+              path: at,
+              message: `Unknown environment "${environment}". Environments: ${configured.join(", ")}.`,
             });
-          }
-        } else checkInputs(mutation.conditions, node, [...at, "conditions"]);
-        const operations = compile(mutation.mutate, node, [...at, "mutate"], true);
-        if (!operations) return;
-        compiled.push(operations);
-        validate(
-          withNode(root, path, applyVariableOperations(node as never, operations)),
-          at,
-          `With mutation "${mutation.key}"`,
-        );
-      });
-      // Every mutation can match together, so the rules must hold with all of them applied.
-      if (compiled.length > 1 && compiled.length === node.mutations.length) {
-        validate(
-          withNode(root, path, applyVariableOperations(node as never, compiled.flat())),
-          [...path, "mutations"],
-          "With every mutation applied",
-        );
+          } else if (Array.isArray(list)) checkMutations(node, path, list, at);
+        }
       }
     }
     if (Array.isArray(node.issues)) checkIssues(node, path);

@@ -170,7 +170,7 @@ variablesSchema:
 
 `npx featurevisor list --schemas --json` lists existing schemas. Lint checks every value against the resolved schema.
 
-A schema file can also reach applications, which validate their own data against it with `@featurevisor/schemas` ([schemas-runtime.md](schemas-runtime.md)). For that it can carry `tags`, `annotations`, `messages`, `environments`, `mutations` and `issues`. A variable cannot use a schema with `environments`, `mutations` or `issues`, at its root or anywhere inside, since a variable's schema, values and type stay the same in every environment and for everyone. Lint fails at the variable, so give it a schema that does not vary.
+A schema file can also reach applications, which validate their own data against it with `@featurevisor/schemas` ([schemas-runtime.md](schemas-runtime.md)). For that it can carry `tags`, `annotations`, `messages`, `mutations`, at the root listed by environment in a project with environments, and `issues`. A variable cannot use a schema with `mutations` or `issues`, at its root or anywhere inside, since a variable's schema, values and type stay the same in every environment and for everyone. Lint fails at the variable, so give it a schema that does not vary.
 
 ## Mutations
 

@@ -96,13 +96,11 @@ export function visitConditionLocations(
   if (entityType === "schema") {
     const walk = (node: unknown, path: ConditionPath) => {
       if (!isObject(node)) return;
+      // Mutations are a list, or at the root a list per environment.
       for (const list of ["mutations", "issues"])
-        if (Array.isArray(node[list]))
-          (node[list] as unknown[]).forEach(
-            (entry, i) =>
-              isObject(entry) &&
-              visit("schemas", entry.conditions, [...path, list, i, "conditions"]),
-          );
+        visitList(node[list], [...path, list], (entry, at) =>
+          visit("schemas", entry.conditions, [...at, "conditions"]),
+        );
       if (isObject(node.properties))
         for (const [key, property] of Object.entries(node.properties))
           walk(property, [...path, "properties", key]);

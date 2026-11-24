@@ -25,13 +25,24 @@ interface RuleNode {
   node: Node;
 }
 
+/** How many mutations a node lists: its list, or at a schema's root its list per environment. */
+function countMutations(mutations: unknown): number {
+  if (Array.isArray(mutations)) return mutations.length;
+  return isNode(mutations)
+    ? Object.values(mutations).reduce<number>(
+        (count, list) => count + (Array.isArray(list) ? list.length : 0),
+        0,
+      )
+    : 0;
+}
+
 /** Every node with mutations or issues, the root first, in the order the file writes them. */
 export function getSchemaRuleNodes(schema: unknown): RuleNode[] {
   const found: RuleNode[] = [];
   const visit = (node: unknown, path: string) => {
     if (!isNode(node)) return;
     if (
-      (Array.isArray(node.mutations) && node.mutations.length > 0) ||
+      countMutations(node.mutations) > 0 ||
       (Array.isArray(node.issues) && node.issues.length > 0)
     )
       found.push({ path, node });
@@ -47,18 +58,14 @@ export function getSchemaRuleNodes(schema: unknown): RuleNode[] {
   return found;
 }
 
-/** How many rules a schema's Rules tab shows: environment entries, mutations and issues. */
+/** How many rules a schema's Rules tab shows: mutations, in every environment's list, and issues. */
 export function countSchemaRules(schema: unknown): number {
-  const environments = isNode(schema) && isNode(schema.environments) ? schema.environments : {};
-  return (
-    Object.keys(environments).length +
-    getSchemaRuleNodes(schema).reduce(
-      (count, { node }) =>
-        count +
-        (Array.isArray(node.mutations) ? node.mutations.length : 0) +
-        (Array.isArray(node.issues) ? node.issues.length : 0),
-      0,
-    )
+  return getSchemaRuleNodes(schema).reduce(
+    (count, { node }) =>
+      count +
+      countMutations(node.mutations) +
+      (Array.isArray(node.issues) ? node.issues.length : 0),
+    0,
   );
 }
 
@@ -136,8 +143,8 @@ function Labelled(props: { label: string; children: React.ReactNode }) {
 }
 
 /**
- * A schema's rules that change: per environment, resolved when its datafile is built, and under
- * conditions, applied when a value is validated, with the issues an object reports.
+ * A schema's rules that change: its mutations, at the root listed per environment in a project
+ * with environments, applied when a value is validated, and the issues an object reports.
  */
 export function SchemaRulesTab() {
   const { detail, setKey } = useEntityDetail();
@@ -145,35 +152,37 @@ export function SchemaRulesTab() {
   const schema = detail.entity as Node;
   const configured = useOptionalCatalog()?.manifest.projectConfig.environments;
   const inherit = useInheritEnvironments();
-  const entries = isNode(schema.environments) ? schema.environments : undefined;
-  const environments = entries
-    ? [...(configured || Object.keys(entries))].sort(sortEnvironmentKeys)
+  const byEnvironment = isNode(schema.mutations) ? schema.mutations : undefined;
+  const environments = byEnvironment
+    ? [...(configured || Object.keys(byEnvironment))].sort(sortEnvironmentKeys)
     : [];
   const selected = useSelectedEnvironment(environments, environmentKey);
   const nodes = getSchemaRuleNodes(schema);
   useScrollToHash([detail.key]);
 
-  // An environment without an entry uses the one it inherits from, then the base.
-  let entryFrom: string | undefined = selected;
-  const seen = new Set<string>();
-  while (entryFrom && entries && !Object.prototype.hasOwnProperty.call(entries, entryFrom)) {
-    if (seen.has(entryFrom)) break;
-    seen.add(entryFrom);
-    entryFrom = inherit?.[entryFrom]?.from;
-  }
-  const entry =
-    entries && entryFrom && Object.prototype.hasOwnProperty.call(entries, entryFrom)
-      ? entries[entryFrom]
-      : undefined;
+  // An environment without a list uses the one it inherits from, as the builder resolves it.
+  const lists = (environment: string | undefined) =>
+    !!byEnvironment &&
+    !!environment &&
+    Object.prototype.hasOwnProperty.call(byEnvironment, environment);
+  const inherited = selected ? inherit?.[selected]?.from : undefined;
+  const listFrom = lists(selected) ? selected : lists(inherited) ? inherited : undefined;
+  const rootList = byEnvironment && listFrom ? byEnvironment[listFrom] : undefined;
 
-  const mutations = nodes.flatMap(({ path, node }) =>
-    (Array.isArray(node.mutations) ? node.mutations : []).map((mutation) => ({ path, mutation })),
-  );
+  const mutations = [
+    ...(Array.isArray(rootList) ? rootList : []).map((mutation) => ({ path: "", mutation })),
+    ...nodes.flatMap(({ path, node }) =>
+      (Array.isArray(node.mutations) ? node.mutations : []).map((mutation) => ({
+        path,
+        mutation,
+      })),
+    ),
+  ];
   const issues = nodes.flatMap(({ path, node }) =>
     (Array.isArray(node.issues) ? node.issues : []).map((issue) => ({ path, issue })),
   );
 
-  if (!entries && mutations.length === 0 && issues.length === 0) {
+  if (!byEnvironment && mutations.length === 0 && issues.length === 0) {
     return (
       <EmptyState
         title="No rules that change"
@@ -184,53 +193,33 @@ export function SchemaRulesTab() {
 
   return (
     <div className="space-y-8">
-      {entries && (
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-text">Per environment</h2>
-            <p className="text-sm text-muted">
-              Each environment's datafile holds the schema with its entry applied.
-            </p>
-          </div>
-          <EnvironmentPills
-            base="rules"
-            environments={environments}
-            selectedEnvironment={selected}
-          />
-          {selected && (
-            <div className="rounded-xl border border-border bg-elevated p-4">
-              {entry === undefined ? (
-                <p className="text-sm text-muted">{selected} uses the base rules.</p>
-              ) : (
-                <>
-                  {entryFrom !== selected && (
-                    <p className="mb-3 text-sm text-muted">
-                      {selected} uses the entry of {entryFrom}.
-                    </p>
-                  )}
-                  {isNode(entry) && entry.mutate !== undefined ? (
-                    <Changes mutate={entry.mutate} />
-                  ) : (
-                    <p className="text-sm text-muted">
-                      An empty entry, so {selected} uses the base rules.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </section>
-      )}
-
-      {mutations.length > 0 && (
+      {(byEnvironment || mutations.length > 0) && (
         <section className="space-y-4">
           <div>
             <h2 className="text-base font-semibold text-text">Mutations</h2>
             <p className="text-sm text-muted">
               Every mutation whose conditions match changes the rules, in order, when a value is
-              validated.
+              validated. Those that always apply, before any others, are applied when the datafile
+              is built.
             </p>
           </div>
+          {byEnvironment && (
+            <>
+              <EnvironmentPills
+                base="rules"
+                environments={environments}
+                selectedEnvironment={selected}
+              />
+              {selected &&
+                (listFrom !== selected || !Array.isArray(rootList) || !rootList.length) && (
+                  <p className="text-sm text-muted">
+                    {listFrom && listFrom !== selected
+                      ? `${selected} uses the mutations of ${listFrom}.`
+                      : `${selected} lists no mutations at the root.`}
+                  </p>
+                )}
+            </>
+          )}
           {mutations.map(({ path, mutation }, index) => {
             const record = isNode(mutation) ? mutation : {};
             const key = typeof record.key === "string" ? record.key : `#${index + 1}`;

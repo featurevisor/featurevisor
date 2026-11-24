@@ -742,6 +742,17 @@ function getSchemaTagsZodSchema(projectConfig: ProjectConfig) {
     });
 }
 
+const mutationListZodSchema = z.array(
+  z
+    .object({
+      key: z.string().min(1),
+      description: z.string().optional(),
+      conditions: z.unknown(),
+      mutate: z.unknown(),
+    })
+    .strict(),
+);
+
 export function getSchemaZodSchema(
   schemaKeys: SchemaKey[] = [],
   schemasByKey: Record<string, Schema> = {},
@@ -760,9 +771,6 @@ export function getSchemaZodSchema(
               // Vocabularies, checked with the annotations they declare (schemaAnnotations.ts).
               annotationsSchema: schemaZodSchema.optional(),
               optionSchema: schemaZodSchema.optional(),
-              environments: z
-                .record(z.string(), z.object({ mutate: z.unknown().optional() }).strict())
-                .optional(),
             }
           : {}),
         // Schema files carry annotations at any node. Variables' schemas present nothing.
@@ -807,17 +815,10 @@ export function getSchemaZodSchema(
         // Schema files change their rules and report issues under conditions, checked by schemaMutations.ts.
         ...(projectConfig
           ? {
+              // A list, or at the root a list per environment, as features' rules are, which
+              // schemaMutations.ts says, rather than a type error where a field has a map.
               mutations: z
-                .array(
-                  z
-                    .object({
-                      key: z.string().min(1),
-                      description: z.string().optional(),
-                      conditions: z.unknown(),
-                      mutate: z.unknown(),
-                    })
-                    .strict(),
-                )
+                .union([mutationListZodSchema, z.record(z.string(), mutationListZodSchema)])
                 .optional(),
               issues: z
                 .array(
@@ -913,23 +914,17 @@ export function getSchemaPatterns(
       else getSchemaPatterns(value, entryPath, found);
     });
   };
-  const withRules = schema as { mutations?: unknown; environments?: unknown };
-  if (Array.isArray(withRules.mutations))
-    withRules.mutations.forEach((mutation, index) =>
-      fromMutate((mutation as { mutate?: unknown })?.mutate, [
-        ...path,
-        "mutations",
-        index,
-        "mutate",
-      ]),
-    );
-  if (withRules.environments && typeof withRules.environments === "object")
-    for (const [environment, entry] of Object.entries(withRules.environments))
-      fromMutate((entry as { mutate?: unknown })?.mutate, [
-        ...path,
-        "environments",
-        environment,
-        "mutate",
-      ]);
+  const fromList = (list: unknown, at: (string | number)[]) => {
+    if (Array.isArray(list))
+      list.forEach((mutation, index) =>
+        fromMutate((mutation as { mutate?: unknown })?.mutate, [...at, index, "mutate"]),
+      );
+  };
+  // A list, or a list per environment at a schema's root.
+  const { mutations } = schema as { mutations?: unknown };
+  if (mutations && typeof mutations === "object" && !Array.isArray(mutations))
+    for (const [environment, list] of Object.entries(mutations))
+      fromList(list, [...path, "mutations", environment]);
+  else fromList(mutations, [...path, "mutations"]);
   return found;
 }

@@ -30,33 +30,41 @@ properties:
 
 required: [accountType, displayName]
 
-environments:
-  dev:
-    mutate:
-      properties.displayName.maxLength: 60
-      properties.country.enum:append: DE
-  staging:
-    mutate:
-      properties.displayName.maxLength: 60
-
 mutations:
-  - key: business
-    conditions:
-      input: accountType
-      operator: equals
-      value: business
-    mutate:
-      required:appendUnique: taxId
-      properties.taxId.pattern: "^[A-Z]{2}[0-9]{9}$"
-  - key: payingAccounts
-    conditions: paying
-    mutate:
-      properties.displayName.maxLength: 80
-  - key: dutch
-    conditions: country == 'nl'
-    mutate:
-      properties.displayName.description: For the Dutch market
+  dev:
+    - key: longerNames
+      conditions: "*"
+      mutate:
+        properties.displayName.maxLength: 60
+        properties.country.enum:append: DE
+
+  staging:
+    - key: longerNames
+      conditions: "*"
+      mutate:
+        properties.displayName.maxLength: 60
+
+  production:
+    - key: business
+      conditions:
+        input: accountType
+        operator: equals
+        value: business
+      mutate:
+        required:appendUnique: taxId
+        properties.taxId.pattern: "^[A-Z]{2}[0-9]{9}$"
+    - key: payingAccounts
+      conditions: paying
+      mutate:
+        properties.displayName.maxLength: 80
+    - key: dutch
+      conditions: country == 'nl'
+      mutate:
+        properties.displayName.description: For the Dutch market
 `;
+
+/** Indents condition lines written for a list at the root by one more level, for a list under an environment. */
+const indent = (text: string) => text.replace(/^/gm, "  ");
 
 function createProject(files: Record<string, string> = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "featurevisor-schema-mutations-"));
@@ -96,11 +104,11 @@ async function lint(files: Record<string, string> = {}) {
 }
 
 describe("schemas per environment and under conditions", () => {
-  test("a schema with environments and mutations lints clean", async () => {
+  test("a schema with mutations by environment lints clean", async () => {
     expect(await lint()).toEqual([]);
   });
 
-  test("each environment's datafile holds the schema as it resolves there, with mutations compiled", async () => {
+  test("each environment's datafile holds its own mutations, those that always apply already applied", async () => {
     const { root, projectConfig, datasource } = createProject();
     try {
       const build = (environment: string) =>
@@ -115,7 +123,9 @@ describe("schemas per environment and under conditions", () => {
       expect(staging.properties.displayName.maxLength).toBe(60);
       expect(staging.properties.country.enum).toEqual(["GB", "NL"]);
       expect(prod.properties.displayName.maxLength).toBe(40);
-      expect("environments" in prod).toBe(false);
+      // `*` mutations before any other apply when the datafile is built, so dev and staging have none left.
+      expect("mutations" in dev).toBe(false);
+      expect("mutations" in staging).toBe(false);
       expect(new Set([dev.hash, staging.hash, prod.hash]).size).toBe(3);
 
       // Mutations reach the datafile compiled, with expressions expanded into trees.
@@ -167,7 +177,7 @@ describe("schemas per environment and under conditions", () => {
     }
   });
 
-  test("lint checks every environment entry and every mutation", async () => {
+  test("lint checks every environment's list and every mutation", async () => {
     const errors = await lint({
       "schemas/broken.yml": `description: Broken in every way
 
@@ -180,29 +190,37 @@ properties:
   age:
     type: integer
 
-environments:
-  qa:
-    mutate:
-      properties.name.minLength: 3
-  dev:
-    mutate:
-      properties.nam.minLength: 3
-  staging:
-    mutate:
-      properties.name.maxLength: 1
-
 mutations:
-  - key: older
-    conditions:
-      input: agee
-      operator: greaterThan
-      value: 18
-    mutate:
-      properties.age.type: string
-  - key: older
-    conditions: unknownSegment
-    mutate:
-      properties.age.minimum: 18
+  qa:
+    - key: longer
+      conditions: "*"
+      mutate:
+        properties.name.minLength: 3
+
+  dev:
+    - key: longer
+      conditions: "*"
+      mutate:
+        properties.nam.minLength: 3
+
+  staging:
+    - key: short
+      conditions: "*"
+      mutate:
+        properties.name.maxLength: 1
+
+  production:
+    - key: older
+      conditions:
+        input: agee
+        operator: greaterThan
+        value: 18
+      mutate:
+        properties.age.type: string
+    - key: older
+      conditions: unknownSegment
+      mutate:
+        properties.age.minimum: 18
 `,
       "variables/form.yml": `description: Uses a schema that varies
 
@@ -216,15 +234,15 @@ defaultValue:
 
     expect(errors.map(({ key, at }) => `${key} ${at}`)).toEqual([
       "form schema",
-      "broken environments.qa",
-      "broken environments.dev.mutate.properties.nam.minLength",
+      "broken mutations.qa",
+      "broken mutations.dev.0.mutate.properties.nam.minLength",
       // A maxLength below minLength fails twice, once for each bound.
-      "broken environments.staging.mutate",
-      "broken environments.staging.mutate",
-      "broken mutations.0.conditions.input",
-      "broken mutations.0.mutate.properties.age.type",
-      "broken mutations.1.key",
-      "broken mutations.1.conditions",
+      "broken mutations.staging.0",
+      "broken mutations.staging.0",
+      "broken mutations.production.0.conditions.input",
+      "broken mutations.production.0.mutate.properties.age.type",
+      "broken mutations.production.1.key",
+      "broken mutations.production.1.conditions",
     ]);
     const messages = errors.map(({ message }) => message);
     expect(messages).toEqual(
@@ -234,7 +252,7 @@ defaultValue:
         "`input('agee')` names no field of this node, whose fields are name, age. Paths are relative to the node a mutation or an issue sits on.",
         expect.stringContaining("A mutation cannot change a `type`"),
         'Mutation key "older" is used twice in this node.',
-        expect.stringContaining("In staging, the schema fails:"),
+        expect.stringContaining('With mutation "short", the schema fails:'),
         expect.stringContaining("a variable's schema stays the same everywhere"),
       ]),
     );
@@ -260,17 +278,18 @@ properties:
 required: [billingCountry]
 
 mutations:
-  - key: shipsAbroad
-    conditions:
-      input: shippingCountry
-${conditions}
-    mutate:
-      required:appendUnique: customsDescription
+  production:
+    - key: shipsAbroad
+      conditions:
+        input: shippingCountry
+${indent(conditions)}
+      mutate:
+        required:appendUnique: customsDescription
 `,
     });
     const found = async (conditions: string) =>
       (await lint(shipping(conditions))).map(({ at, message }) => ({ at, message }));
-    const at = "mutations.0.conditions";
+    const at = "mutations.production.0.conditions";
 
     expect(
       await found("      operator: notEquals\n      valueFrom:\n        input: billingCountry"),
@@ -336,14 +355,15 @@ properties:
 required: [billingCountry]
 
 mutations:
-  - key: shipsAbroad
-    conditions:
-      input: shippingCountry
-      operator: notEquals
-      valueFrom:
-        input: billingCountry
-    mutate:
-      required:appendUnique: customsDescription
+  production:
+    - key: shipsAbroad
+      conditions:
+        input: shippingCountry
+        operator: notEquals
+        valueFrom:
+          input: billingCountry
+      mutate:
+        required:appendUnique: customsDescription
 `,
     });
     try {
@@ -385,10 +405,11 @@ properties:
 required: [billingCountry]
 
 mutations:
-  - key: shipsAbroad
-    conditions: ${conditions}
-    mutate:
-      required:appendUnique: customsDescription
+  production:
+    - key: shipsAbroad
+      conditions: ${conditions}
+      mutate:
+        required:appendUnique: customsDescription
 `,
     });
     const located = async (conditions: string) => {
@@ -431,8 +452,8 @@ mutations:
     }
 
     // A path that names no field points at the call that reads it, on the conditions line.
-    const conditionsLine = 20;
-    const conditionsColumn = "    conditions: ".length + 1;
+    const conditionsLine = 21;
+    const conditionsColumn = "      conditions: ".length + 1;
     const wrong = "input('shippingCountry') != input('billing')";
     expect(await located(wrong)).toEqual([
       {
@@ -505,10 +526,11 @@ properties:
     type: string
 
 mutations:
-  - key: differs
-    conditions: input('password') != input('confirmPassword')
-    mutate:
-      properties.confirmPassword.maxLength: 0
+  production:
+    - key: differs
+      conditions: input('password') != input('confirmPassword')
+      mutate:
+        properties.confirmPassword.maxLength: 0
 `,
     });
 
@@ -566,71 +588,73 @@ overrides:
     ).toEqual([
       [
         "signUp",
-        "mutations.0.conditions",
+        "mutations.production.0.conditions",
         'Input conditions are not allowed in schema mutations and issues. Remove this condition, or allow "input" in allowedConditions.schemas.',
       ],
       [
         "signUp",
-        "mutations.2.conditions",
+        "mutations.production.2.conditions",
         'Attribute conditions are not allowed in schema mutations and issues. Move this condition into a segment and reference the segment, or allow "attribute" in allowedConditions.schemas.',
       ],
     ]);
     expect(await lint(config({ schemas: ["segment", "input", "attribute"] }))).toEqual([]);
   });
 
-  test("a mutation an environment adds gets every check the file's own get", async () => {
-    const errors = await lint({
+  test("an environment without a list inherits one as rules do, and [] means none", async () => {
+    const files = {
       "featurevisor.config.js": `module.exports = ${JSON.stringify({
         tags: ["web"],
         environments: ["dev", "staging", "production"],
+        inheritEnvironments: { dev: { from: "staging" } },
         conditionExpressions: true,
-        allowedConditions: { schemas: ["segment", "input"] },
       })};`,
-      "schemas/signUp.yml": "description: A sign up form\n\ntype: string\n",
-      "schemas/form.yml": `description: A form
+      "schemas/signUp.yml": `description: A sign up form
+
+tags:
+  - web
 
 type: object
 
 properties:
   name:
     type: string
+    maxLength: 40
 
 mutations:
-  - key: named
-    conditions:
-      input: name
-      operator: exists
-    mutate:
-      properties.name.minLength: 1
+  staging:
+    - key: paidNames
+      conditions: plan == 'paid' and input('name') exists
+      mutate:
+        properties.name.maxLength: 80
 
-environments:
-  dev:
-    mutate:
-      mutations:append:
-        key: longer
-        conditions:
-          - input: nam
-            operator: exists
-          - attribute: plan
-            operator: equals
-            value: paid
-        mutate:
-          properties.name.maxLength: 80
+  production: []
 `,
-    });
+    };
+    expect(await lint(files)).toEqual([]);
 
-    expect(errors.map(({ key, at, message }) => [key, at, message])).toEqual([
-      [
-        "form",
-        "environments.dev.mutate",
-        "In dev: `input('nam')` names no field of this node, whose fields are name. Paths are relative to the node a mutation or an issue sits on. (at mutations.1.conditions.0.input)",
-      ],
-      [
-        "form",
-        "environments.dev.mutate",
-        'In dev: Attribute conditions are not allowed in schema mutations and issues. Move this condition into a segment and reference the segment, or allow "attribute" in allowedConditions.schemas. (at mutations.1.conditions.1)',
-      ],
-    ]);
+    const { root, projectConfig, datasource } = createProject(files);
+    try {
+      const build = async (environment: string) =>
+        (
+          await getCustomDatafile({
+            projectConfig,
+            datasource,
+            environment,
+            tag: "web",
+            revision: "1",
+          })
+        ).schemas!.signUp as any;
+      const dev = await build("dev");
+      // Dev has no list, so it uses staging's, with its expression compiled.
+      expect(dev.mutations.map((mutation: any) => mutation.key)).toEqual(["paidNames"]);
+      expect(JSON.parse(dev.mutations[0].conditions)).toEqual([
+        { attribute: "plan", operator: "equals", value: "paid" },
+        { input: "name", operator: "exists" },
+      ]);
+      expect("mutations" in (await build("production"))).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   test("issues report when their conditions match, and reach the datafile compiled", async () => {
@@ -853,18 +877,19 @@ properties:
     maxLength: 40
 
 mutations:
-  - key: strict
-    conditions:
-      feature: strictNames
-    mutate:
-      properties.name.pattern: "^[A-Za-z ]+$"
-  - key: relaxed
-    conditions:
-      variable: relaxedNames
-      operator: equals
-      value: true
-    mutate:
-      properties.name.maxLength: 80
+  production:
+    - key: strict
+      conditions:
+        feature: strictNames
+      mutate:
+        properties.name.pattern: "^[A-Za-z ]+$"
+    - key: relaxed
+      conditions:
+        variable: relaxedNames
+        operator: equals
+        value: true
+      mutate:
+        properties.name.maxLength: 80
 `,
       "targets/web.yml": "description: Web\ntag: web\n",
     };
@@ -910,16 +935,17 @@ properties:
     format: date-time
 
 mutations:
-  - key: probe
-    conditions:
-${conditions}
-    mutate:
-      properties.name.maxLength: 10
+  production:
+    - key: probe
+      conditions:
+${indent(conditions)}
+      mutate:
+        properties.name.maxLength: 10
 `,
     });
     const found = async (conditions: string) =>
       (await lint(leaf(conditions))).map(({ at, message }) => [at, message]);
-    const at = "mutations.0.conditions";
+    const at = "mutations.production.0.conditions";
 
     expect(await found("      input: age\n      operator: startsWith\n      value: x")).toEqual([
       [`${at}.value`, 'Operator "startsWith" can only be used with string-like fields.'],
@@ -972,14 +998,42 @@ ${conditions}
     }
   });
 
-  test("environments need a project with environments", async () => {
-    const errors = await lint({
+  test("mutations by environment sit at a schema's root, in a project with environments", async () => {
+    const withoutEnvironments = await lint({
       "featurevisor.config.js": `module.exports = ${JSON.stringify({ tags: ["web"], conditionExpressions: true })};`,
-      "schemas/signUp.yml": `description: A sign up form\n\ntype: string\n\nenvironments:\n  dev: {}\n`,
+      "schemas/signUp.yml": `description: A sign up form\n\ntype: string\n\nmutations:\n  dev: []\n`,
     });
+    expect(withoutEnvironments.map(({ message }) => message)).toEqual([
+      "Mutations by environment need a project with environments, so this schema's `mutations` are a list. In a project with sets, each set has its own schema files.",
+    ]);
 
-    expect(errors.map(({ message }) => message)).toEqual([
-      "`environments` needs a project with environments. In a project with sets, each set has its own schema files.",
+    const misplaced = await lint({
+      "schemas/form.yml": `description: A form
+
+type: object
+
+properties:
+  name:
+    type: string
+    mutations:
+      production: []
+
+mutations:
+  - key: everywhere
+    conditions: "*"
+    mutate:
+      properties.name.maxLength: 80
+`,
+    });
+    expect(misplaced.map(({ at, message }) => [at, message])).toEqual([
+      [
+        "mutations",
+        "In a project with environments, a schema's root `mutations` go under environment names, as features' rules do, such as `mutations: { production: [...] }`. A field's own mutations stay a list.",
+      ],
+      [
+        "properties.name.mutations",
+        "Only a schema's root lists its mutations by environment. A field's mutations are a list, the same in every environment.",
+      ],
     ]);
   });
 
