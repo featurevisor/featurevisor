@@ -43,8 +43,10 @@ check runs.
 - packages/schemas holds `@featurevisor/schemas`, which validates data against
   the schemas targets deliver. The SDK carries them, as a datafile section
   its modules read with `getEntry`, and answers the conditions of their
-  mutations and issues through the module API's `matchConditions`. Core resolves environments at
-  build time, and Core's lint and the package must agree on every rule.
+  mutations and issues through the module API's `matchConditions`. Core
+  resolves environments at build time and runs schema specs with the package,
+  and Core's lint and the package must agree on every rule.
+  `conformance/schemas-validation.json` holds the portable cases.
 
 ## Contribution boundaries
 

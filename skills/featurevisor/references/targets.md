@@ -67,7 +67,7 @@ includeAnnotations: false # for a backend that renders nothing
 ```
 
 - A target with only feature or variable selectors delivers no schemas.
-- A delivered schema brings every schema it references, and the segments its mutations' conditions read. The features and global variables those conditions read must be selected too.
+- A delivered schema brings every schema it references, and the segments, flags and global variables its conditions read, with everything they read.
 - A target with `schemaVersion: "2"` cannot deliver schemas.
 
 ## What comes along

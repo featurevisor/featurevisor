@@ -4,7 +4,7 @@ Full docs: <https://featurevisor.com/docs/testing/>
 
 Specs are declarative YAML files that check what definitions evaluate to for given contexts. The CLI builds datafiles in memory and evaluates every assertion through the SDK, so a passing spec means the definitions behave as written. Add or update specs in the same change as the definitions they cover.
 
-Examples use the default scaffold. When the project configures environments, add `environment` to every feature and global variable assertion and to scenario roots that evaluate a feature or variable.
+Examples use the default scaffold. When the project configures environments, add `environment` to every feature, global variable and schema assertion and to scenario roots that evaluate a feature or variable.
 
 ## Where specs live
 
@@ -15,6 +15,7 @@ Every spec file under `tests/` (or `sets/<set>/tests/`) is discovered, named `<n
 | `feature`               | Feature spec         | `tests/features/<key>.spec.yml`   |
 | `segment`               | Segment spec         | `tests/segments/<key>.spec.yml`   |
 | `variable`              | Global variable spec | `tests/variables/<key>.spec.yml`  |
+| `schema`                | Schema spec          | `tests/schemas/<key>.spec.yml`    |
 | `checks`, with no owner | Scenario             | `tests/scenarios/<name>.spec.yml` |
 
 Starting points: [templates/test-feature.spec.yml](../templates/test-feature.spec.yml), [templates/test-segment.spec.yml](../templates/test-segment.spec.yml), [templates/test-variable.spec.yml](../templates/test-variable.spec.yml) and [templates/scenario.spec.yml](../templates/scenario.spec.yml).
@@ -165,6 +166,54 @@ assertions:
 - `stickyFeatures` fixes upstream feature results (`enabled`, `variation`, `variables`) and wins over `at`. `stickyVariables` fixes global variable values, including this one.
 - `checks` adds further expectations ([Checks](#checks)). Inside a variable spec, a check without `variable` refers to the spec's own variable.
 - `children` inherit the parent context and `at`, but not its sticky maps. Repeat `stickyFeatures` or `stickyVariables` in a child that needs them.
+
+## Schema specs
+
+A schema applications validate data against gets specs that validate values with `@featurevisor/schemas`, so they prove what applications see ([schemas-runtime.md](schemas-runtime.md)):
+
+```yaml
+schema: signUp
+
+assertions:
+  - key: complete
+    description: A complete sign up passes
+    environment: production
+    value:
+      accountType: personal
+      displayName: Ada
+    expectedToBeValid: true
+
+  - key: businessTaxId
+    description: Businesses give a tax ID
+    environment: production
+    value:
+      accountType: business
+      displayName: Ada
+    expectedIssues:
+      - path: [taxId]
+        code: required
+        mutation: business
+
+  - key: dutchShipping
+    description: Dutch orders ship to the billing country
+    environment: production
+    context:
+      country: nl
+    value:
+      accountType: personal
+      displayName: Ada
+      shippingCountry: DE
+      billingCountry: NL
+    expectedIssues:
+      - path: [shippingCountry]
+        params:
+          refine: dutchShippingCountry
+```
+
+- Each assertion needs a `value` and `expectedToBeValid` or `expectedIssues`. `environment` is required in a project with environments, since each builds its own version of a schema. `context` feeds the schema's conditions. `target` validates against that target's datafile.
+- `expectedIssues` lists every issue the value has, in any order. Each matches by the fields it gives: `path`, `code`, `mutation` (the mutation that set the rule), `message` and `params`. An issue nobody expected fails the assertion.
+- Cover each mutation and each entry in `issues` with a case where it applies and one where it does not, as for rules.
+- Schema specs have no `matrix`. `npx featurevisor test --entity-type=schema` runs them alone, and other SDKs' runners skip them.
 
 ## Checks
 

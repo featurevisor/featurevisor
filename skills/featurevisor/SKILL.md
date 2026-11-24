@@ -281,7 +281,7 @@ Ask whether a configurable value belongs to a feature or stands on its own. A su
 
 ### Validating forms and API bodies
 
-When rules for data users or clients send should change without a deploy, such as a display name's length or the countries checkout accepts, write a schema with `tags` ([templates/schema-form.yml](templates/schema-form.yml)), have a target deliver it, and validate with `@featurevisor/schemas` in the application. Rules per environment go under `environments`, rules under conditions, such as a tax ID only businesses give, under `mutations`, and rules between fields, such as a password typed twice, under `issues`. The package is experimental. Read [schemas-runtime.md](references/schemas-runtime.md) first.
+When rules for data users or clients send should change without a deploy, such as a display name's length or the countries checkout accepts, write a schema with `tags` ([templates/schema-form.yml](templates/schema-form.yml)), have a target deliver it, and validate with `@featurevisor/schemas` in the application. Rules per environment go under `environments`, rules under conditions, such as a tax ID only businesses give, under `mutations`, and rules between fields, such as a password typed twice, under `issues`. Cover it with a schema spec in `tests/schemas/` ([testing.md](references/testing.md#schema-specs)). The package is experimental. Read [schemas-runtime.md](references/schemas-runtime.md) first.
 
 ### Dependencies between definitions
 

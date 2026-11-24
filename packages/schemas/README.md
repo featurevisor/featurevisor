@@ -20,6 +20,7 @@ This package is experimental: its API may change in a minor release.
 - [Rules per environment](#rules-per-environment)
 - [Rules under conditions](#rules-under-conditions)
 - [Rules between fields](#rules-between-fields)
+- [Testing schemas](#testing-schemas)
 - [Reading form data](#reading-form-data)
 - [Server actions](#server-actions)
 - [React](#react)
@@ -160,6 +161,8 @@ Every issue has a `message`, a `path` of object keys and array indices, the `cod
   "schema": "signUp"
 }
 ```
+
+An issue whose rule a mutation set or changed also names it in `mutation`, such as `"mutation": "business"` for a tax ID only businesses must give (see [Rules under conditions](#rules-under-conditions)). When several matching mutations changed the rule, the last one names it.
 
 Validation reports every issue it finds, so a form can mark every field at once.
 
@@ -935,7 +938,7 @@ mutations:
 - `matches` and `notMatches` never take their pattern from `valueFrom`, or from `input(...)` in an expression, since a pattern from a user is one nobody reviewed.
 - A rule that two fields must agree, such as a password typed twice, changes no rule, so it is not a mutation. It goes in [`issues`](#rules-between-fields).
 
-**Datafiles** carry mutations compiled: `conditions` as features have them, and `mutate` as the operations the SDK applies, so applications parse no notation. The segments a delivered schema's conditions read come along into the datafile, as a feature's do. A target must deliver the features and global variables they read, as it does for a feature that depends on them, or they read as not found.
+**Datafiles** carry mutations compiled: `conditions` as features have them, and `mutate` as the operations the SDK applies, so applications parse no notation. The segments, flags and global variables a delivered schema's conditions read come along into the datafile, with everything they read, as a feature's dependencies do, so no target has to select them.
 
 **At runtime**, each node with mutations is validated against its rules with every matching mutation applied, in order. Each combination that matches compiles once and is kept, so a form validated on every keystroke pays for its conditions, not for compiling. Nodes without mutations validate as before, with nothing added. A condition that cannot be answered, such as a reader that fails, reports an `evaluation_error` diagnostic and does not match.
 
@@ -944,7 +947,7 @@ mutations:
 **Lint** checks every mutation:
 
 - its `key` is unique within its node,
-- its `conditions` are valid conditions, each with `value` or `valueFrom` and never both, and each `input` path, in `input` and in `valueFrom`, names a field of its node,
+- its `conditions` are valid conditions, each with `value` or `valueFrom` and never both, each `input` path, in `input` and in `valueFrom`, names a field of its node, and each operator and value suit the field compared, as they must an attribute, so `input('age') startsWith 'x'` on an integer fails,
 - every path in its `mutate` reaches into the node,
 - the node's rules stay a valid schema with each mutation applied alone and with all of them together,
 - no mutation changes a `type`, so a field's type, form data reading and generated types are the same whatever matches.
@@ -1026,6 +1029,52 @@ A user outside the Netherlands never gets this issue, whatever the countries, an
 - **Lint** checks each entry: a key unique within its node, valid conditions that read at least one `input`, each `input` path and the entry's `path` naming fields of the node, and a message. `issues` goes on object nodes only. Variables cannot use a schema with issues, as for mutations.
 
 Checks that need your application, such as whether a username is free, stay [in code](#checks-in-code), whose `check` says what passes where an entry says what fails.
+
+## Testing schemas
+
+Schemas have specs, as features and segments do, in your tests directory. Each assertion validates a `value` with this package, against the schema as an `environment` builds it, under a `context` its conditions read:
+
+```yml
+# tests/schemas/signUp.spec.yml
+schema: signUp
+
+assertions:
+  - description: A complete sign up
+    environment: production
+    value:
+      accountType: personal
+      displayName: Ada
+    expectedToBeValid: true
+
+  - description: A business without a tax ID
+    environment: production
+    value:
+      accountType: business
+      displayName: Ada
+    expectedIssues:
+      - path: [taxId]
+        code: required
+        mutation: business
+
+  - description: Dutch orders ship to the billing country
+    environment: production
+    context:
+      country: nl
+    value:
+      accountType: personal
+      displayName: Ada
+      shippingCountry: DE
+      billingCountry: NL
+    expectedIssues:
+      - path: [shippingCountry]
+        params:
+          refine: dutchShippingCountry
+```
+
+- **`expectedToBeValid`** says whether the value passes, and **`expectedIssues`** lists every issue it has, in any order. Each expected issue matches by the fields it gives: `path`, `code`, `mutation`, `message` and `params`, so a spec checks what matters to it and still fails when an issue nobody expected appears.
+- **`environment`** is required in a project with environments, since each builds its own version of a schema. **`target`** validates against that target's datafile, so a spec fails when the target does not deliver the schema.
+- **Running them:** `featurevisor test` runs schema specs with the rest, and `--entity-type=schema` runs them alone. A failed assertion prints the issues found and a `--case` to rerun it. Lint checks that each spec names a schema, an environment and an expectation.
+- Specs run in JavaScript, with this package. Runners for other languages skip them until those languages have a validator.
 
 ## Reading form data
 
@@ -1529,7 +1578,7 @@ Later releases of this package are planned to add:
 
 - `for(values)`, constraints, options and annotations for the values typed so far, with the mutations that match applied, and `reads`, the fields a schema's conditions read,
 - versions a schema points to per environment, each a whole schema of its own, and a warning when a change reaches an environment before the one before it,
-- rendering again in React when a context a schema's conditions read changes, and an issue's `mutation`, naming the mutation that set its rule,
+- rendering again in React when a context a schema's conditions read changes,
 - choosing between shapes, such as a payment method of card or bank, each an object told apart by a discriminator,
 - annotations in the Catalog and in `featurevisor diff`, and conversion to JSON Schema, with `title` and `examples` as its own keywords.
 

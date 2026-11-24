@@ -211,7 +211,9 @@ mutations:
 - `input` goes only in a schema's mutations and issues. `allowedConditions.schemas` limits the kinds there, `input` included ([conditions.md](conditions.md#allowed-condition-kinds)).
 - Keys are unique within a node, and no mutation changes a `type`.
 - An environment's entry can add a mutation with `mutations:append`, with its conditions as a tree. Lint checks it as it checks the file's own, under the entry.
-- A target must deliver the features and global variables a schema's conditions read. Segments come along.
+- The segments, flags and global variables a schema's conditions read come along into the datafile, as a feature's dependencies do.
+- Lint checks each operator and value against the field it compares, as it does for attributes, so `input('age') startsWith 'x'` on an integer fails.
+- An issue a mutation set the rule of names it in `issue.mutation`, such as `business` for a missing `taxId`.
 - `constraints`, `options`, `kind`, `annotations` and `fields` describe the base rules, so a form keeps its attributes while it is filled in.
 
 ## Forms, servers and React
@@ -226,6 +228,10 @@ npx featurevisor generate-code --language typescript --out-dir src/featurevisor 
 ```
 
 `--schemas` adds a typed `createSchemas`, so a wrong key, field path, annotation or choice is a type error, and `--react` adds typed hooks ([code-generation.md](code-generation.md)).
+
+## Testing
+
+Schema specs in `tests/schemas/<key>.spec.yml` validate values against the schema as each environment builds it, under a `context`, and name the issues they expect, down to the `mutation` that set a rule ([testing.md](testing.md#schema-specs)). Write them in the same change as the schema, a case where each mutation and issue entry applies and one where it does not.
 
 ## Changing a delivered schema
 
