@@ -121,7 +121,8 @@ export interface Evaluation {
 
 /**
  * Readers for kinds of condition leaf a package answers itself, such as
- * `input`: each gets the leaf's path and returns the value to compare.
+ * `input`: each gets the leaf's path and returns the value to compare. A
+ * leaf's `valueFrom`, such as `{ input: "password" }`, is read the same way.
  */
 export type ConditionReaders = Readonly<Record<string, (path: string) => unknown>>;
 

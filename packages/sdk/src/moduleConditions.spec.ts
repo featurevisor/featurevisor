@@ -66,33 +66,32 @@ describe("matchConditions on the module API", () => {
         { readers },
       ),
     ).toBe(true);
-    expect(
-      api.matchConditions(
-        { input: "confirm", operator: "equals", value: { input: "password" } } as never,
-        {},
-        {
-          readers,
-        },
-      ),
-    ).toBe(true);
+    const same = { input: "confirm", operator: "equals", valueFrom: { input: "password" } };
+    expect(api.matchConditions(same as never, {}, { readers })).toBe(true);
     value.confirm = "b";
+    expect(api.matchConditions(same as never, {}, { readers })).toBe(false);
+    // `value` is always a value, even an object naming a reader.
+    value.confirm = "a";
     expect(
       api.matchConditions(
         { input: "confirm", operator: "equals", value: { input: "password" } } as never,
         {},
-        {
-          readers,
-        },
+        { readers },
       ),
     ).toBe(false);
-    // A pattern read from a value never runs.
+    // A pattern read from a value never runs, nor a source no reader answers.
     expect(
       api.matchConditions(
-        { input: "confirm", operator: "matches", value: { input: "password" } } as never,
+        { input: "confirm", operator: "matches", valueFrom: { input: "password" } } as never,
         {},
-        {
-          readers,
-        },
+        { readers },
+      ),
+    ).toBe(false);
+    expect(
+      api.matchConditions(
+        { input: "confirm", operator: "equals", valueFrom: { attribute: "country" } } as never,
+        {},
+        { readers },
       ),
     ).toBe(false);
     // Without a reader for its kind, a leaf does not match.

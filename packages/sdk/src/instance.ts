@@ -748,21 +748,22 @@ export class Featurevisor {
     const leaf = conditions as unknown as Record<string, never>;
     const kind = readers && Object.keys(leaf).find((name) => hasOwn(readers, name));
     if (kind) {
-      const given = leaf.value as Record<string, never> | undefined;
-      // A value naming a reader compares one read with another, such as two inputs.
-      const other =
-        given && typeof given === "object" && !Array.isArray(given)
-          ? Object.keys(given).find((name) => hasOwn(readers!, name))
-          : undefined;
-      // A pattern read from a value is a pattern nobody reviewed, so it never runs.
-      if (other && /atches$/.test(leaf.operator)) return false;
+      // `value` is always a value. `valueFrom` reads the other side, such as another input.
+      const from = leaf.valueFrom as Record<string, never> | undefined;
+      let value = leaf.value;
+      if (from !== undefined) {
+        const other =
+          from && typeof from === "object"
+            ? Object.keys(from).find((name) => hasOwn(readers!, name))
+            : undefined;
+        // A source no reader answers matches nothing, and a pattern read from
+        // a value is one nobody reviewed, so it never runs.
+        if (!other || /atches$/.test(leaf.operator)) return false;
+        value = readers![other](from[other]) as never;
+      }
       return valueIsMatched(
         readers![kind](leaf[kind]),
-        {
-          operator: leaf.operator,
-          value: (other ? readers![other](given![other]) : given) as never,
-          regexFlags: leaf.regexFlags,
-        },
+        { operator: leaf.operator, value, regexFlags: leaf.regexFlags },
         (pattern, flags) => this.getRegex(pattern, flags),
       );
     }

@@ -66,7 +66,8 @@ export interface FeaturevisorModuleApi {
    * variable leaves, which read through the getters in one dependency session,
    * with sticky values and modules, as `dependencyOf: { type, key }`. `readers`
    * answer leaves only the package knows, such as `{ input: "country", ... }`,
-   * and a value naming a reader, `{ input: "password" }`, compares two reads.
+   * and `valueFrom` naming a reader, `{ input: "password" }`, compares two
+   * reads. `value` is always a value, never read.
    * `context` is merged over the instance's, as a getter's is. A condition that
    * cannot be answered, such as a dependency cycle, reports `evaluation_error`
    * and does not match.
