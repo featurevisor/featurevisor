@@ -8,7 +8,7 @@ import {
 } from "./testModel";
 
 export interface TestEntityReference {
-  type: "feature" | "variable" | "segment";
+  type: "feature" | "variable" | "segment" | "schema";
   key: string;
   reason: string;
   permalink?: string;
@@ -20,6 +20,7 @@ export function getTestOwner(test: Test): TestEntityReference | undefined {
   if ("feature" in test) return { type: "feature", key: test.feature, reason: "Own test spec" };
   if ("segment" in test) return { type: "segment", key: test.segment, reason: "Own test spec" };
   if ("variable" in test) return { type: "variable", key: test.variable, reason: "Own test spec" };
+  if ("schema" in test) return { type: "schema", key: test.schema, reason: "Own test spec" };
 }
 
 /** Static references describe authored expectations, not observed test coverage. */

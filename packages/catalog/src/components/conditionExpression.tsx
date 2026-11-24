@@ -5,7 +5,7 @@ import { getDependencyNodes } from "../dependencyIndex";
 import { getEntityRoute } from "../entityTypes";
 import type { CatalogIndex, EntitySummary } from "../types";
 import { useCatalogIndex } from "../useCatalogIndex";
-import { Badge, OverviewChipLink } from "./ui";
+import { Badge, OverviewChip, OverviewChipLink } from "./ui";
 import { formatComparisonOperator, formatOperand, formatPath } from "./valueFormat";
 import { slugifyFragment } from "./variables";
 
@@ -21,7 +21,9 @@ export type ConditionNode =
   | { kind: "everyone" }
   | { kind: "attribute"; attribute: string; comparison: Comparison }
   | { kind: "feature"; feature: string; variation?: string; enabled?: boolean }
-  | { kind: "variable"; feature?: string; variable: string; path?: string; comparison: Comparison };
+  | { kind: "variable"; feature?: string; variable: string; path?: string; comparison: Comparison }
+  /** A field of the value a schema validates, compared with a value or, through `valueFrom`, another field. */
+  | { kind: "input"; input: string; comparison: Comparison; from?: string };
 
 type LeafNode = Exclude<ConditionNode, { kind: "group" }>;
 type GroupNode = Extract<ConditionNode, { kind: "group" }>;
@@ -75,6 +77,18 @@ function toLeaf(value: unknown): LeafNode | undefined {
   if (!value || typeof value !== "object") return undefined;
 
   const leaf = value as Record<string, unknown>;
+  if (typeof leaf.input === "string") {
+    const from =
+      leaf.valueFrom && typeof (leaf.valueFrom as { input?: unknown }).input === "string"
+        ? ((leaf.valueFrom as { input: string }).input as string)
+        : undefined;
+    return {
+      kind: "input",
+      input: leaf.input,
+      comparison: toComparison(leaf, from === undefined && "value" in leaf),
+      from,
+    };
+  }
   if (typeof leaf.attribute === "string") {
     return {
       kind: "attribute",
@@ -188,6 +202,12 @@ export function describeConditions(node: ConditionNode, nested = false): string 
     const comparison = describeComparison(node.comparison);
     const name = `${variableName(node)}${node.path || ""}`;
     return comparison ? `${name} ${comparison}` : name;
+  }
+  if (node.kind === "input") {
+    const comparison = describeComparison(node.comparison);
+    return [`field ${node.input}`, comparison, node.from && `field ${node.from}`]
+      .filter(Boolean)
+      .join(" ");
   }
 
   if (node.children.length === 0) return "No match (empty group)";
@@ -459,6 +479,15 @@ function Leaf(props: { node: LeafNode; setKey?: string }) {
         <ComparisonText comparison={node.comparison} />
       </>
     );
+  } else if (node.kind === "input") {
+    // A field has no page of its own, so it is a plain chip, typed as fields are.
+    content = (
+      <>
+        <FieldChip path={node.input} />
+        <ComparisonText comparison={node.comparison} />
+        {node.from && <FieldChip path={node.from} />}
+      </>
+    );
   } else if (node.kind === "feature") {
     content = (
       <>
@@ -503,6 +532,18 @@ function Leaf(props: { node: LeafNode; setKey?: string }) {
   return (
     <span className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-1">
       {content}
+    </span>
+  );
+}
+
+/** A field of the value a schema validates, by its path in the node the condition sits on. */
+function FieldChip(props: { path: string }) {
+  return (
+    <span title="A field of the value being validated" className="inline-flex max-w-full">
+      <OverviewChip>
+        <span className="mr-1 whitespace-nowrap font-normal text-faint">field</span>
+        <span className="font-mono [overflow-wrap:anywhere]">{props.path}</span>
+      </OverviewChip>
     </span>
   );
 }

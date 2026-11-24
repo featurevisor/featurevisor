@@ -399,6 +399,7 @@ type RelationshipMaps = {
   targetSegments: Record<string, Set<string>>;
   targetSchemas: Record<string, Set<string>>;
   schemaTargets: Record<string, Set<string>>;
+  schemaTests: Record<string, Set<string>>;
   variableFeatures: Record<string, Set<string>>;
   variableSegments: Record<string, Set<string>>;
   variableAttributes: Record<string, Set<string>>;
@@ -1865,10 +1866,12 @@ function getUsedByCount(type: CatalogEntityType, key: string, relationships: Rel
       relationships.attributesUsedInFeatures[key],
       relationships.attributesUsedInVariables[key],
     );
+  // A schema a Target delivers is used by the applications that load it.
   if (type === "schema")
     return count(
       relationships.schemasUsedInFeatures[key],
       relationships.schemasUsedInVariables[key],
+      relationships.schemaTargets[key],
     );
   return undefined;
 }
@@ -2012,6 +2015,7 @@ function buildRelationships(
     targetSegments: {},
     targetSchemas: {},
     schemaTargets: {},
+    schemaTests: {},
     variableFeatures: {},
     variableSegments: {},
     variableAttributes: {},
@@ -2149,7 +2153,9 @@ function buildRelationships(
           ? relationships.featureTests
           : reference.type === "segment"
             ? relationships.segmentTests
-            : relationships.variableTests;
+            : reference.type === "schema"
+              ? relationships.schemaTests
+              : relationships.variableTests;
       addToSet(index, reference.key, testIdentity);
     }
   }
@@ -2215,6 +2221,7 @@ function getEntityRelationships(
       features: sortSet(relationships.schemasUsedInFeatures[key]),
       variables: sortSet(relationships.schemasUsedInVariables[key]),
       targets: sortSet(relationships.schemaTargets[key]),
+      tests: getCatalogTestKeys(relationships.schemaTests[key], maps),
     };
   }
 
@@ -2407,7 +2414,9 @@ async function buildSetCatalog(
             ? relationships.segmentTests[key]
             : plan.type === "variable"
               ? relationships.variableTests[key]
-              : undefined;
+              : plan.type === "schema"
+                ? relationships.schemaTests[key]
+                : undefined;
       const entityTests = sortCatalogTestIdentities(testIdentities, maps).map((identity) => {
         const spec = maps.test[identity];
         const report = context.testReport?.specs.get(getReportSpecId(set, spec.source, spec.key));

@@ -11,7 +11,12 @@ export function TestsTab() {
   const { detail, setKey } = useEntityDetail();
   const { manifest } = useCatalog();
 
-  if (detail.type !== "feature" && detail.type !== "segment" && detail.type !== "variable") {
+  if (
+    detail.type !== "feature" &&
+    detail.type !== "segment" &&
+    detail.type !== "variable" &&
+    detail.type !== "schema"
+  ) {
     return <Navigate to=".." replace />;
   }
 

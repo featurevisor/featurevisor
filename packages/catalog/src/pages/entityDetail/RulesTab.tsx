@@ -30,6 +30,7 @@ import {
   useSelectedEnvironment,
 } from "./environments";
 import { withInheritedEntries } from "../../environmentInheritance";
+import { SchemaRulesTab } from "./SchemaRulesTab";
 
 export function FeatureRulesTab() {
   const { detail, setKey } = useEntityDetail();
@@ -42,6 +43,8 @@ export function FeatureRulesTab() {
   const rules = environments.length > 0 ? resolved.rules?.[selectedEnvironment] : entity.rules;
   const expose = environments.length > 0 ? resolved.expose?.[selectedEnvironment] : entity.expose;
 
+  // A schema's rules change by environment and under conditions, on a tab of the same name.
+  if (detail.type === "schema") return <SchemaRulesTab />;
   if (detail.type !== "feature") return <Navigate to=".." replace />;
 
   return (

@@ -27,6 +27,7 @@ import { useDocumentTitle } from "../useDocumentTitle";
 import { recordRecentEntity } from "../recentEntities";
 import { EditLink } from "../components/editLink";
 import { countItems } from "./entityDetail/shared";
+import { countSchemaRules } from "./entityDetail/SchemaRulesTab";
 import { countUsage } from "./entityDetail/UsageTab";
 
 // Tabs live in entityDetail/. The router and tests import them from this page.
@@ -388,7 +389,10 @@ function EntityDetailView() {
     ...(type === "variable"
       ? [{ to: "overrides", label: "Overrides", count: countItems(entity.overrides) }]
       : []),
-    ...(type === "feature" || type === "segment" || type === "variable"
+    ...(type === "schema"
+      ? [{ to: "rules", label: "Rules", count: countSchemaRules(entity) }]
+      : []),
+    ...(type === "feature" || type === "segment" || type === "variable" || type === "schema"
       ? [
           {
             to: "tests",
