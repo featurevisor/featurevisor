@@ -1,5 +1,15 @@
-import { getPortableTimestamp, isValidVersion } from "@featurevisor/sdk";
-import type { DatafileSchema, SchemaMessages } from "@featurevisor/types";
+import {
+  applyVariableOperations,
+  getPortableTimestamp,
+  isValidVersion,
+  type ConditionReaders,
+} from "@featurevisor/sdk";
+import type {
+  Context,
+  DatafileSchema,
+  DatafileSchemaMutation,
+  SchemaMessages,
+} from "@featurevisor/types";
 
 import {
   chooseMessage,
@@ -30,8 +40,23 @@ export interface Run {
 
 export type Validate = (value: unknown, run: Run, at: Position) => void;
 
-/** A compiled schema by key in the current datafile, for references, or undefined when it has none. */
-export type Resolve = (key: string) => { node: DatafileSchema; validate: Validate } | undefined;
+/** Answers a mutation's conditions with the SDK's engine, for the schema being validated. */
+export type Match = (
+  conditions: unknown,
+  context: Context,
+  readers: ConditionReaders,
+  schema: string,
+) => boolean;
+
+/**
+ * A compiled schema by key in the current datafile, for references, or
+ * undefined when it has none, with the matcher mutations' conditions use.
+ */
+export type Resolve = ((
+  key: string,
+) => { node: DatafileSchema; validate: Validate } | undefined) & {
+  match?: Match;
+};
 
 type Node = DatafileSchema & Record<string, unknown>;
 
@@ -494,9 +519,56 @@ function compileRules(node: Node, resolve: Resolve): Validate {
   };
 }
 
+/** The value at a dot path inside a value, through own keys only, for `input` leaves. */
+function readInput(value: unknown, path: string): unknown {
+  let current = value;
+  for (const part of path.split(".")) {
+    if (!current || typeof current !== "object" || !hasOwn(current, part)) return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+/**
+ * A node whose rules change under conditions: each value is validated against
+ * the node with every mutation whose conditions match applied, in order. Each
+ * combination of matches compiles once and is kept for the node.
+ */
+function compileMutations(node: Node, resolve: Resolve): Validate {
+  const mutations = node.mutations as unknown as DatafileSchemaMutation[];
+  const base = assignOwn({}, node) as Node;
+  delete base.mutations;
+  const variants = new Map<string, Validate>();
+  return (value, run, at) => {
+    // `input` reads the value at this node, so a mutation in `address` reads the address's own fields.
+    const readers = { input: (path: string) => readInput(value, path) };
+    let id = "";
+    for (let index = 0; index < mutations.length; index++) {
+      const matched =
+        resolve.match !== undefined &&
+        resolve.match(mutations[index].conditions, run.sources.info.context, readers, run.schema);
+      if (matched) id += `${index},`;
+    }
+    let validate = variants.get(id);
+    if (!validate) {
+      let rules: unknown = base;
+      for (const index of id.split(",")) {
+        if (index)
+          rules = applyVariableOperations(rules as never, mutations[Number(index)].operations);
+      }
+      validate = compileNode(rules, resolve);
+      variants.set(id, validate);
+    }
+    validate(value, run, at);
+  };
+}
+
 /** Compiles a schema node into a function that validates a value, with its messages and title in scope. */
 export function compileNode(node: unknown, resolve: Resolve): Validate {
   if (!isPlainObject(node)) return () => {};
+  if (Array.isArray(node.mutations) && node.mutations.length > 0) {
+    return compileMutations(node as Node, resolve);
+  }
   const rules = compileRules(node as Node, resolve);
   const messages = isPlainObject(node.messages) ? (node.messages as SchemaMessages) : undefined;
   const title =

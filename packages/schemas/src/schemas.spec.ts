@@ -797,6 +797,164 @@ describe("annotations", () => {
   });
 });
 
+describe("mutations under conditions", () => {
+  // As Core writes them in a datafile: conditions as trees, `mutate` compiled into operations.
+  const signUp: DatafileSchema = {
+    hash: "m1",
+    type: "object",
+    properties: {
+      accountType: { type: "string", enum: ["personal", "business"] },
+      displayName: { type: "string", minLength: 3, maxLength: 10 },
+      taxId: { type: "string" },
+      address: { schema: "postal" },
+    },
+    required: ["accountType", "displayName"],
+    mutations: [
+      {
+        key: "germanBusiness",
+        conditions: {
+          and: [
+            { input: "accountType", operator: "equals", value: "business" },
+            { input: "address.country", operator: "equals", value: "DE" },
+          ],
+        },
+        operations: [
+          { op: "appendUnique", path: ["required"], value: "taxId" },
+          { op: "set", path: ["properties", "taxId", "pattern"], value: "^DE[0-9]{9}$" },
+          {
+            op: "set",
+            path: ["properties", "taxId", "messages"],
+            value: { pattern: "Enter a German VAT number, such as DE123456789" },
+          },
+        ],
+      },
+      {
+        key: "payingAccounts",
+        conditions: "paying",
+        operations: [{ op: "set", path: ["properties", "displayName", "maxLength"], value: 20 }],
+      },
+      {
+        key: "relaxedNames",
+        conditions: [{ feature: "relaxedNames" }],
+        operations: [{ op: "set", path: ["properties", "displayName", "minLength"], value: 1 }],
+      },
+    ],
+  } as unknown as DatafileSchema;
+  const postal = {
+    hash: "p1",
+    type: "object",
+    properties: { country: { type: "string" }, state: { type: "string" } },
+    mutations: [
+      {
+        key: "unitedStates",
+        conditions: [{ input: "country", operator: "equals", value: "US" }],
+        operations: [{ op: "set", path: ["required"], value: ["state"] }],
+      },
+    ],
+  } as unknown as DatafileSchema;
+
+  function mutating(relaxed = false) {
+    const f = createFeaturevisor({
+      datafile: {
+        schemaVersion: "4",
+        revision: "1",
+        segments: {
+          paying: {
+            hash: "g1",
+            conditions: [{ attribute: "plan", operator: "equals", value: "paid" }],
+          },
+        },
+        features: {
+          relaxedNames: {
+            hash: "f1",
+            bucketBy: "userId",
+            traffic: [{ key: "all", conditions: "*", percentage: relaxed ? 100000 : 0 }],
+          },
+        },
+        variables: {},
+        schemas: { signUp, postal },
+      } as unknown as DatafileContent,
+      logLevel: "fatal",
+      context: { userId: "user-1" },
+    });
+    return createSchemas(f);
+  }
+  const personal = { accountType: "personal", displayName: "Ada" };
+
+  test("input conditions change the rules for the value being validated", () => {
+    const s = mutating();
+
+    expect(
+      s.validate("signUp", { ...personal, address: { country: "DE" } }).issues,
+    ).toBeUndefined();
+
+    const business = { accountType: "business", displayName: "Ada", address: { country: "DE" } };
+    expect(codes(s.validate("signUp", business).issues)).toEqual([["required", "taxId"]]);
+
+    const wrong = s.validate("signUp", { ...business, taxId: "NL1" }).issues!;
+    expect(codes(wrong)).toEqual([["pattern", "taxId"]]);
+    expect(wrong[0].message).toBe("Enter a German VAT number, such as DE123456789");
+    expect(s.validate("signUp", { ...business, taxId: "DE123456789" }).issues).toBeUndefined();
+  });
+
+  test("context conditions read segments and features through the SDK", () => {
+    const s = mutating();
+    const longer = { ...personal, displayName: "Ada Lovelace" };
+
+    expect(codes(s.validate("signUp", longer).issues)).toEqual([["maxLength", "displayName"]]);
+    expect(s.validate("signUp", longer, { plan: "paid" }).issues).toBeUndefined();
+
+    const short = { ...personal, displayName: "A" };
+    expect(codes(s.validate("signUp", short).issues)).toEqual([["minLength", "displayName"]]);
+    expect(mutating(true).validate("signUp", short).issues).toBeUndefined();
+  });
+
+  test("a mutation in a referenced schema reads that schema's own value, in every form that uses it", () => {
+    const s = mutating();
+    const american = { ...personal, address: { country: "US" } };
+
+    expect(codes(s.validate("signUp", american).issues)).toEqual([["required", "address.state"]]);
+    expect(codes(s.get("postal").validate({ country: "US" }).issues)).toEqual([
+      ["required", "state"],
+    ]);
+    // A field's handle applies the mutations inside the field.
+    expect(codes(s.get("signUp").at("address").validate({ country: "US" }).issues)).toEqual([
+      ["required", "state"],
+    ]);
+    expect(s.get("signUp").at("address").validate({ country: "GB" }).issues).toBeUndefined();
+  });
+
+  test("every mutation that matches applies, and each combination answers the same every time", () => {
+    const s = mutating(true);
+    const value = {
+      accountType: "business",
+      displayName: "A Lovelace Ltd",
+      address: { country: "DE" },
+    };
+
+    for (let run = 0; run < 3; run++) {
+      expect(codes(s.validate("signUp", value, { plan: "paid" }).issues)).toEqual([
+        ["required", "taxId"],
+      ]);
+      expect(codes(s.validate("signUp", value).issues)).toEqual([
+        ["required", "taxId"],
+        ["maxLength", "displayName"],
+      ]);
+    }
+  });
+
+  test("constraints, options and kinds read the base rules, which no condition changes", () => {
+    const s = mutating();
+
+    expect(s.get("signUp").constraints.displayName).toEqual({
+      required: true,
+      minLength: 3,
+      maxLength: 10,
+    });
+    expect(s.get("signUp").constraints.taxId).toEqual({});
+  });
+});
+
 describe("form data", () => {
   test("is read by the schema's types, leaving out what it does not describe", () => {
     const { s } = setup();

@@ -17,6 +17,8 @@ This package is experimental: its API may change in a minor release.
 - [Choices](#choices)
 - [Messages](#messages)
 - [Checks in code](#checks-in-code)
+- [Rules per environment](#rules-per-environment)
+- [Rules under conditions](#rules-under-conditions)
 - [Reading form data](#reading-form-data)
 - [Server actions](#server-actions)
 - [React](#react)
@@ -791,6 +793,137 @@ What a handle checks is fixed when it is created, so `~standard.validate(value)`
 
 The instance keeps no answers and cancels nothing, since a server shares handles across requests. On the server, give the same check its own implementation under the same key, such as a database lookup, so its issue and message match the browser's. React's hooks keep answers, below.
 
+## Rules per environment
+
+A schema's rules can change one environment at a time, as you roll out a feature: a longer display name in dev first, then staging, then production, each step reviewed before the next. `environments` sits at a schema's root in a project with environments, and each entry's `mutate` changes the schema's own fields, its base, in that environment, in the notation global variable overrides use:
+
+```yml
+# schemas/signUp.yml
+description: A sign up form
+
+tags:
+  - web
+
+type: object
+
+properties:
+  displayName:
+    type: string
+    maxLength: 40
+  country:
+    type: string
+    enum: [GB, NL]
+
+required: [displayName]
+
+environments:
+  dev:
+    mutate:
+      properties.displayName.maxLength: 60
+      properties.country.enum:append: DE
+
+  staging:
+    mutate:
+      properties.displayName.maxLength: 60
+```
+
+Dev accepts names up to 60 characters and German sign ups, staging the longer names only, and production, which has no entry, uses the base. A rollout is then a series of small pull requests: add the change under `dev`, then under `staging`, then write it into the base and remove the entries.
+
+| Entry in `mutate`                                     | In that environment                 |
+| ----------------------------------------------------- | ----------------------------------- |
+| `properties.displayName.maxLength: 60`                | Names up to 60 characters           |
+| `properties.country.enum:append: DE`                  | One more country                    |
+| `required:appendUnique: country`                      | A country is required               |
+| `properties.nickname: { type: string }`               | A new optional key                  |
+| `properties.country:remove: true`                     | The key is no longer accepted       |
+| `properties.displayName.messages.maxLength: Up to 60` | Its own wording in that environment |
+
+- **Applications validate against the same key everywhere.** Each environment's datafile holds the schema as that environment resolves it, so `s.validate("signUp", input)` gives dev's rules in dev and production's in production, and no datafile holds an `environments` block. A change to an environment's entry changes the schema's `hash` in that environment's datafile only.
+- **Inheritance.** Entries inherit as rules do: with `inheritEnvironments: { dev: { from: "staging" } }`, a schema without a `dev` entry uses staging's, or the base when staging has none. An empty entry, `dev: {}`, uses the base and inherits nothing.
+- **Lint** checks that each key is a configured environment, that every path reaches into the base, since a mutation creates no objects on the way, and that each environment's resolved schema is still a valid schema, naming the environment: `In staging, the schema fails: ...`. Delivered patterns an entry sets get the same safe pattern checks as the base's.
+- **Variables cannot use a schema that varies**, at their root or anywhere inside, since a variable's schema, values and type stay the same in every environment. Lint fails at the variable.
+- **Generated types** come from production's version: the environment whose name starts with `prod`. `generate-code --environment=dev` types dev's version instead. A widening change in dev, such as a new `enum` value, is not in production's types, so release regenerated types before such a change reaches production (see [Changing a delivered schema](#changing-a-delivered-schema)).
+
+## Rules under conditions
+
+Some rules hold only under conditions: a tax ID that businesses must give, a seat limit per plan, a stricter rule rolled out to a percentage of users first, a kill switch that relaxes a rule during an incident. Any node of a schema can carry `mutations`, each with a `key`, `conditions` and a `mutate` in the same notation, and every mutation whose conditions match applies, in order, when a value is validated:
+
+```yml
+# schemas/signUp.yml
+description: A sign up form
+
+type: object
+
+properties:
+  accountType:
+    type: string
+    enum: [personal, business]
+  displayName:
+    type: string
+    maxLength: 40
+  taxId:
+    type: string
+
+required: [accountType, displayName]
+
+mutations:
+  - key: business
+    conditions:
+      input: accountType
+      operator: equals
+      value: business
+    mutate:
+      required:appendUnique: taxId
+      properties.taxId.pattern: "^[A-Z]{2}[0-9]{9}$"
+      properties.taxId.messages.pattern: Enter your VAT number, such as DE123456789
+
+  - key: payingAccounts
+    conditions: payingAccounts
+    mutate:
+      properties.displayName.maxLength: 80
+
+  - key: strictNames
+    conditions:
+      feature: strictNames
+    mutate:
+      properties.displayName.pattern: "^[A-Za-z ]+$"
+```
+
+A business account needs a tax ID in the right shape, with its own message, paying accounts get longer names, and a stricter pattern reaches the users the `strictNames` feature is enabled for, so it can roll out by percentage like any change.
+
+**Conditions** are the ones features and global variables use, in trees or expressions, so a segment means the same in a schema as in a flag:
+
+| Leaf                                   | Reads                                                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| An attribute, such as `plan == 'paid'` | The context validation uses                                                    |
+| A segment, such as `payingAccounts`    | The context, through the segment's own conditions                              |
+| `feature: strictNames`, or a variation | The flag, through the SDK's getters, sticky values and modules included        |
+| `variable: relaxedRules`               | A global variable's value                                                      |
+| `input: accountType`                   | The value being validated, at a path relative to the node the mutation sits on |
+
+- **`input` is the one addition.** It reads the value being validated, as Standard Schema calls it, so rules can depend on what was typed. Paths are relative to the node a mutation sits on, with dots into objects, so a mutation inside `address` reads the address's own `country`, in every form that uses `address`. A rule across two parts of a form goes on the node that holds both, usually the root.
+- **Comparing two fields.** An input's `value` can be another input, `value: { input: password }`, for a rule between two fields. `matches` and `notMatches` never take an input as their pattern, since a pattern from a user is one nobody reviewed.
+- **For now, `input` is written as a tree,** as above. Expressions take every other kind of condition today, such as `conditions: plan == 'paid' and country == 'nl'`.
+- **The context** is the SDK instance's, with any given to `validate` merged over it, and a `FeaturevisorScope`'s in React: `s.validate("signUp", input, { plan: "paid" })`.
+
+**Datafiles** carry mutations compiled: `conditions` as features have them, and `mutate` as the operations the SDK applies, so applications parse no notation. The segments a delivered schema's conditions read come along into the datafile, as a feature's do. A target must deliver the features and global variables they read, as it does for a feature that depends on them, or they read as not found.
+
+**At runtime**, each node with mutations is validated against its rules with every matching mutation applied, in order. Each combination that matches compiles once and is kept, so a form validated on every keystroke pays for its conditions, not for compiling. Nodes without mutations validate as before, with nothing added. A condition that cannot be answered, such as a reader that fails, reports an `evaluation_error` diagnostic and does not match.
+
+**What reads the base.** `constraints`, `options`, `kind`, `annotations` and `fields` describe a schema's base rules, which no condition changes, so a form keeps the same attributes while it is filled in. Validation, `parse`, `formAction` and every Standard Schema library apply the mutations. A field's handle, such as `at("address")`, applies the mutations inside the field, since it cannot see the fields around it.
+
+**Lint** checks every mutation:
+
+- its `key` is unique within its node,
+- its `conditions` are valid conditions, and each `input` path names a field of its node,
+- every path in its `mutate` reaches into the node,
+- the node's rules stay a valid schema with each mutation applied alone and with all of them together,
+- no mutation changes a `type`, so a field's type, form data reading and generated types are the same whatever matches.
+
+`input` anywhere but a schema's mutations is an error, and `allowedConditions` takes a `schemas` location, so a project can keep schema mutations to segments, say. Variables cannot use a schema with mutations, as for environments.
+
+**Environments and mutations combine.** An environment's entry is applied when its datafile is built, and mutations when a value is validated. So an entry can add a mutation in one environment only, with `mutations:append`, its conditions written as a tree.
+
 ## Reading form data
 
 A form submitted to a server action or a route handler arrives as `FormData`, and search parameters as `URLSearchParams`. Their values are text, and validation never coerces, so read them by the schema's types first:
@@ -1291,8 +1424,10 @@ Changing annotations or choices' entries widens nothing, since validation never 
 
 Later releases of this package are planned to add:
 
-- annotations that change under conditions, through mutations, such as a title per country or an address ordered by its own country, with `for(values)` resolving them for the values typed so far, and `reads`, the fields a schema's conditions read,
-- schemas that differ by environment, rules that change under conditions, and comparisons between fields,
+- `input(...)` in condition expressions, alongside the trees that take it today,
+- `for(values)`, constraints, options and annotations for the values typed so far, with the mutations that match applied, and `reads`, the fields a schema's conditions read,
+- versions a schema points to per environment, each a whole schema of its own, and a warning when a change reaches an environment before the one before it,
+- rendering again in React when a context a schema's conditions read changes, and an issue's `mutation`, naming the mutation that set its rule,
 - choosing between shapes, such as a payment method of card or bank, each an object told apart by a discriminator,
 - annotations in the Catalog and in `featurevisor diff`, and conversion to JSON Schema, with `title` and `examples` as its own keywords.
 

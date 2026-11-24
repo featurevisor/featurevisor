@@ -48,7 +48,7 @@ function registerModule(f: Featurevisor): FeaturevisorModuleApi {
   // Another copy of this package on the same instance took the name first.
   if (!api) f.addModule(Object.freeze({ setup }));
 
-  if (!api || typeof api.getEntry !== "function") {
+  if (!api || typeof api.getEntry !== "function" || typeof api.matchConditions !== "function") {
     throw new Error(
       "@featurevisor/schemas needs an @featurevisor/sdk whose modules can read datafile sections, 4.14.0 or later.",
     );
@@ -82,6 +82,9 @@ export function getStore(f: Featurevisor): Store {
     compiled.set(key, { entry: node, validate });
     return { node, validate };
   };
+  // Mutations' conditions read through the SDK, so a segment means in a schema what it means in a flag.
+  resolve.match = (conditions, context, readers, schema) =>
+    api.matchConditions(conditions as never, context, { type: "schema", key: schema, readers });
 
   const store: Store = {
     f,

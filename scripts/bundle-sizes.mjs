@@ -16,7 +16,7 @@ const packages = [
     entry: path.join(rootDir, "packages/sdk/src/index.ts"),
     fileName: "featurevisor-sdk",
     // Terser plus gzip bytes. Raise deliberately, with the reason in the commit.
-    budget: 15_000,
+    budget: 15_500,
     external: [],
   },
   {
@@ -78,14 +78,14 @@ const packages = [
     name: "@featurevisor/schemas",
     entry: path.join(rootDir, "packages/schemas/src/index.ts"),
     fileName: "featurevisor-schemas",
-    budget: 9_800,
+    budget: 10_100,
     external: ["@featurevisor/sdk"],
   },
   {
     name: "@featurevisor/schemas/react",
     entry: path.join(rootDir, "packages/schemas/src/react.tsx"),
     fileName: "featurevisor-schemas-react",
-    budget: 10_800,
+    budget: 11_100,
     external: ["react", "react-dom", "@featurevisor/sdk", "@featurevisor/react"],
   },
   {
@@ -93,7 +93,7 @@ const packages = [
     entry: path.join(rootDir, "packages/openfeature-provider-web/src/index.ts"),
     fileName: "featurevisor-openfeature-provider-web",
     // Bundles the SDK, which grew by datafile sections for packages such as @featurevisor/schemas.
-    budget: 22_700,
+    budget: 23_200,
     external: [
       // "@openfeature/web-sdk"
     ],
