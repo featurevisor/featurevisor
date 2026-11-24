@@ -1,7 +1,20 @@
-import type { DatafileSchema, Schema } from "@featurevisor/types";
+import type {
+  Conditions,
+  DatafileSchema,
+  Schema,
+  SchemaMutation,
+  VariableMutationOperation,
+  VariableMutations,
+} from "@featurevisor/types";
+import { applyVariableOperations } from "@featurevisor/sdk";
 
+import { compileConditions } from "../datasource/conditions";
+import { visitConditionLocations } from "../datasource/conditionLocations";
 import { getSchemaReferences } from "../targeting";
+import { getInheritedEnvironment } from "./environments";
 import { generateHashFromString } from "./hashes";
+import { mutationEntries } from "./mutationEntries";
+import { compileVariableMutation } from "./variableOverrideProgram";
 
 /** Fields for maintainers, never delivered at any depth. */
 const MAINTAINER_FIELDS = ["description", "promotable"];
@@ -9,11 +22,50 @@ const MAINTAINER_FIELDS = ["description", "promotable"];
  * Fields only a schema's root has, never delivered. The vocabularies never
  * reach a datafile, since lint has checked every annotation against them.
  */
-const ROOT_ONLY_FIELDS = ["metadata", "tags", "annotationsSchema", "optionSchema"];
+const ROOT_ONLY_FIELDS = ["metadata", "tags", "annotationsSchema", "optionSchema", "environments"];
 
 export interface DatafileSchemaOptions {
   /** False leaves `annotations` out at every depth, for a target that only serves a backend. */
   annotations?: boolean;
+  /** Writes mutations' conditions as JSON text, as features' are with the project's `stringify`. */
+  stringify?: boolean;
+}
+
+/** A `mutate` map or list compiled into the operations the SDK applies, in order. */
+export function compileMutate(mutate: VariableMutations): VariableMutationOperation[] {
+  return mutationEntries(mutate).map(([key, value]) => compileVariableMutation(key, value));
+}
+
+/**
+ * A schema as one environment has it: the base with that environment's
+ * `mutate` applied, inherited as rules are, and without `environments`. A
+ * schema without `environments` is returned as it is.
+ */
+export function resolveSchemaEnvironment(
+  schema: Schema,
+  environment: string | false | undefined,
+  config: Parameters<typeof getInheritedEnvironment>[0],
+): Schema {
+  if (!schema || typeof schema !== "object" || schema.environments === undefined) return schema;
+  const { environments, ...base } = schema;
+  if (typeof environment !== "string") return base;
+  const own = Object.prototype.hasOwnProperty.call(environments, environment);
+  const from = own ? environment : getInheritedEnvironment(config, environment);
+  const entry =
+    from !== undefined && Object.prototype.hasOwnProperty.call(environments, from)
+      ? environments[from]
+      : undefined;
+  if (!entry || entry.mutate === undefined) return base;
+  return applyVariableOperations(base as never, compileMutate(entry.mutate)) as unknown as Schema;
+}
+
+/** Every `conditions` a schema's mutations hold, at any node. */
+export function getSchemaConditions(schema: unknown): Conditions[] {
+  const found: Conditions[] = [];
+  visitConditionLocations("schema", schema, (_location, conditions) => {
+    if (conditions !== undefined) found.push(conditions as Conditions);
+  });
+  return found;
 }
 
 function stripNode(node: unknown, options: DatafileSchemaOptions): unknown {
@@ -23,7 +75,19 @@ function stripNode(node: unknown, options: DatafileSchemaOptions): unknown {
   for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
     if (MAINTAINER_FIELDS.includes(key)) continue;
     if (key === "annotations" && options.annotations === false) continue;
-    if (key === "items" || key === "additionalProperties") result[key] = stripNode(value, options);
+    if (key === "mutations" && Array.isArray(value)) {
+      // Compiled, as variable overrides are, so applications apply operations and parse no notation.
+      result[key] = (value as SchemaMutation[]).map((mutation) => ({
+        key: mutation.key,
+        conditions: compileConditions(mutation.conditions, options.stringify),
+        operations: compileMutate(mutation.mutate).map((operation) =>
+          "value" in operation
+            ? { ...operation, value: stripNode(operation.value, options) }
+            : operation,
+        ),
+      }));
+    } else if (key === "items" || key === "additionalProperties")
+      result[key] = stripNode(value, options);
     else if (key === "oneOf")
       result[key] = (value as unknown[]).map((branch) => stripNode(branch, options));
     else if (key === "properties" && value && typeof value === "object")

@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
 import { refineWithMessage } from "./zodHelpers";
+import { schemaVaries } from "./schemaMutations";
+import { mutationEntries, mutationEntryPath } from "../builder/mutationEntries";
 import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 import {
   codePointLength,
@@ -758,6 +760,9 @@ export function getSchemaZodSchema(
               // Vocabularies, checked with the annotations they declare (schemaAnnotations.ts).
               annotationsSchema: schemaZodSchema.optional(),
               optionSchema: schemaZodSchema.optional(),
+              environments: z
+                .record(z.string(), z.object({ mutate: z.unknown().optional() }).strict())
+                .optional(),
             }
           : {}),
         // Schema files carry annotations at any node. Variables' schemas present nothing.
@@ -782,12 +787,40 @@ export function getSchemaZodSchema(
         messages: schemaMessagesZodSchema.optional(),
         // Annotations: default?: Value; examples?: Value[];
 
-        schema: refineWithMessage(
-          z.string(),
-          (value) => schemaKeys.includes(value),
-          (value) => `Unknown schema "${value}"`,
+        schema: (projectConfig
+          ? refineWithMessage(
+              z.string(),
+              (value) => schemaKeys.includes(value),
+              (value) => `Unknown schema "${value}"`,
+            )
+          : // Inside a variable's schema, nothing it references may vary.
+            refineWithMessage(
+              z.string(),
+              (value) => schemaKeys.includes(value),
+              (value) => `Unknown schema "${value}"`,
+            ).refine((value) => !schemaVaries(value, schemasByKey), {
+              message:
+                "This schema varies by environment or under conditions, and a variable's schema stays the same everywhere and for everyone. Give the variable a schema that does not vary.",
+            })
         ).optional(),
         oneOf: z.array(schemaZodSchema).min(2).optional(),
+        // Schema files change their rules under conditions, checked by schemaMutations.ts.
+        ...(projectConfig
+          ? {
+              mutations: z
+                .array(
+                  z
+                    .object({
+                      key: z.string().min(1),
+                      description: z.string().optional(),
+                      conditions: z.unknown(),
+                      mutate: z.unknown(),
+                    })
+                    .strict(),
+                )
+                .optional(),
+            }
+          : {}),
       })
       .strict()
       .superRefine((data, ctx) => refineRemovedSchemaType(data, ctx))
@@ -851,5 +884,39 @@ export function getSchemaPatterns(
   if (node.properties)
     for (const [key, property] of Object.entries(node.properties))
       getSchemaPatterns(property, [...path, "properties", key], found);
+  // Patterns that mutations and environments set, whether as a value or inside a node they set.
+  const fromMutate = (mutate: unknown, at: (string | number)[]) => {
+    let entries: [string, unknown][];
+    try {
+      entries = mutationEntries(mutate as never);
+    } catch {
+      return;
+    }
+    entries.forEach(([notation, value], index) => {
+      const entryPath = [...at, ...mutationEntryPath(mutate as never, index, notation)];
+      const target = notation.replace(/:[a-zA-Z]+$/, "");
+      if ((target === "pattern" || target.endsWith(".pattern")) && typeof value === "string")
+        found.push({ pattern: value, path: entryPath });
+      else getSchemaPatterns(value, entryPath, found);
+    });
+  };
+  const withRules = schema as { mutations?: unknown; environments?: unknown };
+  if (Array.isArray(withRules.mutations))
+    withRules.mutations.forEach((mutation, index) =>
+      fromMutate((mutation as { mutate?: unknown })?.mutate, [
+        ...path,
+        "mutations",
+        index,
+        "mutate",
+      ]),
+    );
+  if (withRules.environments && typeof withRules.environments === "object")
+    for (const [environment, entry] of Object.entries(withRules.environments))
+      fromMutate((entry as { mutate?: unknown })?.mutate, [
+        ...path,
+        "environments",
+        environment,
+        "mutate",
+      ]);
   return found;
 }

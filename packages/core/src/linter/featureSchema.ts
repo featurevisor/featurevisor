@@ -40,6 +40,7 @@ import {
   refineArrayItems,
 } from "./schema";
 import { refineWithMessage, UNKNOWN_REFERENCE } from "./zodHelpers";
+import { schemaVaries } from "./schemaMutations";
 import { suggestKey } from "./diagnostics";
 import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 import {
@@ -1838,7 +1839,12 @@ export function getFeatureZodSchema(
                 z.string(),
                 (value) => availableSchemaKeys.includes(value),
                 (value) => `Unknown schema "${value}"`,
-              ).optional(),
+              )
+                .refine((value) => !schemaVaries(value, schemasByKey), {
+                  message:
+                    "This schema varies by environment or under conditions, and a variable's schema stays the same everywhere and for everyone. Give the variable a schema that does not vary.",
+                })
+                .optional(),
 
               // Inline schema (mutually exclusive with schema)
               type: z.union([z.literal("json"), propertyTypeEnum]).optional(),

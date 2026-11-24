@@ -10,6 +10,8 @@ import type {
   ParsedVariable,
 } from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
+import { FeaturevisorCLIError } from "../error";
+import { resolveSchemaEnvironment } from "../builder/schemas";
 import {
   buildDependencyGraph,
   collectDependencyClosure,
@@ -31,6 +33,8 @@ export interface TypeScriptGenerationOptions {
   react?: boolean;
   /** A typed `createSchemas` for `@featurevisor/schemas`, and typed schema hooks with `react`. */
   schemas?: boolean;
+  /** The environment whose version of each schema types are written from. The one starting with `prod` by default. */
+  environment?: string;
   importSdkPath?: string;
   importReactPath?: string;
   importSchemasPath?: string;
@@ -517,6 +521,30 @@ export function getInstance(): Featurevisor {
 `.trimStart();
 }
 
+/** The environment schema types come from: the one named, or the only one whose name starts with `prod`. */
+function getTypesEnvironment(environments: unknown, named: string | undefined): string {
+  const configured = Array.isArray(environments) ? (environments as string[]) : [];
+  if (named !== undefined) {
+    if (!configured.includes(named)) {
+      throw new FeaturevisorCLIError(
+        `Unknown environment "${named}". Available environments: ${configured.join(", ")}.`,
+        { code: "invalid_environment", details: { environment: named, available: configured } },
+      );
+    }
+    return named;
+  }
+  const production = configured.filter((environment) => environment.startsWith("prod"));
+  if (production.length === 1) return production[0];
+  throw new FeaturevisorCLIError(
+    `A schema varies by environment, so code generation needs to know which environment's version to type. ${
+      production.length === 0
+        ? "No environment's name starts with prod."
+        : `Several environments' names start with prod: ${production.join(", ")}.`
+    } Pass --environment.`,
+    { code: "invalid_environment", details: { available: configured } },
+  );
+}
+
 export async function generateTypeScriptCodeForProject(
   deps: Dependencies,
   outputPath: string,
@@ -553,6 +581,13 @@ export async function generateTypeScriptCodeForProject(
       schemasByKey[key] = await datasource.readSchema(key);
     } catch {
       // Schema file may be invalid; skip for code gen
+    }
+  }
+  // A schema that varies by environment is typed from one environment's version.
+  if (Object.values(schemasByKey).some((schema) => schema?.environments !== undefined)) {
+    const environment = getTypesEnvironment(projectConfig.environments, options.environment);
+    for (const key of Object.keys(schemasByKey)) {
+      schemasByKey[key] = resolveSchemaEnvironment(schemasByKey[key], environment, projectConfig);
     }
   }
   const schemaKeys = Object.keys(schemasByKey);

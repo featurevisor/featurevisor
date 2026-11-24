@@ -23,6 +23,7 @@ import { assertNoLegacyDatasourceGroups } from "../config/removedGroups";
 import { getSchemaPatterns, getSchemaZodSchema } from "./schema";
 import { getMessageWarnings } from "./messageWarnings";
 import { getSchemaAnnotationFindings } from "./schemaAnnotations";
+import { getSchemaMutationFindings } from "./schemaMutations";
 import { getBacktrackingError, getPortableRegexError } from "./regexSafety";
 import { getTargetSchemaKeys, matchesFeaturePatterns } from "../targeting";
 import { getScenariosZodSchema, getTestsZodSchema } from "./testSchema";
@@ -1036,7 +1037,7 @@ export async function lintProject(
     }
   }
   async function reportConditionKinds(
-    entityType: "segment" | "feature" | "variable",
+    entityType: "segment" | "feature" | "variable" | "schema",
     key: string,
     fullPath: string,
     definition: unknown,
@@ -1375,6 +1376,16 @@ export async function lintProject(
 
   // lint schemas (schemas and schemasByKey already loaded above for feature linting)
   const schemaZodSchema = getSchemaZodSchema(schemas, schemasByKey, projectConfig);
+  // Conditions as features take them, with `input` leaves over the value a schema validates.
+  const schemaConditionsZodSchema = getConditionsZodSchema(
+    projectConfig,
+    attributesByKey,
+    schemasByKey,
+    featuresByKey,
+    variablesByKey,
+    segments,
+    { input: true },
+  );
 
   if (!options.entityType || options.entityType === "schema") {
     await lintReservedNamespaceCharacterInEntityPaths("schema");
@@ -1408,7 +1419,15 @@ export async function lintProject(
           await reportZodValidationError("schema", key, fullPath, result.error);
         } else {
           // Annotations against the file's vocabularies, which reads values with lint's own value checks.
+          // Changes per environment and under conditions, checked with lint's own schema rules.
+          const mutationFindings = getSchemaMutationFindings(parsed, {
+            projectConfig,
+            schemasByKey,
+            schemaZodSchema,
+            conditionsZodSchema: schemaConditionsZodSchema,
+          });
           const annotationFindings = getSchemaAnnotationFindings(parsed, schemasByKey);
+          annotationFindings.errors.push(...mutationFindings);
           if (annotationFindings.errors.length > 0) {
             await reportZodValidationError(
               "schema",
@@ -1446,6 +1465,7 @@ export async function lintProject(
           }
         }
         await reportDeadlines("schema", key, fullPath, parsed);
+        await reportConditionKinds("schema", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("schema", key, fullPath, error);
       }

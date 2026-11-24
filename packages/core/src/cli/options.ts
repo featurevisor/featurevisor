@@ -144,6 +144,11 @@ const definitions: Record<string, CLIOptionDefinitions> = {
       type: "boolean",
       description: "generate a typed createSchemas, and typed schema hooks with --react",
     },
+    environment: {
+      type: "string",
+      description:
+        "type schemas that vary by environment from this one, by default the one starting with prod",
+    },
     importSdkPath: { type: "string", hidden: true },
     importReactPath: { type: "string", hidden: true },
     importSchemasPath: { type: "string", hidden: true },

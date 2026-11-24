@@ -18,7 +18,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * for authored condition locations, so every check and expression expansion see the same places.
  */
 export function visitConditionLocations(
-  entityType: "segment" | "feature" | "variable",
+  entityType: "segment" | "feature" | "variable" | "schema",
   definition: unknown,
   visit: ConditionLocationVisitor,
 ) {
@@ -90,5 +90,27 @@ export function visitConditionLocations(
   if (entityType === "variable") {
     visit("variables", definition.conditions, ["conditions"]);
     visitGlobalOverrides(definition.overrides, ["overrides"]);
+  }
+
+  // A schema's mutations, at any node a value is validated against.
+  if (entityType === "schema") {
+    const walk = (node: unknown, path: ConditionPath) => {
+      if (!isObject(node)) return;
+      if (Array.isArray(node.mutations))
+        node.mutations.forEach(
+          (mutation, i) =>
+            isObject(mutation) &&
+            visit("schemas", mutation.conditions, [...path, "mutations", i, "conditions"]),
+        );
+      if (isObject(node.properties))
+        for (const [key, property] of Object.entries(node.properties))
+          walk(property, [...path, "properties", key]);
+      if (isObject(node.items)) walk(node.items, [...path, "items"]);
+      if (isObject(node.additionalProperties))
+        walk(node.additionalProperties, [...path, "additionalProperties"]);
+      if (Array.isArray(node.oneOf))
+        node.oneOf.forEach((branch, i) => walk(branch, [...path, "oneOf", i]));
+    };
+    walk(definition, []);
   }
 }

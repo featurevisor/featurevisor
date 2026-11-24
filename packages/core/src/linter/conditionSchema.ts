@@ -697,6 +697,8 @@ export function getConditionsZodSchema(
   featuresByKey: Record<string, ParsedFeature> = {},
   variablesByKey: Record<string, ParsedVariable> = {},
   segmentKeys: string[] = [],
+  /** `input` leaves over the value validated, which only a schema's mutations take. */
+  { input = false }: { input?: boolean } = {},
 ) {
   const plainConditionZodSchema = z
     .object({
@@ -918,6 +920,46 @@ export function getConditionsZodSchema(
       );
     });
 
+  // An input leaf reads the value a schema validates, and can compare it with another input.
+  const inputConditionZodSchema = z
+    .object({
+      input: z.string().min(1),
+      operator: z.enum([
+        ...commonOperators,
+        ...numericOperators,
+        ...stringOperators,
+        ...semverOperators,
+        ...dateOperators,
+        ...arrayMembershipOperators,
+        ...arrayOperators,
+        ...arrayListOperators,
+        ...operatorsWithoutValue,
+      ]),
+      value: z
+        .union([
+          z.string(),
+          z.array(z.unknown()),
+          z.number(),
+          z.boolean(),
+          z.null(),
+          z.object({ input: z.string().min(1) }).strict(),
+        ])
+        .optional(),
+      regexFlags: z.string().optional(),
+    })
+    .strict()
+    .superRefine((data, context) => {
+      const readsInput =
+        !!data.value && typeof data.value === "object" && !Array.isArray(data.value);
+      if (readsInput && (data.operator === "matches" || data.operator === "notMatches")) {
+        addIssue(
+          context,
+          `\`${data.operator}\` never takes an input as its pattern, since a pattern from a user is one nobody reviewed.`,
+          ["value"],
+        );
+      }
+    });
+
   const featureSchema = getFeatureConditionZodSchema(featuresByKey);
   const variableSchema = getVariableConditionZodSchema(
     featuresByKey,
@@ -962,6 +1004,7 @@ export function getConditionsZodSchema(
             })
             .strict();
         else if (owns("variable")) selected = variableSchema;
+        else if (input && owns("input")) selected = inputConditionZodSchema;
         else if (owns("feature")) {
           if (owns("operator")) {
             ctx.addIssue({

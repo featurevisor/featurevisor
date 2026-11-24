@@ -23,6 +23,7 @@ import {
 } from "../builder/variableOverrideProgram";
 import { applyVariableOperations } from "@featurevisor/sdk";
 import { getConditionsZodSchema } from "./conditionSchema";
+import { schemaVaries } from "./schemaMutations";
 import {
   refineRequiredKeysInSchema,
   resolveVariableSchema,
@@ -447,7 +448,12 @@ export function getVariableZodSchema(
         z.string(),
         (key) => schemaKeys.includes(key),
         (key) => `Unknown schema "${key}"`,
-      ).optional(),
+      )
+        .refine((key) => !schemaVaries(key, schemasByKey), {
+          message:
+            "This schema varies by environment or under conditions, and a variable's schema stays the same everywhere and for everyone. Give the variable a schema that does not vary.",
+        })
+        .optional(),
       type: z.union([z.literal("json"), propertyTypeEnum]).optional(),
       items: nestedSchema.optional(),
       properties: z.record(z.string(), nestedSchema).optional(),

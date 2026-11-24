@@ -1,5 +1,8 @@
 import type { Metadata } from "./metadata";
 import type { Tag } from "./feature";
+import type { Conditions } from "./condition";
+import type { VariableMutations } from "./feature";
+import type { VariableMutationOperation } from "./variable";
 export type SchemaKey = string;
 
 export type ObjectValue = { [key: string]: Value };
@@ -45,6 +48,32 @@ export interface SchemaAnnotations {
   [name: string]: Value | undefined;
 }
 
+/**
+ * Rules that change when conditions match, as authored: `mutate` changes the
+ * node it sits on, in the notation global variable overrides use. Every
+ * mutation whose conditions match applies, in order.
+ */
+export interface SchemaMutation {
+  /** Unique within its node. */
+  key: string;
+  description?: string;
+  /** Context attributes, segments, features and variables, and `input` leaves over the value validated. */
+  conditions: Conditions;
+  mutate: VariableMutations;
+}
+
+/** A mutation as a datafile carries it, with `mutate` compiled into operations. */
+export interface DatafileSchemaMutation {
+  key: string;
+  conditions: Conditions;
+  operations: VariableMutationOperation[];
+}
+
+/** What one environment changes in a schema, or `{}` for its base. */
+export interface SchemaEnvironment {
+  mutate?: VariableMutations;
+}
+
 // adapted JSON Schema for Featurevisor
 export interface Schema {
   // Basic metadata
@@ -58,6 +87,8 @@ export interface Schema {
   annotationsSchema?: Schema;
   /** Only at the root: what each choice in this file carries, as one object schema, inline or by reference. */
   optionSchema?: Schema;
+  /** Only at the root, in a project with environments: changes to the schema per environment. */
+  environments?: { [environment: string]: SchemaEnvironment };
 
   // General validation keywords
   type?: SchemaType;
@@ -101,6 +132,9 @@ export interface Schema {
 
   /** Values beside the rules, for forms and tools, which validation never reads. */
   annotations?: SchemaAnnotations;
+
+  /** Changes to this node's rules when conditions match, at validation time. */
+  mutations?: SchemaMutation[] | DatafileSchemaMutation[];
 }
 
 /**
@@ -112,7 +146,13 @@ export interface Schema {
  */
 export type DatafileSchema = Omit<
   Schema,
-  "description" | "metadata" | "promotable" | "tags" | "annotationsSchema" | "optionSchema"
+  | "description"
+  | "metadata"
+  | "promotable"
+  | "tags"
+  | "annotationsSchema"
+  | "optionSchema"
+  | "environments"
 > & {
   hash?: string;
 };

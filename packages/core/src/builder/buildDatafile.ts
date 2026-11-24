@@ -53,7 +53,7 @@ import {
 } from "../linter/comparisonOperators";
 import { Datasource, FilesystemAdapter, getExistingStateFilePath } from "../datasource";
 import { generateHashForDatafile, refreshDatafileHashes } from "./hashes";
-import { buildSchemasSection } from "./schemas";
+import { buildSchemasSection, getSchemaConditions, resolveSchemaEnvironment } from "./schemas";
 import { getTargetSchemaKeys } from "../targeting";
 
 import { getTraffic } from "./traffic";
@@ -454,7 +454,12 @@ export async function buildDatafile(
   const schemasByKey: Record<string, Schema> = {};
   for (const key of schemaKeys) {
     try {
-      schemasByKey[key] = await datasource.readSchema(key);
+      // As the environment being built has it, so references resolve in that environment too.
+      schemasByKey[key] = resolveSchemaEnvironment(
+        await datasource.readSchema(key),
+        options.environment,
+        projectConfig,
+      );
     } catch {
       // Schema file may be invalid; skip for datafile build
     }
@@ -915,6 +920,28 @@ export async function buildDatafile(
     });
   }
 
+  // Schemas the target delivers, with every schema they reference.
+  const deliveredSchemaKeys =
+    options.withSchemas === false || (options.features && !options.tag && !options.tags)
+      ? []
+      : getTargetSchemaKeys(
+          {
+            tag: options.tag,
+            tags: options.tags,
+            includeSchemas: options.includeSchemas,
+            excludeSchemas: options.excludeSchemas,
+          },
+          schemaKeys,
+          schemasByKey,
+        );
+
+  // The segments delivered schemas' mutations read come along, as a feature's do.
+  for (const key of deliveredSchemaKeys) {
+    for (const conditions of getSchemaConditions(schemasByKey[key])) {
+      getConditionReferences(conditions).segments.forEach((ref) => segmentKeysUsedByTag.add(ref));
+    }
+  }
+
   // segments
   let segments: Segment[] = [];
   const segmentsDirectory = projectConfig.segmentsDirectoryPath;
@@ -966,21 +993,6 @@ export async function buildDatafile(
       await datasource.readAttribute(attributeKey);
     }
   }
-
-  // Schemas the target delivers, with every schema they reference.
-  const deliveredSchemaKeys =
-    options.withSchemas === false || (options.features && !options.tag && !options.tags)
-      ? []
-      : getTargetSchemaKeys(
-          {
-            tag: options.tag,
-            tags: options.tags,
-            includeSchemas: options.includeSchemas,
-            excludeSchemas: options.excludeSchemas,
-          },
-          schemaKeys,
-          schemasByKey,
-        );
 
   if (inflation > 1) {
     features = inflateEntries(features, inflation);
@@ -1035,6 +1047,7 @@ export async function buildDatafile(
   if (deliveredSchemaKeys.length > 0) {
     datafileContent.schemas = buildSchemasSection(deliveredSchemaKeys, schemasByKey, {
       annotations: options.includeAnnotations,
+      stringify: projectConfig.stringify,
     });
   }
 

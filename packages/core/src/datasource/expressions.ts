@@ -4,7 +4,7 @@ import type { ExpandedExpression, ExpressionOptions } from "@featurevisor/expres
 import type { ConditionLocation } from "../config";
 import { visitConditionLocations, type ConditionPath } from "./conditionLocations";
 
-export type ExpressionEntityType = "segment" | "feature" | "variable";
+export type ExpressionEntityType = "segment" | "feature" | "variable" | "schema";
 
 /** One expression found in a definition, with paths from the definition's root. */
 export interface ConditionExpressionRecord extends ExpandedExpression {

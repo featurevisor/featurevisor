@@ -7,6 +7,7 @@ export const CONDITION_LOCATIONS = [
   "featureVariableOverrides",
   "variables",
   "variableOverrides",
+  "schemas",
 ] as const;
 
 /** The kinds of condition leaf, named after the key authors write. */

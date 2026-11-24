@@ -16,6 +16,8 @@ export interface GenerateCodeCLIOptions {
   target?: string | string[];
   react?: boolean;
   schemas?: boolean;
+  /** The environment schema types come from, for schemas that vary by environment. */
+  environment?: string;
   importSdkPath?: string;
   importReactPath?: string;
   importSchemasPath?: string;
@@ -59,6 +61,7 @@ export async function generateCodeForProject(
       target: cliOptions.target,
       react: cliOptions.react,
       schemas: cliOptions.schemas,
+      environment: cliOptions.environment,
       importSdkPath: cliOptions.importSdkPath,
       importReactPath: cliOptions.importReactPath,
       importSchemasPath: cliOptions.importSchemasPath,
@@ -94,6 +97,7 @@ export const generateCodePlugin: Plugin = {
           target: parsed.target,
           react: parsed.react,
           schemas: parsed.schemas,
+          environment: parsed.environment,
           importSdkPath: parsed.importSdkPath,
           importReactPath: parsed.importReactPath,
           importSchemasPath: parsed.importSchemasPath,

@@ -26,6 +26,7 @@ const LOCATION_LABELS: Record<ConditionLocation, string> = {
   featureVariableOverrides: "feature variable overrides",
   variables: "global variable root conditions",
   variableOverrides: "global variable overrides",
+  schemas: "schema mutations",
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -47,7 +48,7 @@ function getConditionKind(leaf: unknown): ConditionKind | undefined {
  * leaves are checked: a rule naming a segment is not checked against that segment's leaves.
  */
 export function getConditionKindIssues(
-  entityType: "segment" | "feature" | "variable",
+  entityType: "segment" | "feature" | "variable" | "schema",
   definition: unknown,
   allowedConditions: AllowedConditions | undefined,
 ): ConditionKindIssue[] {
