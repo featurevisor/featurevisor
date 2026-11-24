@@ -7,9 +7,11 @@ import type {
 import { applyVariableOperations } from "@featurevisor/sdk";
 import type { z } from "zod";
 
+import type { AllowedConditions } from "../config";
 import { mutationEntries, mutationEntryPath } from "../builder/mutationEntries";
 import { compileVariableMutation } from "../builder/variableOverrideProgram";
 import { getSchemaReferences } from "../targeting";
+import { getConditionKindIssues } from "./conditionKinds";
 
 type Node = Record<string, unknown>;
 type Path = (string | number)[];
@@ -102,7 +104,7 @@ function readable(path: VariableMutationOperation["path"], upTo: number): string
 }
 
 interface MutationLintOptions {
-  projectConfig: { environments?: unknown };
+  projectConfig: { environments?: unknown; allowedConditions?: AllowedConditions };
   schemasByKey: Record<string, Schema>;
   /** The schema files' own Zod, which every resolved and mutated schema must pass. */
   schemaZodSchema: z.ZodTypeAny;
@@ -119,8 +121,9 @@ interface MutationLintOptions {
  */
 export function getSchemaMutationFindings(
   root: unknown,
-  { projectConfig, schemasByKey, schemaZodSchema, conditionsZodSchema }: MutationLintOptions,
+  options: MutationLintOptions,
 ): MutationFinding[] {
+  const { projectConfig, schemasByKey, schemaZodSchema, conditionsZodSchema } = options;
   const findings: MutationFinding[] = [];
   if (!isNode(root)) return findings;
 
@@ -180,17 +183,26 @@ export function getSchemaMutationFindings(
     return operations.length === entries.length ? operations : undefined;
   };
 
-  /** Reports a resolved or mutated schema's issues under the entry that made it. */
-  const validate = (schema: unknown, path: Path, what: string) => {
+  /** Reports a resolved or mutated schema's issues under the entry that made it, and whether it passed. */
+  const validate = (schema: unknown, path: Path, what: string): boolean => {
     const result = schemaZodSchema.safeParse(schema);
-    if (result.success) return;
+    if (result.success) return true;
     for (const issue of result.error.issues) {
       findings.push({
         path,
         message: `${what}, the schema fails: ${issue.message} (at ${issue.path.join(".") || "the root"})`,
       });
     }
+    return false;
   };
+
+  /** Every check a schema's own mutations get, by path and message, to tell what an environment adds. */
+  const rulesOf = (schema: unknown): MutationFinding[] => [
+    ...getSchemaMutationFindings(schema, options),
+    ...getConditionKindIssues("schema", schema, options.projectConfig.allowedConditions),
+  ];
+  const keyOf = (finding: MutationFinding) => JSON.stringify([finding.path, finding.message]);
+  let baseRules: Set<string> | undefined;
 
   // Changes per environment, resolved at build time.
   if (root.environments !== undefined) {
@@ -217,11 +229,18 @@ export function getSchemaMutationFindings(
         if (!isNode(entry) || entry.mutate === undefined) continue;
         const operations = compile(entry.mutate, base, [...at, "mutate"], false);
         if (!operations) continue;
-        validate(
-          applyVariableOperations(base as never, operations),
-          [...at, "mutate"],
-          `In ${environment}`,
-        );
+        const resolved = applyVariableOperations(base as never, operations);
+        // An environment whose rules already fail says so once, rather than once per mutation.
+        if (!validate(resolved, [...at, "mutate"], `In ${environment}`)) continue;
+        // A mutation the entry adds or changes gets every check the file's own mutations get.
+        baseRules ??= new Set(rulesOf(base).map(keyOf));
+        for (const finding of rulesOf(resolved)) {
+          if (baseRules.has(keyOf(finding))) continue;
+          findings.push({
+            path: [...at, "mutate"],
+            message: `In ${environment}: ${finding.message} (at ${finding.path.join(".") || "the root"})`,
+          });
+        }
       }
     }
   }

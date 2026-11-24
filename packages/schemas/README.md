@@ -947,9 +947,20 @@ mutations:
 - the node's rules stay a valid schema with each mutation applied alone and with all of them together,
 - no mutation changes a `type`, so a field's type, form data reading and generated types are the same whatever matches.
 
-`input` anywhere but a schema's mutations is an error, and `allowedConditions` takes a `schemas` location, so a project can keep schema mutations to segments, say. Variables cannot use a schema with mutations, as for environments.
+`input` reads only the value a schema validates, so it goes only in a schema's mutations: in a feature, a segment or a global variable it is an error, since the context already carries what those know. `allowedConditions` takes a `schemas` location, and `input` as a kind that only that location takes, so a project can keep schema mutations to segments and input, say:
 
-**Environments and mutations combine.** An environment's entry is applied when its datafile is built, and mutations when a value is validated. So an entry can add a mutation in one environment only, with `mutations:append`, its conditions written as a tree.
+```js
+// featurevisor.config.js
+module.exports = {
+  allowedConditions: {
+    schemas: ["segment", "input"],
+  },
+};
+```
+
+Variables cannot use a schema with mutations, as for environments.
+
+**Environments and mutations combine.** An environment's entry is applied when its datafile is built, and mutations when a value is validated. So an entry can add a mutation in one environment only, with `mutations:append`, its conditions written as a tree. Lint checks a mutation an entry adds as it checks the file's own, and reports what fails under the entry, such as `In dev: ...`.
 
 ## Reading form data
 

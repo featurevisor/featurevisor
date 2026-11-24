@@ -10,8 +10,11 @@ export const CONDITION_LOCATIONS = [
   "schemas",
 ] as const;
 
-/** The kinds of condition leaf, named after the key authors write. */
-export const CONDITION_KINDS = ["attribute", "segment", "feature", "variable"] as const;
+/**
+ * The kinds of condition leaf, named after the key authors write. `input` reads the value a
+ * schema validates, so only `schemas` takes it.
+ */
+export const CONDITION_KINDS = ["attribute", "segment", "feature", "variable", "input"] as const;
 
 export type ConditionLocation = (typeof CONDITION_LOCATIONS)[number];
 export type ConditionKind = (typeof CONDITION_KINDS)[number];
@@ -48,6 +51,11 @@ export function assertAllowedConditions(value: unknown): asserts value is Allowe
       if (typeof kind !== "string" || !(CONDITION_KINDS as readonly string[]).includes(kind)) {
         throw new Error(
           `Invalid allowedConditions.${location}[${index}]: ${String(kind)}. Use one of: ${list(CONDITION_KINDS)}.`,
+        );
+      }
+      if (kind === "input" && location !== "schemas") {
+        throw new Error(
+          `Invalid allowedConditions.${location}[${index}]: input. \`input\` reads the value a schema validates, so only allowedConditions.schemas takes it.`,
         );
       }
       if (seen.has(kind)) {

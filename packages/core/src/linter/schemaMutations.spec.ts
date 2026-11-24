@@ -517,6 +517,122 @@ mutations:
     ]);
   });
 
+  test("input stays in schemas, and a project can narrow it further", async () => {
+    const config = (allowedConditions?: unknown) => ({
+      "featurevisor.config.js": `module.exports = ${JSON.stringify({
+        tags: ["web"],
+        environments: ["dev", "staging", "production"],
+        conditionExpressions: true,
+        ...(allowedConditions ? { allowedConditions } : {}),
+      })};`,
+    });
+    const segment = {
+      "segments/business.yml":
+        "description: Business\nconditions: input('accountType') == 'business'\n",
+    };
+    const variable = {
+      "variables/limit.yml": `description: Limit
+
+type: integer
+
+defaultValue: 1
+
+overrides:
+  production:
+    - key: business
+      conditions:
+        input: accountType
+        operator: equals
+        value: business
+      value: 2
+`,
+    };
+    const where =
+      "`input` reads the value a schema validates, so it goes only in a schema's mutations.";
+
+    expect(
+      (await lint({ ...config(), ...segment })).map(({ key, message }) => [key, message]),
+    ).toEqual([["business", where]]);
+    expect(
+      (await lint({ ...config(), ...variable })).map(({ key, message }) => [key, message]),
+    ).toEqual([["limit", where]]);
+    // A project can keep schema mutations to segments, leaving input out.
+    expect(
+      (await lint(config({ schemas: ["segment"] }))).map(({ key, at, message }) => [
+        key,
+        at,
+        message,
+      ]),
+    ).toEqual([
+      [
+        "signUp",
+        "mutations.0.conditions",
+        'Input conditions are not allowed in schema mutations. Remove this condition, or allow "input" in allowedConditions.schemas.',
+      ],
+      [
+        "signUp",
+        "mutations.2.conditions",
+        'Attribute conditions are not allowed in schema mutations. Move this condition into a segment and reference the segment, or allow "attribute" in allowedConditions.schemas.',
+      ],
+    ]);
+    expect(await lint(config({ schemas: ["segment", "input", "attribute"] }))).toEqual([]);
+  });
+
+  test("a mutation an environment adds gets every check the file's own get", async () => {
+    const errors = await lint({
+      "featurevisor.config.js": `module.exports = ${JSON.stringify({
+        tags: ["web"],
+        environments: ["dev", "staging", "production"],
+        conditionExpressions: true,
+        allowedConditions: { schemas: ["segment", "input"] },
+      })};`,
+      "schemas/signUp.yml": "description: A sign up form\n\ntype: string\n",
+      "schemas/form.yml": `description: A form
+
+type: object
+
+properties:
+  name:
+    type: string
+
+mutations:
+  - key: named
+    conditions:
+      input: name
+      operator: exists
+    mutate:
+      properties.name.minLength: 1
+
+environments:
+  dev:
+    mutate:
+      mutations:append:
+        key: longer
+        conditions:
+          - input: nam
+            operator: exists
+          - attribute: plan
+            operator: equals
+            value: paid
+        mutate:
+          properties.name.maxLength: 80
+`,
+    });
+
+    expect(errors.map(({ key, at, message }) => [key, at, message])).toEqual([
+      [
+        "form",
+        "environments.dev.mutate",
+        "In dev: `input('nam')` names no field of this node, whose fields are name. Paths are relative to the node a mutation sits on. (at mutations.1.conditions.0.input)",
+      ],
+      [
+        "form",
+        "environments.dev.mutate",
+        'In dev: Attribute conditions are not allowed in schema mutations. Move this condition into a segment and reference the segment, or allow "attribute" in allowedConditions.schemas. (at mutations.1.conditions.1)',
+      ],
+    ]);
+  });
+
   test("environments need a project with environments", async () => {
     const errors = await lint({
       "featurevisor.config.js": `module.exports = ${JSON.stringify({ tags: ["web"], conditionExpressions: true })};`,
