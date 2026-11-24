@@ -902,9 +902,36 @@ A business account needs a tax ID in the right shape, with its own message, payi
 | `input: accountType`                   | The value being validated, at a path relative to the node the mutation sits on |
 
 - **`input` is the one addition.** It reads the value being validated, as Standard Schema calls it, so rules can depend on what was typed. Paths are relative to the node a mutation sits on, with dots into objects, so a mutation inside `address` reads the address's own `country`, in every form that uses `address`. A rule across two parts of a form goes on the node that holds both, usually the root.
-- **Comparing two fields.** An input's `value` can be another input, `value: { input: password }`, for a rule between two fields. `matches` and `notMatches` never take an input as their pattern, since a pattern from a user is one nobody reviewed.
-- **For now, `input` is written as a tree,** as above. Expressions take every other kind of condition today, such as `conditions: plan == 'paid' and country == 'nl'`.
+- **In expressions,** `input('...')` reads a field as `feature('...')` reads a flag, in projects with `conditionExpressions: true`: `conditions: input('accountType') == 'business' and plan == 'paid'`. Its path goes inside the quotes, `input('address.country')`.
 - **The context** is the SDK instance's, with any given to `validate` merged over it, and a `FeaturevisorScope`'s in React: `s.validate("signUp", input, { plan: "paid" })`.
+
+**Comparing two fields.** `valueFrom` takes the other side of a comparison from another field, in place of `value`. Goods shipped to another country than the one billed need a customs description:
+
+```yml
+mutations:
+  - key: shipsAbroad
+    conditions:
+      input: shippingAddress.country
+      operator: notEquals
+      valueFrom:
+        input: billingAddress.country
+    mutate:
+      required:appendUnique: customsDescription
+```
+
+In an expression, `input(...)` after the operator is `valueFrom`, so the same mutation reads:
+
+```yml
+mutations:
+  - key: shipsAbroad
+    conditions: input('shippingAddress.country') != input('billingAddress.country')
+    mutate:
+      required:appendUnique: customsDescription
+```
+
+- `value` is always a value, and `valueFrom` always names a field, by a path relative to the same node as `input`. A condition takes one of the two, never both. In an expression, `input(...)` after the operator needs `input(...)` before it, and never goes inside a list: `input('primaryTag') in input('tags')` compares with a list field as a whole.
+- `matches` and `notMatches` never take their pattern from `valueFrom`, or from `input(...)` in an expression, since a pattern from a user is one nobody reviewed.
+- A rule that two fields must agree, such as a password typed twice, changes no rule, so it is not a mutation. For now it goes in a [check in code](#checks-in-code), whose `check` gets the whole value.
 
 **Datafiles** carry mutations compiled: `conditions` as features have them, and `mutate` as the operations the SDK applies, so applications parse no notation. The segments a delivered schema's conditions read come along into the datafile, as a feature's do. A target must deliver the features and global variables they read, as it does for a feature that depends on them, or they read as not found.
 
@@ -915,7 +942,7 @@ A business account needs a tax ID in the right shape, with its own message, payi
 **Lint** checks every mutation:
 
 - its `key` is unique within its node,
-- its `conditions` are valid conditions, and each `input` path names a field of its node,
+- its `conditions` are valid conditions, each with `value` or `valueFrom` and never both, and each `input` path, in `input` and in `valueFrom`, names a field of its node,
 - every path in its `mutate` reaches into the node,
 - the node's rules stay a valid schema with each mutation applied alone and with all of them together,
 - no mutation changes a `type`, so a field's type, form data reading and generated types are the same whatever matches.
@@ -1424,7 +1451,6 @@ Changing annotations or choices' entries widens nothing, since validation never 
 
 Later releases of this package are planned to add:
 
-- `input(...)` in condition expressions, alongside the trees that take it today,
 - `for(values)`, constraints, options and annotations for the values typed so far, with the mutations that match applied, and `reads`, the fields a schema's conditions read,
 - versions a schema points to per environment, each a whole schema of its own, and a warning when a change reaches an environment before the one before it,
 - rendering again in React when a context a schema's conditions read changes, and an issue's `mutation`, naming the mutation that set its rule,

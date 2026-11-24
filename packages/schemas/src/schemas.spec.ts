@@ -853,6 +853,31 @@ describe("mutations under conditions", () => {
     ],
   } as unknown as DatafileSchema;
 
+  // `valueFrom` reads the other side of a comparison from another field.
+  const shipping = {
+    hash: "s1",
+    type: "object",
+    properties: {
+      billingCountry: { type: "string" },
+      shippingCountry: { type: "string" },
+      customsDescription: { type: "string" },
+    },
+    required: ["billingCountry"],
+    mutations: [
+      {
+        key: "shipsAbroad",
+        conditions: [
+          {
+            input: "shippingCountry",
+            operator: "notEquals",
+            valueFrom: { input: "billingCountry" },
+          },
+        ],
+        operations: [{ op: "appendUnique", path: ["required"], value: "customsDescription" }],
+      },
+    ],
+  } as unknown as DatafileSchema;
+
   function mutating(relaxed = false) {
     const f = createFeaturevisor({
       datafile: {
@@ -872,7 +897,7 @@ describe("mutations under conditions", () => {
           },
         },
         variables: {},
-        schemas: { signUp, postal },
+        schemas: { signUp, postal, shipping },
       } as unknown as DatafileContent,
       logLevel: "fatal",
       context: { userId: "user-1" },
@@ -895,6 +920,24 @@ describe("mutations under conditions", () => {
     expect(codes(wrong)).toEqual([["pattern", "taxId"]]);
     expect(wrong[0].message).toBe("Enter a German VAT number, such as DE123456789");
     expect(s.validate("signUp", { ...business, taxId: "DE123456789" }).issues).toBeUndefined();
+  });
+
+  test("valueFrom compares one field with another", () => {
+    const s = mutating();
+
+    expect(
+      s.validate("shipping", { billingCountry: "NL", shippingCountry: "NL" }).issues,
+    ).toBeUndefined();
+    expect(
+      codes(s.validate("shipping", { billingCountry: "NL", shippingCountry: "DE" }).issues),
+    ).toEqual([["required", "customsDescription"]]);
+    expect(
+      s.validate("shipping", {
+        billingCountry: "NL",
+        shippingCountry: "DE",
+        customsDescription: "Books",
+      }).issues,
+    ).toBeUndefined();
   });
 
   test("context conditions read segments and features through the SDK", () => {
