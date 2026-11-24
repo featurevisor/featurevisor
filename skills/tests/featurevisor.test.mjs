@@ -272,10 +272,14 @@ test("agents check allowedConditions before writing conditions", () => {
     "featureVariableOverrides",
     "variables",
     "variableOverrides",
+    "schemas",
   ]) {
     assert.match(conditions, new RegExp("`" + location + "`"), location);
   }
   assert.match(conditions, /disallowed_condition/);
+  // `input` is a kind only schema mutations take, so agents never write it elsewhere.
+  assert.match(conditions, /`input`, which only `schemas` takes/);
+  assert.match(read("references/schemas-runtime.md"), /`input` goes only in a schema's mutations/);
   assert.match(read("references/upgrading-to-v4.md"), /allowedConditions/);
 });
 

@@ -28,19 +28,20 @@ Then ask your agent (Claude Code, Codex, Cursor, OpenCode and others), for examp
 - "Set up a new Featurevisor project with staging and production environments"
 - "Turn our staging and production environments into Sets, promoted from staging to production"
 - "Wire the checkout feature into my React app, refreshing the datafile every 5 minutes"
+- "Let business accounts give a VAT number on the sign up form, checked in the app without a deploy"
 - "Upgrade this project from Featurevisor v3 to v4"
 
 ## What's included
 
 One skill, `featurevisor`, for Featurevisor v4:
 
-- **Authoring**: features, variations, feature variables, force, attributes and their formats, segments, schemas and mutations, with unified `conditions` (attribute, segment, feature and variable leaves) for every selector and gate. Global variables with nested and accumulating overrides, and compositions with `compose`. Mutually exclusive experiments, environments, Sets and promotions, and `convert` to move a project between them.
+- **Authoring**: features, variations, feature variables, force, attributes and their formats, segments, schemas and mutations, with unified `conditions` (attribute, segment, feature and variable leaves) for every selector and gate. Schemas applications validate their data against, with annotations, choices, messages, rules per environment and rules under conditions that read the value itself through `input`. Global variables with nested and accumulating overrides, and compositions with `compose`. Mutually exclusive experiments, environments, Sets and promotions, and `convert` to move a project between them.
 - **Verification**: a definition of done the agent follows after every change: `fmt`, `lint`, specs, `evaluate --explain` on representative contexts, `test --uncovered`, and `diff` to summarize the change.
 - **Testing**: feature, segment and global variable specs, checks, standalone scenarios, matrices, targets, JSON reports and exact case reruns.
 - **Querying**: `list`, `find-usage`, `find-duplicate-segments`, `evaluate --explain`, `assess-distribution` and `diff` for answering questions without reading YAML by hand.
 - **Visual review**: the Catalog in watch mode, so changes made by prompt appear in the browser as they are saved.
 - **Catalog queries**: FQL reports on the Catalog's Query page, in beta with `--with-query`, for questions across the whole project as shareable tables, from rollouts in progress to what several users get.
-- **Applications**: the JavaScript SDK in Node.js, browsers, edge runtimes and React Native, React and Vue, typed code generation, SDKs in other languages and their spec runners, and OpenFeature providers.
+- **Applications**: the JavaScript SDK in Node.js, browsers, edge runtimes and React Native, React and Vue, typed code generation, validating forms and API bodies with `@featurevisor/schemas`, SDKs in other languages and their spec runners, and OpenFeature providers.
 - **Recipes**: gradual rollouts, A/B and multivariate tests, kill switches, scheduled launches, early access programmes, entitlements, version gates and flag cleanup.
 - **Upgrades**: v3 to v4 and v2 to v3, for projects and applications, in an order that keeps them deployable. `migrate` rewrites a v3 project's definitions for v4.
 - **Extending**: CLI plugins, the datasource API and custom adapters.

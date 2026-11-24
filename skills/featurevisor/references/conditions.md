@@ -2,11 +2,11 @@
 
 Full docs: <https://featurevisor.com/docs/conditions/>
 
-`conditions` is the one grammar for every place a definition selects or gates: segments, feature rules, force entries, root gates, and feature and global variable overrides. Operators are listed in [operators.md](operators.md). This file writes conditions as trees. A project with `conditionExpressions: true` can write the same conditions as text, such as `country == 'nl'` ([expressions.md](expressions.md)).
+`conditions` is the one grammar for every place a definition selects or gates: segments, feature rules, force entries, root gates, feature and global variable overrides, and a schema's mutations. Operators are listed in [operators.md](operators.md). This file writes conditions as trees. A project with `conditionExpressions: true` can write the same conditions as text, such as `country == 'nl'` ([expressions.md](expressions.md)).
 
 ## Leaves
 
-There are four kinds of leaf. Mix them freely in one condition.
+There are four kinds of leaf. Mix them freely in one condition. A schema's mutations also take a fifth, `input` ([Input leaves](#input-leaves)).
 
 ```yaml
 conditions:
@@ -75,6 +75,28 @@ conditions:
 - Operands must suit the value's type, but need not satisfy its enum, minimum or pattern. A threshold can sit outside the variable's allowed range.
 - Lint warns, with `untyped_condition`, about a condition reading a value without declared types: a `json` variable, read directly, through an alias or through a composed path, or a path inside an object declared without `properties` or `additionalProperties`. Declare the shape, such as `type: object` with `properties`, to compare what it holds. Presence and emptiness checks on such an object itself still work.
 
+### Input leaves
+
+`input` reads the value a schema validates in an application, so it goes only in a schema's `mutations` ([schemas-runtime.md](schemas-runtime.md#rules-under-conditions)). Its path is relative to the node the mutation sits on, with dots into objects:
+
+```yaml
+conditions:
+  - input: accountType
+    operator: equals
+    value: business
+
+  # Compare two fields: valueFrom reads the other side
+  - input: shippingCountry
+    operator: notEquals
+    valueFrom:
+      input: billingCountry
+```
+
+- `value` is always a value, even an object. `valueFrom` names another field, and a leaf takes one of the two, never both.
+- `matches` and `notMatches` never take their pattern from `valueFrom`, since a pattern a user typed is one nobody reviewed.
+- Each path must name a field of the node, which lint checks.
+- Anywhere else, lint fails with `` `input` reads the value a schema validates, so it goes only in a schema's mutations. `` Features, segments and global variables read the context, which already carries what an application knows.
+
 ## Lists and groups
 
 ```yaml
@@ -108,6 +130,7 @@ A single condition does not need a list. `conditions: netherlands` and `conditio
 | Feature variable override (`variableOverrides`) | yes      | Override selection within a rule or variation       |
 | Global variable root                            | no       | Gate for the whole variable, including compositions |
 | Global variable override                        | yes      | Override selection, including nested children       |
+| Schema mutation                                 | yes      | Rules that apply to a value when they match         |
 
 Use `conditions: '*'` where a selector is required but should always match.
 
@@ -126,8 +149,8 @@ module.exports = {
 }
 ```
 
-- **Locations:** `segments`, `features` (feature root), `rules`, `force`, `featureVariableOverrides`, `variables` (global variable root, compositions included) and `variableOverrides` (nested ones included).
-- **Kinds:** `attribute`, `segment`, `feature` (including `{ feature, variable }`) and `variable` (a global variable).
+- **Locations:** `segments`, `features` (feature root), `rules`, `force`, `featureVariableOverrides`, `variables` (global variable root, compositions included), `variableOverrides` (nested ones included) and `schemas` (schema mutations, those an environment adds included).
+- **Kinds:** `attribute`, `segment`, `feature` (including `{ feature, variable }`), `variable` (a global variable) and `input`, which only `schemas` takes. Naming `input` for any other location fails when the configuration loads.
 - **Defaults:** a location the config leaves out accepts every kind. `'*'` is always allowed.
 - **Lint:** reports anything else with `disallowed_condition` and suggests a fix. With `rules: ['segment']`, put attribute logic in a segment and reference it from the rule. Archived definitions are not checked.
 - **Segments are not followed:** each location is checked on its own, so a rule may name a segment that reads a feature unless `segments` excludes `feature`.

@@ -13,23 +13,27 @@ npx featurevisor generate-code --language typescript --out-dir ./src/featureviso
 | `--tag=<tag>`       | only features and global variables with the tag. Repeatable |
 | `--target=<target>` | only what the target selects. Repeatable                    |
 | `--react`           | also generate typed React hooks                             |
+| `--schemas`         | also generate a typed `createSchemas` for delivered schemas |
+| `--environment=<e>` | type schemas that vary from this environment's version      |
 
 Several tags and targets form a union. Like datafiles, the output includes the definitions selected ones reference.
 
 ## Output
 
-| File            | Contents                                                                           |
-| --------------- | ---------------------------------------------------------------------------------- |
-| `context.ts`    | the `Context` interface, from attributes                                           |
-| `attributes.ts` | one type per attribute                                                             |
-| `features.ts`   | `FeatureKey`, `Variation<F>`, `FeatureVariableKey<F>`, `FeatureVariableType<F, V>` |
-| `variables.ts`  | `Variables`, `VariableKey`, `VariableType<K>` for global variables                 |
-| `functions.ts`  | typed `isEnabled`, `getVariation` and `getVariable`                                |
-| `instance.ts`   | `setInstance` and `getInstance`                                                    |
-| `index.ts`      | exports everything                                                                 |
-| `react.ts`      | typed hooks, with `--react`. See below                                             |
+| File               | Contents                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| `context.ts`       | the `Context` interface, from attributes                                           |
+| `attributes.ts`    | one type per attribute                                                             |
+| `features.ts`      | `FeatureKey`, `Variation<F>`, `FeatureVariableKey<F>`, `FeatureVariableType<F, V>` |
+| `variables.ts`     | `Variables`, `VariableKey`, `VariableType<K>` for global variables                 |
+| `functions.ts`     | typed `isEnabled`, `getVariation` and `getVariable`                                |
+| `instance.ts`      | `setInstance` and `getInstance`                                                    |
+| `index.ts`         | exports everything                                                                 |
+| `react.ts`         | typed hooks, with `--react`. See below                                             |
+| `schemas.ts`       | a type per delivered schema, `SchemaTypes` and `SchemaVocabularies`                |
+| `schemas-react.ts` | typed `useSchema`, `useSchemas` and `useValidation`, with `--schemas --react`      |
 
-Types follow the schemas: `enum` and `const` become literal types, `required` properties are non optional, `format: date-time` attributes accept `Date | string`. A composition's type is derived from its sources, read only, and conservatively nullable, because any member can be `null` at runtime.
+Types follow the schemas: `enum` and `const` become literal types, `required` properties are non optional, `format: date-time` attributes accept `Date | string`. A composition's type is derived from its sources, read only, and conservatively nullable, because any member can be `null` at runtime. A schema that varies by environment is typed from the environment whose name starts with `prod`, unless `--environment` names another. Using schema types in an application is in [schemas-runtime.md](schemas-runtime.md#typed-code).
 
 ## Use in an application
 

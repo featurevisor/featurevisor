@@ -1,0 +1,65 @@
+# schemas/signUp.yml
+# A schema applications validate data against, delivered by a target that selects the web tag.
+# Replace the keys, and declare the tag in featurevisor.config.js.
+description: A sign up form
+
+type: object
+
+properties:
+  accountType:
+    type: string
+    enum:
+      - personal
+      - business
+    annotations:
+      title: Account type
+      options:
+        personal:
+          title: Personal
+        business:
+          title: Business
+
+  displayName:
+    type: string
+    minLength: 2
+    maxLength: 40
+    annotations:
+      title: Display name
+      examples:
+        - Ada
+        - Grace Hopper
+
+  taxId:
+    type: string
+    annotations:
+      title: VAT number
+
+required:
+  - accountType
+  - displayName
+
+tags:
+  - web
+
+messages:
+  displayName:
+    minLength: Use at least {minLength} characters
+
+annotations:
+  title: Create your account
+  order:
+    - accountType
+    - displayName
+    - taxId
+
+mutations:
+  - key: business
+    conditions:
+      input: accountType
+      operator: equals
+      value: business
+    mutate:
+      required:appendUnique: taxId
+      properties.taxId.pattern: ^[A-Z]{2}[0-9]{9}$
+      properties.taxId.messages:
+        pattern: Enter your VAT number, such as DE123456789
