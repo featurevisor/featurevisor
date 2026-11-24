@@ -3,6 +3,9 @@
 # Replace the keys, and declare the tag in featurevisor.config.js.
 description: A sign up form
 
+tags:
+  - web
+
 type: object
 
 properties:
@@ -37,9 +40,6 @@ properties:
 required:
   - accountType
   - displayName
-
-tags:
-  - web
 
 messages:
   displayName:

@@ -153,8 +153,26 @@ export const HOUSE_STYLE = {
     ],
     segment: [...LIFECYCLE, "description", "metadata", "conditions"],
     attribute: [...LIFECYCLE, "description", "metadata", ...SCHEMA_KEYS],
-    /** A schema file, and every schema nested in a schema, attribute or variable */
-    schema: [...LIFECYCLE, "description", "metadata", ...SCHEMA_KEYS],
+    /**
+     * A schema file, and every schema nested in a schema, attribute or variable. Only a schema
+     * file's root has `tags`, the vocabularies and `environments`, and only schema files have
+     * `messages`, `annotations` and `mutations`, after the rules they word, describe and change.
+     */
+    schema: [
+      ...LIFECYCLE,
+      "description",
+      "tags",
+      "metadata",
+      "annotationsSchema",
+      "optionSchema",
+      ...SCHEMA_KEYS,
+      "messages",
+      "annotations",
+      "environments",
+      "mutations",
+    ],
+    /** A mutation in a schema's mutations, at any node */
+    schemaMutation: ["key", "description", "conditions", "mutate"],
     target: [
       "promotable",
       "description",
@@ -165,6 +183,9 @@ export const HOUSE_STYLE = {
       "excludeFeatures",
       "includeVariables",
       "excludeVariables",
+      "includeSchemas",
+      "excludeSchemas",
+      "includeAnnotations",
       "context",
       "schemaVersion",
     ],

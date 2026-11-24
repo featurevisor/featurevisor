@@ -24,6 +24,44 @@ const MAINTAINER_FIELDS = ["description", "promotable"];
  */
 const ROOT_ONLY_FIELDS = ["metadata", "tags", "annotationsSchema", "optionSchema", "environments"];
 
+/**
+ * The order a datafile writes a schema's keys in, whatever order its file has,
+ * with any others after them in sorted order. Formatting a schema file then
+ * never changes a datafile or a schema's `hash`, as fmt promises. It is the
+ * builder's own, kept apart from fmt's house style, which may change freely.
+ */
+const DATAFILE_KEY_ORDER = [
+  "type",
+  "schema",
+  "oneOf",
+  "format",
+  "enum",
+  "const",
+  "minimum",
+  "maximum",
+  "minLength",
+  "maxLength",
+  "pattern",
+  "items",
+  "minItems",
+  "maxItems",
+  "uniqueItems",
+  "properties",
+  "required",
+  "additionalProperties",
+  "messages",
+  "annotations",
+  "mutations",
+];
+
+function datafileKeys(node: Record<string, unknown>): string[] {
+  const keys = Object.keys(node);
+  return [
+    ...DATAFILE_KEY_ORDER.filter((key) => keys.includes(key)),
+    ...keys.filter((key) => !DATAFILE_KEY_ORDER.includes(key)).sort(),
+  ];
+}
+
 export interface DatafileSchemaOptions {
   /** False leaves `annotations` out at every depth, for a target that only serves a backend. */
   annotations?: boolean;
@@ -72,7 +110,9 @@ function stripNode(node: unknown, options: DatafileSchemaOptions): unknown {
   if (!node || typeof node !== "object") return node;
   if (Array.isArray(node)) return node.map((item) => stripNode(item, options));
   const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+  const record = node as Record<string, unknown>;
+  for (const key of datafileKeys(record)) {
+    const value = record[key];
     if (MAINTAINER_FIELDS.includes(key)) continue;
     if (key === "annotations" && options.annotations === false) continue;
     if (key === "mutations" && Array.isArray(value)) {

@@ -7,6 +7,7 @@ import type { ProjectConfig } from "../config";
 import { getTargetSchemaKeys, targetIncludesSchema } from "../targeting";
 import { buildDatafile } from "./buildDatafile";
 import { generateHashForDatafile } from "./hashes";
+import { getKeyOrder } from "../formatter/layout";
 import { buildSchemasSection, toDatafileSchema } from "./schemas";
 
 const schemas: Record<string, Schema> = {
@@ -164,6 +165,54 @@ describe("the schemas section", () => {
     });
 
     expect(after.coupon.hash).toBe(before.coupon.hash);
+  });
+
+  test("the order keys are written in changes neither the datafile nor a hash", () => {
+    // fmt reorders a schema file's keys, which must never change a datafile. This reverses
+    // every map fmt orders, and nothing it leaves as written, as examples.spec.ts does.
+    const reversed = (value: unknown, at: (string | number)[] = []): unknown => {
+      if (Array.isArray(value)) return value.map((item, index) => reversed(item, [...at, index]));
+      if (!value || typeof value !== "object") return value;
+      const record = value as Record<string, unknown>;
+      const order = getKeyOrder("schema", at, Object.keys(record));
+      const keys = order ? [...order].reverse() : Object.keys(record);
+      return Object.fromEntries(keys.map((key) => [key, reversed(record[key], [...at, key])]));
+    };
+    const form: Schema = {
+      description: "A form",
+      tags: ["web"],
+      type: "object",
+      properties: {
+        plan: {
+          type: "string",
+          enum: ["free", "paid"],
+          annotations: { title: "Plan" },
+          messages: { enum: "Choose a plan" },
+        },
+        seats: { type: "integer", minimum: 1, maximum: 10 },
+      },
+      required: ["plan"],
+      annotations: { title: "Sign up" },
+      mutations: [
+        {
+          key: "paid",
+          conditions: [{ input: "plan", operator: "equals", value: "paid" }] as never,
+          mutate: { "properties.seats.maximum": 100 },
+        },
+      ],
+    };
+    const written = buildSchemasSection(["form"], { form });
+    const reordered = buildSchemasSection(["form"], { form: reversed(form) as Schema });
+
+    expect(JSON.stringify(reordered)).toBe(JSON.stringify(written));
+    expect(Object.keys(written.form)).toEqual([
+      "hash",
+      "type",
+      "properties",
+      "required",
+      "annotations",
+      "mutations",
+    ]);
   });
 
   test("schemas that reference each other hash without looping", () => {
