@@ -875,7 +875,8 @@ mutations:
     mutate:
       required:appendUnique: taxId
       properties.taxId.pattern: "^[A-Z]{2}[0-9]{9}$"
-      properties.taxId.messages.pattern: Enter your VAT number, such as DE123456789
+      properties.taxId.messages:
+        pattern: Enter your VAT number, such as DE123456789
 
   - key: payingAccounts
     conditions: payingAccounts
