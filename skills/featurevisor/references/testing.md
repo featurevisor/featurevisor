@@ -213,7 +213,7 @@ assertions:
 - Each assertion needs a `value` and `expectedToBeValid` or `expectedIssues`. `environment` is required in a project with environments, since each builds its own version of a schema. `context` feeds the schema's conditions. `target` validates against that target's datafile.
 - `expectedIssues` lists every issue the value has, in any order. Each matches by the fields it gives: `path`, `code`, `mutation` (the mutation that set the rule), `message` and `params`. An issue nobody expected fails the assertion.
 - Cover each mutation and each entry in `issues` with a case where it applies and one where it does not, as for rules.
-- Schema specs have no `matrix`. `npx featurevisor test --entity-type=schema` runs them alone, and other SDKs' runners skip them.
+- A `matrix` fills any field, `value` and `expectedIssues` included. `npx featurevisor test --entity-type=schema` runs schema specs alone, and other SDKs' runners skip them.
 
 ## Checks
 

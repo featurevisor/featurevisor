@@ -1074,7 +1074,9 @@ assertions:
 - **`expectedToBeValid`** says whether the value passes, and **`expectedIssues`** lists every issue it has, in any order. Each expected issue matches by the fields it gives: `path`, `code`, `mutation`, `message` and `params`, so a spec checks what matters to it and still fails when an issue nobody expected appears.
 - **`environment`** is required in a project with environments, since each builds its own version of a schema. **`target`** validates against that target's datafile, so a spec fails when the target does not deliver the schema.
 - **Running them:** `featurevisor test` runs schema specs with the rest, and `--entity-type=schema` runs them alone. A failed assertion prints the issues found and a `--case` to rerun it. Lint checks that each spec names a schema, an environment and an expectation.
+- **`matrix`** repeats an assertion for each combination, filling any field, `value` and `expectedIssues` included, as feature specs do.
 - Specs run in JavaScript, with this package. Runners for other languages skip them until those languages have a validator.
+- **In the Catalog**, a schema's page lists its specs on a Tests tab, and its changes per environment, mutations and issues on a Rules tab.
 
 ## Reading form data
 
@@ -1544,7 +1546,7 @@ A handle's members are in [Handles](#handles). Every one of them reads the curre
 
 ## How values are checked
 
-Validation applies exactly the rules lint applies to variable values, so a value valid in one is valid in the other:
+Validation applies exactly the rules lint applies to variable values, since lint checks values with this package's own engine, so a value valid in one is valid in the other:
 
 - An object with `properties` rejects keys it does not list, unless `additionalProperties` allows them. `additionalProperties: true` allows any other key with any value.
 - An object with neither `properties` nor `additionalProperties` holds strings, numbers, booleans and `null` only.
@@ -1553,12 +1555,10 @@ Validation applies exactly the rules lint applies to variable values, so a value
 - A `oneOf` whose every branch is a `const` is a list of choices, and reports `enum`.
 - `minLength` and `maxLength` count characters as JSON Schema does, in code points, so an emoji counts one.
 - `pattern` is a regular expression, tested unanchored.
-- `format: date-time` takes the portable timestamps conditions compare, and `format: semver` the versions they compare.
+- `format: date-time` takes the portable timestamps conditions compare, and `format: semver` the versions they compare. A `const` or an `enum` with `format: date-time` must still hold timestamps, so a listed value that is not one fails `format`.
 - A number that is not finite fails, and a key whose value is `undefined` counts as absent.
-- An object is a plain object, as JSON has, so a `Date`, a `File` or a class instance is not one, and an issue names what it got, such as `date`.
+- An object is a plain object, as JSON has, from any realm, so one `structuredClone`, a frame or a worker hands over is one, while a `Date`, a `File` or a class instance is not, and an issue names what it got, such as `date`.
 - Annotations never change a result.
-
-One difference remains. Inside a `oneOf` branch, lint lets a flat object hold a nested value, which validation rejects. It goes once lint validates with this package's engine.
 
 The rules are portable: `conformance/schemas-validation.json` in the Featurevisor repository holds a case for each, with the issues expected, and this package runs every one.
 
