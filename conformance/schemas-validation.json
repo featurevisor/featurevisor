@@ -2547,6 +2547,52 @@
           "mutation": "paid"
         }
       ]
+    },
+    {
+      "name": "a timestamp enum still checks the format",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "format": "date-time",
+          "enum": [
+            "soon"
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": "soon",
+      "issues": [
+        {
+          "code": "format",
+          "path": [],
+          "params": {
+            "format": "date-time"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a timestamp const still checks the format",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "string",
+          "format": "date-time",
+          "const": "soon"
+        }
+      },
+      "schema": "subject",
+      "value": "soon",
+      "issues": [
+        {
+          "code": "format",
+          "path": [],
+          "params": {
+            "format": "date-time"
+          }
+        }
+      ]
     }
   ]
 }

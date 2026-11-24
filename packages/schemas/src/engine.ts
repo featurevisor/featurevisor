@@ -499,9 +499,13 @@ function compileRules(node: Node, resolve: Resolve): Validate {
 
   if (Array.isArray(node.oneOf)) return compileOneOf(node, resolve);
 
+  // A listed timestamp must still be one, so its typed rules run after the value matches.
+  const typed = node.format === "date-time" ? compileTyped(node, resolve) : undefined;
+
   if ("const" in node) {
     return (value, run, at) => {
       if (!sameJson(value, node.const)) report(run, at, "const", { const: node.const });
+      else typed?.(value, run, at);
     };
   }
 
@@ -511,10 +515,15 @@ function compileRules(node: Node, resolve: Resolve): Validate {
       if (!options.some((option) => sameJson(value, option))) {
         const titles = titlesOf(options.map((option) => optionEntry(node, option)));
         report(run, at, "enum", { options, ...titles });
-      }
+      } else typed?.(value, run, at);
     };
   }
 
+  return compileTyped(node, resolve);
+}
+
+/** A node's rules by its type: the type itself, then the keywords that type takes. */
+function compileTyped(node: Node, resolve: Resolve): Validate {
   const type = typeof node.type === "string" ? node.type : undefined;
   const check = type ? TYPE_CHECKS[type] : undefined;
   // With a type, only its own keywords can apply, so only they are compiled.
