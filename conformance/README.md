@@ -253,15 +253,26 @@ evaluation cases when they next sync their fixtures.
 ## Schemas validation
 
 `schemas-validation.json` uses `kind: "featurevisor.schemas-validation"` and
-`schemaVersion: 1`. Each case has a datafile's `schemas` section, the key to
+`schemaVersion: 2`. Each case has a datafile's `schemas` section, the key to
 validate, a value, and the expected issues, each with its `code`, `path` and
 `params`. An empty list means the value passes. Validate every case twice and
 compare issues as an unordered list. Messages are not part of the contract.
+
+Version 2 adds rules that change under conditions. A case can give the
+`segments` its schemas' conditions read and the `context` validation uses.
+Schemas can carry `mutations`, each `{ key, conditions, operations }`, and
+`issues`, each `{ key, conditions, path, message }`, with conditions written
+as trees, `input` leaves reading the value at the node they sit on, and
+`valueFrom` reading the other side of a comparison, as "Package conditions" in
+`runtime.md` describes. An expected issue can name the `mutation` that set or
+changed its rule, and an issue entry reports `code: "refine"` with its key in
+`params.refine`. Compare `mutation` when an expected issue gives it.
 Preserve the raw `2.0` and `1.0` spellings, which check that numbers compare
 by value, and the emoji, whose lengths count code points.
 
-`@featurevisor/schemas` runs every case. Lint's value check runs them too,
-apart from the differences named in
+`@featurevisor/schemas` runs every case. Lint's value check runs those without
+mutations or issue entries, which read conditions it does not evaluate, apart
+from the differences named in
 `packages/core/src/linter/schemaConformance.spec.ts`, which go once lint
 validates with the package's engine. Native validators run the same file when
 they come.

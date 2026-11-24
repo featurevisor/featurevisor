@@ -1,6 +1,6 @@
 {
   "kind": "featurevisor.schemas-validation",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "cases": [
     {
       "name": "a string passes type string",
@@ -1535,6 +1535,1016 @@
           "params": {
             "key": "code"
           }
+        }
+      ]
+    },
+    {
+      "name": "a mutation applies when its input condition matches, and names itself",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "accountType": {
+              "type": "string",
+              "enum": [
+                "personal",
+                "business"
+              ]
+            },
+            "taxId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "accountType"
+          ],
+          "mutations": [
+            {
+              "key": "business",
+              "conditions": [
+                {
+                  "input": "accountType",
+                  "operator": "equals",
+                  "value": "business"
+                }
+              ],
+              "operations": [
+                {
+                  "op": "appendUnique",
+                  "path": [
+                    "required"
+                  ],
+                  "value": "taxId"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "accountType": "business"
+      },
+      "issues": [
+        {
+          "code": "required",
+          "path": [
+            "taxId"
+          ],
+          "params": {
+            "key": "taxId"
+          },
+          "mutation": "business"
+        }
+      ]
+    },
+    {
+      "name": "a mutation does not apply when its input condition does not match",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "accountType": {
+              "type": "string",
+              "enum": [
+                "personal",
+                "business"
+              ]
+            },
+            "taxId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "accountType"
+          ],
+          "mutations": [
+            {
+              "key": "business",
+              "conditions": [
+                {
+                  "input": "accountType",
+                  "operator": "equals",
+                  "value": "business"
+                }
+              ],
+              "operations": [
+                {
+                  "op": "appendUnique",
+                  "path": [
+                    "required"
+                  ],
+                  "value": "taxId"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "accountType": "personal"
+      },
+      "issues": []
+    },
+    {
+      "name": "a mutation reads the context",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 10
+            }
+          },
+          "mutations": [
+            {
+              "key": "dutch",
+              "conditions": [
+                {
+                  "attribute": "country",
+                  "operator": "equals",
+                  "value": "nl"
+                }
+              ],
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "properties",
+                    "name",
+                    "maxLength"
+                  ],
+                  "value": 3
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "context": {
+        "country": "nl"
+      },
+      "value": {
+        "name": "Ada L"
+      },
+      "issues": [
+        {
+          "code": "maxLength",
+          "path": [
+            "name"
+          ],
+          "params": {
+            "maxLength": 3,
+            "length": 5
+          },
+          "mutation": "dutch"
+        }
+      ]
+    },
+    {
+      "name": "a mutation whose context does not match leaves the base rules",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 10
+            }
+          },
+          "mutations": [
+            {
+              "key": "dutch",
+              "conditions": [
+                {
+                  "attribute": "country",
+                  "operator": "equals",
+                  "value": "nl"
+                }
+              ],
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "properties",
+                    "name",
+                    "maxLength"
+                  ],
+                  "value": 3
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "context": {
+        "country": "de"
+      },
+      "value": {
+        "name": "Ada L"
+      },
+      "issues": []
+    },
+    {
+      "name": "a mutation reads a segment",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 10
+            }
+          },
+          "mutations": [
+            {
+              "key": "paying",
+              "conditions": "paying",
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "properties",
+                    "name",
+                    "maxLength"
+                  ],
+                  "value": 20
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "segments": {
+        "paying": {
+          "hash": "paying-1",
+          "conditions": [
+            {
+              "attribute": "plan",
+              "operator": "equals",
+              "value": "paid"
+            }
+          ]
+        }
+      },
+      "context": {
+        "plan": "paid"
+      },
+      "value": {
+        "name": "Grace Brewster "
+      },
+      "issues": []
+    },
+    {
+      "name": "every matching mutation applies, in order, and the last to change a rule names its issue",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "mutations": [
+            {
+              "key": "first",
+              "conditions": [
+                {
+                  "input": "name",
+                  "operator": "exists"
+                }
+              ],
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "properties",
+                    "name",
+                    "maxLength"
+                  ],
+                  "value": 10
+                }
+              ]
+            },
+            {
+              "key": "second",
+              "conditions": [
+                {
+                  "input": "name",
+                  "operator": "exists"
+                }
+              ],
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "properties",
+                    "name",
+                    "maxLength"
+                  ],
+                  "value": 5
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "name": "Lovelace"
+      },
+      "issues": [
+        {
+          "code": "maxLength",
+          "path": [
+            "name"
+          ],
+          "params": {
+            "maxLength": 5,
+            "length": 8
+          },
+          "mutation": "second"
+        }
+      ]
+    },
+    {
+      "name": "valueFrom compares two inputs",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "password": {
+              "type": "string"
+            },
+            "confirmPassword": {
+              "type": "string"
+            }
+          },
+          "mutations": [
+            {
+              "key": "mismatch",
+              "conditions": [
+                {
+                  "input": "confirmPassword",
+                  "operator": "notEquals",
+                  "valueFrom": {
+                    "input": "password"
+                  }
+                }
+              ],
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "properties",
+                    "confirmPassword",
+                    "maxLength"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "password": "a",
+        "confirmPassword": "b"
+      },
+      "issues": [
+        {
+          "code": "maxLength",
+          "path": [
+            "confirmPassword"
+          ],
+          "params": {
+            "maxLength": 0,
+            "length": 1
+          },
+          "mutation": "mismatch"
+        }
+      ]
+    },
+    {
+      "name": "valueFrom matches nothing when the inputs agree",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "password": {
+              "type": "string"
+            },
+            "confirmPassword": {
+              "type": "string"
+            }
+          },
+          "mutations": [
+            {
+              "key": "mismatch",
+              "conditions": [
+                {
+                  "input": "confirmPassword",
+                  "operator": "notEquals",
+                  "valueFrom": {
+                    "input": "password"
+                  }
+                }
+              ],
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "properties",
+                    "confirmPassword",
+                    "maxLength"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "password": "a",
+        "confirmPassword": "a"
+      },
+      "issues": []
+    },
+    {
+      "name": "an object in value is a value, never a read",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "password": {
+              "type": "string"
+            },
+            "confirmPassword": {
+              "type": "string"
+            }
+          },
+          "mutations": [
+            {
+              "key": "mismatch",
+              "conditions": [
+                {
+                  "input": "confirmPassword",
+                  "operator": "equals",
+                  "value": {
+                    "input": "password"
+                  }
+                }
+              ],
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "properties",
+                    "confirmPassword",
+                    "maxLength"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "password": "a",
+        "confirmPassword": "a"
+      },
+      "issues": []
+    },
+    {
+      "name": "matches never takes its pattern from valueFrom",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "password": {
+              "type": "string"
+            },
+            "confirmPassword": {
+              "type": "string"
+            }
+          },
+          "mutations": [
+            {
+              "key": "mismatch",
+              "conditions": [
+                {
+                  "input": "confirmPassword",
+                  "operator": "matches",
+                  "valueFrom": {
+                    "input": "password"
+                  }
+                }
+              ],
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "properties",
+                    "confirmPassword",
+                    "maxLength"
+                  ],
+                  "value": 0
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "password": ".*",
+        "confirmPassword": "anything"
+      },
+      "issues": []
+    },
+    {
+      "name": "an issue entry reports when its conditions match",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string",
+              "minLength": 8
+            },
+            "confirmPassword": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "issues": [
+            {
+              "key": "passwordsDiffer",
+              "conditions": [
+                {
+                  "input": "confirmPassword",
+                  "operator": "notEquals",
+                  "valueFrom": {
+                    "input": "password"
+                  }
+                }
+              ],
+              "path": "confirmPassword",
+              "message": "The passwords do not match"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "email": "a@b.c",
+        "password": "lovelace",
+        "confirmPassword": "lovelaced"
+      },
+      "issues": [
+        {
+          "code": "refine",
+          "path": [
+            "confirmPassword"
+          ],
+          "params": {
+            "refine": "passwordsDiffer"
+          }
+        }
+      ]
+    },
+    {
+      "name": "an issue entry reports nothing when its conditions do not match",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string",
+              "minLength": 8
+            },
+            "confirmPassword": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "issues": [
+            {
+              "key": "passwordsDiffer",
+              "conditions": [
+                {
+                  "input": "confirmPassword",
+                  "operator": "notEquals",
+                  "valueFrom": {
+                    "input": "password"
+                  }
+                }
+              ],
+              "path": "confirmPassword",
+              "message": "The passwords do not match"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "email": "a@b.c",
+        "password": "lovelace",
+        "confirmPassword": "lovelace"
+      },
+      "issues": []
+    },
+    {
+      "name": "an issue of shape holds every issue entry back",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string",
+              "minLength": 8
+            },
+            "confirmPassword": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "issues": [
+            {
+              "key": "passwordsDiffer",
+              "conditions": [
+                {
+                  "input": "confirmPassword",
+                  "operator": "notEquals",
+                  "valueFrom": {
+                    "input": "password"
+                  }
+                }
+              ],
+              "path": "confirmPassword",
+              "message": "The passwords do not match"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "password": "lovelace",
+        "confirmPassword": "other"
+      },
+      "issues": [
+        {
+          "code": "required",
+          "path": [
+            "email"
+          ],
+          "params": {
+            "key": "email"
+          }
+        }
+      ]
+    },
+    {
+      "name": "other issues hold no issue entry back",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string",
+              "minLength": 8
+            },
+            "confirmPassword": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "issues": [
+            {
+              "key": "passwordsDiffer",
+              "conditions": [
+                {
+                  "input": "confirmPassword",
+                  "operator": "notEquals",
+                  "valueFrom": {
+                    "input": "password"
+                  }
+                }
+              ],
+              "path": "confirmPassword",
+              "message": "The passwords do not match"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "email": "a@b.c",
+        "password": "short",
+        "confirmPassword": "other"
+      },
+      "issues": [
+        {
+          "code": "minLength",
+          "path": [
+            "password"
+          ],
+          "params": {
+            "minLength": 8,
+            "length": 5
+          }
+        },
+        {
+          "code": "refine",
+          "path": [
+            "confirmPassword"
+          ],
+          "params": {
+            "refine": "passwordsDiffer"
+          }
+        }
+      ]
+    },
+    {
+      "name": "an issue entry guarded by the context reports for matching users",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "shippingCountry": {
+              "type": "string"
+            },
+            "billingCountry": {
+              "type": "string"
+            }
+          },
+          "issues": [
+            {
+              "key": "dutchShipping",
+              "conditions": [
+                {
+                  "attribute": "country",
+                  "operator": "equals",
+                  "value": "nl"
+                },
+                {
+                  "input": "shippingCountry",
+                  "operator": "notEquals",
+                  "valueFrom": {
+                    "input": "billingCountry"
+                  }
+                }
+              ],
+              "path": "shippingCountry",
+              "message": "We ship Dutch orders to the billing country only"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "context": {
+        "country": "nl"
+      },
+      "value": {
+        "shippingCountry": "DE",
+        "billingCountry": "NL"
+      },
+      "issues": [
+        {
+          "code": "refine",
+          "path": [
+            "shippingCountry"
+          ],
+          "params": {
+            "refine": "dutchShipping"
+          }
+        }
+      ]
+    },
+    {
+      "name": "an issue entry guarded by the context never reports for other users",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "shippingCountry": {
+              "type": "string"
+            },
+            "billingCountry": {
+              "type": "string"
+            }
+          },
+          "issues": [
+            {
+              "key": "dutchShipping",
+              "conditions": [
+                {
+                  "attribute": "country",
+                  "operator": "equals",
+                  "value": "nl"
+                },
+                {
+                  "input": "shippingCountry",
+                  "operator": "notEquals",
+                  "valueFrom": {
+                    "input": "billingCountry"
+                  }
+                }
+              ],
+              "path": "shippingCountry",
+              "message": "We ship Dutch orders to the billing country only"
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "context": {
+        "country": "de"
+      },
+      "value": {
+        "shippingCountry": "DE",
+        "billingCountry": "NL"
+      },
+      "issues": []
+    },
+    {
+      "name": "input paths are relative to the node a mutation sits on",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "address": {
+              "schema": "postal"
+            }
+          }
+        },
+        "postal": {
+          "hash": "postal-1",
+          "type": "object",
+          "properties": {
+            "country": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            }
+          },
+          "mutations": [
+            {
+              "key": "unitedStates",
+              "conditions": [
+                {
+                  "input": "country",
+                  "operator": "equals",
+                  "value": "US"
+                }
+              ],
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "required"
+                  ],
+                  "value": [
+                    "state"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "value": {
+        "address": {
+          "country": "US"
+        }
+      },
+      "issues": [
+        {
+          "code": "required",
+          "path": [
+            "address",
+            "state"
+          ],
+          "params": {
+            "key": "state"
+          },
+          "mutation": "unitedStates"
+        }
+      ]
+    },
+    {
+      "name": "a mutation can change a node's issues, and names the issue they report",
+      "schemas": {
+        "subject": {
+          "hash": "subject-1",
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string"
+            }
+          },
+          "mutations": [
+            {
+              "key": "paid",
+              "conditions": [
+                {
+                  "attribute": "plan",
+                  "operator": "equals",
+                  "value": "paid"
+                }
+              ],
+              "operations": [
+                {
+                  "op": "set",
+                  "path": [
+                    "issues"
+                  ],
+                  "value": [
+                    {
+                      "key": "nowhere",
+                      "conditions": [
+                        {
+                          "input": "city",
+                          "operator": "equals",
+                          "value": "Nowhere"
+                        }
+                      ],
+                      "path": "city",
+                      "message": "Name a real city"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": "subject",
+      "context": {
+        "plan": "paid"
+      },
+      "value": {
+        "city": "Nowhere"
+      },
+      "issues": [
+        {
+          "code": "refine",
+          "path": [
+            "city"
+          ],
+          "params": {
+            "refine": "nowhere"
+          },
+          "mutation": "paid"
         }
       ]
     }
