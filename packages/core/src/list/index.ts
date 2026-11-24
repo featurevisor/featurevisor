@@ -33,6 +33,7 @@ import { FeaturevisorCLIError } from "../error";
 import {
   getFeatureAssertionsFromMatrix,
   getMatrixCombinations,
+  getSchemaAssertionsFromMatrix,
   getSegmentAssertionsFromMatrix,
   getVariableAssertionsFromMatrix,
 } from "./matrix";
@@ -761,20 +762,26 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
           }
           testAssertions = assertionsAfterApplyingMatrix;
         } else if (testEntityType === "schema") {
-          // Schema assertions take no matrix, so each is its own case.
-          testAssertions = (testAssertions as unknown as SchemaAssertion[]).map(
-            (assertion, aIndex) => ({
-              ...assertion,
-              _case: getTestCaseMetadata(
-                set,
-                testEntityType,
-                key,
-                assertion as never,
-                aIndex,
-                null,
-                {},
-              ),
-            }),
+          testAssertions = (testAssertions as unknown as SchemaAssertion[]).flatMap(
+            (authoredAssertion, aIndex) => {
+              const matrixValues = authoredAssertion.matrix
+                ? getMatrixCombinations(authoredAssertion.matrix)
+                : [{}];
+              return getSchemaAssertionsFromMatrix(aIndex, authoredAssertion).map(
+                (assertion, matrixIndex) => ({
+                  ...assertion,
+                  _case: getTestCaseMetadata(
+                    set,
+                    testEntityType,
+                    key,
+                    authoredAssertion as never,
+                    aIndex,
+                    authoredAssertion.matrix ? matrixIndex : null,
+                    matrixValues[matrixIndex],
+                  ),
+                }),
+              );
+            },
           ) as unknown as typeof testAssertions;
         }
       }

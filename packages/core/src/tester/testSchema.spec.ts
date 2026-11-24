@@ -234,13 +234,53 @@ assertions:
         deps({ case: JSON.stringify([null, "schema", "schemas.signUp", 1, null]) }),
         "test",
       );
-      expect(one.assertions.map((assertion: any) => assertion.description)).toEqual(["Second"]);
+      expect(one.assertions.map((assertion: any) => assertion.description)).toEqual([
+        "Assertion #2: Second",
+      ]);
       expect(
         await listEntities(deps({ executionProtocol: true, applyMatrix: true }), "test"),
       ).toEqual([]);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  test("a matrix runs one case per combination, in every field", async () => {
+    const result = await run(`schema: signUp
+
+assertions:
+  - description: \${{ accountType }} accounts in \${{ environment }}
+    matrix:
+      environment: [dev, production]
+      accountType: [personal, business]
+    environment: \${{ environment }}
+    value:
+      accountType: \${{ accountType }}
+      displayName: Ada
+      taxId: DE123456789
+    expectedToBeValid: true
+
+  - description: A name of one letter in \${{ environment }}
+    matrix:
+      environment: [dev, production]
+      valid: [true]
+    environment: \${{ environment }}
+    value:
+      accountType: personal
+      displayName: A
+    expectedToBeValid: \${{ valid }}
+`);
+
+    expect(result.lint).toEqual([]);
+    // The second assertion fails in production, where names need two characters.
+    expect(result.assertions.map(({ passed }) => passed)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
   });
 
   test("lint checks schema specs", async () => {

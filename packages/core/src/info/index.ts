@@ -104,8 +104,7 @@ export async function showProjectInfo(deps: Dependencies) {
     const testSpec = await datasource.readTest(test);
 
     for (const assertion of testSpec.assertions) {
-      // Schema assertions take no matrix.
-      if ("matrix" in assertion && assertion.matrix) {
+      if (assertion.matrix) {
         const combinations = getMatrixCombinations(assertion.matrix);
         assertionsCount += combinations.length;
       } else {

@@ -991,20 +991,29 @@ export function getTestAuthoringShapes(
             .object({
               key: z.string().min(1).optional(),
               promotable: z.boolean().optional(),
+              matrix: matrixZodSchema.optional(),
               description: z.string().optional(),
               environment: environmentZodSchema(true),
               target: refineWithMessage(
                 z.string(),
-                (value) => availableTargetKeys.includes(value),
+                (value) => value.indexOf("${{") === 0 || availableTargetKeys.includes(value),
                 (value) => `Unknown target "${value}"`,
               ).optional(),
               context: z.record(z.string(), z.unknown()).optional(),
               value: z.unknown().optional(),
-              expectedToBeValid: z.boolean().optional(),
+              expectedToBeValid: z.union([z.boolean(), matrixPlaceholderZodSchema]).optional(),
               expectedIssues: z.array(expectedSchemaIssueZodSchema).optional(),
             })
             .strict()
             .superRefine((assertion, ctx) => {
+              validateMatrixPlaceholders(assertion, assertion.matrix, [], ctx);
+              validateMatrixSelectorValues(
+                assertion.environment,
+                assertion.matrix,
+                projectConfig.environments || [],
+                "environment",
+                ctx,
+              );
               if (!Object.prototype.hasOwnProperty.call(assertion, "value")) {
                 ctx.addIssue({
                   code: "custom",

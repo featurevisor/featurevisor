@@ -349,6 +349,7 @@ export interface SchemaAssertion {
   _case?: TestCaseExecutionMetadata;
   key?: string;
   promotable?: boolean;
+  matrix?: AssertionMatrix;
   description?: string;
   /** The environment whose version of the schema validates the value. */
   environment?: EnvironmentKey;

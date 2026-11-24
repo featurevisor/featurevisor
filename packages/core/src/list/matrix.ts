@@ -4,6 +4,7 @@ import type {
   SegmentAssertion,
   VariableAssertion,
   ScenarioAssertion,
+  SchemaAssertion,
 } from "@featurevisor/types";
 
 function generateCombinations(
@@ -265,6 +266,49 @@ export function getSegmentAssertionsFromMatrix(
   }
 
   return assertions;
+}
+
+/**
+ * Schemas
+ */
+export function applyCombinationToSchemaAssertion(
+  combination: any,
+  assertion: SchemaAssertion,
+): SchemaAssertion {
+  const flattenedAssertion = { ...assertion };
+  delete flattenedAssertion.matrix;
+  applyCombinationToFields(
+    flattenedAssertion,
+    [
+      "description",
+      "environment",
+      "target",
+      "context",
+      "value",
+      "expectedToBeValid",
+      "expectedIssues",
+    ],
+    combination,
+  );
+  return flattenedAssertion;
+}
+
+export function getSchemaAssertionsFromMatrix(
+  aIndex: number,
+  assertionWithMatrix: SchemaAssertion,
+): SchemaAssertion[] {
+  const combinations = assertionWithMatrix.matrix
+    ? getMatrixCombinations(assertionWithMatrix.matrix)
+    : [undefined];
+  return combinations.map((combination) => {
+    const assertion = combination
+      ? applyCombinationToSchemaAssertion(combination, assertionWithMatrix)
+      : { ...assertionWithMatrix };
+    assertion.description = `Assertion #${aIndex + 1}${
+      assertion.description ? `: ${assertion.description}` : ""
+    }`;
+    return assertion;
+  });
 }
 
 export function getVariableAssertionsFromMatrix<T extends VariableAssertion | ScenarioAssertion>(
