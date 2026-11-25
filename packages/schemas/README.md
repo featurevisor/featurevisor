@@ -767,6 +767,8 @@ includeAnnotations: false
 
 Its applications still validate the same, since validation never reads annotations, but their issues carry no titles.
 
+The Catalog shows a schema's annotations on its Overview: the root's above the structure, and each field's in an Annotations column of the structure table, choices one a line.
+
 ## Choices
 
 A choice needs more than its value: a label, a flag, a region, a price, a badge. Every choice can carry a built in `title`, and whatever the schema's `optionSchema` declares. `optionSchema` sits at the root, inline or by reference, as `annotationsSchema` does, and follows the same rules: one object schema, closed, per file, never in a datafile:
@@ -2355,7 +2357,7 @@ Later releases of this package are planned to add:
 - rendering again in React when a context a schema's conditions read changes,
 - choosing between shapes, such as a payment method of card or bank, each an object told apart by a discriminator,
 - messages and annotations that depend on conditions, written as a list of variants where the first that matches wins, such as "ZIP code" in the US and "postcode" elsewhere,
-- annotations in the Catalog and in `featurevisor diff`, and conversion to JSON Schema, with `title` and `examples` as its own keywords.
+- annotations in `featurevisor diff`, and conversion to JSON Schema, with `title` and `examples` as its own keywords.
 
 ## License
 

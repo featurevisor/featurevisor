@@ -21,6 +21,7 @@ import { ConditionTree } from "../../components/trees";
 import { queryHref } from "../../query/link";
 import { whoGetsThisQuery } from "../../query/report";
 import {
+  SchemaAnnotationsOverview,
   SchemaPropertiesOverview,
   SchemaTable,
   VariableValueView,
@@ -109,6 +110,8 @@ export function OverviewTab() {
           <ConditionTree conditions={entity.conditions as any} setKey={setKey} />
         </OverviewSection>
       )}
+
+      {detail.type === "schema" && <SchemaAnnotationsOverview schema={entity as SchemaLike} />}
 
       {detail.type === "schema" && !usesSchemaStructureTable(entity as SchemaLike) && (
         <SchemaPropertiesOverview schema={entity as SchemaLike} setKey={setKey} />

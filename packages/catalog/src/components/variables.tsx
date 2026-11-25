@@ -2,7 +2,14 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 
 import { getEntityRoute } from "../entityTypes";
-import { Badge, EntityKey, OverviewChip, OverviewMetaPanel, OverviewMetaRow } from "./ui";
+import {
+  Badge,
+  EntityKey,
+  OverviewChip,
+  OverviewMetaPanel,
+  OverviewMetaRow,
+  OverviewSection,
+} from "./ui";
 
 export type SchemaLike = Record<string, unknown>;
 
@@ -13,6 +20,8 @@ type FlatSchemaRow = {
   required: boolean;
   description?: string;
   constraints: string[];
+  /** What a schema file says beside the field's rules, for forms, such as `title` or `placeholder`. */
+  annotations?: Record<string, unknown>;
 };
 
 export function slugifyFragment(value: string) {
@@ -54,6 +63,27 @@ export function hasSchemaTableRows(schema: SchemaLike) {
   }
 
   return rows.length > 0;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+/** A node's annotations, or undefined when it has none. Only schema files carry them. */
+export function getSchemaAnnotations(schema: unknown): Record<string, unknown> | undefined {
+  const annotations = isPlainRecord(schema) ? schema.annotations : undefined;
+  return isPlainRecord(annotations) && Object.keys(annotations).length > 0
+    ? annotations
+    : undefined;
+}
+
+/** Annotations of a node and of the items it describes, the node's own winning. */
+function mergeAnnotations(...nodes: SchemaLike[]): Record<string, unknown> | undefined {
+  const merged = Object.assign(
+    {},
+    ...nodes.map((node) => getSchemaAnnotations(node) || {}).reverse(),
+  );
+  return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
 function getSchemaDescription(schema: SchemaLike) {
@@ -145,6 +175,7 @@ function createSchemaRow(
     required,
     description: getSchemaDescription(schema),
     constraints: getSchemaConstraintLines(schema),
+    annotations: getSchemaAnnotations(schema),
   };
 }
 
@@ -260,6 +291,9 @@ function flattenSchemaRows(schema: SchemaLike, prefix: string, required = false)
     const rows = Object.entries(properties).flatMap(([key, propertySchema]) =>
       flattenSchemaRows(propertySchema, prefix ? `${prefix}.${key}` : key, requiredKeys.has(key)),
     );
+    // A field holding an object has no row of its own, unless it carries annotations, such as a title.
+    if (prefix && getSchemaAnnotations(schema))
+      rows.unshift(createSchemaRow(schema, prefix, required));
 
     return appendAdditionalPropertyRows(schema, prefix, rows);
   }
@@ -280,6 +314,8 @@ function flattenSchemaRows(schema: SchemaLike, prefix: string, required = false)
         row.isRef = isSchemaRef(items);
         row.description = getSchemaDescription(schema) || getSchemaDescription(items);
         row.constraints = getArrayElementConstraintLines(schema, items);
+        // Choices for a multiple select sit on the items, beside the list's own annotations.
+        row.annotations = mergeAnnotations(schema, items);
 
         return [row];
       }
@@ -297,7 +333,8 @@ function flattenSchemaRows(schema: SchemaLike, prefix: string, required = false)
           ),
         );
 
-        if (getSchemaConstraintLines(schema).length > 0) {
+        const annotations = mergeAnnotations(schema, items);
+        if (getSchemaConstraintLines(schema).length > 0 || annotations) {
           rows.unshift({
             path: arrayPath,
             typeLabel: "object[]",
@@ -305,6 +342,7 @@ function flattenSchemaRows(schema: SchemaLike, prefix: string, required = false)
             required,
             description: getSchemaDescription(schema),
             constraints: getSchemaConstraintLines(schema),
+            annotations,
           });
         }
 
@@ -322,6 +360,57 @@ function flattenSchemaRows(schema: SchemaLike, prefix: string, required = false)
   return [];
 }
 
+function formatAnnotationValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map(formatAnnotationValue).join(", ");
+  if (value === null || typeof value !== "object") return String(value);
+  return JSON.stringify(value);
+}
+
+/** One choice of an `options` annotation: its title, then what else it carries. */
+function describeChoice(entry: unknown): string {
+  if (!isPlainRecord(entry)) return formatAnnotationValue(entry);
+  const { title, ...fields } = entry;
+  return [
+    typeof title === "string" ? title : undefined,
+    ...Object.entries(fields).map(([name, value]) => `${name} ${formatAnnotationValue(value)}`),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * A node's annotations as lines, `name value`, the title first. An `options`
+ * annotation lists its choices, one a line, by value.
+ */
+export function AnnotationLines(props: { annotations?: Record<string, unknown> }) {
+  const entries = Object.entries(props.annotations || {}).sort(
+    ([first], [second]) => Number(second === "title") - Number(first === "title"),
+  );
+  if (entries.length === 0) return <span className="text-faint">—</span>;
+  return (
+    <ul className="space-y-0.5">
+      {entries.map(([name, value]) => (
+        <li key={name} className="[overflow-wrap:anywhere]">
+          <span className="font-mono text-[11px] text-faint">{name}</span>{" "}
+          {name === "options" && isPlainRecord(value) ? (
+            <ul className="ml-3 mt-0.5 space-y-0.5">
+              {Object.entries(value).map(([choice, entry]) => (
+                <li key={choice}>
+                  <span className="font-mono text-[11px] text-text">{choice}</span>{" "}
+                  <span className="text-muted">{describeChoice(entry)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <span className="text-text">{formatAnnotationValue(value)}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
   const rows = flattenSchemaRows(props.schema, "");
 
@@ -329,13 +418,22 @@ export function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
     return null;
   }
 
+  // Only schema files carry annotations, so variables and attributes keep four columns.
+  const annotated = rows.some((row) => row.annotations);
+
   return (
     <div className="overflow-x-auto">
-      <table className="variable-schema-table w-full table-fixed text-xs leading-snug">
+      <table
+        className={[
+          "variable-schema-table w-full table-fixed text-xs leading-snug",
+          annotated ? "variable-schema-table-annotated" : "",
+        ].join(" ")}
+      >
         <colgroup>
           <col className="variable-schema-col-path" />
           <col className="variable-schema-col-type" />
           <col className="variable-schema-col-constraints" />
+          {annotated && <col className="variable-schema-col-annotations" />}
           <col className="variable-schema-col-description" />
         </colgroup>
         <thead>
@@ -343,6 +441,7 @@ export function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
             <th className="pb-1.5 pr-3 font-semibold">Path</th>
             <th className="pb-1.5 pr-3 font-semibold">Type</th>
             <th className="pb-1.5 pr-3 font-semibold">Constraints</th>
+            {annotated && <th className="pb-1.5 pr-3 font-semibold">Annotations</th>}
             <th className="pb-1.5 font-semibold">Description</th>
           </tr>
         </thead>
@@ -378,6 +477,11 @@ export function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
                   <span className="text-faint">—</span>
                 )}
               </td>
+              {annotated && (
+                <td className="py-1.5 pr-3">
+                  <AnnotationLines annotations={row.annotations} />
+                </td>
+              )}
               <td className="py-1.5 text-muted [overflow-wrap:anywhere]">
                 {row.description || <span className="text-faint">—</span>}
               </td>
@@ -401,7 +505,7 @@ function SchemaPropertyValue(props: { children: React.ReactNode }) {
 function getSchemaProperties(
   schema: SchemaLike,
   setKey?: string,
-  options: { includeType?: boolean } = {},
+  options: { includeType?: boolean; includeAnnotations?: boolean } = {},
 ): SchemaProperty[] {
   const properties: SchemaProperty[] = [];
 
@@ -503,6 +607,19 @@ function getSchemaProperties(
     });
   }
 
+  // A branch of a `oneOf` carries its own annotations, such as a choice's title.
+  const annotations = options.includeAnnotations ? getSchemaAnnotations(schema) : undefined;
+  if (annotations) {
+    properties.push({
+      label: "Annotations",
+      value: (
+        <div className="text-xs leading-snug">
+          <AnnotationLines annotations={annotations} />
+        </div>
+      ),
+    });
+  }
+
   return properties;
 }
 
@@ -518,9 +635,11 @@ function SchemaPropertiesPanel(props: {
   schema: SchemaLike;
   setKey?: string;
   includeType?: boolean;
+  includeAnnotations?: boolean;
 }) {
   const properties = getSchemaProperties(props.schema, props.setKey, {
     includeType: props.includeType,
+    includeAnnotations: props.includeAnnotations,
   });
 
   if (properties.length === 0) {
@@ -535,6 +654,23 @@ function SchemaPropertiesPanel(props: {
         </OverviewMetaRow>
       ))}
     </OverviewMetaPanel>
+  );
+}
+
+/**
+ * What a schema file says beside its root's rules, such as a form's `title`,
+ * `submitLabel` and `order`. Its fields' annotations sit in the structure table.
+ */
+export function SchemaAnnotationsOverview(props: { schema: SchemaLike }) {
+  const annotations = getSchemaAnnotations(props.schema);
+  if (!annotations) return null;
+  // Names keep their case, as keys do, so the panel lists them as the table does.
+  return (
+    <OverviewSection title="Annotations">
+      <div className="rounded-xl bg-elevated px-5 py-4 text-sm leading-relaxed">
+        <AnnotationLines annotations={annotations} />
+      </div>
+    </OverviewSection>
   );
 }
 
@@ -553,7 +689,12 @@ export function SchemaPropertiesOverview(props: { schema: SchemaLike; setKey?: s
             <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
               Option {index + 1}
             </h3>
-            <SchemaPropertiesPanel schema={option} setKey={props.setKey} includeType />
+            <SchemaPropertiesPanel
+              schema={option}
+              setKey={props.setKey}
+              includeType
+              includeAnnotations
+            />
           </section>
         ))}
       </div>
