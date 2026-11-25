@@ -20,7 +20,7 @@ function isNode(value: unknown): value is Node {
 }
 
 /** A schema node with its mutations or issues, and where it sits, such as `address` or `items[]`. */
-interface RuleNode {
+interface EntryNode {
   path: string;
   node: Node;
 }
@@ -47,8 +47,8 @@ function countMutations(mutations: unknown): number {
 }
 
 /** Every node with mutations or issues, the root first, in the order the file writes them. */
-export function getSchemaRuleNodes(schema: unknown): RuleNode[] {
-  const found: RuleNode[] = [];
+export function getSchemaEntryNodes(schema: unknown): EntryNode[] {
+  const found: EntryNode[] = [];
   const visit = (node: unknown, path: string) => {
     if (!isNode(node)) return;
     if (
@@ -68,11 +68,18 @@ export function getSchemaRuleNodes(schema: unknown): RuleNode[] {
   return found;
 }
 
-/** How many rules a schema's Rules tab shows: mutations, in every environment's list, and issues. */
-export function countSchemaRules(schema: unknown): number {
-  return getSchemaRuleNodes(schema).reduce(
-    (count, { node }) =>
-      count + countMutations(node.mutations) + countNested(node.issues, "issues"),
+/** How many mutations the Mutations tab shows: in every environment's list, nested ones included. */
+export function countSchemaMutations(schema: unknown): number {
+  return getSchemaEntryNodes(schema).reduce(
+    (count, { node }) => count + countMutations(node.mutations),
+    0,
+  );
+}
+
+/** How many issue entries the Issues tab shows, nested ones included. */
+export function countSchemaIssues(schema: unknown): number {
+  return getSchemaEntryNodes(schema).reduce(
+    (count, { node }) => count + countNested(node.issues, "issues"),
     0,
   );
 }
@@ -112,7 +119,7 @@ function Where(props: { path: string }) {
   ) : null;
 }
 
-function RuleCard(props: {
+function EntryCard(props: {
   id: string;
   title: string;
   path: string;
@@ -161,7 +168,7 @@ function MutationCard(props: {
   const key = typeof record.key === "string" ? record.key : `#${props.index + 1}`;
   const nested = Array.isArray(record.mutations) ? record.mutations : [];
   return (
-    <RuleCard
+    <EntryCard
       id={`mutation-${slugifyFragment(`${props.path} ${key}`)}`}
       title={key}
       path={props.path}
@@ -190,7 +197,7 @@ function MutationCard(props: {
           </div>
         </Labelled>
       )}
-    </RuleCard>
+    </EntryCard>
   );
 }
 
@@ -205,7 +212,7 @@ function IssueCard(props: {
   const key = typeof record.key === "string" ? record.key : `#${props.index + 1}`;
   const nested = Array.isArray(record.issues) ? record.issues : [];
   return (
-    <RuleCard
+    <EntryCard
       id={`issue-${slugifyFragment(`${props.path} ${key}`)}`}
       title={key}
       path={props.path}
@@ -241,15 +248,16 @@ function IssueCard(props: {
           </div>
         </Labelled>
       )}
-    </RuleCard>
+    </EntryCard>
   );
 }
 
 /**
- * A schema's rules that change: its mutations, at the root listed per environment in a project
- * with environments, applied when a value is validated, and the issues an object reports.
+ * A schema's mutations: at the root listed per environment in a project with
+ * environments, and at any node, each changing the rules when its conditions
+ * match a value being validated.
  */
-export function SchemaRulesTab() {
+export function SchemaMutationsTab() {
   const { detail, setKey } = useEntityDetail();
   const { environmentKey } = useParams();
   const schema = detail.entity as Node;
@@ -260,7 +268,6 @@ export function SchemaRulesTab() {
     ? [...(configured || Object.keys(byEnvironment))].sort(sortEnvironmentKeys)
     : [];
   const selected = useSelectedEnvironment(environments, environmentKey);
-  const nodes = getSchemaRuleNodes(schema);
   useScrollToHash([detail.key]);
 
   // An environment without a list uses the one it inherits from, as the builder resolves it.
@@ -274,86 +281,95 @@ export function SchemaRulesTab() {
 
   const mutations = [
     ...(Array.isArray(rootList) ? rootList : []).map((mutation) => ({ path: "", mutation })),
-    ...nodes.flatMap(({ path, node }) =>
+    ...getSchemaEntryNodes(schema).flatMap(({ path, node }) =>
       (Array.isArray(node.mutations) ? node.mutations : []).map((mutation) => ({
         path,
         mutation,
       })),
     ),
   ];
-  const issues = nodes.flatMap(({ path, node }) =>
-    (Array.isArray(node.issues) ? node.issues : []).map((issue) => ({ path, issue })),
-  );
 
-  if (!byEnvironment && mutations.length === 0 && issues.length === 0) {
+  if (!byEnvironment && mutations.length === 0) {
     return (
       <EmptyState
-        title="No rules that change"
+        title="No mutations"
         description="This schema's rules are the same in every environment and for every value."
       />
     );
   }
 
   return (
-    <div className="space-y-8">
-      {(byEnvironment || mutations.length > 0) && (
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-text">Mutations</h2>
+    <section className="space-y-4">
+      <p className="text-sm text-muted">
+        Every mutation whose conditions match changes the schema's rules, in order, when a value is
+        validated. Those that always apply, before any others, are applied when the datafile is
+        built.
+      </p>
+      {byEnvironment && (
+        <>
+          <EnvironmentPills
+            base="mutations"
+            environments={environments}
+            selectedEnvironment={selected}
+          />
+          {selected && (listFrom !== selected || !Array.isArray(rootList) || !rootList.length) && (
             <p className="text-sm text-muted">
-              Every mutation whose conditions match changes the rules, in order, when a value is
-              validated. Those that always apply, before any others, are applied when the datafile
-              is built.
+              {listFrom && listFrom !== selected
+                ? `${selected} uses the mutations of ${listFrom}.`
+                : `${selected} lists no mutations at the root.`}
             </p>
-          </div>
-          {byEnvironment && (
-            <>
-              <EnvironmentPills
-                base="rules"
-                environments={environments}
-                selectedEnvironment={selected}
-              />
-              {selected &&
-                (listFrom !== selected || !Array.isArray(rootList) || !rootList.length) && (
-                  <p className="text-sm text-muted">
-                    {listFrom && listFrom !== selected
-                      ? `${selected} uses the mutations of ${listFrom}.`
-                      : `${selected} lists no mutations at the root.`}
-                  </p>
-                )}
-            </>
           )}
-          {mutations.map(({ path, mutation }, index) => (
-            <MutationCard
-              key={`${path}:${index}`}
-              mutation={mutation}
-              path={path}
-              index={index}
-              setKey={setKey}
-            />
-          ))}
-        </section>
+        </>
       )}
+      {mutations.map(({ path, mutation }, index) => (
+        <MutationCard
+          key={`${path}:${index}`}
+          mutation={mutation}
+          path={path}
+          index={index}
+          setKey={setKey}
+        />
+      ))}
+    </section>
+  );
+}
 
-      {issues.length > 0 && (
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-text">Issues</h2>
-            <p className="text-sm text-muted">
-              Each issue is reported when its conditions match, after the object's own rules.
-            </p>
-          </div>
-          {issues.map(({ path, issue }, index) => (
-            <IssueCard
-              key={`${path}:${index}`}
-              issue={issue}
-              path={path}
-              index={index}
-              setKey={setKey}
-            />
-          ))}
-        </section>
-      )}
-    </div>
+/**
+ * A schema's issues: entries on its objects, each reporting an issue when its
+ * conditions match, after the object's own rules.
+ */
+export function SchemaIssuesTab() {
+  const { detail, setKey } = useEntityDetail();
+  const schema = detail.entity as Node;
+  useScrollToHash([detail.key]);
+  const issues = getSchemaEntryNodes(schema).flatMap(({ path, node }) =>
+    (Array.isArray(node.issues) ? node.issues : []).map((issue) => ({ path, issue })),
+  );
+
+  if (issues.length === 0) {
+    return (
+      <EmptyState
+        title="No issues"
+        description="Nothing checks this schema's fields against each other."
+      />
+    );
+  }
+
+  return (
+    <section className="space-y-4">
+      <p className="text-sm text-muted">
+        Each issue is reported when its conditions match, after the object's own rules, so its
+        conditions say when a value fails.
+      </p>
+      {issues.map(({ path, issue }, index) => (
+        <IssueCard
+          key={`${path}:${index}`}
+          issue={issue}
+          path={path}
+          index={index}
+          setKey={setKey}
+        />
+      ))}
+    </section>
   );
 }

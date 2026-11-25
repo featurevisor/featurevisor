@@ -1488,7 +1488,7 @@ assertions:
 - **Running them:** `featurevisor test` runs schema specs with the rest, and `--entity-type=schema` runs them alone. A failed assertion prints the issues found and a `--case` to rerun it. Lint checks that each spec names a schema, an environment and an expectation.
 - **`matrix`** repeats an assertion for each combination, filling any field, `value` and `expectedIssues` included, as feature specs do.
 - Specs run in JavaScript, with this package. Runners for other languages skip them until those languages have a validator.
-- **In the Catalog**, a schema's page lists its specs on a Tests tab, and its mutations, by environment, and its issues on a Rules tab.
+- **In the Catalog**, a schema's page lists its specs on a Tests tab, its mutations, by environment, on a Mutations tab, and its issues on an Issues tab.
 
 ## Reading form data
 

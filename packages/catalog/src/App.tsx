@@ -41,6 +41,8 @@ const FeatureVariablesTab = lazyPage(loadDetail, "FeatureVariablesTab");
 const FeatureRulesTab = lazyPage(loadDetail, "FeatureRulesTab");
 const FeatureForceTab = lazyPage(loadDetail, "FeatureForceTab");
 const VariableOverridesTab = lazyPage(loadDetail, "VariableOverridesTab");
+const SchemaMutationsTab = lazyPage(loadDetail, "SchemaMutationsTab");
+const SchemaIssuesTab = lazyPage(loadDetail, "SchemaIssuesTab");
 const TestsTab = lazyPage(loadDetail, "TestsTab");
 const UsageTab = lazyPage(loadDetail, "UsageTab");
 const HistoryTab = lazyPage(loadDetail, "HistoryTab");
@@ -59,6 +61,9 @@ function EntityRoutes(props: { prefix?: string } = {}) {
       <Route path="force/:environmentKey" element={<FeatureForceTab />} />
       <Route path="overrides" element={<VariableOverridesTab />} />
       <Route path="overrides/:environmentKey" element={<VariableOverridesTab />} />
+      <Route path="mutations" element={<SchemaMutationsTab />} />
+      <Route path="mutations/:environmentKey" element={<SchemaMutationsTab />} />
+      <Route path="issues" element={<SchemaIssuesTab />} />
       <Route path="tests" element={<TestsTab />} />
       <Route path="usage" element={<UsageTab />} />
       <Route path="contents" element={<UsageTab />} />

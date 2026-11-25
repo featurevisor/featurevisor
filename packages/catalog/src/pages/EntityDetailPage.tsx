@@ -27,7 +27,7 @@ import { useDocumentTitle } from "../useDocumentTitle";
 import { recordRecentEntity } from "../recentEntities";
 import { EditLink } from "../components/editLink";
 import { countItems } from "./entityDetail/shared";
-import { countSchemaRules } from "./entityDetail/SchemaRulesTab";
+import { countSchemaIssues, countSchemaMutations } from "./entityDetail/SchemaTabs";
 import { countUsage } from "./entityDetail/UsageTab";
 
 // Tabs live in entityDetail/. The router and tests import them from this page.
@@ -35,6 +35,7 @@ export { useEntityDetail } from "./entityDetail/shared";
 export { OverviewTab } from "./entityDetail/OverviewTab";
 export { FeatureRulesTab, FeatureForceTab } from "./entityDetail/RulesTab";
 export { VariableOverridesTab } from "./entityDetail/OverridesTab";
+export { SchemaMutationsTab, SchemaIssuesTab } from "./entityDetail/SchemaTabs";
 export { FeatureVariationsTab } from "./entityDetail/VariationsTab";
 export { getVariableSetters, FeatureVariablesTab } from "./entityDetail/VariablesTab";
 export { UsageTab } from "./entityDetail/UsageTab";
@@ -193,6 +194,8 @@ const ENTITY_TABS = new Set([
   "rules",
   "force",
   "overrides",
+  "mutations",
+  "issues",
   "tests",
   "usage",
   "contents",
@@ -389,8 +392,12 @@ function EntityDetailView() {
     ...(type === "variable"
       ? [{ to: "overrides", label: "Overrides", count: countItems(entity.overrides) }]
       : []),
+    // A schema has no rules as features do: its mutations change its rules, and its issues check fields against each other.
     ...(type === "schema"
-      ? [{ to: "rules", label: "Rules", count: countSchemaRules(entity) }]
+      ? [
+          { to: "mutations", label: "Mutations", count: countSchemaMutations(entity) },
+          { to: "issues", label: "Issues", count: countSchemaIssues(entity) },
+        ]
       : []),
     ...(type === "feature" || type === "segment" || type === "variable" || type === "schema"
       ? [

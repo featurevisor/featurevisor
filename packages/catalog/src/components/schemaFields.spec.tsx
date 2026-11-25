@@ -177,7 +177,7 @@ describe("a schema's structure on its Overview", () => {
     expect(fields).toContain("email string When it fails pattern Each member's email");
   });
 
-  test("mutations and issues link from the fields they change or report on to the Rules tab", () => {
+  test("mutations and issues link from the fields they change or report on to their tabs", () => {
     const html = render(
       <SchemaFields
         schema={{
@@ -254,12 +254,15 @@ describe("a schema's structure on its Overview", () => {
     // A field a mutation adds has no row, so the header names it.
     expect(fields).toContain("Adds nickname under business");
     expect(fields).not.toContain("Checked by group");
-    // Each link opens the card on the Rules tab, in the first environment that lists it.
-    expect(html).toContain('href="/rules/staging#mutation-business"');
-    expect(html).toContain('href="/rules/staging#mutation-germanbusiness"');
-    expect(html).toContain('href="/rules#mutation-members-adminemail"');
-    expect(html).toContain('href="/rules#issue-passwordsdiffer"');
-    expect(html).toContain('title="Mutation business in staging, production, on the Rules tab"');
+    // Each link opens its card on the Mutations tab, in the first environment that lists it, or on the Issues tab.
+    expect(html).toContain('href="/mutations/staging#mutation-business"');
+    expect(html).toContain('href="/mutations/staging#mutation-germanbusiness"');
+    expect(html).toContain('href="/mutations#mutation-members-adminemail"');
+    expect(html).toContain('href="/issues#issue-passwordsdiffer"');
+    expect(html).toContain(
+      'title="Mutation business in staging, production, on the Mutations tab"',
+    );
+    expect(html).toContain('title="Issue passwordsDiffer, on the Issues tab"');
   });
 
   test("the header names the vocabularies the annotations and choices follow", () => {

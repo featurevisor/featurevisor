@@ -95,10 +95,10 @@ export function choicesOf(node: Node): Choice[] | undefined {
 
 /* ---------------------------------------------------------------------------
  * What changes: mutations that change a field, and issues that report on it,
- * each linking to its card on the Rules tab.
+ * each linking to its card on the Mutations or Issues tab.
  * ------------------------------------------------------------------------- */
 
-/** A mutation or an issue entry, as a link to its card on the Rules tab. */
+/** A mutation or an issue entry, as a link to its card on the Mutations or Issues tab. */
 interface RuleLink {
   key: string;
   kind: "mutation" | "issue";
@@ -166,8 +166,8 @@ function collectChanges(schema: Node): Changes {
     changes.set(path, list);
   };
 
-  // `rulePath` is where the Rules tab says a node sits, which its card's anchor is made from.
-  const visit = (node: unknown, fieldPath: string, rulePath: string, depth: number) => {
+  // `cardPath` is where the Mutations and Issues tabs say a node sits, which a card's anchor is made from.
+  const visit = (node: unknown, fieldPath: string, cardPath: string, depth: number) => {
     if (!isNode(node) || depth > 12) return;
     const lists: [string | undefined, unknown][] = Array.isArray(node.mutations)
       ? [[undefined, node.mutations]]
@@ -183,8 +183,8 @@ function collectChanges(schema: Node): Changes {
             key: mutation.key,
             kind: "mutation",
             to: {
-              pathname: environment ? `rules/${environment}` : "rules",
-              hash: `#mutation-${slugifyFragment(`${rulePath} ${mutation.key}`)}`,
+              pathname: environment ? `mutations/${environment}` : "mutations",
+              hash: `#mutation-${slugifyFragment(`${cardPath} ${mutation.key}`)}`,
             },
             environments: environment ? [environment] : [],
           };
@@ -205,8 +205,8 @@ function collectChanges(schema: Node): Changes {
             key: entry.key,
             kind: "issue",
             to: {
-              pathname: "rules",
-              hash: `#issue-${slugifyFragment(`${rulePath} ${entry.key}`)}`,
+              pathname: "issues",
+              hash: `#issue-${slugifyFragment(`${cardPath} ${entry.key}`)}`,
             },
             environments: [],
           });
@@ -217,18 +217,18 @@ function collectChanges(schema: Node): Changes {
     walkIssues(node.issues);
     if (isNode(node.properties))
       for (const [key, child] of Object.entries(node.properties))
-        visit(child, joinPath(fieldPath, key), joinPath(rulePath, key), depth + 1);
-    if (isNode(node.items)) visit(node.items, fieldPath, `${rulePath}[]`, depth + 1);
+        visit(child, joinPath(fieldPath, key), joinPath(cardPath, key), depth + 1);
+    if (isNode(node.items)) visit(node.items, fieldPath, `${cardPath}[]`, depth + 1);
     if (isNode(node.additionalProperties))
       visit(
         node.additionalProperties,
         joinPath(fieldPath, "*"),
-        joinPath(rulePath, "*"),
+        joinPath(cardPath, "*"),
         depth + 1,
       );
     if (Array.isArray(node.oneOf))
       node.oneOf.forEach((branch, index) =>
-        visit(branch, fieldPath, `${rulePath} oneOf ${index + 1}`.trim(), depth + 1),
+        visit(branch, fieldPath, `${cardPath} oneOf ${index + 1}`.trim(), depth + 1),
       );
   };
   visit(schema, "", "", 0);
@@ -241,7 +241,11 @@ function RuleLinkChip(props: { link: RuleLink }) {
   return (
     <Link
       to={link.to}
-      title={`${link.kind === "mutation" ? "Mutation" : "Issue"} ${link.key}${where}, on the Rules tab`}
+      title={
+        link.kind === "mutation"
+          ? `Mutation ${link.key}${where}, on the Mutations tab`
+          : `Issue ${link.key}, on the Issues tab`
+      }
       className="rounded-md border border-border px-1.5 py-0.5 font-mono text-[11px] text-muted transition-colors hover:border-pill hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       {link.key}
@@ -673,7 +677,7 @@ function pathsOf(fields: Field[]): string[] {
  * A schema's structure on its Overview, as a list of fields: each with its
  * name, type and whether it is required, then its title, its rules in words,
  * its choices, its other annotations, its messages, what changes or checks it
- * on the Rules tab, and any notes for maintainers. Nested objects and the
+ * on the Mutations and Issues tabs, and any notes for maintainers. Nested objects and the
  * items of a list of objects show their fields inside.
  */
 export function SchemaFields(props: { schema: Node; setKey?: string }) {

@@ -1,6 +1,6 @@
 import { describeConditions, parseConditions } from "../../components/conditionExpression";
 import { getTestOwner } from "../../testReferences";
-import { countSchemaRules, getSchemaRuleNodes } from "./SchemaRulesTab";
+import { countSchemaIssues, countSchemaMutations, getSchemaEntryNodes } from "./SchemaTabs";
 
 const schema = {
   type: "object",
@@ -60,14 +60,16 @@ const schema = {
   ],
 };
 
-describe("a schema's Rules tab", () => {
+describe("a schema's Mutations and Issues tabs", () => {
   test("finds every node with mutations or issues, the root first, and says where each sits", () => {
-    expect(getSchemaRuleNodes(schema).map(({ path }) => path)).toEqual(["", "address", "items[]"]);
+    expect(getSchemaEntryNodes(schema).map(({ path }) => path)).toEqual(["", "address", "items[]"]);
   });
 
-  test("counts mutations, in every environment's list and nested, and issues", () => {
-    expect(countSchemaRules(schema)).toBe(5);
-    expect(countSchemaRules({ type: "string" })).toBe(0);
+  test("counts mutations, in every environment's list and nested, and issues, each for its own tab", () => {
+    expect(countSchemaMutations(schema)).toBe(3);
+    expect(countSchemaIssues(schema)).toBe(2);
+    expect(countSchemaMutations({ type: "string" })).toBe(0);
+    expect(countSchemaIssues({ type: "string" })).toBe(0);
   });
 
   test("an input leaf reads as a field, compared with a value or another field", () => {
