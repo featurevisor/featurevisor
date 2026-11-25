@@ -2,6 +2,7 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 
+import { generateSchemaExample } from "./insights";
 import { SchemaChoices, SchemaFields, SchemaValue } from "./schemaFields";
 import { SchemaTable } from "./variables";
 
@@ -135,6 +136,187 @@ describe("a schema's structure on its Overview", () => {
     expect(text(render(<SchemaChoices schema={plan} />))).toBe(
       "free Free price 0 pro Pro price 12 tone blue",
     );
+  });
+
+  test("messages show by issue code, the outermost wording winning, as validation chooses", () => {
+    const fields = text(
+      render(
+        <SchemaFields
+          schema={{
+            type: "object",
+            properties: {
+              email: {
+                type: "string",
+                messages: { pattern: "Inner wording", required: "Own wording" },
+              },
+              address: {
+                type: "object",
+                properties: { city: { type: "string" } },
+              },
+              members: {
+                type: "array",
+                items: { type: "object", properties: { email: { type: "string" } } },
+              },
+            },
+            messages: {
+              additionalProperties: "{key} is not part of a sign up",
+              email: { pattern: "Outer wording" },
+              address: { city: { required: "Which city?" } },
+              members: { "[]": { email: { pattern: "Each member's email" } } },
+            },
+          }}
+        />,
+      ),
+    );
+
+    expect(fields).toContain("When it fails additionalProperties {key} is not part of a sign up");
+    expect(fields).toContain(
+      "email string When it fails pattern Outer wording required Own wording",
+    );
+    expect(fields).toContain("city string When it fails required Which city?");
+    expect(fields).toContain("email string When it fails pattern Each member's email");
+  });
+
+  test("mutations and issues link from the fields they change or report on to the Rules tab", () => {
+    const html = render(
+      <SchemaFields
+        schema={{
+          type: "object",
+          properties: {
+            taxId: { type: "string" },
+            password: { type: "string" },
+            confirmPassword: { type: "string" },
+            members: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: { role: { type: "string" }, email: { type: "string" } },
+                required: ["role"],
+                mutations: [
+                  {
+                    key: "adminEmail",
+                    conditions: "*",
+                    mutate: { "required:appendUnique": "email" },
+                  },
+                ],
+              },
+            },
+          },
+          mutations: {
+            staging: [
+              {
+                key: "business",
+                conditions: { input: "accountType", operator: "equals", value: "business" },
+                mutate: {
+                  "required:appendUnique": "taxId",
+                  "properties.nickname": { type: "string" },
+                },
+                mutations: [
+                  {
+                    key: "germanBusiness",
+                    conditions: "*",
+                    mutate: { "properties.taxId.pattern": "^DE" },
+                  },
+                ],
+              },
+            ],
+            production: [
+              {
+                key: "business",
+                conditions: "*",
+                mutate: { "required:appendUnique": "taxId" },
+              },
+            ],
+          },
+          issues: [
+            {
+              key: "group",
+              conditions: "*",
+              issues: [
+                {
+                  key: "passwordsDiffer",
+                  conditions: "*",
+                  path: "confirmPassword",
+                  message: "The passwords do not match",
+                },
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+    const fields = text(html);
+
+    expect(fields).toContain("taxId string Changes under business germanBusiness");
+    expect(fields).toContain("confirmPassword string Checked by passwordsDiffer");
+    // A nested node's own mutation reaches the row inside it.
+    expect(fields).toContain("email string Changes under adminEmail");
+    // A field a mutation adds has no row, so the header names it.
+    expect(fields).toContain("Adds nickname under business");
+    expect(fields).not.toContain("Checked by group");
+    // Each link opens the card on the Rules tab, in the first environment that lists it.
+    expect(html).toContain('href="/rules/staging#mutation-business"');
+    expect(html).toContain('href="/rules/staging#mutation-germanbusiness"');
+    expect(html).toContain('href="/rules#mutation-members-adminemail"');
+    expect(html).toContain('href="/rules#issue-passwordsdiffer"');
+    expect(html).toContain('title="Mutation business in staging, production, on the Rules tab"');
+  });
+
+  test("the header names the vocabularies the annotations and choices follow", () => {
+    const html = render(
+      <SchemaFields
+        schema={{
+          type: "object",
+          annotationsSchema: { schema: "formAnnotations" },
+          optionSchema: { type: "object", properties: { flag: { type: "string" } } },
+          properties: { name: { type: "string" } },
+        }}
+      />,
+    );
+
+    expect(text(html)).toContain(
+      "Annotations follow formAnnotations Choices follow an inline vocabulary",
+    );
+    expect(html).toContain('href="/schemas/formAnnotations"');
+  });
+
+  test("a oneOf field lists its branches, and a flat object says what it holds", () => {
+    const fields = text(
+      render(
+        <SchemaFields
+          schema={{
+            type: "object",
+            properties: {
+              reference: {
+                oneOf: [
+                  { type: "string", maxLength: 8 },
+                  { type: "integer", minimum: 1 },
+                ],
+              },
+              labels: { type: "object" },
+            },
+          }}
+        />,
+      ),
+    );
+
+    expect(fields).toContain("reference one of string up to 8 characters integer at least 1");
+    expect(fields).toContain("labels object any keys, holding text, numbers, booleans or null");
+  });
+
+  test("the example value takes a field's own examples first", () => {
+    expect(
+      generateSchemaExample(
+        {
+          type: "object",
+          properties: {
+            name: { type: "string", annotations: { examples: ["Ada", "Grace"] } },
+            email: { type: "string" },
+          },
+        },
+        () => undefined,
+      ),
+    ).toEqual({ name: "Ada", email: "example" });
   });
 
   test("a variable's table keeps its four columns", () => {
