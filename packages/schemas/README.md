@@ -767,7 +767,7 @@ includeAnnotations: false
 
 Its applications still validate the same, since validation never reads annotations, but their issues carry no titles.
 
-The Catalog shows a schema's annotations on its Overview: the root's above the structure, and each field's in an Annotations column of the structure table, choices one a line.
+The Catalog shows a schema's annotations on its Overview, with its structure: the root's at the top, and each field's beside its rules, its title first and its choices as labelled chips.
 
 ## Choices
 

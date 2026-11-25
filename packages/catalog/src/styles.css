@@ -131,27 +131,6 @@ a {
   width: 28%;
 }
 
-/* A schema's fields with annotations take a fifth column, narrowing the others. */
-.variable-schema-table-annotated .variable-schema-col-path {
-  width: 20%;
-}
-
-.variable-schema-table-annotated .variable-schema-col-type {
-  width: 12%;
-}
-
-.variable-schema-table-annotated .variable-schema-col-constraints {
-  width: 24%;
-}
-
-.variable-schema-table-annotated .variable-schema-col-annotations {
-  width: 28%;
-}
-
-.variable-schema-table-annotated .variable-schema-col-description {
-  width: 16%;
-}
-
 /* Honour the system setting for reduced motion across every animation and transition. */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -21,8 +21,12 @@ import { ConditionTree } from "../../components/trees";
 import { queryHref } from "../../query/link";
 import { whoGetsThisQuery } from "../../query/report";
 import {
-  SchemaAnnotationsOverview,
-  SchemaPropertiesOverview,
+  SchemaFields,
+  SchemaChoices,
+  SchemaValue,
+  isSchemaChoiceList,
+} from "../../components/schemaFields";
+import {
   SchemaTable,
   VariableValueView,
   hasSchemaTableRows,
@@ -111,19 +115,26 @@ export function OverviewTab() {
         </OverviewSection>
       )}
 
-      {detail.type === "schema" && <SchemaAnnotationsOverview schema={entity as SchemaLike} />}
-
-      {detail.type === "schema" && !usesSchemaStructureTable(entity as SchemaLike) && (
-        <SchemaPropertiesOverview schema={entity as SchemaLike} setKey={setKey} />
+      {/* A schema reads as fields, or as choices, with its annotations beside its rules. */}
+      {detail.type === "schema" && isSchemaChoiceList(entity) && (
+        <OverviewSection title="Choices">
+          <SchemaChoices schema={entity} />
+        </OverviewSection>
       )}
 
       {detail.type === "schema" &&
-        usesSchemaStructureTable(entity as SchemaLike) &&
-        hasSchemaTableRows(entity as SchemaLike) && (
+        !isSchemaChoiceList(entity) &&
+        !usesSchemaStructureTable(entity as SchemaLike) && (
           <OverviewSection title="Structure">
-            <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
+            <SchemaValue schema={entity} setKey={setKey} />
           </OverviewSection>
         )}
+
+      {detail.type === "schema" && usesSchemaStructureTable(entity as SchemaLike) && (
+        <OverviewSection title="Structure">
+          <SchemaFields schema={entity} setKey={setKey} />
+        </OverviewSection>
+      )}
 
       {detail.type === "schema" && <SchemaExample schema={entity} setKey={setKey} />}
 
