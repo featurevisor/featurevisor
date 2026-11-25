@@ -1,7 +1,12 @@
 import { applyVariableOperations } from "@featurevisor/sdk";
-import type { Schema, SchemaMutation, VariableMutationOperation } from "@featurevisor/types";
+import type { Schema, VariableMutationOperation, VariableMutations } from "@featurevisor/types";
 
-import { applyAlwaysMutations, compileMutate } from "../builder/schemas";
+import {
+  applyAlwaysMutations,
+  compileMutate,
+  flattenSchemaEntries,
+  flattenSchemaMutations,
+} from "../builder/schemas";
 
 type Node = Record<string, unknown>;
 
@@ -94,30 +99,44 @@ function merge(variants: Node[]): Node {
 }
 
 function widen(authored: unknown): unknown {
+  if (!isNode(authored)) return authored;
+  // Nested mutations made flat, each knowing the ones that apply before it, as the builder flattens them.
+  const flat = flattenSchemaMutations(authored.mutations);
   // Mutations that always apply are the rules a datafile holds, as the builder applies them.
-  const node = applyAlwaysMutations(authored);
-  if (!isNode(node)) return node;
+  const node = applyAlwaysMutations(flattenSchemaEntries(authored)) as Node;
   let current = node;
   if (Array.isArray(node.mutations) && node.mutations.length > 0) {
     const { mutations, ...base } = node;
-    const compiled: VariableMutationOperation[][] = [];
-    for (const mutation of mutations as SchemaMutation[]) {
+    const applied = flat.length - mutations.length;
+    const compiled = flat.map(({ mutation }) => {
       try {
-        compiled.push(compileMutate(mutation.mutate));
+        return compileMutate(mutation.mutate as VariableMutations);
       } catch {
         // Lint reports a mutation that does not compile.
+        return undefined;
       }
-    }
-    const apply = (operations: VariableMutationOperation[]): unknown => {
+    });
+    const apply = (indices: number[]): unknown => {
+      const operations = indices.map((index) => compiled[index]);
+      if (operations.some((each) => each === undefined)) return undefined;
       try {
-        return applyVariableOperations(base as never, operations);
+        return applyVariableOperations(
+          base as never,
+          operations.flat() as VariableMutationOperation[],
+        );
       } catch {
         return undefined;
       }
     };
-    // Any mutation can match, alone or with the others, so the base, each alone and all together.
-    const variants = [base, ...compiled.map(apply)];
-    if (compiled.length > 1) variants.push(apply(compiled.flat()));
+    // Any mutation can match, alone, after the ones it is nested in, or with all the others.
+    const rest = flat.map((_, index) => index).slice(applied);
+    const variants = [
+      base,
+      ...rest.map((index) =>
+        apply([...flat[index].ancestors.filter((ancestor) => ancestor >= applied), index]),
+      ),
+    ];
+    if (rest.length > 1) variants.push(apply(rest));
     current = merge(variants.filter(isNode));
   }
 

@@ -742,15 +742,52 @@ function getSchemaTagsZodSchema(projectConfig: ProjectConfig) {
     });
 }
 
-const mutationListZodSchema = z.array(
-  z
-    .object({
-      key: z.string().min(1),
-      description: z.string().optional(),
-      conditions: z.unknown(),
-      mutate: z.unknown(),
-    })
-    .strict(),
+/** A mutation, with mutations nested under it, at any depth. */
+interface MutationShape {
+  key: string;
+  description?: string;
+  conditions?: unknown;
+  mutate?: unknown;
+  mutations?: MutationShape[];
+}
+const mutationListZodSchema: z.ZodType<MutationShape[]> = z.lazy(() =>
+  z.array(
+    z
+      .object({
+        key: z.string().min(1),
+        description: z.string().optional(),
+        conditions: z.unknown(),
+        // Required unless the mutation nests others, which schemaMutations.ts says.
+        mutate: z.unknown().optional(),
+        mutations: mutationListZodSchema.optional(),
+      })
+      .strict(),
+  ),
+);
+
+/** An issue entry, with entries nested under it, at any depth. */
+interface IssueShape {
+  key: string;
+  description?: string;
+  conditions?: unknown;
+  path?: string;
+  message?: string;
+  issues?: IssueShape[];
+}
+const issueListZodSchema: z.ZodType<IssueShape[]> = z.lazy(() =>
+  z.array(
+    z
+      .object({
+        key: z.string().min(1),
+        description: z.string().optional(),
+        conditions: z.unknown(),
+        path: z.string().min(1).optional(),
+        // Required unless the entry nests others, which schemaMutations.ts says.
+        message: z.string().min(1).optional(),
+        issues: issueListZodSchema.optional(),
+      })
+      .strict(),
+  ),
 );
 
 export function getSchemaZodSchema(
@@ -820,19 +857,7 @@ export function getSchemaZodSchema(
               mutations: z
                 .union([mutationListZodSchema, z.record(z.string(), mutationListZodSchema)])
                 .optional(),
-              issues: z
-                .array(
-                  z
-                    .object({
-                      key: z.string().min(1),
-                      description: z.string().optional(),
-                      conditions: z.unknown(),
-                      path: z.string().min(1).optional(),
-                      message: z.string().min(1),
-                    })
-                    .strict(),
-                )
-                .optional(),
+              issues: issueListZodSchema.optional(),
             }
           : {}),
       })
@@ -916,9 +941,12 @@ export function getSchemaPatterns(
   };
   const fromList = (list: unknown, at: (string | number)[]) => {
     if (Array.isArray(list))
-      list.forEach((mutation, index) =>
-        fromMutate((mutation as { mutate?: unknown })?.mutate, [...at, index, "mutate"]),
-      );
+      list.forEach((mutation, index) => {
+        const entry = mutation as { mutate?: unknown; mutations?: unknown };
+        fromMutate(entry?.mutate, [...at, index, "mutate"]);
+        // Nested mutations set patterns too.
+        fromList(entry?.mutations, [...at, index, "mutations"]);
+      });
   };
   // A list, or a list per environment at a schema's root.
   const { mutations } = schema as { mutations?: unknown };

@@ -25,12 +25,22 @@ interface RuleNode {
   node: Node;
 }
 
+/** How many entries a list holds, those nested under them included. */
+function countNested(list: unknown, nested: string): number {
+  return Array.isArray(list)
+    ? list.reduce<number>(
+        (count, entry) => count + 1 + (isNode(entry) ? countNested(entry[nested], nested) : 0),
+        0,
+      )
+    : 0;
+}
+
 /** How many mutations a node lists: its list, or at a schema's root its list per environment. */
 function countMutations(mutations: unknown): number {
-  if (Array.isArray(mutations)) return mutations.length;
+  if (Array.isArray(mutations)) return countNested(mutations, "mutations");
   return isNode(mutations)
     ? Object.values(mutations).reduce<number>(
-        (count, list) => count + (Array.isArray(list) ? list.length : 0),
+        (count, list) => count + countNested(list, "mutations"),
         0,
       )
     : 0;
@@ -62,9 +72,7 @@ export function getSchemaRuleNodes(schema: unknown): RuleNode[] {
 export function countSchemaRules(schema: unknown): number {
   return getSchemaRuleNodes(schema).reduce(
     (count, { node }) =>
-      count +
-      countMutations(node.mutations) +
-      (Array.isArray(node.issues) ? node.issues.length : 0),
+      count + countMutations(node.mutations) + countNested(node.issues, "issues"),
     0,
   );
 }
@@ -139,6 +147,101 @@ function Labelled(props: { label: string; children: React.ReactNode }) {
       <h4 className="mb-1.5 text-sm font-semibold text-muted">{props.label}</h4>
       {props.children}
     </div>
+  );
+}
+
+/** A mutation's card, with the mutations nested under it inside, each checked once it matches. */
+function MutationCard(props: {
+  mutation: unknown;
+  path: string;
+  index: number;
+  setKey: ReturnType<typeof useEntityDetail>["setKey"];
+}) {
+  const record = isNode(props.mutation) ? props.mutation : {};
+  const key = typeof record.key === "string" ? record.key : `#${props.index + 1}`;
+  const nested = Array.isArray(record.mutations) ? record.mutations : [];
+  return (
+    <RuleCard
+      id={`mutation-${slugifyFragment(`${props.path} ${key}`)}`}
+      title={key}
+      path={props.path}
+      description={record.description}
+    >
+      <Labelled label="When">
+        <ConditionTree conditions={record.conditions as never} setKey={props.setKey} />
+      </Labelled>
+      {record.mutate !== undefined && (
+        <Labelled label="Changes">
+          <Changes mutate={record.mutate} />
+        </Labelled>
+      )}
+      {nested.length > 0 && (
+        <Labelled label="Then, when these also match">
+          <div className="space-y-3">
+            {nested.map((child, index) => (
+              <MutationCard
+                key={index}
+                mutation={child}
+                path={props.path}
+                index={index}
+                setKey={props.setKey}
+              />
+            ))}
+          </div>
+        </Labelled>
+      )}
+    </RuleCard>
+  );
+}
+
+/** An issue entry's card, with the entries nested under it inside, each checked once it matches. */
+function IssueCard(props: {
+  issue: unknown;
+  path: string;
+  index: number;
+  setKey: ReturnType<typeof useEntityDetail>["setKey"];
+}) {
+  const record = isNode(props.issue) ? props.issue : {};
+  const key = typeof record.key === "string" ? record.key : `#${props.index + 1}`;
+  const nested = Array.isArray(record.issues) ? record.issues : [];
+  return (
+    <RuleCard
+      id={`issue-${slugifyFragment(`${props.path} ${key}`)}`}
+      title={key}
+      path={props.path}
+      description={record.description}
+    >
+      <Labelled label={typeof record.message === "string" ? "Reported when" : "When"}>
+        <ConditionTree conditions={record.conditions as never} setKey={props.setKey} />
+      </Labelled>
+      {typeof record.message === "string" && (
+        <>
+          <Labelled label="Reported on">
+            <code className="font-mono text-xs text-text">
+              {typeof record.path === "string" ? record.path : "the object itself"}
+            </code>
+          </Labelled>
+          <Labelled label="Message">
+            <p className="text-sm text-text">{record.message}</p>
+          </Labelled>
+        </>
+      )}
+      {nested.length > 0 && (
+        <Labelled label="Then, when these also match">
+          <div className="space-y-3">
+            {nested.map((child, index) => (
+              <IssueCard
+                key={index}
+                issue={child}
+                path={props.path}
+                index={index}
+                setKey={props.setKey}
+              />
+            ))}
+          </div>
+        </Labelled>
+      )}
+    </RuleCard>
   );
 }
 
@@ -220,26 +323,15 @@ export function SchemaRulesTab() {
                 )}
             </>
           )}
-          {mutations.map(({ path, mutation }, index) => {
-            const record = isNode(mutation) ? mutation : {};
-            const key = typeof record.key === "string" ? record.key : `#${index + 1}`;
-            return (
-              <RuleCard
-                key={`${path}:${key}:${index}`}
-                id={`mutation-${slugifyFragment(`${path} ${key}`)}`}
-                title={key}
-                path={path}
-                description={record.description}
-              >
-                <Labelled label="When">
-                  <ConditionTree conditions={record.conditions as never} setKey={setKey} />
-                </Labelled>
-                <Labelled label="Changes">
-                  <Changes mutate={record.mutate} />
-                </Labelled>
-              </RuleCard>
-            );
-          })}
+          {mutations.map(({ path, mutation }, index) => (
+            <MutationCard
+              key={`${path}:${index}`}
+              mutation={mutation}
+              path={path}
+              index={index}
+              setKey={setKey}
+            />
+          ))}
         </section>
       )}
 
@@ -251,33 +343,15 @@ export function SchemaRulesTab() {
               Each issue is reported when its conditions match, after the object's own rules.
             </p>
           </div>
-          {issues.map(({ path, issue }, index) => {
-            const record = isNode(issue) ? issue : {};
-            const key = typeof record.key === "string" ? record.key : `#${index + 1}`;
-            return (
-              <RuleCard
-                key={`${path}:${key}:${index}`}
-                id={`issue-${slugifyFragment(`${path} ${key}`)}`}
-                title={key}
-                path={path}
-                description={record.description}
-              >
-                <Labelled label="Reported when">
-                  <ConditionTree conditions={record.conditions as never} setKey={setKey} />
-                </Labelled>
-                <Labelled label="Reported on">
-                  <code className="font-mono text-xs text-text">
-                    {typeof record.path === "string" ? record.path : "the object itself"}
-                  </code>
-                </Labelled>
-                {typeof record.message === "string" && (
-                  <Labelled label="Message">
-                    <p className="text-sm text-text">{record.message}</p>
-                  </Labelled>
-                )}
-              </RuleCard>
-            );
-          })}
+          {issues.map(({ path, issue }, index) => (
+            <IssueCard
+              key={`${path}:${index}`}
+              issue={issue}
+              path={path}
+              index={index}
+              setKey={setKey}
+            />
+          ))}
         </section>
       )}
     </div>

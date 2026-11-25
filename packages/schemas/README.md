@@ -59,6 +59,7 @@ This package is experimental: its API may change in a minor release.
 - [Rules under conditions](#rules-under-conditions)
   - [Conditions](#conditions)
   - [Comparing two fields](#comparing-two-fields)
+  - [Nested mutations](#nested-mutations)
   - [In datafiles](#in-datafiles)
   - [At runtime](#at-runtime)
   - [What reads the base](#what-reads-the-base)
@@ -69,6 +70,7 @@ This package is experimental: its API may change in a minor release.
 - [Rules between fields](#rules-between-fields)
   - [Conditions say when a value fails](#conditions-say-when-a-value-fails)
   - [For some users only](#for-some-users-only)
+  - [Nested issues](#nested-issues)
   - [Common checks](#common-checks)
   - [How entries run](#how-entries-run)
 - [Testing schemas](#testing-schemas)
@@ -1237,6 +1239,40 @@ conditions:
 - `matches` and `notMatches` never take their pattern from `valueFrom`, or from `input(...)` in an expression, since a pattern from a user is one nobody reviewed.
 - A rule that two fields must agree, such as a password typed twice, changes no rule, so it is not a mutation. It goes in [`issues`](#rules-between-fields).
 
+### Nested mutations
+
+A mutation can hold `mutations` of its own, checked only once it matches and applied after its change, as a global variable's overrides nest. A rule for some of the cases a mutation covers then reads under it:
+
+```yml
+mutations:
+  production:
+    - key: business
+      conditions: input('accountType') == 'business'
+      mutate:
+        required:appendUnique: taxId
+      mutations:
+        - key: germanBusiness
+          conditions: input('country') == 'DE'
+          mutate:
+            properties.taxId.pattern: "^DE[0-9]{9}$"
+            properties.taxId.messages:
+              pattern: Enter a German VAT number, such as DE123456789
+
+    - key: paying
+      conditions: payingAccounts
+      mutations:
+        - key: longerBusinessNames
+          conditions: input('accountType') == 'business'
+          mutate:
+            properties.displayName.maxLength: 120
+```
+
+- **A child applies only when its parent does**, after the parent's change, so it can change what its parent adds. Every business gives a tax ID, and a German one gives it in the German shape.
+- **A parent can only group.** `paying` has no `mutate`, so it changes nothing itself, and its children share its conditions without repeating them.
+- **Keys are unique across the whole tree,** since an issue names the mutation that set its rule by its key, such as `mutation: germanBusiness`.
+- **Datafiles carry them flat,** each child after its parent with the conditions of both, so applications validate them as any other mutations.
+- Mutations nest at any node, and at the root in each environment's list.
+
 ### In datafiles
 
 Datafiles carry mutations compiled: `conditions` as features have them, and `mutate` as the operations the SDK applies, so applications parse no notation. The segments, flags and global variables a delivered schema's conditions read come along into the datafile, with everything they read, as a feature's dependencies do, so no target has to select them.
@@ -1288,7 +1324,7 @@ Generated types come from the base with whatever a mutation widens, since any mu
 
 Lint checks every mutation:
 
-- its `key` is unique within its node,
+- its `key` is unique within its node, nested mutations included, and it has a `mutate`, or `mutations` nested under it,
 - its `conditions` are valid conditions, each with `value` or `valueFrom` and never both, each `input` path, in `input` and in `valueFrom`, names a field of its node, and each operator and value suit the field compared, as they must an attribute, so `input('age') startsWith 'x'` on an integer fails,
 - every path in its `mutate` reaches into the node,
 - the node's rules stay a valid schema with each mutation applied alone and with all of them together,
@@ -1357,6 +1393,28 @@ issues:
 
 A user outside the Netherlands never gets this issue, whatever the countries, and neither does a context without a `country`. A segment, `netherlands and ...`, or a flag, `feature('strictCheckout') and ...`, works the same, so a stricter check can roll out by percentage.
 
+### Nested issues
+
+Checks for the same users can nest under one entry that holds their condition, with no message of its own:
+
+```yml
+issues:
+  - key: dutchOrders
+    conditions: country == 'nl'
+    issues:
+      - key: shipsElsewhere
+        conditions: input('shippingCountry') != input('billingCountry')
+        path: shippingCountry
+        message: We ship Dutch orders to the billing country only
+
+      - key: noPhone
+        conditions: input('phone') notExists
+        path: phone
+        message: Dutch couriers need a phone number
+```
+
+An entry nested under another reports only when both match, so neither needs `and`. An entry without a `message` only groups, so `dutchOrders` reports nothing itself. Keys are unique across the whole tree, as each is its issue's `params.refine`, and datafiles carry the entries flat, each with the conditions of the entries around it.
+
 ### Common checks
 
 | Issue                                   | Conditions                                              |
@@ -1378,7 +1436,7 @@ A user outside the Netherlands never gets this issue, whatever the countries, an
 - **Messages.** The entry's `message` is a template, and the field's own. The schema's `messages`, from an enclosing object or beside the field's rules, and a form's, can replace it, with `confirmPassword: { refine: "..." }`. The application's `messages` on `createSchemas` cannot, since the entry's message is the schema's.
 - **Reusable schemas** carry their issues into every form that references them, and a field's handle, such as `at("address")`, runs the issues inside the field. Issues on the form's root read fields across the form, so they run when the form is validated.
 - **Mutations** change `issues` as they change any rule, so a mutation in dev's list can add one with `issues:append`, and a new issue starts in dev.
-- **Lint** checks each entry: a key unique within its node, valid conditions that read at least one `input`, each `input` path and the entry's `path` naming fields of the node, and a message. `issues` goes on object nodes only. Variables cannot use a schema with issues, as for mutations.
+- **Lint** checks each entry: a key unique within its node, nested entries included, valid conditions, each `input` path and the entry's `path` naming fields of the node, and a `message` or `issues` nested under it. An entry with a message reads at least one `input`, in its own conditions or those of the entries around it. `issues` goes on object nodes only. Variables cannot use a schema with issues, as for mutations.
 
 Checks that need your application, such as whether a username is free, stay [in code](#checks-in-code), whose `check` says what passes where an entry says what fails.
 

@@ -70,14 +70,22 @@ function file(order: string[], children?: () => Record<string, Shape>): Shape {
 
 const schema: Shape = map(keyOrder.schema, false, () => schemaChildren());
 
+/** A schema's mutation and issue entries, each holding entries nested under it */
+const schemaMutation: Shape = map(keyOrder.schemaMutation, false, () => ({
+  mutations: list(schemaMutation, blankLines.schemaMutations),
+}));
+const schemaIssue: Shape = map(keyOrder.schemaIssue, false, () => ({
+  issues: list(schemaIssue),
+}));
+
 function schemaChildren(): Record<string, Shape> {
   return {
     properties: dict(schema, blankLines.schemaProperties),
     items: schema,
     oneOf: list(schema),
     // The builder writes each mutation and issue key by key, so their authored order never reaches a datafile.
-    mutations: list(map(keyOrder.schemaMutation), blankLines.schemaMutations),
-    issues: list(map(keyOrder.schemaIssue)),
+    mutations: list(schemaMutation, blankLines.schemaMutations),
+    issues: list(schemaIssue),
   };
 }
 
@@ -116,7 +124,7 @@ const SHAPES: Record<EntityType, Shape> = {
     metadata,
     // A list, or at the root a list per environment, as a feature's rules are.
     mutations: byEnvironment(
-      map(keyOrder.schemaMutation),
+      schemaMutation,
       blankLines.schemaMutations,
       blankLines.schemaMutationEnvironments,
     ),

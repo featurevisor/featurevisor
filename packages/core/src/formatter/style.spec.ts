@@ -216,6 +216,64 @@ describe("the house style", () => {
     );
   });
 
+  it("orders the keys of nested mutations and issue entries, at every depth", () => {
+    const source = [
+      "issues:",
+      "  - issues:",
+      "      - message: Ship to the billing country",
+      "        conditions: input('shippingCountry') != input('billingCountry')",
+      "        key: shipsElsewhere",
+      "    conditions: netherlands",
+      "    key: dutch",
+      "mutations:",
+      "  - mutations:",
+      "      - mutate:",
+      "          properties.taxId.pattern: ^DE",
+      "        conditions: input('country') == 'DE'",
+      "        key: german",
+      "      - key: dutch",
+      "        conditions: input('country') == 'NL'",
+      "        mutate:",
+      "          properties.taxId.pattern: ^NL",
+      "    conditions: input('accountType') == 'business'",
+      "    key: business",
+      "type: object",
+      "description: A form",
+      "",
+    ].join("\n");
+
+    expect(formatDefinition("schema", source, parsers.yml).output).toBe(
+      [
+        "description: A form",
+        "",
+        "type: object",
+        "",
+        "mutations:",
+        "  - key: business",
+        "    conditions: input('accountType') == 'business'",
+        "    mutations:",
+        "      - key: german",
+        "        conditions: input('country') == 'DE'",
+        "        mutate:",
+        "          properties.taxId.pattern: ^DE",
+        "",
+        "      - key: dutch",
+        "        conditions: input('country') == 'NL'",
+        "        mutate:",
+        "          properties.taxId.pattern: ^NL",
+        "",
+        "issues:",
+        "  - key: dutch",
+        "    conditions: netherlands",
+        "    issues:",
+        "      - key: shipsElsewhere",
+        "        conditions: input('shippingCountry') != input('billingCountry')",
+        "        message: Ship to the billing country",
+        "",
+      ].join("\n"),
+    );
+  });
+
   it("orders a schema's issue entries, after its mutations", () => {
     const source = [
       "issues:",

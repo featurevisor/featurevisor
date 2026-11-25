@@ -15,6 +15,14 @@ const schema = {
           key: "unitedStates",
           conditions: { input: "country", operator: "equals", value: "US" },
           mutate: { required: ["state"] },
+          // Checked once its parent matches, and counted with it.
+          mutations: [
+            {
+              key: "california",
+              conditions: { input: "state", operator: "equals", value: "CA" },
+              mutate: { "properties.state.minLength": 2 },
+            },
+          ],
         },
       ],
     },
@@ -57,8 +65,8 @@ describe("a schema's Rules tab", () => {
     expect(getSchemaRuleNodes(schema).map(({ path }) => path)).toEqual(["", "address", "items[]"]);
   });
 
-  test("counts mutations, in every environment's list, and issues", () => {
-    expect(countSchemaRules(schema)).toBe(4);
+  test("counts mutations, in every environment's list and nested, and issues", () => {
+    expect(countSchemaRules(schema)).toBe(5);
     expect(countSchemaRules({ type: "string" })).toBe(0);
   });
 

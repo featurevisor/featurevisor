@@ -133,10 +133,11 @@ issues:
 ```
 
 - **Some users only:** join their condition and the check with `and`, as `dutchShippingCountry` does. A user it does not match never gets the issue.
+- **Nesting:** several checks for the same users can nest under one entry with their condition and no `message`, which only groups them: `issues: [{ key: dutchOrders, conditions: country == 'nl', issues: [...] }]`. A nested entry reports only when the entries around it match too.
 - **Write the failure:** `!=` for `==`, `>` for `<=`, `not (...)` for a rule without an opposite, such as `not (input('end') after input('start'))`.
 - **When entries run:** after the node's rules, and only when nothing inside it has an issue of shape, such as a missing required field or a wrong type. A short password and a differing confirmation report both.
 - **The issue** has `code: "refine"` and `params.refine`, the entry's key, so `messages` word it as `confirmPassword: { refine: ... }`. Without `path`, it belongs to the object.
-- **Lint** checks each entry's key, conditions, which must read at least one `input`, paths and message. `issues` goes on object nodes only, and a variable cannot use a schema with them.
+- **Lint** checks each entry's key, unique across nested entries too, its conditions, paths, and a `message` or nested `issues`. An entry with a message must read at least one `input`, in its own conditions or those of the entries around it. `issues` goes on object nodes only, and a variable cannot use a schema with them.
 
 ## Checks in code
 
@@ -220,7 +221,8 @@ mutations:
 - **`valueFrom: { input: billingCountry }`** takes the other side of a comparison from another field. `value` is always a value, and a leaf takes one of the two. `matches` and `notMatches` never take their pattern from `valueFrom`.
 - In a project with `conditionExpressions: true`, write `input('accountType') == 'business'`, or `input('shippingCountry') != input('billingCountry')` for two fields ([expressions.md](expressions.md)).
 - `input` goes only in a schema's mutations and issues. `allowedConditions.schemas` limits the kinds there, `input` included ([conditions.md](conditions.md#allowed-condition-kinds)).
-- Keys are unique within a node, and no mutation changes a `type`.
+- A mutation can nest `mutations`, checked only once it matches and applied after its change, so a child can change what its parent adds. A parent with only `mutations` and no `mutate` groups its children under its conditions. Datafiles carry them flat, each child with its parent's conditions joined to its own.
+- Keys are unique within a node, nested mutations included, and no mutation changes a `type`.
 - An environment's list holds that environment's mutations, so one can start in dev and reach production a pull request later.
 - The segments, flags and global variables a schema's conditions read come along into the datafile, as a feature's dependencies do.
 - Lint checks each operator and value against the field it compares, as it does for attributes, so `input('age') startsWith 'x'` on an integer fails.

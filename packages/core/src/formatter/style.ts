@@ -172,10 +172,10 @@ export const HOUSE_STYLE = {
       "mutations",
       "issues",
     ],
-    /** A mutation in a schema's mutations, at any node */
-    schemaMutation: ["key", "description", "conditions", "mutate"],
-    /** An entry in a schema's issues, at any object node */
-    schemaIssue: ["key", "description", "conditions", "path", "message"],
+    /** A mutation in a schema's mutations, at any node, with the mutations nested under it last */
+    schemaMutation: ["key", "description", "conditions", "mutate", "mutations"],
+    /** An entry in a schema's issues, at any object node, with the entries nested under it last */
+    schemaIssue: ["key", "description", "conditions", "path", "message", "issues"],
     target: [
       "promotable",
       "description",

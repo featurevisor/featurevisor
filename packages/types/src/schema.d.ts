@@ -51,15 +51,19 @@ export interface SchemaAnnotations {
 /**
  * Rules that change when conditions match, as authored: `mutate` changes the
  * node it sits on, in the notation global variable overrides use. Every
- * mutation whose conditions match applies, in order.
+ * mutation whose conditions match applies, in order. A mutation's own
+ * `mutations` are checked only once it matches, and apply after it.
  */
 export interface SchemaMutation {
-  /** Unique within its node. */
+  /** Unique across the node's mutations, nested ones included. */
   key: string;
   description?: string;
   /** Context attributes, segments, features and variables, and `input` leaves over the value validated. */
   conditions: Conditions;
-  mutate: VariableMutations;
+  /** What it changes. A mutation with nested `mutations` can leave it out, to group them. */
+  mutate?: VariableMutations;
+  /** Mutations checked only once this one matches, applied after its own `mutate`. */
+  mutations?: SchemaMutation[];
 }
 
 /** A mutation as a datafile carries it, with `mutate` compiled into operations. */
@@ -76,19 +80,29 @@ export interface DatafileSchemaMutation {
  * condition and its check with `and`.
  */
 export interface SchemaIssueEntry {
-  /** Unique within its node, and the issue's `params.refine`. */
+  /** Unique across the node's issues, nested ones included, and the issue's `params.refine`. */
   key: string;
   description?: string;
   /** Context attributes, segments, features and variables, and `input` leaves over the value validated. */
   conditions: Conditions;
   /** The field the issue belongs to, by dots relative to the node, or the node itself when absent. */
   path?: string;
-  /** The schema's message for the issue, as a template. */
-  message: string;
+  /** The schema's message for the issue, as a template. An entry with nested `issues` can leave it out, to group them. */
+  message?: string;
+  /** Entries checked only once this one's conditions match, each joining them with its own. */
+  issues?: SchemaIssueEntry[];
 }
 
-/** An issue entry as a datafile carries it, with its conditions written as features' are. */
-export type DatafileSchemaIssueEntry = Omit<SchemaIssueEntry, "description">;
+/**
+ * An issue entry as a datafile carries it: flat, with its conditions joined
+ * with those of the entries it was nested in, and written as features' are.
+ */
+export interface DatafileSchemaIssueEntry {
+  key: string;
+  conditions: Conditions;
+  path?: string;
+  message: string;
+}
 
 /**
  * A schema's mutations by environment, as features' rules are: at the root of

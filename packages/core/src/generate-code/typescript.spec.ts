@@ -1313,6 +1313,15 @@ export { every, some };
         "        required:appendUnique: taxId",
         "        properties.nickname:",
         "          type: string",
+        "      mutations:",
+        "        - key: largeBusiness",
+        "          conditions:",
+        "            - attribute: city",
+        "              operator: equals",
+        "              value: amsterdam",
+        "          mutate:",
+        "            properties.nickname.maxLength: 10",
+        "            properties.plan.enum:append: enterprise",
         "    - key: phoneOptional",
         "      conditions:",
         "        - attribute: country",
@@ -1333,8 +1342,9 @@ export { every, some };
     );
 
     // A value a mutation adds joins the union, a field it requires stays optional, and one it no longer requires is optional.
+    // A nested mutation applies after its parent, so it reaches the nickname its parent adds.
     expect(fs.readFileSync(path.join(outputPath, "schemas.ts"), "utf8")).toContain(
-      'export type TeamSchema = { plan: "free" | "pro" | "business"; phone?: string; taxId?: string; address?: { country?: string; state?: string }; nickname?: string };',
+      'export type TeamSchema = { plan: "free" | "pro" | "business" | "enterprise"; phone?: string; taxId?: string; address?: { country?: string; state?: string }; nickname?: string };',
     );
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });

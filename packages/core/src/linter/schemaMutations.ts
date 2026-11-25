@@ -250,7 +250,19 @@ export function getSchemaMutationFindings(
     visit(conditions, path);
   };
 
-  /** Issues an object reports when their conditions match, after its own rules. */
+  /** Checks conditions as conditions, and their `input` leaves against the node's fields. */
+  const checkConditions = (conditions: unknown, node: Node, at: Path): boolean => {
+    const parsed = conditionsZodSchema.safeParse(conditions);
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues)
+        findings.push({ path: [...at, ...(issue.path as Path)], message: issue.message });
+      return false;
+    }
+    checkInputs(conditions, node, at);
+    return true;
+  };
+
+  /** Issues an object reports when their conditions match, after its own rules, nested at any depth. */
   const checkIssues = (node: Node, path: Path) => {
     const own = resolve(node);
     if (!own || (own.type !== "object" && !isNode(own.properties))) {
@@ -261,77 +273,121 @@ export function getSchemaMutationFindings(
       });
       return;
     }
+    // Keys are unique across the whole tree, since each is an issue's `params.refine`.
     const keys = new Set<string>();
-    (node.issues as unknown[]).forEach((entry, index) => {
-      const at: Path = [...path, "issues", index];
-      if (!isNode(entry)) return;
-      if (keys.has(entry.key as string)) {
-        findings.push({
-          path: [...at, "key"],
-          message: `Issue key "${entry.key}" is used twice in this node.`,
-        });
-      }
-      keys.add(entry.key as string);
-      const conditions = conditionsZodSchema.safeParse(entry.conditions);
-      if (!conditions.success) {
-        for (const issue of conditions.error.issues) {
+    const visitEntries = (list: unknown, at: Path, readsAbove: boolean) => {
+      if (!Array.isArray(list)) return;
+      list.forEach((entry, index) => {
+        const here: Path = [...at, index];
+        if (!isNode(entry)) return;
+        if (keys.has(entry.key as string)) {
           findings.push({
-            path: [...at, "conditions", ...(issue.path as Path)],
-            message: issue.message,
+            path: [...here, "key"],
+            message: `Issue key "${entry.key}" is used twice in this node.`,
           });
         }
-      } else if (!readsInput(entry.conditions)) {
-        findings.push({
-          path: [...at, "conditions"],
-          message:
-            "An issue's conditions read at least one `input`, or it would fail every value for everyone they match. They say when a value fails, such as `input('confirmPassword') != input('password')`.",
-        });
-      } else checkInputs(entry.conditions, node, [...at, "conditions"]);
-      if (typeof entry.path === "string" && !namesField(node, entry.path)) {
-        findings.push({
-          path: [...at, "path"],
-          message: `\`${entry.path}\` names no field of this node, whose fields are ${fieldNames(node)}. An issue's path is relative to the node it sits on.`,
-        });
-      }
-    });
+        keys.add(entry.key as string);
+        const valid = checkConditions(entry.conditions, node, [...here, "conditions"]);
+        // An entry nested under others matches only when they do, so their inputs count too.
+        const reads = readsAbove || (valid && readsInput(entry.conditions));
+        const nested = Array.isArray(entry.issues) ? entry.issues : undefined;
+        if (entry.message === undefined) {
+          if (!nested) {
+            findings.push({
+              path: [...here, "message"],
+              message:
+                "An issue needs a `message`, or `issues` nested under it, which it groups under its conditions.",
+            });
+          } else if (entry.path !== undefined) {
+            findings.push({
+              path: [...here, "path"],
+              message:
+                "An issue's `path` says where its `message` goes, so an entry that only groups others takes none.",
+            });
+          }
+        } else if (valid && !reads) {
+          findings.push({
+            path: [...here, "conditions"],
+            message:
+              "An issue's conditions read at least one `input`, or it would fail every value for everyone they match. They say when a value fails, such as `input('confirmPassword') != input('password')`.",
+          });
+        }
+        if (typeof entry.path === "string" && !namesField(node, entry.path)) {
+          findings.push({
+            path: [...here, "path"],
+            message: `\`${entry.path}\` names no field of this node, whose fields are ${fieldNames(node)}. An issue's path is relative to the node it sits on.`,
+          });
+        }
+        visitEntries(nested, [...here, "issues"], reads);
+      });
+    };
+    visitEntries(node.issues, [...path, "issues"], false);
   };
 
-  /** One list of a node's mutations, at a path: each mutation, then all of them together. */
+  /**
+   * One list of a node's mutations, at a path, nested at any depth: each
+   * mutation after the ones it is nested in, then all of them together.
+   */
   const checkMutations = (node: Node, path: Path, list: unknown[], at: Path) => {
+    // Keys are unique across the whole tree, since an issue names the mutation by its key.
     const keys = new Set<string>();
-    const compiled: VariableMutationOperation[][] = [];
-    list.forEach((mutation, index) => {
-      const own: Path = [...at, index];
-      if (!isNode(mutation)) return;
-      if (keys.has(mutation.key as string)) {
-        findings.push({
-          path: [...own, "key"],
-          message: `Mutation key "${mutation.key}" is used twice in this node.`,
-        });
-      }
-      keys.add(mutation.key as string);
-      const conditions = conditionsZodSchema.safeParse(mutation.conditions);
-      if (!conditions.success) {
-        for (const issue of conditions.error.issues) {
+    const all: VariableMutationOperation[][] = [];
+    let complete = true;
+    /** `chain` holds the operations of the mutations it is nested in, or undefined when one failed. */
+    const visitList = (
+      entries: unknown,
+      at: Path,
+      chain: VariableMutationOperation[][] | undefined,
+    ) => {
+      if (!Array.isArray(entries)) return;
+      entries.forEach((mutation, index) => {
+        const here: Path = [...at, index];
+        if (!isNode(mutation)) return;
+        if (keys.has(mutation.key as string)) {
           findings.push({
-            path: [...own, "conditions", ...(issue.path as Path)],
-            message: issue.message,
+            path: [...here, "key"],
+            message: `Mutation key "${mutation.key}" is used twice in this node.`,
           });
         }
-      } else checkInputs(mutation.conditions, node, [...own, "conditions"]);
-      const operations = compile(mutation.mutate, node, [...own, "mutate"], true);
-      if (!operations) return;
-      compiled.push(operations);
-      validate(
-        withNode(root, path, applyVariableOperations(node as never, operations)),
-        own,
-        `With mutation "${mutation.key}"`,
-      );
-    });
+        keys.add(mutation.key as string);
+        checkConditions(mutation.conditions, node, [...here, "conditions"]);
+        const nested = Array.isArray(mutation.mutations) ? mutation.mutations : undefined;
+        let next = chain;
+        if (mutation.mutate === undefined) {
+          if (!nested) {
+            findings.push({
+              path: [...here, "mutate"],
+              message:
+                "A mutation needs a `mutate`, or `mutations` nested under it, which it groups under its conditions.",
+            });
+          }
+        } else if (!chain) {
+          complete = false;
+        } else {
+          // A nested mutation changes what the ones around it leave, so it can reach what they add.
+          const before = chain.length ? applyVariableOperations(node as never, chain.flat()) : node;
+          const operations = compile(mutation.mutate, before, [...here, "mutate"], true);
+          if (!operations) {
+            complete = false;
+            next = undefined;
+          } else {
+            all.push(operations);
+            next = [...chain, operations];
+            validate(
+              withNode(root, path, applyVariableOperations(node as never, next.flat())),
+              here,
+              `With mutation "${mutation.key}"`,
+            );
+          }
+        }
+        visitList(nested, [...here, "mutations"], next);
+      });
+    };
+    visitList(list, at, []);
     // Every mutation can match together, so the rules must hold with all of them applied.
-    if (compiled.length > 1 && compiled.length === list.length) {
+    if (complete && all.length > 1) {
       validate(
-        withNode(root, path, applyVariableOperations(node as never, compiled.flat())),
+        withNode(root, path, applyVariableOperations(node as never, all.flat())),
         at,
         "With every mutation applied",
       );

@@ -99,6 +99,87 @@ export function resolveSchemaEnvironment(
   return Array.isArray(list) && list.length > 0 ? { ...base, mutations: list } : base;
 }
 
+/** Conditions that must all match: an entry's and those of the entries it is nested in. */
+export function joinConditions(outer: Conditions | undefined, own: Conditions): Conditions {
+  if (outer === undefined || outer === "*") return own;
+  if (own === "*") return outer;
+  const list = (conditions: Conditions) => (Array.isArray(conditions) ? conditions : [conditions]);
+  return [...list(outer), ...list(own)] as Conditions;
+}
+
+/** A nested mutation made flat, with the flat entries that apply before it as its ancestors. */
+export interface FlatSchemaMutation {
+  mutation: SchemaMutation;
+  ancestors: number[];
+}
+
+/**
+ * A node's mutations as a datafile carries them: flat, in the order they
+ * apply, each nested one after its parent with its conditions joined with its
+ * parent's, so it applies only when its parent does, after the parent's
+ * change. A parent that only groups its children applies nothing itself.
+ */
+export function flattenSchemaMutations(
+  list: unknown,
+  outer?: Conditions,
+  ancestors: number[] = [],
+  flat: FlatSchemaMutation[] = [],
+): FlatSchemaMutation[] {
+  if (!Array.isArray(list)) return flat;
+  for (const mutation of list as SchemaMutation[]) {
+    if (!mutation || typeof mutation !== "object") continue;
+    const conditions = joinConditions(outer, mutation.conditions);
+    let chain = ancestors;
+    if (mutation.mutate !== undefined) {
+      flat.push({
+        mutation: { key: mutation.key, conditions, mutate: mutation.mutate },
+        ancestors,
+      });
+      chain = [...ancestors, flat.length - 1];
+    }
+    flattenSchemaMutations(mutation.mutations, conditions, chain, flat);
+  }
+  return flat;
+}
+
+/** A node's issues as a datafile carries them: flat, each nested entry's conditions joined with its parent's. */
+export function flattenSchemaIssues(
+  list: unknown,
+  outer?: Conditions,
+  flat: SchemaIssueEntry[] = [],
+): SchemaIssueEntry[] {
+  if (!Array.isArray(list)) return flat;
+  for (const entry of list as SchemaIssueEntry[]) {
+    if (!entry || typeof entry !== "object") continue;
+    const conditions = joinConditions(outer, entry.conditions);
+    if (entry.message !== undefined) {
+      flat.push({
+        key: entry.key,
+        conditions,
+        ...(entry.path !== undefined ? { path: entry.path } : {}),
+        message: entry.message,
+      });
+    }
+    flattenSchemaIssues(entry.issues, conditions, flat);
+  }
+  return flat;
+}
+
+/** A node with its nested mutations and issues made flat, as a datafile carries them. */
+export function flattenSchemaEntries<T>(node: T): T {
+  const record = node as Record<string, unknown> | undefined;
+  if (!record || typeof record !== "object" || Array.isArray(record)) return node;
+  const nests = (list: unknown, nested: string) =>
+    Array.isArray(list) &&
+    list.some((entry) => entry && typeof entry === "object" && nested in (entry as object));
+  if (!nests(record.mutations, "mutations") && !nests(record.issues, "issues")) return node;
+  const flat: Record<string, unknown> = { ...record };
+  if (Array.isArray(record.mutations))
+    flat.mutations = flattenSchemaMutations(record.mutations).map(({ mutation }) => mutation);
+  if (Array.isArray(record.issues)) flat.issues = flattenSchemaIssues(record.issues);
+  return flat as T;
+}
+
 /**
  * A node with the mutations that always apply, those whose conditions are `*`
  * before any whose conditions can fail, applied to its rules, so a datafile
@@ -136,7 +217,7 @@ export function getSchemaConditions(schema: unknown): Conditions[] {
 function stripNode(node: unknown, options: DatafileSchemaOptions): unknown {
   if (!node || typeof node !== "object") return node;
   if (Array.isArray(node)) return node.map((item) => stripNode(item, options));
-  node = applyAlwaysMutations(node);
+  node = applyAlwaysMutations(flattenSchemaEntries(node));
   const result: Record<string, unknown> = {};
   const record = node as Record<string, unknown>;
   for (const key of datafileKeys(record)) {

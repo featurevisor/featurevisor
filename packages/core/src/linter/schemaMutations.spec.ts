@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { createFeaturevisor } from "@featurevisor/sdk";
+import { createSchemas } from "@featurevisor/schemas";
 
 import { getProjectConfig } from "../config/projectConfig";
 import { Datasource } from "../datasource";
@@ -774,7 +776,11 @@ defaultValue:
     expect(errors.map(({ key, at, message }) => [key, at, message])).toEqual(
       expect.arrayContaining([
         ["form", "schema", expect.stringContaining("a variable's schema stays the same")],
-        ["silent", "issues.0.message", "Missing required `message`. Expected string."],
+        [
+          "silent",
+          "issues.0.message",
+          "An issue needs a `message`, or `issues` nested under it, which it groups under its conditions.",
+        ],
       ]),
     );
     const messages = errors
@@ -996,6 +1002,180 @@ ${indent(conditions)}
     ]) {
       expect(await found(conditions)).toEqual([]);
     }
+  });
+
+  test("nested mutations and issues lint clean, and reach the datafile flat", async () => {
+    const files = {
+      "schemas/checkout.yml": `description: Checkout
+
+tags:
+  - web
+
+type: object
+
+properties:
+  accountType:
+    type: string
+    enum: [personal, business]
+  country:
+    type: string
+  taxId:
+    type: string
+  shippingCountry:
+    type: string
+  billingCountry:
+    type: string
+
+required: [accountType]
+
+mutations:
+  production:
+    - key: business
+      conditions: input('accountType') == 'business'
+      mutate:
+        required:appendUnique: taxId
+      mutations:
+        - key: germanBusiness
+          conditions: input('country') == 'DE'
+          mutate:
+            properties.taxId.pattern: "^DE[0-9]{9}$"
+
+    - key: paying
+      conditions: paying
+      mutations:
+        - key: payingVat
+          conditions: input('accountType') == 'business'
+          mutate:
+            properties.taxId.minLength: 11
+
+issues:
+  - key: dutch
+    conditions: country == 'nl'
+    issues:
+      - key: shipsElsewhere
+        conditions: input('shippingCountry') != input('billingCountry')
+        path: shippingCountry
+        message: We ship Dutch orders to the billing country only
+`,
+    };
+    expect(await lint(files)).toEqual([]);
+
+    const { root, projectConfig, datasource } = createProject(files);
+    try {
+      const datafile = await getCustomDatafile({
+        projectConfig,
+        datasource,
+        environment: "production",
+        tag: "web",
+        revision: "1",
+      });
+      const checkout = datafile.schemas!.checkout as any;
+      const conditions = (entry: any) => JSON.parse(entry.conditions);
+
+      // A child comes after its parent, its conditions joined with its parent's, and a parent that only groups applies nothing.
+      expect(checkout.mutations.map((mutation: any) => mutation.key)).toEqual([
+        "business",
+        "germanBusiness",
+        "payingVat",
+      ]);
+      expect(conditions(checkout.mutations[1])).toEqual([
+        { input: "accountType", operator: "equals", value: "business" },
+        { input: "country", operator: "equals", value: "DE" },
+      ]);
+      expect(conditions(checkout.mutations[2])).toEqual([
+        "paying",
+        { input: "accountType", operator: "equals", value: "business" },
+      ]);
+      expect(checkout.issues.map((entry: any) => entry.key)).toEqual(["shipsElsewhere"]);
+      expect(conditions(checkout.issues[0])).toEqual([
+        { attribute: "country", operator: "equals", value: "nl" },
+        { input: "shippingCountry", operator: "notEquals", valueFrom: { input: "billingCountry" } },
+      ]);
+
+      // The package validates the flat lists, and an issue names the nested mutation that set its rule.
+      const f = createFeaturevisor({ datafile, logLevel: "fatal" });
+      const s = createSchemas(f);
+      const german = { accountType: "business", country: "DE", taxId: "NL123456789" };
+      expect(
+        s.validate("checkout", german).issues!.map(({ code, mutation }) => [code, mutation]),
+      ).toEqual([["pattern", "germanBusiness"]]);
+      expect(s.validate("checkout", { ...german, country: "GB" }).issues).toBeUndefined();
+      const shipping = { accountType: "personal", shippingCountry: "DE", billingCountry: "NL" };
+      expect(s.validate("checkout", shipping).issues).toBeUndefined();
+      expect(
+        s
+          .validate("checkout", shipping, { country: "nl" })
+          .issues!.map(({ params }) => params.refine),
+      ).toEqual(["shipsElsewhere"]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("lint checks nested mutations after the ones around them, and keys across the tree", async () => {
+    const errors = await lint({
+      "schemas/form.yml": `description: A form
+
+type: object
+
+properties:
+  name:
+    type: string
+  password:
+    type: string
+
+mutations:
+  production:
+    - key: named
+      conditions: input('name') exists
+      mutate:
+        properties.nickname:
+          type: string
+      mutations:
+        - key: shortNickname
+          conditions: input('name') == 'Ada'
+          mutate:
+            properties.nickname.maxLength: 3
+        - key: named
+          conditions: plan == 'paid'
+          mutate:
+            properties.nickame.maxLength: 9
+        - key: nothing
+          conditions: plan == 'free'
+
+issues:
+  - key: dutch
+    conditions: country == 'nl'
+    path: name
+    issues:
+      - key: guardOnly
+        conditions: plan == 'paid'
+        message: Everyone fails
+`,
+    });
+
+    expect(errors.map(({ at, message }) => [at, message])).toEqual([
+      [
+        "mutations.production.0.mutations.1.key",
+        'Mutation key "named" is used twice in this node.',
+      ],
+      [
+        "mutations.production.0.mutations.1.mutate.properties.nickame.maxLength",
+        "`properties.nickame.maxLength` reaches nothing: `properties.nickame` is not there. A mutation changes what exists, and creates no objects on the way.",
+      ],
+      [
+        "mutations.production.0.mutations.2.mutate",
+        "A mutation needs a `mutate`, or `mutations` nested under it, which it groups under its conditions.",
+      ],
+      [
+        "issues.0.path",
+        "An issue's `path` says where its `message` goes, so an entry that only groups others takes none.",
+      ],
+      [
+        "issues.0.issues.0.conditions",
+        "An issue's conditions read at least one `input`, or it would fail every value for everyone they match. They say when a value fails, such as `input('confirmPassword') != input('password')`.",
+      ],
+    ]);
   });
 
   test("mutations by environment sit at a schema's root, in a project with environments", async () => {
