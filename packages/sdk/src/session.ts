@@ -120,15 +120,25 @@ function sameIdentity(a: DependencyOf, b: DependencyOf): boolean {
 }
 
 function keyOf(options: DependencyOf, requester: DependencyOf): string {
-  return JSON.stringify([
-    options.type,
-    options.featureKey,
-    options.variableKey,
-    requester.type,
-    requester.featureKey,
-    requester.variableKey,
-    requester.key,
-  ]);
+  // A package's entry key only when there is one, so getters keep their own keys.
+  return requester.key === undefined
+    ? JSON.stringify([
+        options.type,
+        options.featureKey,
+        options.variableKey,
+        requester.type,
+        requester.featureKey,
+        requester.variableKey,
+      ])
+    : JSON.stringify([
+        options.type,
+        options.featureKey,
+        options.variableKey,
+        requester.type,
+        requester.featureKey,
+        requester.variableKey,
+        requester.key,
+      ]);
 }
 
 export function beginEvaluation(options: EvaluationOptions): void {

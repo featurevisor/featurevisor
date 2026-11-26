@@ -187,6 +187,12 @@ function getSections(datafile: DatafileContent): Record<string, Section> {
   return sections;
 }
 
+/** Whether a datafile has a top level key besides the SDK's own, such as a section. */
+function hasExtraKeys(datafile: DatafileContent): boolean {
+  for (const key in datafile) if (!hasOwn(DATAFILE_KEYS, key)) return true;
+  return false;
+}
+
 function mergeStoredDatafile(
   existing: DatafileContent,
   incoming: DatafileContent,
@@ -202,6 +208,7 @@ function mergeStoredDatafile(
 
   // Sections merge by entry, as segments do. A top level value that is not an
   // object is carried and replaced whole.
+  if (!hasExtraKeys(existing) && !hasExtraKeys(incoming)) return merged;
   const target = merged as unknown as Record<string, unknown>;
   for (const source of [existing, incoming]) {
     for (const key of Object.keys(source)) {
@@ -273,6 +280,7 @@ function getChangedSections(
   previousDatafile: DatafileContent,
   newDatafile: DatafileContent,
 ): Record<string, string[]> {
+  if (!hasExtraKeys(previousDatafile) && !hasExtraKeys(newDatafile)) return {};
   const previous = getSections(previousDatafile);
   const next = getSections(newDatafile);
   const sections: Record<string, string[]> = {};
