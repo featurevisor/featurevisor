@@ -9,8 +9,9 @@ import { HOUSE_STYLE } from "./style";
  *
  * This file keeps the promise that formatting never changes a datafile. Only objects the
  * builder rebuilds key by key are given a key order here: features, rules, force entries,
- * variations, variablesSchema entries, segments, global variables and their overrides, and
- * everything in test specs, which datafiles never hold. Values stay as written: variable
+ * variations, variablesSchema entries, segments, global variables and their overrides, schemas
+ * with their mutations and issues, which the builder writes in an order of its own, and everything in test
+ * specs, which datafiles never hold. Values stay as written: variable
  * values, context, condition leaves, compose references, and maps keyed by the author, such
  * as variablesSchema or properties. Lists are never reordered, since rules, overrides,
  * variations, conditions and mutations depend on their order. Metadata never reaches a datafile,
@@ -69,11 +70,22 @@ function file(order: string[], children?: () => Record<string, Shape>): Shape {
 
 const schema: Shape = map(keyOrder.schema, false, () => schemaChildren());
 
+/** A schema's mutation and issue entries, each holding entries nested under it */
+const schemaMutation: Shape = map(keyOrder.schemaMutation, false, () => ({
+  mutations: list(schemaMutation, blankLines.schemaMutations),
+}));
+const schemaIssue: Shape = map(keyOrder.schemaIssue, false, () => ({
+  issues: list(schemaIssue),
+}));
+
 function schemaChildren(): Record<string, Shape> {
   return {
     properties: dict(schema, blankLines.schemaProperties),
     items: schema,
     oneOf: list(schema),
+    // The builder writes each mutation and issue key by key, so their authored order never reaches a datafile.
+    mutations: list(schemaMutation, blankLines.schemaMutations),
+    issues: list(schemaIssue),
   };
 }
 
@@ -107,7 +119,16 @@ const metadata: Shape = map([], false, () => ({
 
 const SHAPES: Record<EntityType, Shape> = {
   attribute: file(keyOrder.attribute, () => ({ ...schemaChildren(), metadata })),
-  schema: file(keyOrder.schema, () => ({ ...schemaChildren(), metadata })),
+  schema: file(keyOrder.schema, () => ({
+    ...schemaChildren(),
+    metadata,
+    // A list, or at the root a list per environment, as a feature's rules are.
+    mutations: byEnvironment(
+      schemaMutation,
+      blankLines.schemaMutations,
+      blankLines.schemaMutationEnvironments,
+    ),
+  })),
   segment: file(keyOrder.segment, () => ({ metadata })),
   feature: file(keyOrder.feature, () => ({
     metadata,

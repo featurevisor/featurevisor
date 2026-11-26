@@ -122,6 +122,8 @@ export interface CatalogTargetMembership {
   variables: string[];
   /** Segments in the Target's datafiles. Without it, segments come from features and variables. */
   segments?: string[];
+  /** Schemas the Target's datafiles carry, for @featurevisor/schemas. */
+  schemas?: string[];
   /** Members the Target does not select itself, held only because selected entities need them. */
   dependencyFeatures?: string[];
   dependencyVariables?: string[];
@@ -395,6 +397,9 @@ type RelationshipMaps = {
   targetFeatures: Record<string, Set<string>>;
   targetVariables: Record<string, Set<string>>;
   targetSegments: Record<string, Set<string>>;
+  targetSchemas: Record<string, Set<string>>;
+  schemaTargets: Record<string, Set<string>>;
+  schemaTests: Record<string, Set<string>>;
   variableFeatures: Record<string, Set<string>>;
   variableSegments: Record<string, Set<string>>;
   variableAttributes: Record<string, Set<string>>;
@@ -1861,10 +1866,12 @@ function getUsedByCount(type: CatalogEntityType, key: string, relationships: Rel
       relationships.attributesUsedInFeatures[key],
       relationships.attributesUsedInVariables[key],
     );
+  // A schema a Target delivers is used by the applications that load it.
   if (type === "schema")
     return count(
       relationships.schemasUsedInFeatures[key],
       relationships.schemasUsedInVariables[key],
+      relationships.schemaTargets[key],
     );
   return undefined;
 }
@@ -2006,6 +2013,9 @@ function buildRelationships(
     targetFeatures: {},
     targetVariables: {},
     targetSegments: {},
+    targetSchemas: {},
+    schemaTargets: {},
+    schemaTests: {},
     variableFeatures: {},
     variableSegments: {},
     variableAttributes: {},
@@ -2130,6 +2140,10 @@ function buildRelationships(
     for (const attributeKey of attributes) {
       addToSet(relationships.attributeTargets, attributeKey, targetKey);
     }
+    for (const schemaKey of canonicalMembership.schemas || []) {
+      addToSet(relationships.targetSchemas, targetKey, schemaKey);
+      addToSet(relationships.schemaTargets, schemaKey, targetKey);
+    }
   }
 
   for (const [testIdentity, testSpec] of Object.entries(maps.test)) {
@@ -2139,7 +2153,9 @@ function buildRelationships(
           ? relationships.featureTests
           : reference.type === "segment"
             ? relationships.segmentTests
-            : relationships.variableTests;
+            : reference.type === "schema"
+              ? relationships.schemaTests
+              : relationships.variableTests;
       addToSet(index, reference.key, testIdentity);
     }
   }
@@ -2196,6 +2212,7 @@ function getEntityRelationships(
       features: sortSet(relationships.targetFeatures[key]),
       variables: sortSet(relationships.targetVariables[key]),
       segments: sortSet(relationships.targetSegments[key]),
+      schemas: sortSet(relationships.targetSchemas[key]),
     };
   }
 
@@ -2203,6 +2220,8 @@ function getEntityRelationships(
     return {
       features: sortSet(relationships.schemasUsedInFeatures[key]),
       variables: sortSet(relationships.schemasUsedInVariables[key]),
+      targets: sortSet(relationships.schemaTargets[key]),
+      tests: getCatalogTestKeys(relationships.schemaTests[key], maps),
     };
   }
 
@@ -2395,7 +2414,9 @@ async function buildSetCatalog(
             ? relationships.segmentTests[key]
             : plan.type === "variable"
               ? relationships.variableTests[key]
-              : undefined;
+              : plan.type === "schema"
+                ? relationships.schemaTests[key]
+                : undefined;
       const entityTests = sortCatalogTestIdentities(testIdentities, maps).map((identity) => {
         const spec = maps.test[identity];
         const report = context.testReport?.specs.get(getReportSpecId(set, spec.source, spec.key));
@@ -2523,7 +2544,9 @@ async function buildSetCatalog(
                   ? sortSet(relationships.attributeTargets[key])
                   : plan.type === "variable"
                     ? sortSet(relationships.variableTargets[key])
-                    : undefined,
+                    : plan.type === "schema"
+                      ? sortSet(relationships.schemaTargets[key])
+                      : undefined,
           ...getDependentCounts(plan.type, key, relationships),
           usedByCount: getUsedByCount(plan.type, key, relationships),
           ...getDependencySummary(plan.type, key, dependencyGraph, maps, nodeExists),

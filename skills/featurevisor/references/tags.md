@@ -2,7 +2,7 @@
 
 Full docs: <https://featurevisor.com/docs/tags/>
 
-Tags mark which applications use a feature or global variable, so [targets](targets.md) can build a datafile per application. Smaller datafiles mean less to download and hold in memory.
+Tags mark which applications use a feature, global variable or schema, so [targets](targets.md) can build a datafile per application. Smaller datafiles mean less to download and hold in memory.
 
 ## Declare
 
@@ -26,7 +26,7 @@ tags:
   - ios
 ```
 
-Features and global variables both take `tags`. A tag means nothing until a target selects it: the default `all` target has no selectors and ignores tags.
+Features, global variables and schemas take `tags`. A tag means nothing until a target selects it: the default `all` target has no selectors and ignores tags. A tagged schema reaches applications for [validating their data](schemas-runtime.md) through a target that selects its tag.
 
 ## Select by tag
 

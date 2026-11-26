@@ -793,6 +793,24 @@ locks, actors, processes plus ETS, atomic references, or another mechanism with
 the same observable guarantees. Conformance specifies behaviour, not one memory
 model.
 
+## Package conditions
+
+The module API's `matchConditions(conditions, context, { type, key, readers })`
+answers a package's own conditions, such as a schema's mutations, with the
+instance's engine. JavaScript has it today, and a native SDK gains it with its
+first package. Segments, attributes and groups match as they do in features.
+Feature and variable leaves read through the getters as dependencies, with
+`dependencyOf: { type, key }`, sticky values and modules.
+
+A leaf with a key naming a reader, such as `input`, compares what that reader
+returns for its path. Its `value` is always a value, even an object. Its
+`valueFrom`, such as `{ input: "password" }`, reads the other side through the
+reader it names instead, so two reads can be compared. A `valueFrom` that no
+reader answers, or one with `matches` or `notMatches`, does not match, since a
+pattern read from a value is one nobody reviewed. Without a reader for its key,
+a leaf does not match. A condition that cannot be answered reports
+`evaluation_error` and does not match.
+
 ## SDK implementation sequence
 
 Migrate in this order so each stage has a testable boundary:

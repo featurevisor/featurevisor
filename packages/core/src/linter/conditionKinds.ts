@@ -16,6 +16,7 @@ const KIND_LABELS: Record<ConditionKind, string> = {
   segment: "Segment references",
   feature: "Feature conditions",
   variable: "Global variable conditions",
+  input: "Input conditions",
 };
 
 const LOCATION_LABELS: Record<ConditionLocation, string> = {
@@ -26,6 +27,7 @@ const LOCATION_LABELS: Record<ConditionLocation, string> = {
   featureVariableOverrides: "feature variable overrides",
   variables: "global variable root conditions",
   variableOverrides: "global variable overrides",
+  schemas: "schema mutations and issues",
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -39,6 +41,7 @@ function getConditionKind(leaf: unknown): ConditionKind | undefined {
   if (typeof leaf.attribute === "string") return "attribute";
   if (typeof leaf.feature === "string") return "feature";
   if (typeof leaf.variable === "string") return "variable";
+  if (typeof leaf.input === "string") return "input";
   return undefined;
 }
 
@@ -47,7 +50,7 @@ function getConditionKind(leaf: unknown): ConditionKind | undefined {
  * leaves are checked: a rule naming a segment is not checked against that segment's leaves.
  */
 export function getConditionKindIssues(
-  entityType: "segment" | "feature" | "variable",
+  entityType: "segment" | "feature" | "variable" | "schema",
   definition: unknown,
   allowedConditions: AllowedConditions | undefined,
 ): ConditionKindIssue[] {

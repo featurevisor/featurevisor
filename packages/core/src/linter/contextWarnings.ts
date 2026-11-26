@@ -153,6 +153,7 @@ export function getContextWarnings(
         const childSchema = Object.prototype.hasOwnProperty.call(resolved.properties || {}, key)
           ? resolved.properties![key]
           : resolved.additionalProperties;
+        if (childSchema === true) continue;
         if (childSchema) visit(childSchema, childValue, [...path, key]);
         else if (resolved.properties) {
           const property = [...path, key].join(".");

@@ -193,6 +193,10 @@ describe("core: projectConfig", () => {
         '{ rules: ["segment", "segment"] }',
         'Invalid allowedConditions.rules: duplicate kind "segment"',
       ],
+      [
+        '{ segments: ["input"] }',
+        "Invalid allowedConditions.segments[0]: input. `input` reads the value a schema validates, so only allowedConditions.schemas takes it.",
+      ],
     ]) {
       const invalidRoot = createTempProject(`module.exports = { allowedConditions: ${invalid} };`);
       expect(() => getProjectConfig(invalidRoot)).toThrow(message);

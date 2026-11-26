@@ -42,7 +42,11 @@ import type {
   EventDetailsByName,
   EventName,
 } from "./events.js";
-import { allConditionsAreMatched, valueIsMatched } from "./conditions.js";
+import {
+  allConditionsAreMatched,
+  parseConditionsIfStringified,
+  valueIsMatched,
+} from "./conditions.js";
 import type {
   FeaturevisorDiagnostic,
   FeaturevisorDiagnosticHandler,
@@ -81,6 +85,7 @@ import {
   type StickyState,
   DependencyError,
   evaluateSegment,
+  type DependencyOf,
 } from "./session.js";
 
 const emptyDatafile: DatafileContent = {
@@ -156,11 +161,43 @@ function assertDatafileContent(datafile: unknown): asserts datafile is DatafileC
   }
 }
 
+/** The datafile's own keys. Every other top level key whose value is an object is a section. */
+const DATAFILE_KEYS: Record<string, true> = {
+  schemaVersion: true,
+  revision: true,
+  featurevisorVersion: true,
+  segments: true,
+  features: true,
+  variables: true,
+};
+
+type Section = Record<string, { hash?: string } | undefined>;
+
+function isSection(value: unknown): value is Section {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** The sections of a datafile, by key: top level objects the SDK does not define. */
+function getSections(datafile: DatafileContent): Record<string, Section> {
+  const sections: Record<string, Section> = {};
+  for (const key of Object.keys(datafile)) {
+    const value = (datafile as unknown as Record<string, unknown>)[key];
+    if (!hasOwn(DATAFILE_KEYS, key) && isSection(value)) sections[key] = value;
+  }
+  return sections;
+}
+
+/** Whether a datafile has a top level key besides the SDK's own, such as a section. */
+function hasExtraKeys(datafile: DatafileContent): boolean {
+  for (const key in datafile) if (!hasOwn(DATAFILE_KEYS, key)) return true;
+  return false;
+}
+
 function mergeStoredDatafile(
   existing: DatafileContent,
   incoming: DatafileContent,
 ): DatafileContent {
-  return {
+  const merged: DatafileContent = {
     schemaVersion: incoming.schemaVersion,
     revision: incoming.revision,
     featurevisorVersion: incoming.featurevisorVersion,
@@ -168,6 +205,24 @@ function mergeStoredDatafile(
     features: mergeLookup(existing.features, incoming.features),
     variables: mergeLookup(existing.variables, incoming.variables || {}),
   };
+
+  // Sections merge by entry, as segments do. A top level value that is not an
+  // object is carried and replaced whole.
+  if (!hasExtraKeys(existing) && !hasExtraKeys(incoming)) return merged;
+  const target = merged as unknown as Record<string, unknown>;
+  for (const source of [existing, incoming]) {
+    for (const key of Object.keys(source)) {
+      if (hasOwn(DATAFILE_KEYS, key)) continue;
+      const value = (source as unknown as Record<string, unknown>)[key];
+      const current = target[key];
+      target[key] =
+        source === incoming && isSection(value) && isSection(current)
+          ? mergeLookup(current, value)
+          : value;
+    }
+  }
+
+  return merged;
 }
 
 function isEmptyLookup(value: object): boolean {
@@ -212,8 +267,31 @@ function getDatafileSetEventDetails(
     features: getChangedEntityKeys(previousDatafile.features, newDatafile.features),
     variables: getChangedEntityKeys(previousDatafile.variables || {}, newDatafile.variables || {}),
     segments: [] as SegmentKey[],
+    sections: getChangedSections(previousDatafile, newDatafile),
     replaced: replace,
   };
+}
+
+/**
+ * The changed entries of every section in either datafile, by hash: added,
+ * changed or, on replace, removed. The first datafile reports every entry.
+ */
+function getChangedSections(
+  previousDatafile: DatafileContent,
+  newDatafile: DatafileContent,
+): Record<string, string[]> {
+  if (!hasExtraKeys(previousDatafile) && !hasExtraKeys(newDatafile)) return {};
+  const previous = getSections(previousDatafile);
+  const next = getSections(newDatafile);
+  const sections: Record<string, string[]> = {};
+  for (const key of Object.keys(previous).concat(Object.keys(next))) {
+    if (hasOwn(sections, key)) continue;
+    sections[key] = getChangedEntityKeys(
+      (previous[key] || {}) as Record<string, { hash?: string }>,
+      (next[key] || {}) as Record<string, { hash?: string }>,
+    );
+  }
+  return sections;
 }
 
 function hasUnreportedKey(
@@ -602,18 +680,20 @@ export class Featurevisor {
     if (typeof conditions !== "object" || conditions === null) return false;
     const cached = this.attributeConditions.get(conditions);
     if (cached !== undefined) return cached;
+    const children = Array.isArray(conditions)
+      ? conditions
+      : "and" in conditions
+        ? conditions.and
+        : "or" in conditions
+          ? conditions.or
+          : "not" in conditions
+            ? conditions.not
+            : undefined;
+    // A leaf of another kind, such as a package's `input`, is answered in matchConditions.
     const result =
       "attribute" in conditions ||
-      ((Array.isArray(conditions)
-        ? conditions
-        : "and" in conditions
-          ? conditions.and
-          : "or" in conditions
-            ? conditions.or
-            : "not" in conditions
-              ? conditions.not
-              : []
-      ).every((condition) => this.isAttributeOnly(condition)) &&
+      (children !== undefined &&
+        children.every((condition) => this.isAttributeOnly(condition)) &&
         !("feature" in conditions || "variable" in conditions));
     this.attributeConditions.set(conditions, result);
     return result;
@@ -669,6 +749,30 @@ export class Featurevisor {
         conditions.variation === undefined ||
         this.evaluateRequiredFeature("variation", conditions.feature, dependencies)
           .variationValue === conditions.variation
+      );
+    }
+    // A leaf only a package knows, such as `input`, is read through the package's reader.
+    const readers = dependencies.readers;
+    const leaf = conditions as unknown as Record<string, never>;
+    const kind = readers && Object.keys(leaf).find((name) => hasOwn(readers, name));
+    if (kind) {
+      // `value` is always a value. `valueFrom` reads the other side, such as another input.
+      const from = leaf.valueFrom as Record<string, never> | undefined;
+      let value = leaf.value;
+      if (from !== undefined) {
+        const other =
+          from && typeof from === "object"
+            ? Object.keys(from).find((name) => hasOwn(readers!, name))
+            : undefined;
+        // A source no reader answers matches nothing, and a pattern read from
+        // a value is one nobody reviewed, so it never runs.
+        if (!other || /atches$/.test(leaf.operator)) return false;
+        value = readers![other](from[other]) as never;
+      }
+      return valueIsMatched(
+        readers![kind](leaf[kind]),
+        { operator: leaf.operator, value, regexFlags: leaf.regexFlags },
+        (pattern, flags) => this.getRegex(pattern, flags),
       );
     }
     return matchGroup(
@@ -997,8 +1101,47 @@ export class Featurevisor {
       onDiagnostic,
       reportDiagnostic,
       track,
+      getEntry: (section: string, key: string) => {
+        const entries = this.getSection(section);
+        return entries && hasOwn(entries, key) ? entries[key] : undefined;
+      },
+      getEntryKeys: (section: string) => {
+        const entries = this.getSection(section);
+        return entries ? Object.keys(entries) : [];
+      },
+      matchConditions: (conditions, context, options = {}) => {
+        const type = options.type || module.name || "package";
+        // A session opens when a leaf first reads a dependency, and goes with this object.
+        const dependencies = this.getEvaluationDependencies(
+          context,
+          {},
+          { type, key: options.key, readers: options.readers },
+        );
+        try {
+          return this.conditionsAreMatched(
+            parseConditionsIfStringified(conditions, this.reportDiagnostic) as Conditions,
+            dependencies,
+          );
+        } catch (error) {
+          this.reportDiagnostic({
+            level: "error",
+            code: "evaluation_error",
+            message: "matchConditions failed",
+            originalError: error,
+            details: { type, key: options.key },
+          });
+          return false;
+        }
+      },
     };
   };
+
+  /** A section of the current datafile, or undefined for one it lacks or one of the SDK's own keys. */
+  private getSection(section: string): Section | undefined {
+    if (hasOwn(DATAFILE_KEYS, section)) return undefined;
+    const value = (this.datafile as unknown as Record<string, unknown>)[section];
+    return isSection(value) ? value : undefined;
+  }
 
   private clearModuleDiagnosticSubscriptions = (module: FeaturevisorModule): void => {
     this.moduleDiagnosticSubscriptions = this.moduleDiagnosticSubscriptions.filter(
@@ -1061,7 +1204,7 @@ export class Featurevisor {
    */
   private getEvaluationDependencies<
     T extends {
-      type: "flag" | "variation" | "variable";
+      type: DependencyOf["type"];
       featureKey?: string;
       variableKey?: string;
     },

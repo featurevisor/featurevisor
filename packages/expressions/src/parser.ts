@@ -104,6 +104,8 @@ class Parser {
   private readonly maxDepth: number;
   /** The last leaf parsed, to explain what may have been meant after it. */
   private lastLeaf?: ExpressionLeafNode;
+  /** While an `input(...)` leaf's comparison is read, where `input(...)` may be the value. */
+  private comparingInput = false;
 
   constructor(
     private readonly source: string,
@@ -304,7 +306,7 @@ class Parser {
 
   /** `not (plan in [...])` differs from `plan notIn [...]` only when `plan` is missing. */
   private checkNegation(start: number, child: ExpressionNode) {
-    if (child.kind !== "attribute" && child.kind !== "variable") return;
+    if (child.kind !== "attribute" && child.kind !== "variable" && child.kind !== "input") return;
     const negative = NAMED_NEGATIVES[child.comparison.operator];
     if (!negative) return;
     const subject = this.source.slice(child.start, child.subjectEnd);
@@ -378,6 +380,7 @@ class Parser {
 
     if (this.peek() === "(") {
       if (name === "feature" || name === "variable") return this.parseRead(name, start);
+      if (name === "input") return this.parseInput(start);
       if (name === "semver") {
         this.fail(
           "expression_semver_subject",
@@ -394,7 +397,9 @@ class Parser {
           ? `A segment is named on its own: ${inside[1]}.`
           : name === "attribute" && inside
             ? `An attribute is named on its own before its operator: ${inside[1]} == ...`
-            : "The calls are feature('...'), variable('...') and semver('...').";
+            : this.options.input
+              ? "The calls are feature('...'), variable('...'), input('...') and semver('...')."
+              : "The calls are feature('...'), variable('...') and semver('...').";
       this.fail("expression_unknown_call", `Unknown call \`${name}(\`.`, start, nameEnd + 1, hint);
     }
 
@@ -445,22 +450,23 @@ class Parser {
     return node;
   }
 
-  private parseRead(kind: "feature" | "variable", start: number): ExpressionNode {
+  /** The quoted argument of a call such as `feature('checkout')`, with the position after `)`. */
+  private scanCallArgument(kind: string, start: number, noun: string, sample: string): string {
     this.pos++; // (
     this.skipTrivia();
     if (this.peek() !== "'") {
       this.fail(
         "expression_read_key",
-        `\`${kind}(...)\` takes a key in single quotes.`,
+        `\`${kind}(...)\` takes a ${noun} in single quotes.`,
         start,
         this.pos + 1,
-        `Write it like this: ${kind}('checkout').`,
+        `Write it like this: ${kind}('${sample}').`,
       );
     }
     const keyStart = this.pos;
     const key = this.scanString();
     if (key === "") {
-      this.fail("expression_read_key", `\`${kind}(...)\` needs a key.`, keyStart, this.pos);
+      this.fail("expression_read_key", `\`${kind}(...)\` needs a ${noun}.`, keyStart, this.pos);
     }
     this.skipTrivia();
     if (this.peek() !== ")") {
@@ -472,6 +478,78 @@ class Parser {
       );
     }
     this.pos++;
+    return key;
+  }
+
+  /** `input(...)` reads the value a schema validates, so only a schema's mutations take it. */
+  private checkInputAllowed(start: number) {
+    if (this.options.input) return;
+    this.fail(
+      "expression_input_location",
+      "`input(...)` reads the value a schema validates, so it goes only in a schema's mutations and issues.",
+      start,
+      start + "input(".length,
+    );
+  }
+
+  private parseInput(start: number): ExpressionNode {
+    this.checkInputAllowed(start);
+    const path = this.scanCallArgument("input", start, "path", "accountType");
+    const subjectEnd = this.pos;
+    if (this.peek() === "." || this.peek() === "[") {
+      this.fail(
+        "expression_input_path",
+        "An input's path goes inside its quotes.",
+        this.pos,
+        this.pos + 1,
+        "Join the names with dots, such as input('address.country').",
+      );
+    }
+    const subject = this.source.slice(start, subjectEnd);
+    this.comparingInput = true;
+    let comparison: ExpressionComparison | undefined;
+    try {
+      comparison = this.parseComparison(subject);
+    } finally {
+      this.comparingInput = false;
+    }
+    if (!comparison) {
+      this.fail(
+        "expression_input_comparison",
+        "An input read needs a comparison.",
+        start,
+        subjectEnd,
+        `Compare it, such as ${subject} == 'business'.`,
+      );
+    }
+    return this.leaf({
+      kind: "input",
+      input: path,
+      subjectEnd,
+      comparison,
+      start,
+      end: this.comparisonEnd(comparison),
+    });
+  }
+
+  /** `input(...)` after an operator, which compares one field with another. */
+  private scanInputValue(start: number): ExpressionValue {
+    this.checkInputAllowed(start);
+    const path = this.scanCallArgument("input", start, "path", "password");
+    if (!this.comparingInput) {
+      this.fail(
+        "expression_input_value",
+        "`input(...)` as a value compares two fields, so the condition starts with `input(...)` too.",
+        start,
+        this.pos,
+        "Compare two fields, such as input('confirmPassword') == input('password').",
+      );
+    }
+    return { type: "input", path, start, end: this.pos };
+  }
+
+  private parseRead(kind: "feature" | "variable", start: number): ExpressionNode {
+    const key = this.scanCallArgument(kind, start, "key", "checkout");
     const callEnd = this.pos;
 
     if (kind === "variable") {
@@ -866,6 +944,8 @@ class Parser {
   }
 
   private checkSymbolValue(symbol: Symbol, value: ExpressionValue, subject: string) {
+    // Another field's value, of whatever type the field has.
+    if (value.type === "input") return;
     if (value.type === "list") {
       this.fail(
         "expression_list_value",
@@ -903,6 +983,18 @@ class Parser {
 
   private checkWordValue(operator: Operator, value: ExpressionValue, subject: string) {
     const text = this.source.slice(value.start, value.end);
+    if (value.type === "input") {
+      if (REGEX_OPERATORS.includes(operator)) {
+        this.fail(
+          "expression_input_pattern",
+          `\`${operator}\` never takes its pattern from \`input(...)\`, since a pattern from a user is one nobody reviewed.`,
+          value.start,
+          value.end,
+        );
+      }
+      // Another field's value, a list for list operators, of whatever type the field has.
+      return;
+    }
     if (value.type === "semver") {
       this.fail(
         "expression_semver_operator",
@@ -1007,6 +1099,7 @@ class Parser {
       }
       if (name === "null") return { type: "null", value: null, start, end: this.pos };
       if (name === "semver" && this.peek() === "(") return this.scanSemver(start);
+      if (name === "input" && this.peek() === "(") return this.scanInputValue(start);
       const keyword = ["true", "false", "null"].find((word) => word === name.toLowerCase());
       if (keyword) {
         this.fail(
@@ -1169,6 +1262,15 @@ class Parser {
         );
       }
       const item = this.parseValue(symbol, operator);
+      if (item.type === "input") {
+        this.fail(
+          "expression_list_item",
+          "A list holds strings, numbers, booleans and null, not fields.",
+          item.start,
+          item.end,
+          "Compare with a list field as a whole, such as input('primaryTag') in input('tags').",
+        );
+      }
       if (item.type === "regex" || item.type === "semver") {
         this.fail(
           "expression_list_item",

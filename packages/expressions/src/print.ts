@@ -92,10 +92,26 @@ function printPath(path: unknown): string | undefined {
   return result;
 }
 
-function printComparison(subject: string, condition: Record<string, unknown>): string | undefined {
+/**
+ * A comparison as an expression writes it. `read` is another field's `input(...)`, written
+ * where the value goes, for a leaf whose `valueFrom` reads it.
+ */
+function printComparison(
+  subject: string,
+  condition: Record<string, unknown>,
+  read?: string,
+): string | undefined {
   const operator = condition.operator;
   if (typeof operator !== "string" || !isOperator(operator)) return undefined;
   const spelling = OPERATOR_SPELLINGS[operator as Operator];
+  if (read !== undefined) {
+    // No pattern is read from a field, and versions compare only with semver('...').
+    if (spelling.form === "postfix" || REGEX_OPERATORS.includes(operator as Operator))
+      return undefined;
+    if (spelling.form === "symbol" && spelling.semver) return undefined;
+    if (condition.regexFlags !== undefined) return undefined;
+    return `${subject} ${spelling.form === "symbol" ? spelling.symbol : operator} ${read}`;
+  }
   const value = condition.value;
   const hasValue = Object.prototype.hasOwnProperty.call(condition, "value");
   const regexFlags = condition.regexFlags;
@@ -141,6 +157,21 @@ function printLeaf(value: unknown, options: ExpressionOptions): string | undefin
     if (!hasOnlyKeys(value, ["attribute", "operator", "value", "regexFlags"])) return undefined;
     if (!isBareName(value.attribute, options)) return undefined;
     return printComparison(value.attribute, value);
+  }
+
+  if (typeof value.input === "string") {
+    if (!options.input || value.input === "") return undefined;
+    if (!hasOnlyKeys(value, ["input", "operator", "value", "valueFrom", "regexFlags"]))
+      return undefined;
+    const subject = `input(${quoteString(value.input)})`;
+    if (!Object.prototype.hasOwnProperty.call(value, "valueFrom")) {
+      return printComparison(subject, value);
+    }
+    const from = value.valueFrom;
+    if (Object.prototype.hasOwnProperty.call(value, "value")) return undefined;
+    if (!isObject(from) || !hasOnlyKeys(from, ["input"])) return undefined;
+    if (typeof from.input !== "string" || from.input === "") return undefined;
+    return printComparison(subject, value, `input(${quoteString(from.input)})`);
   }
 
   if (typeof value.variable === "string") {

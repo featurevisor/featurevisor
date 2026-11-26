@@ -137,7 +137,7 @@ export function getChecksZodSchema() {
 
 function rootOwnerSuggestion(value: unknown): { key: string; owner: string } | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
-  const candidates = ["feature", "segment", "variable"];
+  const candidates = ["feature", "segment", "variable", "schema"];
   for (const key of Object.keys(value)) {
     for (const owner of candidates) {
       if (key === owner) continue;
@@ -164,6 +164,7 @@ export function getTestAuthoringShapes(
   availableVariableKeys: [string, ...string[]] = [] as unknown as [string, ...string[]],
   featuresByKey: Record<string, ParsedFeature> = {},
   segmentsByKey: Record<string, Segment> = {},
+  availableSchemaKeys: string[] = [],
 ) {
   const checksZodSchema = getChecksZodSchema();
   /** Feature assertions named sticky features `sticky` before v4. */
@@ -966,17 +967,94 @@ export function getTestAuthoringShapes(
     })
     .strict();
 
+  // A schema spec validates values, each against the schema an environment and a context give.
+  const expectedSchemaIssueZodSchema = z
+    .object({
+      path: z.array(z.union([z.string(), z.number()])).optional(),
+      code: z.string().min(1).optional(),
+      mutation: z.string().min(1).optional(),
+      message: z.string().optional(),
+      params: z.record(z.string(), z.unknown()).optional(),
+    })
+    .strict();
+  const schemaTestZodSchema = z
+    .object({
+      promotable: z.boolean().optional(),
+      schema: refineWithMessage(
+        z.string(),
+        (value) => availableSchemaKeys.includes(value),
+        (value) => `Unknown schema "${value}".${suggestKey(value, availableSchemaKeys)}`,
+      ),
+      assertions: z
+        .array(
+          z
+            .object({
+              key: z.string().min(1).optional(),
+              promotable: z.boolean().optional(),
+              matrix: matrixZodSchema.optional(),
+              description: z.string().optional(),
+              environment: environmentZodSchema(true),
+              target: refineWithMessage(
+                z.string(),
+                (value) => value.indexOf("${{") === 0 || availableTargetKeys.includes(value),
+                (value) => `Unknown target "${value}"`,
+              ).optional(),
+              context: z.record(z.string(), z.unknown()).optional(),
+              value: z.unknown().optional(),
+              expectedToBeValid: z.union([z.boolean(), matrixPlaceholderZodSchema]).optional(),
+              expectedIssues: z.array(expectedSchemaIssueZodSchema).optional(),
+            })
+            .strict()
+            .superRefine((assertion, ctx) => {
+              validateMatrixPlaceholders(assertion, assertion.matrix, [], ctx);
+              validateMatrixSelectorValues(
+                assertion.environment,
+                assertion.matrix,
+                projectConfig.environments || [],
+                "environment",
+                ctx,
+              );
+              if (!Object.prototype.hasOwnProperty.call(assertion, "value")) {
+                ctx.addIssue({
+                  code: "custom",
+                  path: ["value"],
+                  message: "Add the `value` to validate.",
+                });
+              }
+              if (assertion.expectedToBeValid === undefined && !assertion.expectedIssues) {
+                ctx.addIssue({
+                  code: "custom",
+                  path: ["expectedToBeValid"],
+                  message: "Add `expectedToBeValid` or `expectedIssues`.",
+                });
+              }
+              if (assertion.expectedToBeValid === true && assertion.expectedIssues?.length) {
+                ctx.addIssue({
+                  code: "custom",
+                  path: ["expectedIssues"],
+                  message: "A value expected to be valid has no issues to expect.",
+                });
+              }
+            }),
+        )
+        .min(1, "Test spec must contain at least one assertion")
+        .superRefine(validateAssertionKeys),
+    })
+    .strict();
+
   const schema = z.unknown().superRefine((value, ctx) => {
     const candidate = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-    const schema = Object.prototype.hasOwnProperty.call(candidate, "feature")
-      ? featureTestZodSchema
-      : Object.prototype.hasOwnProperty.call(candidate, "segment")
-        ? segmentTestZodSchema
-        : Object.prototype.hasOwnProperty.call(candidate, "variable")
-          ? variableTestZodSchema
-          : Object.prototype.hasOwnProperty.call(candidate, "scenario")
-            ? scenarioTestZodSchema
-            : z.never();
+    const schema = Object.prototype.hasOwnProperty.call(candidate, "schema")
+      ? schemaTestZodSchema
+      : Object.prototype.hasOwnProperty.call(candidate, "feature")
+        ? featureTestZodSchema
+        : Object.prototype.hasOwnProperty.call(candidate, "segment")
+          ? segmentTestZodSchema
+          : Object.prototype.hasOwnProperty.call(candidate, "variable")
+            ? variableTestZodSchema
+            : Object.prototype.hasOwnProperty.call(candidate, "scenario")
+              ? scenarioTestZodSchema
+              : z.never();
     const result = schema.safeParse(value);
     if (!result.success) {
       result.error.issues.forEach((issue) => ctx.addIssue({ ...issue }));

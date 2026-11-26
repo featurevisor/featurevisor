@@ -8,7 +8,7 @@ A target defines one datafile. Targets live in `targets/<key>.yml`, and the buil
 description: All features and global variables
 ```
 
-A target without selectors, like the scaffold's `targets/all.yml`, includes every active feature and global variable. No `all` tag is needed.
+A target without selectors, like the scaffold's `targets/all.yml`, includes every active feature and global variable. No `all` tag is needed. It delivers no schemas, since a schema reaches applications only when a target opts in ([Schemas for applications](#schemas-for-applications)).
 
 ## One datafile per application
 
@@ -29,7 +29,7 @@ tags:
     - android
 ```
 
-`tag` takes one tag. `tags` takes `{ or: [...] }` or `{ and: [...] }`, nonempty. Use one or the other. Tags select both features and global variables.
+`tag` takes one tag. `tags` takes `{ or: [...] }` or `{ and: [...] }`, nonempty. Use one or the other. Tags select features, global variables and schemas.
 
 ## Narrow by key
 
@@ -47,6 +47,28 @@ includeVariables:
 - Patterns use `*` as a wildcard. Exclusions win over inclusions.
 - `includeFeatures` and `excludeFeatures` affect features only. `includeVariables` and `excludeVariables` affect global variables only.
 - Tag and key selectors combine with AND: a feature must match both.
+
+## Schemas for applications
+
+A target delivers schemas for [validating application data](schemas-runtime.md) only when it opts in: every schema whose tags its `tag` or `tags` match, plus `includeSchemas`, minus `excludeSchemas`, which wins over both.
+
+```yaml
+description: Web app
+
+tag: web
+
+includeSchemas:
+  - couponCode
+
+excludeSchemas:
+  - legacyAddress
+
+includeAnnotations: false # for a backend that renders nothing
+```
+
+- A target with only feature or variable selectors delivers no schemas.
+- A delivered schema brings every schema it references, and the segments, flags and global variables its conditions read, with everything they read.
+- A target with `schemaVersion: "2"` cannot deliver schemas.
 
 ## What comes along
 

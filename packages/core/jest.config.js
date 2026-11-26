@@ -25,5 +25,6 @@ module.exports = {
     "^@featurevisor/sdk$": "<rootDir>/../sdk/src",
     "^@featurevisor/parsers$": "<rootDir>/../parsers/src",
     "^@featurevisor/expressions$": "<rootDir>/../expressions/src",
+    "^@featurevisor/schemas$": "<rootDir>/../schemas/src",
   },
 };

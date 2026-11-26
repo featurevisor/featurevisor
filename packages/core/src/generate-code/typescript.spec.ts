@@ -32,6 +32,8 @@ function getGeneratedTypeScriptDiagnostics(
       [importSdkPath]: [path.join(repositoryPath, "packages/sdk/src/index.ts")],
       "@featurevisor/vue": [path.join(repositoryPath, "packages/vue/src/index.ts")],
       "@featurevisor/types": [path.join(repositoryPath, "packages/types/src/index.d.ts")],
+      "@featurevisor/schemas": [path.join(repositoryPath, "packages/schemas/src/index.ts")],
+      "@featurevisor/schemas/react": [path.join(repositoryPath, "packages/schemas/src/react.tsx")],
     },
     skipLibCheck: true,
     strict: true,
@@ -1267,6 +1269,205 @@ export { every, some };
     expect(variablesContent).toContain("headerMessage: string;");
     expect(featuresContent).toContain("showHeader: null;");
     expect(featuresContent).not.toContain("discount:");
+    expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
+  });
+  it("types a schema with mutations as the base with whatever they widen", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "schemas", "team.yml"),
+      [
+        "description: A team",
+        "tags:",
+        "  - sign-up",
+        "type: object",
+        "properties:",
+        "  plan:",
+        "    type: string",
+        "    enum: [free, pro]",
+        "  phone:",
+        "    type: string",
+        "  taxId:",
+        "    type: string",
+        "  address:",
+        "    type: object",
+        "    properties:",
+        "      country:",
+        "        type: string",
+        "      state:",
+        "        type: string",
+        "    required: [country]",
+        "    mutations:",
+        "      - key: anywhere",
+        "        conditions: '*'",
+        "        mutate:",
+        "          required:removeValue: country",
+        "required: [plan, phone]",
+        "mutations:",
+        "  production:",
+        "    - key: business",
+        "      conditions:",
+        "        - attribute: country",
+        "          operator: equals",
+        "          value: nl",
+        "      mutate:",
+        "        properties.plan.enum:append: business",
+        "        required:appendUnique: taxId",
+        "        properties.nickname:",
+        "          type: string",
+        "      mutations:",
+        "        - key: largeBusiness",
+        "          conditions:",
+        "            - attribute: city",
+        "              operator: equals",
+        "              value: amsterdam",
+        "          mutate:",
+        "            properties.nickname.maxLength: 10",
+        "            properties.plan.enum:append: enterprise",
+        "    - key: phoneOptional",
+        "      conditions:",
+        "        - attribute: country",
+        "          operator: equals",
+        "          value: de",
+        "      mutate:",
+        "        required:removeValue: phone",
+      ].join("\n"),
+      "utf8",
+    );
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      { rootDirectoryPath: tempProjectPath, projectConfig, datasource, options: {} } as any,
+      outputPath,
+      { tag: "sign-up", schemas: true },
+    );
+
+    // A value a mutation adds joins the union, a field it requires stays optional, and one it no longer requires is optional.
+    // A nested mutation applies after its parent, so it reaches the nickname its parent adds.
+    expect(fs.readFileSync(path.join(outputPath, "schemas.ts"), "utf8")).toContain(
+      'export type TeamSchema = { plan: "free" | "pro" | "business" | "enterprise"; phone?: string; taxId?: string; address?: { country?: string; state?: string }; nickname?: string };',
+    );
+    expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
+  });
+
+  it("types the schemas a target delivers, with a typed createSchemas and schema hooks", async () => {
+    fs.writeFileSync(
+      path.join(tempProjectPath, "schemas", "signUp.yml"),
+      [
+        "description: A sign up form",
+        "tags:",
+        "  - sign-up",
+        "annotationsSchema:",
+        "  schema: formAnnotations",
+        "optionSchema:",
+        "  type: object",
+        "  properties:",
+        "    flag:",
+        "      type: string",
+        "type: object",
+        "properties:",
+        "  email:",
+        "    type: string",
+        "    annotations:",
+        "      title: Email address",
+        "      placeholder: ada@example.com",
+        "  country:",
+        "    type: string",
+        "    enum: [GB, NL]",
+        "    annotations:",
+        "      options:",
+        "        GB:",
+        "          title: United Kingdom",
+        "          flag: gb",
+        "        NL:",
+        "          title: Netherlands",
+        "          flag: nl",
+        "  nickname:",
+        "    oneOf:",
+        "      - type: string",
+        "      - const: null",
+        "required: [email]",
+        "additionalProperties: true",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(tempProjectPath, "schemas", "formAnnotations.yml"),
+      [
+        "description: What our forms say about a field",
+        "type: object",
+        "properties:",
+        "  placeholder:",
+        "    type: string",
+        "  input:",
+        "    type: string",
+        "    enum: [text, email, select]",
+      ].join("\n"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      path.join(tempProjectPath, "targets", "signUpForms.yml"),
+      ["description: Sign up forms", "tag: sign-up", "includeSchemas:", "  - money"].join("\n"),
+      "utf8",
+    );
+    const projectConfig = getProjectConfig(tempProjectPath);
+    const datasource = new Datasource(projectConfig, tempProjectPath);
+
+    await generateTypeScriptCodeForProject(
+      { rootDirectoryPath: tempProjectPath, projectConfig, datasource, options: {} } as any,
+      outputPath,
+      { target: "signUpForms", schemas: true, react: true },
+    );
+
+    const schemasContent = fs.readFileSync(path.join(outputPath, "schemas.ts"), "utf8");
+    expect(schemasContent).toContain(
+      'export type SignUpSchema = { email: string; country?: "GB" | "NL"; nickname?: string | null; [key: string]: unknown };',
+    );
+    expect(schemasContent).toContain(
+      "export interface SchemaTypes {\n  money: MoneySchema;\n  signUp: SignUpSchema;\n}",
+    );
+    // The vocabularies type annotations and options, and never reach a schema's own type.
+    expect(schemasContent).toContain(
+      "export interface SchemaVocabularies {\n  money: { annotations: {}; options: {} };\n  signUp: { annotations: FormAnnotationsSchema; options: { flag?: string } };\n}",
+    );
+    expect(schemasContent).toContain(
+      "return createSchemasBase<SchemaTypes, SchemaVocabularies>(f, options);",
+    );
+    expect(fs.existsSync(path.join(outputPath, "schemas-react.ts"))).toBe(true);
+    expect(fs.readFileSync(path.join(outputPath, "index.ts"), "utf8")).toContain(
+      'export * from "./schemas-react.js";',
+    );
+    // Field paths are typed, and a field's handle validates in a hook.
+    fs.writeFileSync(
+      path.join(outputPath, "usage.ts"),
+      [
+        'import type { Featurevisor } from "@featurevisor/sdk";',
+        'import { createSchemas, useSchema, useValidation } from "./index.js";',
+        "",
+        'export function countries(f: Featurevisor): Array<"GB" | "NL"> {',
+        '  const signUp = createSchemas(f).get("signUp");',
+        "  // @ts-expect-error a field the schema lacks",
+        '  signUp.at("emial");',
+        "  // @ts-expect-error a value the field does not allow",
+        '  signUp.at("country").option("FR");',
+        '  const placeholder: string | undefined = signUp.at("email").annotations.placeholder;',
+        '  const title: string | undefined = signUp.at("email").annotations.title;',
+        "  // @ts-expect-error an annotation the vocabulary does not declare",
+        '  signUp.at("email").annotations.placeholdr;',
+        '  const flag: string | undefined = signUp.at("country").option("GB")?.flag;',
+        "  // @ts-expect-error a field a choice does not carry",
+        '  signUp.at("country").option("GB")?.flg;',
+        "  void [placeholder, title, flag];",
+        '  return signUp.at("country").options.map((option) => option.value);',
+        "}",
+        "",
+        "export function useEmail(value: string): string | undefined {",
+        '  const result = useValidation(useSchema("signUp").at("email"), value);',
+        "  return result.issues ? undefined : result.value;",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
     expect(getGeneratedTypeScriptDiagnostics(outputPath)).toEqual([]);
   });
 });

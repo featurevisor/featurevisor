@@ -1,10 +1,13 @@
-import type { Schema, SchemaKey, Value } from "@featurevisor/types";
+import type { Schema, SchemaKey, SchemaMessages, Value } from "@featurevisor/types";
 import { z } from "zod";
 
 import type { ProjectConfig } from "../config";
 import { refineWithMessage } from "./zodHelpers";
+import { schemaVaries } from "./schemaMutations";
+import { mutationEntries, mutationEntryPath } from "../builder/mutationEntries";
 import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 import {
+  codePointLength,
   formatValueMessage,
   refineRemovedSchemaType,
   schemaFormatZodSchema,
@@ -332,8 +335,8 @@ export function refineStringLengthPattern(
     }
   }
   const testString = (s: string): { minOk: boolean; maxOk: boolean; patternOk: boolean } => {
-    const minOk = minLen === undefined || s.length >= minLen;
-    const maxOk = maxLen === undefined || s.length <= maxLen;
+    const minOk = minLen === undefined || codePointLength(s) >= minLen;
+    const maxOk = maxLen === undefined || codePointLength(s) <= maxLen;
     let patternOk = true;
     if (patternStr !== undefined) {
       try {
@@ -349,14 +352,14 @@ export function refineStringLengthPattern(
     if (!minOk) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `\`const\` value length (${schema.const.length}) is less than \`minLength\` (${minLen}).`,
+        message: `\`const\` value length (${codePointLength(schema.const)}) is less than \`minLength\` (${minLen}).`,
         path: [...pathPrefix, "const"],
       });
     }
     if (!maxOk) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `\`const\` value length (${schema.const.length}) is greater than \`maxLength\` (${maxLen}).`,
+        message: `\`const\` value length (${codePointLength(schema.const)}) is greater than \`maxLength\` (${maxLen}).`,
         path: [...pathPrefix, "const"],
       });
     }
@@ -376,14 +379,14 @@ export function refineStringLengthPattern(
         if (!minOk) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Enum value at index ${i} length (${v.length}) is less than \`minLength\` (${minLen}).`,
+            message: `Enum value at index ${i} length (${codePointLength(v)}) is less than \`minLength\` (${minLen}).`,
             path: [...pathPrefix, "enum", i],
           });
         }
         if (!maxOk) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Enum value at index ${i} length (${v.length}) is greater than \`maxLength\` (${maxLen}).`,
+            message: `Enum value at index ${i} length (${codePointLength(v)}) is greater than \`maxLength\` (${maxLen}).`,
             path: [...pathPrefix, "enum", i],
           });
         }
@@ -531,6 +534,177 @@ export function refineArrayItems(
   }
 }
 
+/**
+ * The params each issue code fills a message's placeholders from, as
+ * `@featurevisor/schemas` reports them, with `title` when the field has one. A
+ * text message in a schema's `messages` is keyed by one of these codes.
+ */
+export const SCHEMA_ISSUE_PARAMS: Record<string, readonly string[]> = {
+  type: ["type", "received", "title"],
+  const: ["const", "title"],
+  // `titles` when every choice has a `title`.
+  enum: ["options", "titles", "title"],
+  minimum: ["minimum", "value", "title"],
+  maximum: ["maximum", "value", "title"],
+  minLength: ["minLength", "length", "title"],
+  maxLength: ["maxLength", "length", "title"],
+  pattern: ["pattern", "title"],
+  format: ["format", "title"],
+  minItems: ["minItems", "count", "title"],
+  maxItems: ["maxItems", "count", "title"],
+  uniqueItems: ["index", "title"],
+  required: ["key", "title"],
+  additionalProperties: ["key"],
+  oneOf: ["matches", "title"],
+  refine: ["refine", "title"],
+  refineError: ["refine", "title"],
+};
+
+/** The placeholders of a message template: `{name}`, with `{{` and `}}` for literal braces. */
+export function getMessagePlaceholders(template: string): string[] {
+  const names: string[] = [];
+  const pattern = /\{\{|\}\}|\{([^{}]*)\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(template))) {
+    if (match[1] !== undefined) names.push(match[1]);
+  }
+  return names;
+}
+
+const schemaMessagesZodSchema: z.ZodType<SchemaMessages> = z.lazy(() =>
+  z.record(
+    z.string(),
+    z.union([
+      z.string().refine((value) => value.trim().length > 0, "A message cannot be empty."),
+      schemaMessagesZodSchema,
+    ]),
+  ),
+);
+
+function resolveMessageNode(
+  node: unknown,
+  schemasByKey: Record<string, Schema>,
+  seen = new Set<string>(),
+): SchemaLike | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const schema = node as SchemaLike;
+  if (typeof schema.schema === "string" && !seen.has(schema.schema)) {
+    seen.add(schema.schema);
+    return resolveMessageNode(schemasByKey[schema.schema], schemasByKey, seen) || schema;
+  }
+  return schema;
+}
+
+/** The nodes a field of `node` can be, through `schema` references and `oneOf` branches. */
+function messageFieldNodes(
+  node: SchemaLike | undefined,
+  field: string,
+  schemasByKey: Record<string, Schema>,
+): { found: boolean; nodes: SchemaLike[] } {
+  const resolved = resolveMessageNode(node, schemasByKey);
+  if (!resolved) return { found: false, nodes: [] };
+  const branches = Array.isArray(resolved.oneOf)
+    ? resolved.oneOf.map((branch) => resolveMessageNode(branch, schemasByKey))
+    : [resolved];
+  let found = false;
+  const nodes: SchemaLike[] = [];
+  for (const branch of branches) {
+    if (!branch) continue;
+    if (field === "[]") {
+      if (branch.type !== "array") continue;
+      found = true;
+      const items = resolveMessageNode(branch.items, schemasByKey);
+      if (items) nodes.push(items);
+    } else if (field === "*") {
+      if (!branch.additionalProperties) continue;
+      found = true;
+      const values = resolveMessageNode(branch.additionalProperties, schemasByKey);
+      if (values) nodes.push(values);
+    } else if (
+      branch.properties &&
+      Object.prototype.hasOwnProperty.call(branch.properties, field)
+    ) {
+      found = true;
+      const property = resolveMessageNode(branch.properties[field], schemasByKey);
+      if (property) nodes.push(property);
+    }
+  }
+  return { found, nodes };
+}
+
+/**
+ * Checks a node's `messages`: a text value is a message for one of the node's
+ * issue codes, with placeholders from that code's params, and a map is a field
+ * of the node, `"[]"` for an array's items or `"*"` for the values an open
+ * object allows, holding that field's messages the same way.
+ */
+export function refineSchemaMessages(
+  node: SchemaLike & { messages?: unknown },
+  ctx: z.RefinementCtx,
+  schemasByKey: Record<string, Schema> = {},
+): void {
+  const messages = node.messages;
+  if (!messages || typeof messages !== "object" || Array.isArray(messages)) return;
+
+  const visit = (
+    owners: SchemaLike[],
+    entries: Record<string, unknown>,
+    path: (string | number)[],
+  ) => {
+    for (const [key, value] of Object.entries(entries)) {
+      if (typeof value === "string") {
+        const params = SCHEMA_ISSUE_PARAMS[key];
+        if (!params) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Unknown issue code "${key}". A text message is keyed by the code of the issue it words, such as "minLength", and a field takes a map of messages. Codes: ${Object.keys(SCHEMA_ISSUE_PARAMS).join(", ")}.`,
+            path: [...path, key],
+          });
+          continue;
+        }
+        for (const placeholder of getMessagePlaceholders(value)) {
+          if (!params.includes(placeholder)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `Placeholder "{${placeholder}}" is not a param of "${key}". Use ${params.map((param) => `{${param}}`).join(" or ")}, or write {{ and }} for literal braces.`,
+              path: [...path, key],
+            });
+          }
+        }
+        continue;
+      }
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+
+      // Messages under `additionalProperties: true` word values no schema describes.
+      if (owners.length === 0) continue;
+      const children: SchemaLike[] = [];
+      let found = false;
+      for (const owner of owners) {
+        const field = messageFieldNodes(owner, key, schemasByKey);
+        if (field.found) found = true;
+        children.push(...field.nodes);
+      }
+      if (!found) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            key === "[]"
+              ? '"[]" holds the messages of an array\'s items, and this node is not an array.'
+              : key === "*"
+                ? '"*" holds the messages of the values `additionalProperties` allows, and this node allows none.'
+                : `Unknown field "${key}" in messages. A map in \`messages\` is a field of the node, such as one of its \`properties\`, "[]" for an array's items or "*" for an open object's values.`,
+          path: [...path, key],
+        });
+        continue;
+      }
+      visit(children, value as Record<string, unknown>, [...path, key]);
+    }
+  };
+
+  const self = resolveMessageNode(node, schemasByKey);
+  visit(self ? [self] : [], messages as Record<string, unknown>, ["messages"]);
+}
+
 // Recursive schema for Value: boolean | string | number | ObjectValue | Value[]
 export const valueZodSchema: z.ZodType<Value> = z.lazy(() =>
   z.union([
@@ -545,6 +719,77 @@ export const valueZodSchema: z.ZodType<Value> = z.lazy(() =>
 
 export const propertyTypeEnum = schemaTypeZodSchema();
 
+/** A schema's `tags`, at its root only: declared in the configuration, each once. */
+function getSchemaTagsZodSchema(projectConfig: ProjectConfig) {
+  return z
+    .array(
+      refineWithMessage(
+        z.string(),
+        (value) => projectConfig.tags.includes(value),
+        (value) => `Unknown tag "${value}"`,
+      ),
+    )
+    .superRefine((value, ctx) => {
+      const duplicates = value.filter((tag, index) => value.indexOf(tag) !== index);
+      for (const tag of new Set(duplicates)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Duplicate tag "${tag}".`,
+          params: { code: "duplicate_tag" },
+          path: [value.lastIndexOf(tag)],
+        });
+      }
+    });
+}
+
+/** A mutation, with mutations nested under it, at any depth. */
+interface MutationShape {
+  key: string;
+  description?: string;
+  conditions?: unknown;
+  mutate?: unknown;
+  mutations?: MutationShape[];
+}
+const mutationListZodSchema: z.ZodType<MutationShape[]> = z.lazy(() =>
+  z.array(
+    z
+      .object({
+        key: z.string().min(1),
+        description: z.string().optional(),
+        conditions: z.unknown(),
+        // Required unless the mutation nests others, which schemaMutations.ts says.
+        mutate: z.unknown().optional(),
+        mutations: mutationListZodSchema.optional(),
+      })
+      .strict(),
+  ),
+);
+
+/** An issue entry, with entries nested under it, at any depth. */
+interface IssueShape {
+  key: string;
+  description?: string;
+  conditions?: unknown;
+  path?: string;
+  message?: string;
+  issues?: IssueShape[];
+}
+const issueListZodSchema: z.ZodType<IssueShape[]> = z.lazy(() =>
+  z.array(
+    z
+      .object({
+        key: z.string().min(1),
+        description: z.string().optional(),
+        conditions: z.unknown(),
+        path: z.string().min(1).optional(),
+        // Required unless the entry nests others, which schemaMutations.ts says.
+        message: z.string().min(1).optional(),
+        issues: issueListZodSchema.optional(),
+      })
+      .strict(),
+  ),
+);
+
 export function getSchemaZodSchema(
   schemaKeys: SchemaKey[] = [],
   schemasByKey: Record<string, Schema> = {},
@@ -557,11 +802,20 @@ export function getSchemaZodSchema(
         description: z.string().optional(),
         promotable: z.boolean().optional(),
         ...(root && projectConfig
-          ? { metadata: getMetadataZodSchema(projectConfig).optional() }
+          ? {
+              metadata: getMetadataZodSchema(projectConfig).optional(),
+              tags: getSchemaTagsZodSchema(projectConfig).optional(),
+              // Vocabularies, checked with the annotations they declare (schemaAnnotations.ts).
+              annotationsSchema: schemaZodSchema.optional(),
+              optionSchema: schemaZodSchema.optional(),
+            }
           : {}),
+        // Schema files carry annotations at any node. Variables' schemas present nothing.
+        ...(projectConfig ? { annotations: z.record(z.string(), z.unknown()).optional() } : {}),
         type: propertyTypeEnum.optional(),
-        enum: z.array(valueZodSchema).optional(),
-        const: valueZodSchema.optional(),
+        // `null` is how a nullable value's `oneOf` branch is written: `const: null`.
+        enum: z.array(z.union([valueZodSchema, z.null()])).optional(),
+        const: z.union([valueZodSchema, z.null()]).optional(),
         minimum: z.number().optional(),
         maximum: z.number().optional(),
         minLength: countZodSchema.optional(),
@@ -574,19 +828,57 @@ export function getSchemaZodSchema(
         uniqueItems: z.boolean().optional(),
         required: z.array(z.string()).optional(),
         properties: z.record(z.string(), schemaZodSchema).optional(),
-        additionalProperties: schemaZodSchema.optional(),
+        additionalProperties: z.union([z.literal(true), schemaZodSchema]).optional(),
+        messages: schemaMessagesZodSchema.optional(),
         // Annotations: default?: Value; examples?: Value[];
 
-        schema: refineWithMessage(
-          z.string(),
-          (value) => schemaKeys.includes(value),
-          (value) => `Unknown schema "${value}"`,
+        schema: (projectConfig
+          ? refineWithMessage(
+              z.string(),
+              (value) => schemaKeys.includes(value),
+              (value) => `Unknown schema "${value}"`,
+            )
+          : // Inside a variable's schema, nothing it references may vary.
+            refineWithMessage(
+              z.string(),
+              (value) => schemaKeys.includes(value),
+              (value) => `Unknown schema "${value}"`,
+            ).refine((value) => !schemaVaries(value, schemasByKey), {
+              message:
+                "This schema varies by environment or under conditions, and a variable's schema stays the same everywhere and for everyone. Give the variable a schema that does not vary.",
+            })
         ).optional(),
         oneOf: z.array(schemaZodSchema).min(2).optional(),
+        // Schema files change their rules and report issues under conditions, checked by schemaMutations.ts.
+        ...(projectConfig
+          ? {
+              // A list, or at the root a list per environment, as features' rules are, which
+              // schemaMutations.ts says, rather than a type error where a field has a map.
+              mutations: z
+                .union([mutationListZodSchema, z.record(z.string(), mutationListZodSchema)])
+                .optional(),
+              issues: issueListZodSchema.optional(),
+            }
+          : {}),
       })
       .strict()
       .superRefine((data, ctx) => refineRemovedSchemaType(data, ctx))
       .superRefine((data, ctx) => {
+        // Without one, a node takes any value its keywords allow, which applications and lint would read apart.
+        if (
+          data.type === undefined &&
+          data.schema === undefined &&
+          data.oneOf === undefined &&
+          data.enum === undefined &&
+          !("const" in data)
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message:
+              "A schema needs a `type`, or describes its value with `schema`, `oneOf`, `const` or `enum`.",
+            path: ["type"],
+          });
+        }
         if (data.type === "array" && data.items === undefined) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -601,6 +893,7 @@ export function getSchemaZodSchema(
       .superRefine((data, ctx) => refineStringLengthPattern(data, [], ctx))
       .superRefine((data, ctx) => refineSchemaFormat(data, [], ctx, schemasByKey))
       .superRefine((data, ctx) => refineArrayItems(data, [], ctx))
+      .superRefine((data, ctx) => refineSchemaMessages(data, ctx, schemasByKey))
       .check(
         ...requiredMetadataChecks(root ? projectConfig : undefined, "schemas"),
       ) as unknown as z.ZodType<Schema>;
@@ -608,4 +901,58 @@ export function getSchemaZodSchema(
   const schemaZodSchema: z.ZodType<Schema> = z.lazy(() => node(false));
 
   return projectConfig ? z.lazy(() => node(true)) : schemaZodSchema;
+}
+
+/** Every `pattern` in a schema, with its path, through `properties`, `items`, `additionalProperties` and `oneOf`. */
+export function getSchemaPatterns(
+  schema: unknown,
+  path: (string | number)[] = [],
+  found: { pattern: string; path: (string | number)[] }[] = [],
+): { pattern: string; path: (string | number)[] }[] {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return found;
+  const node = schema as SchemaLike;
+  if (typeof node.pattern === "string")
+    found.push({ pattern: node.pattern, path: [...path, "pattern"] });
+  if (node.items) getSchemaPatterns(node.items, [...path, "items"], found);
+  if (node.additionalProperties && typeof node.additionalProperties === "object")
+    getSchemaPatterns(node.additionalProperties, [...path, "additionalProperties"], found);
+  if (Array.isArray(node.oneOf))
+    node.oneOf.forEach((branch, index) =>
+      getSchemaPatterns(branch, [...path, "oneOf", index], found),
+    );
+  if (node.properties)
+    for (const [key, property] of Object.entries(node.properties))
+      getSchemaPatterns(property, [...path, "properties", key], found);
+  // Patterns that mutations and environments set, whether as a value or inside a node they set.
+  const fromMutate = (mutate: unknown, at: (string | number)[]) => {
+    let entries: [string, unknown][];
+    try {
+      entries = mutationEntries(mutate as never);
+    } catch {
+      return;
+    }
+    entries.forEach(([notation, value], index) => {
+      const entryPath = [...at, ...mutationEntryPath(mutate as never, index, notation)];
+      const target = notation.replace(/:[a-zA-Z]+$/, "");
+      if ((target === "pattern" || target.endsWith(".pattern")) && typeof value === "string")
+        found.push({ pattern: value, path: entryPath });
+      else getSchemaPatterns(value, entryPath, found);
+    });
+  };
+  const fromList = (list: unknown, at: (string | number)[]) => {
+    if (Array.isArray(list))
+      list.forEach((mutation, index) => {
+        const entry = mutation as { mutate?: unknown; mutations?: unknown };
+        fromMutate(entry?.mutate, [...at, index, "mutate"]);
+        // Nested mutations set patterns too.
+        fromList(entry?.mutations, [...at, index, "mutations"]);
+      });
+  };
+  // A list, or a list per environment at a schema's root.
+  const { mutations } = schema as { mutations?: unknown };
+  if (mutations && typeof mutations === "object" && !Array.isArray(mutations))
+    for (const [environment, list] of Object.entries(mutations))
+      fromList(list, [...path, "mutations", environment]);
+  else fromList(mutations, [...path, "mutations"]);
+  return found;
 }

@@ -1,0 +1,89 @@
+{
+  "name": "@featurevisor/schemas",
+  "sideEffects": false,
+  "version": "4.13.0",
+  "description": "Validate data against Featurevisor schemas delivered in datafiles, with Standard Schema handles, messages and React hooks",
+  "main": "cjs/index.js",
+  "module": "esm/index.js",
+  "types": "cjs/index.d.ts",
+  "files": [
+    "cjs",
+    "esm",
+    "node-esm"
+  ],
+  "exports": {
+    ".": {
+      "types": "./cjs/index.d.ts",
+      "require": "./cjs/index.js",
+      "import": "./node-esm/index.js"
+    },
+    "./react": {
+      "types": "./cjs/react.d.ts",
+      "require": "./cjs/react.js",
+      "import": "./node-esm/react.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "react": [
+        "cjs/react.d.ts"
+      ]
+    }
+  },
+  "scripts": {
+    "transpile": "rimraf cjs esm node-esm && tsc --project tsconfig.cjs.json && tsc --project tsconfig.esm.json && tsc --project tsconfig.node-esm.json && node -e \"require('fs').writeFileSync('node-esm/package.json', '{\\n  \\\"type\\\": \\\"module\\\"\\n}\\n')\"",
+    "build": "npm run transpile",
+    "test": "jest --config jest.config.js --verbose --coverage",
+    "typecheck": "tsc -p tsconfig.typecheck.json"
+  },
+  "author": {
+    "name": "Fahad Heylaal",
+    "url": "https://fahad19.com"
+  },
+  "homepage": "https://featurevisor.com",
+  "keywords": [
+    "featurevisor",
+    "schemas",
+    "validation",
+    "standard schema",
+    "forms",
+    "react"
+  ],
+  "repository": {
+    "directory": "packages/schemas",
+    "type": "git",
+    "url": "https://github.com/featurevisor/featurevisor.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bugs": {
+    "url": "https://github.com/featurevisor/featurevisor/issues"
+  },
+  "dependencies": {
+    "@featurevisor/sdk": "4.13.0",
+    "@featurevisor/types": "4.8.0"
+  },
+  "peerDependencies": {
+    "@featurevisor/react": "^4.14.0",
+    "react": ">=16.8"
+  },
+  "peerDependenciesMeta": {
+    "@featurevisor/react": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@featurevisor/react": "4.13.0",
+    "@testing-library/react": "^16.3.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}

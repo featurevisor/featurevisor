@@ -29,6 +29,7 @@ describe("core: Catalog bridge", () => {
         features: ["variablePolicySource", "variableRequirementsExample"],
         variables: ["runtimeMessage", "runtimePolicy"],
         segments: [],
+        schemas: [],
         // Excluded by the Target, yet required by the selected runtimeMessage.
         dependencyFeatures: ["variablePolicySource", "variableRequirementsExample"],
         dependencyVariables: ["runtimePolicy"],

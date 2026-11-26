@@ -25,6 +25,8 @@ export async function getCatalogTargetMemberships(
       variables: string[];
       /** Segments the datafile carries, needed by its features and variables. */
       segments: string[];
+      /** Schemas the datafile carries for @featurevisor/schemas, with those they reference. */
+      schemas: string[];
       /** Members the Target does not select, held only because selected entities need them. */
       dependencyFeatures: string[];
       dependencyVariables: string[];
@@ -41,6 +43,7 @@ export async function getCatalogTargetMemberships(
     const features = new Set<string>();
     const variables = new Set<string>();
     const segments = new Set<string>();
+    const schemas = new Set<string>();
     const datafiles: Array<{ environment: string | null; bytes: number; gzipBytes: number }> = [];
 
     for (const environment of environments) {
@@ -76,6 +79,7 @@ export async function getCatalogTargetMemberships(
       Object.keys(datafile.features).forEach((key) => features.add(key));
       Object.keys(datafile.variables || {}).forEach((key) => variables.add(key));
       Object.keys(datafile.segments || {}).forEach((key) => segments.add(key));
+      Object.keys(datafile.schemas || {}).forEach((key) => schemas.add(key));
     }
 
     const sorted = (values: Iterable<string>) =>
@@ -95,6 +99,7 @@ export async function getCatalogTargetMemberships(
       features: sorted(features),
       variables: sorted(variables),
       segments: sorted(segments),
+      schemas: sorted(schemas),
       dependencyFeatures: sorted(dependencyFeatures),
       dependencyVariables: sorted(dependencyVariables),
       datafiles,

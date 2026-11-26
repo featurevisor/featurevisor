@@ -3,6 +3,7 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import type {
   FeatureAssertion,
   ScenarioAssertion,
+  SchemaAssertion,
   SegmentAssertion,
   Test,
   TestCheck,
@@ -349,6 +350,60 @@ function SegmentAssertionContent(props: { assertion: SegmentAssertion }) {
   );
 }
 
+/** An issue a schema assertion expects, by the fields it gives, as `path · code` and the rest. */
+function describeExpectedIssue(issue: NonNullable<SchemaAssertion["expectedIssues"]>[number]) {
+  return [
+    issue.path ? issue.path.join(".") || "(the value)" : undefined,
+    issue.code,
+    issue.mutation && `from ${issue.mutation}`,
+    issue.params &&
+      Object.entries(issue.params)
+        .map(([name, value]) => `${name} ${JSON.stringify(value)}`)
+        .join(", "),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function SchemaAssertionContent(props: { assertion: SchemaAssertion }) {
+  const { assertion } = props;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {assertion.environment && (
+          <LabelValueBadge label="Environment" value={assertion.environment} compact />
+        )}
+        {assertion.target && <LabelValueBadge label="Target" value={assertion.target} compact />}
+      </div>
+      {assertion.context && Object.keys(assertion.context).length > 0 && (
+        <TestDataPanel title="Context" value={assertion.context} />
+      )}
+      <TestDataPanel title="Value" value={assertion.value} />
+      <section>
+        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
+          Expected
+        </h4>
+        {assertion.expectedIssues ? (
+          <ul className="space-y-1.5">
+            {assertion.expectedIssues.map((issue, index) => (
+              <li key={index} className="rounded-lg border border-border bg-elevated px-3 py-2">
+                <code className="font-mono text-xs text-text [overflow-wrap:anywhere]">
+                  {describeExpectedIssue(issue)}
+                </code>
+                {issue.message && <p className="mt-1 text-xs text-muted">{issue.message}</p>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Badge tone={assertion.expectedToBeValid ? "success" : "neutral"}>
+            {assertion.expectedToBeValid ? "Valid" : "Invalid"}
+          </Badge>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function VariableAssertionContent(props: {
   assertion: VariableAssertion;
   testKey: string;
@@ -609,6 +664,15 @@ export function getAssertionSummary(
   } else if ("segment" in test) {
     parts.push(
       (assertion as SegmentAssertion).expectedToMatch ? "expects a match" : "expects no match",
+    );
+  } else if ("schema" in test) {
+    const schema = assertion as SchemaAssertion;
+    parts.push(
+      schema.expectedIssues
+        ? `expects ${pluralize(schema.expectedIssues.length, "issue")}`
+        : schema.expectedToBeValid
+          ? "expects valid"
+          : "expects invalid",
     );
   } else {
     const variable = assertion as VariableAssertion;
@@ -876,6 +940,8 @@ function TestSpec(props: {
                         setKey={props.setKey}
                         ownerVariable={(props.test as { variable: string }).variable}
                       />
+                    ) : "schema" in props.test ? (
+                      <SchemaAssertionContent assertion={assertion as SchemaAssertion} />
                     ) : "scenario" in props.test ? (
                       <ScenarioAssertionContent
                         assertion={assertion as ScenarioAssertion}

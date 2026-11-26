@@ -905,3 +905,154 @@ describe("round trips", () => {
     }
   });
 });
+
+describe("input()", () => {
+  const input = { input: true };
+  const read = (source: string) => tree(source, { ...input, root: false });
+  const fails = (source: string) => error(source, input);
+
+  it("reads a field of the value a schema validates, compared with a value", () => {
+    expect(read("input('accountType') == 'business'")).toEqual({
+      input: "accountType",
+      operator: "equals",
+      value: "business",
+    });
+    expect(read("input('address.country') in ['NL', 'BE']")).toEqual({
+      input: "address.country",
+      operator: "in",
+      value: ["NL", "BE"],
+    });
+    expect(read("input('email') matches /^[a-z]+@/i")).toEqual({
+      input: "email",
+      operator: "matches",
+      value: "^[a-z]+@",
+      regexFlags: "i",
+    });
+    expect(read("input('appVersion') >= semver('5.5.0')")).toEqual({
+      input: "appVersion",
+      operator: "semverGreaterThanOrEquals",
+      value: "5.5.0",
+    });
+    expect(read("input('nickname') notExists")).toEqual({
+      input: "nickname",
+      operator: "notExists",
+    });
+  });
+
+  it("compiles input(...) after the operator to valueFrom", () => {
+    expect(read("input('password') == input('confirmPassword')")).toEqual({
+      input: "password",
+      operator: "equals",
+      valueFrom: { input: "confirmPassword" },
+    });
+    expect(read("input('shipping.country') != input('billing.country')")).toEqual({
+      input: "shipping.country",
+      operator: "notEquals",
+      valueFrom: { input: "billing.country" },
+    });
+    expect(read("input('primaryTag') in input('tags')")).toEqual({
+      input: "primaryTag",
+      operator: "in",
+      valueFrom: { input: "tags" },
+    });
+    expect(read("input('end') > input('start')")).toEqual({
+      input: "end",
+      operator: "greaterThan",
+      valueFrom: { input: "start" },
+    });
+    expect(read("input('email') notContains input('password')")).toEqual({
+      input: "email",
+      operator: "notContains",
+      valueFrom: { input: "password" },
+    });
+  });
+
+  it("combines with every other kind of condition", () => {
+    expect(
+      tree("plan == 'paid' and payingAccounts and input('accountType') == 'business'", input),
+    ).toEqual([
+      { attribute: "plan", operator: "equals", value: "paid" },
+      "payingAccounts",
+      { input: "accountType", operator: "equals", value: "business" },
+    ]);
+  });
+
+  it("records where the field and the other field are written", () => {
+    const source = "input('password') == input('confirmPassword')";
+    const [span] = compile(source, { ...input, root: false }).spans;
+    expect(source.slice(span.subject.start.offset, span.subject.end.offset)).toBe(
+      "input('password')",
+    );
+    expect(source.slice(span.value!.start.offset, span.value!.end.offset)).toBe(
+      "input('confirmPassword')",
+    );
+  });
+
+  it("goes only where the caller allows it, a schema's mutations in a project", () => {
+    expect(error("input('accountType') == 'business'")).toMatchObject({
+      code: "expression_input_location",
+      message:
+        "`input(...)` reads the value a schema validates, so it goes only in a schema's mutations and issues.",
+    });
+    expect(error("country == input('country')").code).toBe("expression_input_location");
+    // A name that happens to be `input`, with no call, is an attribute as before.
+    expect(tree("input == 'x'", { root: false })).toEqual({
+      attribute: "input",
+      operator: "equals",
+      value: "x",
+    });
+    expect(error("unknown('x')", input).hint).toBe(
+      "The calls are feature('...'), variable('...'), input('...') and semver('...').",
+    );
+  });
+
+  it("explains what it does not take", () => {
+    expect(fails("input('password') matches input('pattern')")).toMatchObject({
+      code: "expression_input_pattern",
+      message:
+        "`matches` never takes its pattern from `input(...)`, since a pattern from a user is one nobody reviewed.",
+    });
+    expect(fails("country == input('country')")).toMatchObject({
+      code: "expression_input_value",
+      hint: "Compare two fields, such as input('confirmPassword') == input('password').",
+    });
+    expect(fails("input('tag') in ['a', input('other')]").code).toBe("expression_list_item");
+    expect(fails("input('address').country == 'NL'")).toMatchObject({
+      code: "expression_input_path",
+      hint: "Join the names with dots, such as input('address.country').",
+    });
+    expect(fails("input('accountType')").code).toBe("expression_input_comparison");
+    expect(fails("input(accountType) == 'x'")).toMatchObject({
+      code: "expression_read_key",
+      message: "`input(...)` takes a path in single quotes.",
+    });
+    expect(fails("input('') == 'x'").message).toBe("`input(...)` needs a path.");
+  });
+
+  it("prints input leaves back, valueFrom as input(...) after the operator", () => {
+    const leaves = [
+      { input: "accountType", operator: "equals", value: "business" },
+      { input: "password", operator: "equals", valueFrom: { input: "confirmPassword" } },
+      { input: "primaryTag", operator: "in", valueFrom: { input: "tags" } },
+      { input: "nickname", operator: "exists" },
+    ];
+    expect(print(leaves as unknown as Conditions, { ...input, width: Infinity })).toBe(
+      "input('accountType') == 'business' and input('password') == input('confirmPassword') and input('primaryTag') in input('tags') and input('nickname') exists",
+    );
+    for (const value of leaves) {
+      expect(
+        expandConditions(toExpressions([value] as unknown as Conditions, input), input).conditions,
+      ).toEqual([value]);
+    }
+    // Without the option, or with no expression form, a leaf stays a tree.
+    expect(print(leaves.slice(0, 1) as unknown as Conditions)).toBeUndefined();
+    for (const value of [
+      { input: "a", operator: "matches", valueFrom: { input: "b" } },
+      { input: "a", operator: "semverEquals", valueFrom: { input: "b" } },
+      { input: "a", operator: "equals", value: "x", valueFrom: { input: "b" } },
+      { input: "a", operator: "equals", valueFrom: { attribute: "b" } },
+    ]) {
+      expect(print([value] as unknown as Conditions, input)).toBeUndefined();
+    }
+  });
+});

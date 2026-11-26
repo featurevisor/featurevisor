@@ -102,6 +102,8 @@ describe("portable timestamp format", () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues).toEqual([
+          // A node with no type at all is reported for that too.
+          ...(type === undefined ? [expect.objectContaining({ path: ["type"] })] : []),
           expect.objectContaining({
             path: ["format"],
             message: "format is only supported on string schemas.",
@@ -659,10 +661,28 @@ describe("schema.ts :: getSchemaZodSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts a schema with description only (no type)", () => {
-    const Schema = getSchemaZodSchema([]);
-    const result = Schema.safeParse({ description: "A schema" });
-    expect(result.success).toBe(true);
+  it("rejects a schema that neither has a type nor describes its value another way", () => {
+    const Schema = getSchemaZodSchema(["link"]);
+    for (const schema of [
+      { description: "A schema" },
+      { properties: { name: { type: "string" } } },
+      { type: "object", properties: { name: { minLength: 1 } } },
+    ]) {
+      const result = Schema.safeParse(schema);
+      expect(result.success).toBe(false);
+      if (!result.success)
+        expect(result.error.issues.map((issue) => issue.message)).toContain(
+          "A schema needs a `type`, or describes its value with `schema`, `oneOf`, `const` or `enum`.",
+        );
+    }
+    for (const schema of [
+      { schema: "link" },
+      { oneOf: [{ type: "string" }, { const: null }] },
+      { const: null },
+      { enum: [1, "one"] },
+    ]) {
+      expect(Schema.safeParse(schema).success).toBe(true);
+    }
   });
 
   it("rejects unknown schema reference when key not in schemaKeys", () => {

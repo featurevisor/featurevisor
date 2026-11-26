@@ -14,7 +14,7 @@ import { EXPRESSION_LAYOUT, HOUSE_STYLE } from "./style";
 /** The options fmt formats expressions with, or undefined when the project does not allow them */
 export function getFormatExpressionOptions(config: ProjectConfig): ExpressionOptions | undefined {
   return config.conditionExpressions
-    ? { namespaceCharacter: config.namespaceCharacter }
+    ? { namespaceCharacter: config.namespaceCharacter, input: true }
     : undefined;
 }
 
@@ -26,7 +26,13 @@ function findExpressions(
   value: unknown,
   options: ExpressionOptions,
 ): ConditionExpressionRecord[] {
-  if (entityType !== "feature" && entityType !== "segment" && entityType !== "variable") return [];
+  if (
+    entityType !== "feature" &&
+    entityType !== "segment" &&
+    entityType !== "variable" &&
+    entityType !== "schema"
+  )
+    return [];
   try {
     return getConditionExpressions(expandConditionExpressions(entityType, "", value, options));
   } catch (error) {

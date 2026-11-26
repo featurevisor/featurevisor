@@ -191,6 +191,8 @@ function childShape(
     }
     const properties = shape.schema.properties;
     if (properties && owns(properties, part)) return { schema: properties[part] };
+    // `additionalProperties: true` allows any value under any other key, unchecked.
+    if (shape.schema.additionalProperties === true) return {};
     if (shape.schema.additionalProperties) return { schema: shape.schema.additionalProperties };
     if (!properties)
       return {

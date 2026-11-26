@@ -21,7 +21,12 @@ import { ConditionTree } from "../../components/trees";
 import { queryHref } from "../../query/link";
 import { whoGetsThisQuery } from "../../query/report";
 import {
-  SchemaPropertiesOverview,
+  SchemaFields,
+  SchemaChoices,
+  SchemaValue,
+  isSchemaChoiceList,
+} from "../../components/schemaFields";
+import {
   SchemaTable,
   VariableValueView,
   hasSchemaTableRows,
@@ -110,17 +115,26 @@ export function OverviewTab() {
         </OverviewSection>
       )}
 
-      {detail.type === "schema" && !usesSchemaStructureTable(entity as SchemaLike) && (
-        <SchemaPropertiesOverview schema={entity as SchemaLike} setKey={setKey} />
+      {/* A schema reads as fields, or as choices, with its annotations beside its rules. */}
+      {detail.type === "schema" && isSchemaChoiceList(entity) && (
+        <OverviewSection title="Choices">
+          <SchemaChoices schema={entity} />
+        </OverviewSection>
       )}
 
       {detail.type === "schema" &&
-        usesSchemaStructureTable(entity as SchemaLike) &&
-        hasSchemaTableRows(entity as SchemaLike) && (
+        !isSchemaChoiceList(entity) &&
+        !usesSchemaStructureTable(entity as SchemaLike) && (
           <OverviewSection title="Structure">
-            <SchemaTable schema={entity as SchemaLike} setKey={setKey} />
+            <SchemaValue schema={entity} setKey={setKey} />
           </OverviewSection>
         )}
+
+      {detail.type === "schema" && usesSchemaStructureTable(entity as SchemaLike) && (
+        <OverviewSection title="Structure">
+          <SchemaFields schema={entity} setKey={setKey} />
+        </OverviewSection>
+      )}
 
       {detail.type === "schema" && <SchemaExample schema={entity} setKey={setKey} />}
 
@@ -466,7 +480,11 @@ function TargetPatternChips(props: {
 }
 
 /** A tag that opens the list it filters, such as features tagged "checkout". */
-function TagChip(props: { tag: string; list: "features" | "variables"; setKey?: string }) {
+function TagChip(props: {
+  tag: string;
+  list: "features" | "variables" | "schemas";
+  setKey?: string;
+}) {
   return (
     <OverviewChipLink
       to={`${getBasePath(props.setKey)}/${props.list}?q=${encodeURIComponent(`tag:${props.tag}`)}`}
@@ -944,7 +962,9 @@ function EntityOverviewMeta(props: {
   const usedBy = <UsedByRow detail={detail} dependencies={dependencies} />;
   const hasUsage =
     detail.type === "segment" || detail.type === "attribute" || detail.type === "schema";
-  const segmentTargets = detail.type === "segment" ? targets : undefined;
+  // Segments come along with what uses them, and a schema reaches an application through its Targets.
+  const listedTargets = detail.type === "segment" || detail.type === "schema" ? targets : undefined;
+  const schemaTags = detail.type === "schema" ? tags : undefined;
 
   if (!hasStatus && !ownerRow && !showType && !hasUsage && !metadata) {
     return null;
@@ -963,9 +983,16 @@ function EntityOverviewMeta(props: {
           <OverviewChip>{entity.type ? String(entity.type) : "oneOf"}</OverviewChip>
         </OverviewMetaRow>
       )}
-      {segmentTargets?.length ? (
+      {schemaTags?.length ? (
+        <OverviewMetaRow label="Tags">
+          {schemaTags.map((tag) => (
+            <TagChip key={tag} tag={tag} list="schemas" setKey={setKey} />
+          ))}
+        </OverviewMetaRow>
+      ) : null}
+      {listedTargets?.length ? (
         <OverviewMetaRow label="Targets">
-          <LinkedEntityChips type="target" values={segmentTargets} setKey={setKey} />
+          <LinkedEntityChips type="target" values={listedTargets} setKey={setKey} />
         </OverviewMetaRow>
       ) : null}
       {usedBy}
@@ -1009,6 +1036,9 @@ function UsedByRow(props: { detail: EntityDetail; dependencies: EntityDependenci
         `${count} ${(count === 1 ? entityLabels[type].singular : entityLabels[type].plural).toLowerCase()}`,
     )
     .join(" · ");
+  // Applications validate with a schema its Targets deliver, which no feature or variable shows.
+  const delivered =
+    detail.type === "schema" && !reachText && Boolean(detail.relationships?.targets?.length);
   const showDirect =
     detail.type !== "schema" &&
     Boolean(directText) &&
@@ -1020,6 +1050,8 @@ function UsedByRow(props: { detail: EntityDetail; dependencies: EntityDependenci
         <Link to="usage" className="text-sm text-primary hover:underline">
           {reachText}
         </Link>
+      ) : delivered ? (
+        <span className="text-sm text-text">Applications, through its Targets</span>
       ) : (
         <Badge>unused</Badge>
       )}

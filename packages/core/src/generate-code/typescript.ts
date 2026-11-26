@@ -10,6 +10,9 @@ import type {
   ParsedVariable,
 } from "@featurevisor/types";
 import { Dependencies } from "../dependencies";
+import { FeaturevisorCLIError } from "../error";
+import { resolveSchemaEnvironment } from "../builder/schemas";
+import { widenSchemaMutations } from "./widenMutations";
 import {
   buildDependencyGraph,
   collectDependencyClosure,
@@ -18,6 +21,7 @@ import {
 } from "../datasource/dependencies";
 import { isComposedVariable } from "../datasource/composition";
 import {
+  getTargetSchemaKeys,
   normalizeOptionValues,
   resolveTargets,
   targetIncludesFeature,
@@ -28,12 +32,18 @@ export interface TypeScriptGenerationOptions {
   tag?: string | string[];
   target?: string | string[];
   react?: boolean;
+  /** A typed `createSchemas` for `@featurevisor/schemas`, and typed schema hooks with `react`. */
+  schemas?: boolean;
+  /** The environment whose version of each schema types are written from. The one starting with `prod` by default. */
+  environment?: string;
   importSdkPath?: string;
   importReactPath?: string;
+  importSchemasPath?: string;
 }
 
 const DEFAULT_SDK_IMPORT_PATH = "@featurevisor/sdk";
 const DEFAULT_REACT_IMPORT_PATH = "@featurevisor/react";
+const DEFAULT_SCHEMAS_IMPORT_PATH = "@featurevisor/schemas";
 
 function shouldWrapArrayItemType(typeName: string): boolean {
   const trimmed = typeName.trim();
@@ -60,6 +70,19 @@ function buildObjectTypeFromSchema(
   const additional = schema.additionalProperties;
   const hasProps = props && typeof props === "object" && Object.keys(props).length > 0;
   const hasAdditional = additional && typeof additional === "object";
+
+  // `additionalProperties: true` allows any other key with any value.
+  if (additional === true) {
+    if (!hasProps) return "Record<string, unknown>";
+    const requiredSet = new Set(schema.required || []);
+    const entries = Object.entries(props as Record<string, Schema>).map(([k, v]) => {
+      const propType = schemaToTypeScriptType(v as Schema, schemasByKey, schemaTypeNames, position);
+      return requiredSet.has(k)
+        ? `${formatObjectKey(k)}: ${propType}`
+        : `${formatObjectKey(k)}?: ${propType}`;
+    });
+    return `{ ${entries.join("; ")}; [key: string]: unknown }`;
+  }
 
   if (hasProps && hasAdditional) {
     const requiredSet = new Set(schema.required || []);
@@ -135,7 +158,8 @@ function resolveSchema(schema: Schema, schemasByKey: Record<string, Schema>): Sc
 
 /** Emit a TypeScript literal type for a primitive const value, or null if not a primitive. */
 function constToLiteralType(constVal: unknown): string | null {
-  if (constVal === null || constVal === undefined) return null;
+  if (constVal === null) return "null";
+  if (constVal === undefined) return null;
   if (typeof constVal === "string") return JSON.stringify(constVal);
   if (typeof constVal === "number") return String(constVal);
   if (typeof constVal === "boolean") return constVal ? "true" : "false";
@@ -336,12 +360,25 @@ function getVariableTypeForFeaturesMap(
 function generateSchemasFileContent(
   schemaKeys: string[],
   schemasByKey: Record<string, Schema>,
+  delivered: {
+    keys: string[];
+    createSchemas: boolean;
+    importSdkPath: string;
+    importSchemasPath: string;
+  },
 ): string {
   const schemaTypeNames: Record<string, string> = {};
   for (const k of schemaKeys) {
     schemaTypeNames[k] = getPascalCase(k) + "Schema";
   }
   const lines: string[] = [];
+  if (delivered.createSchemas) {
+    lines.push(
+      `import { createSchemas as createSchemasBase, type SchemasOptions } from ${JSON.stringify(delivered.importSchemasPath)};`,
+      `import type { Featurevisor } from ${JSON.stringify(delivered.importSdkPath)};`,
+      "",
+    );
+  }
   for (const key of schemaKeys) {
     const schema = schemasByKey[key];
     if (!schema) continue;
@@ -349,7 +386,97 @@ function generateSchemasFileContent(
     const typeStr = schemaToTypeScriptType(schema, schemasByKey, schemaTypeNames);
     lines.push(`export type ${name} = ${typeStr};`);
   }
+
+  // The schemas the selected targets deliver, by key, for typed handles from @featurevisor/schemas.
+  lines.push("", "export interface SchemaTypes {");
+  for (const key of delivered.keys) {
+    lines.push(`  ${formatObjectKey(key)}: ${schemaTypeNames[key]};`);
+  }
+  lines.push("}");
+
+  // What each delivered schema's vocabularies declare, so annotations and options are typed too.
+  lines.push(
+    "",
+    "/** What each schema's annotationsSchema and optionSchema declare, by key. */",
+    "export interface SchemaVocabularies {",
+  );
+  for (const key of delivered.keys) {
+    const schema = schemasByKey[key];
+    // Both keys always, `{}` for a vocabulary the schema lacks, so it reads as typed in every compiler mode.
+    const parts = (
+      [
+        ["annotationsSchema", "annotations"],
+        ["optionSchema", "options"],
+      ] as const
+    ).map(([field, name]) => {
+      const vocabulary = schema?.[field];
+      return `${name}: ${vocabulary ? schemaToTypeScriptType(vocabulary, schemasByKey, schemaTypeNames) : "{}"}`;
+    });
+    lines.push(`  ${formatObjectKey(key)}: { ${parts.join("; ")} };`);
+  }
+  lines.push("}");
+
+  if (delivered.createSchemas) {
+    lines.push(
+      "",
+      "/** createSchemas from @featurevisor/schemas, with keys, values, annotations and options typed. */",
+      "export function createSchemas(f: Featurevisor, options?: SchemasOptions) {",
+      "  return createSchemasBase<SchemaTypes, SchemaVocabularies>(f, options);",
+      "}",
+    );
+  }
   return lines.join("\n") + "\n";
+}
+
+function generateSchemasReactFileContent(importSchemasPath: string): string {
+  return `
+import {
+  useSchema as useSchemaBase,
+  useSchemas as useSchemasBase,
+  useValidation as useValidationBase,
+  type ValidationOptions,
+  type ValidationResult,
+} from ${JSON.stringify(`${importSchemasPath}/react`)};
+import type { HandleOptions, IsAsync, SchemaHandle, Schemas } from ${JSON.stringify(importSchemasPath)};
+
+import type { SchemaTypes, SchemaVocabularies } from "./schemas.js";
+
+/** useSchema from @featurevisor/schemas/react, with keys, values, annotations and options typed. */
+export function useSchema<
+  K extends keyof SchemaTypes & string,
+  TResult extends boolean | Promise<boolean> = boolean,
+>(
+  key: K,
+  options?: HandleOptions<SchemaTypes[K], TResult>,
+): SchemaHandle<SchemaTypes[K], IsAsync<TResult>, SchemaVocabularies[K]> {
+  // Typed by this wrapper's own signature, which the base hook cannot relate for an open K.
+  return useSchemaBase<SchemaTypes[K], TResult, SchemaVocabularies[K]>(key, options as never);
+}
+
+/** useSchemas from @featurevisor/schemas/react, with keys, values, annotations and options typed. */
+export function useSchemas(): Schemas<SchemaTypes, SchemaVocabularies> {
+  return useSchemasBase<SchemaTypes, SchemaVocabularies>();
+}
+
+/** useValidation from @featurevisor/schemas/react, with keys and values typed, for a schema's key or any handle, such as a field's. */
+export function useValidation<K extends keyof SchemaTypes & string>(
+  key: K,
+  value: unknown,
+  options?: ValidationOptions,
+): ValidationResult<SchemaTypes[K]>;
+export function useValidation<T>(
+  handle: SchemaHandle<T, boolean>,
+  value: unknown,
+  options?: ValidationOptions,
+): ValidationResult<T>;
+export function useValidation(
+  keyOrHandle: string | SchemaHandle<unknown, boolean>,
+  value: unknown,
+  options?: ValidationOptions,
+): ValidationResult<unknown> {
+  return useValidationBase(keyOrHandle, value, options);
+}
+`.trimStart();
 }
 
 function generateAttributesFileContent(
@@ -395,6 +522,30 @@ export function getInstance(): Featurevisor {
 `.trimStart();
 }
 
+/** The environment schema types come from: the one named, or the only one whose name starts with `prod`. */
+function getTypesEnvironment(environments: unknown, named: string | undefined): string {
+  const configured = Array.isArray(environments) ? (environments as string[]) : [];
+  if (named !== undefined) {
+    if (!configured.includes(named)) {
+      throw new FeaturevisorCLIError(
+        `Unknown environment "${named}". Available environments: ${configured.join(", ")}.`,
+        { code: "invalid_environment", details: { environment: named, available: configured } },
+      );
+    }
+    return named;
+  }
+  const production = configured.filter((environment) => environment.startsWith("prod"));
+  if (production.length === 1) return production[0];
+  throw new FeaturevisorCLIError(
+    `A schema varies by environment, so code generation needs to know which environment's version to type. ${
+      production.length === 0
+        ? "No environment's name starts with prod."
+        : `Several environments' names start with prod: ${production.join(", ")}.`
+    } Pass --environment.`,
+    { code: "invalid_environment", details: { available: configured } },
+  );
+}
+
 export async function generateTypeScriptCodeForProject(
   deps: Dependencies,
   outputPath: string,
@@ -433,10 +584,40 @@ export async function generateTypeScriptCodeForProject(
       // Schema file may be invalid; skip for code gen
     }
   }
+  // A schema that varies by environment is typed from one environment's version.
+  const byEnvironment = (schema: Schema) =>
+    !!schema?.mutations && typeof schema.mutations === "object" && !Array.isArray(schema.mutations);
+  if (Object.values(schemasByKey).some(byEnvironment)) {
+    const environment = getTypesEnvironment(projectConfig.environments, options.environment);
+    for (const key of Object.keys(schemasByKey)) {
+      schemasByKey[key] = resolveSchemaEnvironment(schemasByKey[key], environment, projectConfig);
+    }
+  }
+  // Any mutation can match when a value is validated, so types hold whatever one widens.
+  for (const key of Object.keys(schemasByKey)) {
+    schemasByKey[key] = widenSchemaMutations(schemasByKey[key]);
+  }
   const schemaKeys = Object.keys(schemasByKey);
-  const hasSchemasFile = schemaKeys.length > 0;
+  const hasSchemasFile = schemaKeys.length > 0 || Boolean(options.schemas);
+  const importSchemasPath = options.importSchemasPath || DEFAULT_SCHEMAS_IMPORT_PATH;
+  // Schemas the selected targets deliver, or those with a selected tag, or every schema.
+  const deliveredSchemaKeys =
+    selectedTargets.length > 0
+      ? schemaKeys.filter((key) =>
+          selectedTargets.some((target) =>
+            getTargetSchemaKeys(target, schemaKeys, schemasByKey).includes(key),
+          ),
+        )
+      : selectedTags.length > 0
+        ? getTargetSchemaKeys({ tags: { or: selectedTags } }, schemaKeys, schemasByKey)
+        : schemaKeys;
   if (hasSchemasFile) {
-    const schemasContent = generateSchemasFileContent(schemaKeys, schemasByKey);
+    const schemasContent = generateSchemasFileContent(schemaKeys, schemasByKey, {
+      keys: deliveredSchemaKeys,
+      createSchemas: Boolean(options.schemas),
+      importSdkPath,
+      importSchemasPath,
+    });
     const schemasFilePath = path.join(outputPath, "schemas.ts");
     fs.writeFileSync(schemasFilePath, schemasContent);
     console.log(
@@ -848,6 +1029,15 @@ export function useVariable(
     console.log(`React file written at: ${getRelativePath(rootDirectoryPath, reactFilePath)}`);
   }
 
+  const shouldGenerateSchemasReact = Boolean(options.schemas) && shouldGenerateReact;
+  if (shouldGenerateSchemasReact) {
+    const schemasReactFilePath = path.join(outputPath, "schemas-react.ts");
+    fs.writeFileSync(schemasReactFilePath, generateSchemasReactFileContent(importSchemasPath));
+    console.log(
+      `Schemas React file written at: ${getRelativePath(rootDirectoryPath, schemasReactFilePath)}`,
+    );
+  }
+
   // index
   const indexContent =
     [
@@ -859,6 +1049,7 @@ export function useVariable(
       `export * from "./variables.js";`,
       `export * from "./functions.js";`,
       ...(shouldGenerateReact ? [`export * from "./react.js";`] : []),
+      ...(shouldGenerateSchemasReact ? [`export * from "./schemas-react.js";`] : []),
     ].join("\n") + "\n";
   const indexFilePath = path.join(outputPath, "index.ts");
   fs.writeFileSync(indexFilePath, indexContent);

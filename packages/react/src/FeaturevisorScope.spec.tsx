@@ -12,6 +12,7 @@ import { useFeaturevisor } from "./useFeaturevisor";
 import { useFlag } from "./useFlag";
 import { useFlags } from "./useFlags";
 import { useRevision } from "./useRevision";
+import { useScopeContext } from "./useScopeContext";
 import { useSdk } from "./useSdk";
 import { useSomeFlag } from "./useSomeFlag";
 import { useVariable } from "./useVariable";
@@ -961,4 +962,47 @@ test("react: FeaturevisorScope renders again when a nested array or date changes
 
   view.rerender(tree(["a", "b"], 1000));
   expect((lastContext().since as Date).getTime()).toBe(1000);
+});
+
+describe("react: useScopeContext", function () {
+  function Shows({ seen }: { seen: Array<Context | undefined> }) {
+    seen.push(useScopeContext());
+    return null;
+  }
+
+  test("is undefined outside any scope, and the merged context inside", function () {
+    const sdk = instance();
+    const outside: Array<Context | undefined> = [];
+    const inside: Array<Context | undefined> = [];
+    render(
+      <FeaturevisorProvider instance={sdk}>
+        <Shows seen={outside} />
+        <FeaturevisorScope context={{ plan: "paid", country: "nl" }}>
+          <FeaturevisorScope context={{ country: "de" }}>
+            <Shows seen={inside} />
+          </FeaturevisorScope>
+        </FeaturevisorScope>
+      </FeaturevisorProvider>,
+    );
+
+    expect(outside[outside.length - 1]).toBeUndefined();
+    expect(inside[inside.length - 1]).toEqual({ plan: "paid", country: "de" });
+  });
+
+  test("keeps the same object for an equal inline context", function () {
+    const sdk = instance();
+    const seen: Array<Context | undefined> = [];
+    const tree = () => (
+      <FeaturevisorProvider instance={sdk}>
+        <FeaturevisorScope context={{ plan: "paid" }}>
+          <Shows seen={seen} />
+        </FeaturevisorScope>
+      </FeaturevisorProvider>
+    );
+
+    const view = render(tree());
+    view.rerender(tree());
+    expect(seen.length).toBeGreaterThan(1);
+    expect(seen[seen.length - 1]).toBe(seen[0]);
+  });
 });

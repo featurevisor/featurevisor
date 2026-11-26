@@ -14,6 +14,8 @@ import type {
   TestVariable,
   VariableAssertion,
   TestScenario,
+  TestSchema,
+  SchemaAssertion,
   ScenarioAssertion,
   Test,
   TestCheckReference,
@@ -31,11 +33,17 @@ import { FeaturevisorCLIError } from "../error";
 import {
   getFeatureAssertionsFromMatrix,
   getMatrixCombinations,
+  getSchemaAssertionsFromMatrix,
   getSegmentAssertionsFromMatrix,
   getVariableAssertionsFromMatrix,
 } from "./matrix";
 import { assertProjectSetJsonSelection, getProjectSetExecutions, printSetHeader } from "../sets";
-import { getTargetFeatureKeys, getTargetVariableKeys, resolveTargets } from "../targeting";
+import {
+  getTargetFeatureKeys,
+  getTargetSchemaKeys,
+  getTargetVariableKeys,
+  resolveTargets,
+} from "../targeting";
 import { resolveForEnvironment } from "../builder/environments";
 import { writesEnvironment } from "../config/environmentSettings";
 import {
@@ -333,6 +341,18 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
     targetVariableKeys = await getTargetVariableKeys(datasource, targets);
   }
 
+  // Schemas a target delivers, with the schemas they reference.
+  let targetSchemaKeys: Set<string> | undefined;
+  if (entityType === "schema" && options.target) {
+    const targets = await resolveTargets(datasource, options.target, { defaultToAll: false });
+    const schemasByKey: Record<string, Schema> = {};
+    for (const schemaKey of entityKeys)
+      schemasByKey[schemaKey] = await datasource.readSchema(schemaKey);
+    targetSchemaKeys = new Set(
+      targets.flatMap((target) => getTargetSchemaKeys(target, entityKeys, schemasByKey)),
+    );
+  }
+
   const metadataFilters = getMetadataFilters(options);
 
   async function initializeEntitiesWithTests() {
@@ -584,6 +604,14 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
           continue;
         }
       }
+    } else if (entityType === "schema") {
+      if (targetSchemaKeys && !targetSchemaKeys.has(key)) continue;
+
+      if (options.tag) {
+        const tags = Array.isArray(options.tag) ? options.tag : [options.tag];
+        const schemaTags = (entity as Schema).tags || [];
+        if (!tags.every((tag) => schemaTags.includes(tag))) continue;
+      }
     } else if (entityType === "segment") {
       // --with-tests
       if (options.withTests) {
@@ -608,14 +636,19 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
         (test as TestFeature).feature ||
         (test as TestSegment).segment ||
         (test as TestVariable).variable ||
-        (test as TestScenario).scenario;
+        (test as TestScenario).scenario ||
+        (test as unknown as TestSchema).schema;
       const testEntityType = (test as TestSegment).segment
         ? "segment"
         : (test as TestVariable).variable
           ? "variable"
           : (test as TestScenario).scenario
             ? "scenario"
-            : "feature";
+            : (test as unknown as TestSchema).schema
+              ? "schema"
+              : "feature";
+      // Native runners cannot validate schemas yet, so their execution documents leave schema specs out.
+      if (options.executionProtocol && testEntityType === "schema") continue;
       let testAssertions = test.assertions;
       const set =
         typeof options.set === "string"
@@ -728,6 +761,28 @@ export async function listEntities<T>(deps: Dependencies, entityType): Promise<T
             );
           }
           testAssertions = assertionsAfterApplyingMatrix;
+        } else if (testEntityType === "schema") {
+          testAssertions = (testAssertions as unknown as SchemaAssertion[]).flatMap(
+            (authoredAssertion, aIndex) => {
+              const matrixValues = authoredAssertion.matrix
+                ? getMatrixCombinations(authoredAssertion.matrix)
+                : [{}];
+              return getSchemaAssertionsFromMatrix(aIndex, authoredAssertion).map(
+                (assertion, matrixIndex) => ({
+                  ...assertion,
+                  _case: getTestCaseMetadata(
+                    set,
+                    testEntityType,
+                    key,
+                    authoredAssertion as never,
+                    aIndex,
+                    authoredAssertion.matrix ? matrixIndex : null,
+                    matrixValues[matrixIndex],
+                  ),
+                }),
+              );
+            },
+          ) as unknown as typeof testAssertions;
         }
       }
 
@@ -1127,9 +1182,12 @@ function assertListOptions(options: Record<string, any>, projectConfig?: Project
   ];
 
   for (const option of ["target", "tag"]) {
-    if (!["features", "variables"].includes(selector) && typeof options[option] !== "undefined") {
+    if (
+      !["features", "variables", "schemas"].includes(selector) &&
+      typeof options[option] !== "undefined"
+    ) {
       throw new FeaturevisorCLIError(
-        `Option ${toFlag(option)} can only be used with --features or --variables.`,
+        `Option ${toFlag(option)} can only be used with --features, --variables or --schemas.`,
         { code: "incompatible_cli_options", details: { selector, option } },
       );
     }

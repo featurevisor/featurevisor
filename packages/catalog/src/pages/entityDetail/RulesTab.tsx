@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useParams } from "react-router-dom";
 
 import {
   Badge,
@@ -42,6 +42,13 @@ export function FeatureRulesTab() {
   const rules = environments.length > 0 ? resolved.rules?.[selectedEnvironment] : entity.rules;
   const expose = environments.length > 0 ? resolved.expose?.[selectedEnvironment] : entity.expose;
 
+  const { hash } = useLocation();
+  // Schemas once had a Rules tab, so its links open Mutations, or Issues for an issue's anchor.
+  if (detail.type === "schema") {
+    const tab = hash.startsWith("#issue-") ? "issues" : "mutations";
+    const environment = tab === "mutations" && environmentKey ? `/${environmentKey}` : "";
+    return <Navigate to={{ pathname: `../${tab}${environment}`, hash }} replace />;
+  }
   if (detail.type !== "feature") return <Navigate to=".." replace />;
 
   return (

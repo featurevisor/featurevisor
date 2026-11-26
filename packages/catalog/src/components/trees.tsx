@@ -179,7 +179,8 @@ export function toExpression(conditions: unknown, namespaceCharacter?: string): 
   if (conditions === undefined) return undefined;
   // everyone, or a segment named on its own, reads the same in an expression
   if (typeof conditions === "string") return conditions === "*" ? "'*'" : conditions;
-  return treeToExpression(conditions as Conditions, { namespaceCharacter, indent: 2 });
+  // `input(...)` reads a schema's value, which only schemas' mutations and issues hold.
+  return treeToExpression(conditions as Conditions, { namespaceCharacter, indent: 2, input: true });
 }
 
 /**

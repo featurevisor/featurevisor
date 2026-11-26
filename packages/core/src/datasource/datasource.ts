@@ -70,7 +70,8 @@ export class Datasource {
   }
 
   getExpressionOptions() {
-    return { namespaceCharacter: this.config.namespaceCharacter };
+    // `input(...)` reads, which lint keeps to a schema's mutations with its own message.
+    return { namespaceCharacter: this.config.namespaceCharacter, input: true };
   }
 
   /**
@@ -296,8 +297,14 @@ export class Datasource {
     return this.adapter.entityExists("schema", schemaKey);
   }
 
-  readSchema(schemaKey: SchemaKey) {
-    return this.adapter.readEntity<Schema>("schema", schemaKey);
+  /** The schema with expressions in its mutations' conditions expanded into trees. */
+  async readSchema(schemaKey: SchemaKey) {
+    return expandConditionExpressions(
+      "schema",
+      schemaKey,
+      await this.adapter.readEntity<Schema>("schema", schemaKey),
+      this.getExpressionOptions(),
+    );
   }
 
   writeSchema(schemaKey: SchemaKey, schema: Schema) {

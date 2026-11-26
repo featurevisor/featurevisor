@@ -22,6 +22,7 @@ import type {
   ParsedVariableOverride,
   ParsedFeature,
   Schema,
+  SchemaKey,
   VariableKey,
   VariableType,
   VariableValue,
@@ -52,6 +53,8 @@ import {
 } from "../linter/comparisonOperators";
 import { Datasource, FilesystemAdapter, getExistingStateFilePath } from "../datasource";
 import { generateHashForDatafile, refreshDatafileHashes } from "./hashes";
+import { buildSchemasSection, getSchemaConditions, resolveSchemaEnvironment } from "./schemas";
+import { getTargetSchemaKeys } from "../targeting";
 
 import { getTraffic } from "./traffic";
 import {
@@ -72,6 +75,8 @@ import {
   findUnavailableCompositionDependency,
   readableDependencyChain,
   featureFlagNode,
+  featureVariableNode,
+  segmentNode,
   variableNode,
 } from "../datasource/dependencies";
 import {
@@ -168,6 +173,12 @@ export interface CustomDatafileOptions {
   excludeFeatures?: "*" | FeatureKey[];
   includeVariables?: "*" | VariableKey[];
   excludeVariables?: "*" | VariableKey[];
+  includeSchemas?: "*" | SchemaKey[];
+  excludeSchemas?: "*" | SchemaKey[];
+  /** False for targets whose datafiles cannot carry schemas, such as schema "2" ones. */
+  withSchemas?: boolean;
+  /** False leaves annotations out of delivered schemas. */
+  includeAnnotations?: boolean;
   featurevisorVersion?: string;
   revisionFromHash?: boolean;
 }
@@ -190,6 +201,10 @@ export async function getCustomDatafile(options: CustomDatafileOptions): Promise
       excludeFeatures: options.excludeFeatures,
       includeVariables: options.includeVariables,
       excludeVariables: options.excludeVariables,
+      includeSchemas: options.includeSchemas,
+      excludeSchemas: options.excludeSchemas,
+      withSchemas: options.withSchemas,
+      includeAnnotations: options.includeAnnotations,
       featurevisorVersion: options.featurevisorVersion,
       revisionFromHash: options.revisionFromHash,
     },
@@ -255,6 +270,14 @@ export interface BuildOptions {
   excludeFeatures?: "*" | FeatureKey[];
   includeVariables?: "*" | VariableKey[];
   excludeVariables?: "*" | VariableKey[];
+  /** Schemas to deliver whatever their tags. */
+  includeSchemas?: "*" | SchemaKey[];
+  /** Schemas never to deliver, though references still bring them along. */
+  excludeSchemas?: "*" | SchemaKey[];
+  /** False for targets whose datafiles cannot carry schemas, such as schema "2" ones. */
+  withSchemas?: boolean;
+  /** False leaves annotations out of delivered schemas, for a target that only serves a backend. */
+  includeAnnotations?: boolean;
   features?: FeatureKey[];
   variables?: VariableKey[];
   inflate?: number;
@@ -364,8 +387,62 @@ export async function buildDatafile(
       policySegments.set(key, segment);
     }
   }
-  const featureKeysRequiredByVariables = new Set<FeatureKey>();
+  // Schemas, as the environment being built has them, for variables' schema references and delivery.
+  const schemaKeys = await datasource.listSchemas();
+  const schemasByKey: Record<string, Schema> = {};
+  for (const key of schemaKeys) {
+    try {
+      schemasByKey[key] = resolveSchemaEnvironment(
+        await datasource.readSchema(key),
+        options.environment,
+        projectConfig,
+      );
+    } catch {
+      // Schema file may be invalid; skip for datafile build
+    }
+  }
+
+  // Schemas the target delivers, with every schema they reference.
+  const deliveredSchemaKeys =
+    options.withSchemas === false || (options.features && !options.tag && !options.tags)
+      ? []
+      : getTargetSchemaKeys(
+          {
+            tag: options.tag,
+            tags: options.tags,
+            includeSchemas: options.includeSchemas,
+            excludeSchemas: options.excludeSchemas,
+          },
+          schemaKeys,
+          schemasByKey,
+        );
+
+  // What delivered schemas' conditions read comes along, as a feature's dependencies do:
+  // segments, flags, feature variables and global variables, with everything they read.
+  const featureKeysRequiredBySchemas = new Set<FeatureKey>();
   const variableKeysRequiredStructurally = new Set<VariableKey>();
+  const schemaRoots: string[] = [];
+  for (const key of deliveredSchemaKeys) {
+    for (const conditions of getSchemaConditions(schemasByKey[key])) {
+      const references = getConditionReferences(conditions);
+      references.segments.forEach((ref) => schemaRoots.push(segmentNode(ref)));
+      references.features.forEach((ref) => schemaRoots.push(featureFlagNode(ref)));
+      references.featureVariables.forEach(({ feature, variable }) =>
+        schemaRoots.push(featureVariableNode(feature, variable)),
+      );
+      references.variables.forEach((ref) => schemaRoots.push(variableNode(ref)));
+    }
+  }
+  if (schemaRoots.length > 0) {
+    const read = await collectDependencyClosure(datasource, schemaRoots, {
+      graph: dependencyGraph,
+    });
+    read.segments.forEach((key) => segmentKeysUsedByTag.add(key));
+    read.features.forEach((key) => featureKeysRequiredBySchemas.add(key));
+    read.variables.forEach((key) => variableKeysRequiredStructurally.add(key));
+  }
+
+  const featureKeysRequiredByVariables = new Set<FeatureKey>();
   const selectedVariableRoots: string[] = [];
   for (const variableKey of variableFiles) {
     const parsedVariable = await dependencyDatasource.readVariable(variableKey);
@@ -425,17 +502,6 @@ export async function buildDatafile(
         throw new Error(
           `Scenario "${key}" at ${issue.path.join(".")}: operator "${issue.operator}" is disallowed by project configuration.`,
         );
-    }
-  }
-
-  // Load schemas for resolving variable schema references in features
-  const schemaKeys = await datasource.listSchemas();
-  const schemasByKey: Record<string, Schema> = {};
-  for (const key of schemaKeys) {
-    try {
-      schemasByKey[key] = await datasource.readSchema(key);
-    } catch {
-      // Schema file may be invalid; skip for datafile build
     }
   }
 
@@ -521,7 +587,8 @@ export async function buildDatafile(
 
       const isRequiredByVariable = featureKeysRequiredByVariables.has(featureKey);
       const isRequiredByFeature = featureKeysRequiredByFeatures.has(featureKey);
-      const isRequired = isRequiredByVariable || isRequiredByFeature;
+      const isRequired =
+        isRequiredByVariable || isRequiredByFeature || featureKeysRequiredBySchemas.has(featureKey);
 
       if (!isRequired && options.tag && featureTags.indexOf(options.tag) === -1) {
         continue;
@@ -994,6 +1061,14 @@ export async function buildDatafile(
 
     return acc;
   }, {});
+
+  // Datafiles without schemas have no `schemas` key, so their bytes and revisions stay as they were.
+  if (deliveredSchemaKeys.length > 0) {
+    datafileContent.schemas = buildSchemasSection(deliveredSchemaKeys, schemasByKey, {
+      annotations: options.includeAnnotations,
+      stringify: projectConfig.stringify,
+    });
+  }
 
   datafileContent.variables = variables.reduce(
     (acc, variable) => {

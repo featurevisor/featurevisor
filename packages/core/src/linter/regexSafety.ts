@@ -304,3 +304,24 @@ export function getBacktrackingError(pattern: string): string | null {
     ? `repeats the group "${group}", whose repetitions can split the same text in many ways. Most SDKs then take exponential time on short inputs. Make each repetition start or end with a distinct character`
     : null;
 }
+
+/** Why a pattern is outside the regular expressions every SDK reads alike, or null when it is inside. */
+export function getPortableRegexError(pattern: string): string | null {
+  try {
+    new RegExp(pattern);
+  } catch {
+    return "must be a valid regular expression";
+  }
+
+  if (/\(\?/.test(pattern)) {
+    return "must not use lookaround, named groups, noncapturing groups, atomic groups, or inline mode groups";
+  }
+  if (/\\(?:[1-9]|k<|k'|g<|g')/.test(pattern)) {
+    return "must not use backreferences";
+  }
+  if (/(?:[?*+]|\{\d+(?:,\d*)?\})\+/.test(pattern)) {
+    return "must not use possessive quantifiers";
+  }
+
+  return null;
+}

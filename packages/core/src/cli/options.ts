@@ -140,8 +140,18 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     tag: { type: "array", description: "include one or more feature or variable tags" },
     target: { type: "array", description: "include one or more feature or variable targets" },
     react: { type: "boolean", description: "generate React helpers" },
+    schemas: {
+      type: "boolean",
+      description: "generate a typed createSchemas, and typed schema hooks with --react",
+    },
+    environment: {
+      type: "string",
+      description:
+        "type schemas that vary by environment from this one, by default the one starting with prod",
+    },
     importSdkPath: { type: "string", hidden: true },
     importReactPath: { type: "string", hidden: true },
+    importSchemasPath: { type: "string", hidden: true },
   },
   fmt: {
     ...outputOptions,
@@ -280,8 +290,14 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     variables: { type: "boolean", description: "list global variables" },
     tests: { type: "boolean", description: "list test specifications" },
     scenarios: { type: "boolean", description: "list authored scenario definitions" },
-    target: { type: "array", description: "filter features or variables by one or more targets" },
-    entityType: { type: "string", choices: ["feature", "segment", "variable", "scenario"] },
+    target: {
+      type: "array",
+      description: "filter features, variables or schemas by one or more targets",
+    },
+    entityType: {
+      type: "string",
+      choices: ["feature", "segment", "variable", "scenario", "schema"],
+    },
     applyMatrix: { type: "boolean", description: "expand test assertion matrices" },
     assertionPattern: { type: "string", description: "filter assertion descriptions" },
     keyPattern: { type: "string", description: "filter keys by regular expression" },
@@ -300,7 +316,10 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     },
     disabled: { type: "boolean", description: "filter disabled features, without environments" },
     enabled: { type: "boolean", description: "filter enabled features, without environments" },
-    tag: { type: "array", description: "filter features or variables by one or more tags" },
+    tag: {
+      type: "array",
+      description: "filter features, variables or schemas by one or more tags",
+    },
     owner: { type: "array", description: "filter definitions by one or more owners in metadata" },
     deadline: {
       type: "array",
@@ -342,7 +361,10 @@ const definitions: Record<string, CLIOptionDefinitions> = {
     ...targetOption,
     keyPattern: { type: "string", description: "filter test keys by regular expression" },
     assertionPattern: { type: "string", description: "filter assertions by regular expression" },
-    entityType: { type: "string", choices: ["feature", "segment", "variable", "scenario"] },
+    entityType: {
+      type: "string",
+      choices: ["feature", "segment", "variable", "scenario", "schema"],
+    },
     onlyFailures: { type: "boolean" },
     quiet: { type: "boolean", description: "suppress SDK warnings" },
     showDatafile: { type: "boolean" },

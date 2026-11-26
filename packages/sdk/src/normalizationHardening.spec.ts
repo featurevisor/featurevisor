@@ -787,6 +787,7 @@ describe("stored segment equality and cold dependencies", () => {
           features: ["subject"],
           variables: ["subject", "alias"],
           segments: ["audience"],
+          sections: {},
           replaced: false,
         },
       ]);

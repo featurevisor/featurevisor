@@ -8,11 +8,13 @@ import type {
 } from "@featurevisor/types";
 import { z } from "zod";
 import {
+  codePointLength,
   formatValueMessage,
   isRemovedSchemaType,
   refineRemovedSchemaType,
   valueMatchesFormat,
 } from "./schemaFormats";
+import { validatesWithEngine } from "./schemaEngine";
 
 import { DEFAULT_RESERVED_KEYS, ProjectConfig } from "../config";
 import { writesEnvironment } from "../config/environmentSettings";
@@ -39,6 +41,7 @@ import {
   refineArrayItems,
 } from "./schema";
 import { refineWithMessage, UNKNOWN_REFERENCE } from "./zodHelpers";
+import { schemaVaries } from "./schemaMutations";
 import { suggestKey } from "./diagnostics";
 import { getMetadataZodSchema, requiredMetadataChecks } from "./metadataSchema";
 import {
@@ -192,139 +195,16 @@ function schemaUsesTimestampFormat(
 }
 
 /**
- * Returns true if the value matches the given schema (const, enum, type, object properties, array items, or exactly one of oneOf).
- * Used for oneOf validation: value must match exactly one branch.
+ * Whether a value meets a schema's rules, by `@featurevisor/schemas`'s engine,
+ * so lint and the applications that validate with the package always agree.
+ * Used for `oneOf` branches, annotation rules and examples.
  */
 export function valueMatchesSchema(
   schema: { [k: string]: unknown },
   value: unknown,
   schemasByKey?: Record<string, Schema>,
 ): boolean {
-  const resolved = resolveSchemaRefs(schema, schemasByKey) as {
-    type?: string;
-    const?: unknown;
-    enum?: unknown[];
-    oneOf?: unknown[];
-    properties?: Record<string, unknown>;
-    additionalProperties?: unknown;
-    required?: string[];
-    items?: unknown;
-    minimum?: number;
-    maximum?: number;
-    minLength?: number;
-    maxLength?: number;
-    pattern?: string;
-    format?: string;
-    minItems?: number;
-    maxItems?: number;
-    uniqueItems?: boolean;
-  };
-
-  if (resolved.oneOf && Array.isArray(resolved.oneOf) && resolved.oneOf.length > 0) {
-    const matchCount = resolved.oneOf.filter((branch) =>
-      valueMatchesSchema(branch as { [k: string]: unknown }, value, schemasByKey),
-    ).length;
-    return matchCount === 1;
-  }
-
-  if (resolved.const !== undefined) {
-    if (!valueDeepEqual(value, resolved.const)) return false;
-    if (!schemaUsesTimestampFormat(resolved, schemasByKey)) return true;
-  }
-
-  if (resolved.enum !== undefined && Array.isArray(resolved.enum)) {
-    if (!resolved.enum.some((e) => valueDeepEqual(value, e))) return false;
-    if (!schemaUsesTimestampFormat(resolved, schemasByKey)) return true;
-  }
-
-  const type = resolved.type;
-  if (!type) return false;
-
-  if (type === "string") {
-    if (typeof value !== "string") return false;
-    if (!valueMatchesFormat(resolved.format, value)) return false;
-    const s = value as string;
-    if (resolved.minLength !== undefined && s.length < resolved.minLength) return false;
-    if (resolved.maxLength !== undefined && s.length > resolved.maxLength) return false;
-    if (resolved.pattern !== undefined) {
-      try {
-        if (!new RegExp(resolved.pattern).test(s)) return false;
-      } catch {
-        return true;
-      }
-    }
-    return true;
-  }
-  if (type === "boolean") return typeof value === "boolean";
-  if (type === "integer") {
-    if (typeof value !== "number" || !Number.isInteger(value)) return false;
-    if (resolved.minimum !== undefined && (value as number) < resolved.minimum) return false;
-    if (resolved.maximum !== undefined && (value as number) > resolved.maximum) return false;
-    return true;
-  }
-  if (type === "number") {
-    if (typeof value !== "number") return false;
-    if (resolved.minimum !== undefined && (value as number) < resolved.minimum) return false;
-    if (resolved.maximum !== undefined && (value as number) > resolved.maximum) return false;
-    return true;
-  }
-  if (type === "json") return typeof value === "string";
-
-  if (type === "object") {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-    const props = resolved.properties;
-    const additional = resolved.additionalProperties;
-    const obj = value as Record<string, unknown>;
-    if ((!props || typeof props !== "object") && (!additional || typeof additional !== "object")) {
-      return true;
-    }
-    if (!props || typeof props !== "object") {
-      return Object.keys(obj).every((key) =>
-        valueMatchesSchema(additional as { [k: string]: unknown }, obj[key], schemasByKey),
-      );
-    }
-    const required = new Set(resolved.required || []);
-    for (const key of required) {
-      if (!Object.prototype.hasOwnProperty.call(obj, key)) return false;
-      if (!valueMatchesSchema(props[key] as { [k: string]: unknown }, obj[key], schemasByKey))
-        return false;
-    }
-    for (const key of Object.keys(obj)) {
-      const propSchema = props[key];
-      if (propSchema) {
-        if (!valueMatchesSchema(propSchema as { [k: string]: unknown }, obj[key], schemasByKey))
-          return false;
-      } else if (additional && typeof additional === "object") {
-        if (!valueMatchesSchema(additional as { [k: string]: unknown }, obj[key], schemasByKey))
-          return false;
-      } else {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  if (type === "array") {
-    if (!Array.isArray(value)) return false;
-    const arr = value as unknown[];
-    if (resolved.minItems !== undefined && arr.length < resolved.minItems) return false;
-    if (resolved.maxItems !== undefined && arr.length > resolved.maxItems) return false;
-    if (resolved.uniqueItems) {
-      for (let i = 0; i < arr.length; i++) {
-        for (let j = i + 1; j < arr.length; j++) {
-          if (valueDeepEqual(arr[i], arr[j])) return false;
-        }
-      }
-    }
-    const itemSchema = resolved.items;
-    if (!itemSchema || typeof itemSchema !== "object")
-      return arr.every((v) => typeof v === "string");
-    return arr.every((item) =>
-      valueMatchesSchema(itemSchema as { [k: string]: unknown }, item, schemasByKey),
-    );
-  }
-
-  return false;
+  return validatesWithEngine(schema, value, schemasByKey);
 }
 
 /** Deep equality for variable values (primitives, plain objects, arrays). */
@@ -657,6 +537,8 @@ function refineVariableValueObject(
 
     for (const key of Object.keys(variableValue)) {
       const propSchema = schemaProperties[key];
+      // `additionalProperties: true` allows any other key with any value, unchecked.
+      if (!propSchema && additionalProperties === true) continue;
       if (!propSchema && additionalProperties && typeof additionalProperties === "object") {
         superRefineVariableValue(
           projectConfig,
@@ -689,6 +571,8 @@ function refineVariableValueObject(
         );
       }
     }
+  } else if (additionalProperties === true) {
+    // Any object, with any value under any key.
   } else if (additionalProperties && typeof additionalProperties === "object") {
     for (const key of Object.keys(variableValue)) {
       superRefineVariableValue(
@@ -866,17 +750,18 @@ export function superRefineVariableValue(
     }
     const strMaxLen = (effectiveSchema as { maxLength?: number }).maxLength;
     const strPattern = (effectiveSchema as { pattern?: string }).pattern;
-    if (strMinLen !== undefined && variableValue.length < strMinLen) {
+    const stringLength = codePointLength(variableValue);
+    if (strMinLen !== undefined && stringLength < strMinLen) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `${typedSubject(subject, "string", mutation)} must be at least ${strMinLen} characters long (\`minLength\`), but has ${variableValue.length}.`,
+        message: `${typedSubject(subject, "string", mutation)} must be at least ${strMinLen} characters long (\`minLength\`), but has ${stringLength}.`,
         path,
       });
     }
-    if (strMaxLen !== undefined && variableValue.length > strMaxLen) {
+    if (strMaxLen !== undefined && stringLength > strMaxLen) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `${typedSubject(subject, "string", mutation)} must be at most ${strMaxLen} characters long (\`maxLength\`), but has ${variableValue.length}.`,
+        message: `${typedSubject(subject, "string", mutation)} must be at most ${strMaxLen} characters long (\`maxLength\`), but has ${stringLength}.`,
         path,
       });
     }
@@ -1832,16 +1717,21 @@ export function getFeatureZodSchema(
                 z.string(),
                 (value) => availableSchemaKeys.includes(value),
                 (value) => `Unknown schema "${value}"`,
-              ).optional(),
+              )
+                .refine((value) => !schemaVaries(value, schemasByKey), {
+                  message:
+                    "This schema varies by environment or under conditions, and a variable's schema stays the same everywhere and for everyone. Give the variable a schema that does not vary.",
+                })
+                .optional(),
 
               // Inline schema (mutually exclusive with schema)
               type: z.union([z.literal("json"), propertyTypeEnum]).optional(),
               items: schemaZodSchema.optional(),
               properties: z.record(z.string(), schemaZodSchema).optional(),
-              additionalProperties: schemaZodSchema.optional(),
+              additionalProperties: z.union([z.literal(true), schemaZodSchema]).optional(),
               required: z.array(z.string()).optional(),
-              enum: z.array(variableValueZodSchema).optional(),
-              const: variableValueZodSchema.optional(),
+              enum: z.array(variableValueOrNullZodSchema).optional(),
+              const: variableValueOrNullZodSchema.optional(),
               oneOf: z.array(schemaZodSchema).min(1).optional(),
               minimum: z.number().optional(),
               maximum: z.number().optional(),

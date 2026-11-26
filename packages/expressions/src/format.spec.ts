@@ -21,6 +21,18 @@ describe("formatExpression", () => {
     ).toBe("audiences.workspaceAdmins\nand permissions includesAny ['write', 'admin']");
   });
 
+  it("writes input(...) as it writes other reads, where the caller allows it", () => {
+    expect(
+      formatExpression(
+        "input('password')==input('confirmPassword')  and input('tag') in ['a','b']",
+        {
+          input: true,
+        },
+      ),
+    ).toBe("input('password') == input('confirmPassword')\nand input('tag') in ['a', 'b']");
+    expect(formatExpression("input('a') == input('b')")).toBeUndefined();
+  });
+
   it("keeps a single condition on one line", () => {
     expect(formatExpression("roles   notEmpty")).toBe("roles notEmpty");
     expect(formatExpression("not (plan in ['free'])")).toBe("not plan in ['free']");

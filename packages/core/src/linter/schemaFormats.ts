@@ -2,6 +2,26 @@ import type { Schema, SchemaFormat } from "@featurevisor/types";
 import { z } from "zod";
 import { getPortableTimestamp, isValidVersion } from "@featurevisor/sdk";
 
+/**
+ * A string's length in code points, as JSON Schema counts `minLength` and
+ * `maxLength`, so an emoji counts one. JavaScript's `length` counts UTF-16 code
+ * units, which counts most emoji as two.
+ */
+export function codePointLength(value: string): number {
+  let length = value.length;
+  for (let index = 0; index < value.length - 1; index++) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        length--;
+        index++;
+      }
+    }
+  }
+  return length;
+}
+
 /** Types shared by attributes, reusable schemas and variables, in authoring order. */
 export const SCHEMA_TYPES = ["boolean", "string", "integer", "number", "object", "array"] as const;
 

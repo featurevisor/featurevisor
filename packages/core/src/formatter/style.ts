@@ -153,8 +153,29 @@ export const HOUSE_STYLE = {
     ],
     segment: [...LIFECYCLE, "description", "metadata", "conditions"],
     attribute: [...LIFECYCLE, "description", "metadata", ...SCHEMA_KEYS],
-    /** A schema file, and every schema nested in a schema, attribute or variable */
-    schema: [...LIFECYCLE, "description", "metadata", ...SCHEMA_KEYS],
+    /**
+     * A schema file, and every schema nested in a schema, attribute or variable. Only a schema
+     * file's root has `tags` and the vocabularies, and lists its `mutations` by environment in a
+     * project with environments. Only schema files have `messages`, `annotations`, `mutations`
+     * and `issues`, after the rules they word, describe, change and add to.
+     */
+    schema: [
+      ...LIFECYCLE,
+      "description",
+      "tags",
+      "metadata",
+      "annotationsSchema",
+      "optionSchema",
+      ...SCHEMA_KEYS,
+      "messages",
+      "annotations",
+      "mutations",
+      "issues",
+    ],
+    /** A mutation in a schema's mutations, at any node, with the mutations nested under it last */
+    schemaMutation: ["key", "description", "conditions", "mutate", "mutations"],
+    /** An entry in a schema's issues, at any object node, with the entries nested under it last */
+    schemaIssue: ["key", "description", "conditions", "path", "message", "issues"],
     target: [
       "promotable",
       "description",
@@ -165,6 +186,9 @@ export const HOUSE_STYLE = {
       "excludeFeatures",
       "includeVariables",
       "excludeVariables",
+      "includeSchemas",
+      "excludeSchemas",
+      "includeAnnotations",
       "context",
       "schemaVersion",
     ],
@@ -247,6 +271,10 @@ export const HOUSE_STYLE = {
     variableOverrideEnvironments: true,
     /** Between the properties of a schema */
     schemaProperties: false,
+    /** Between a schema's mutations, in a list or under each environment, as between rules */
+    schemaMutations: true,
+    /** Between the environments that group a schema's mutations at its root */
+    schemaMutationEnvironments: true,
     /** Between the deadlines in a definition's metadata */
     deadlines: true,
     /** Between a spec's assertions */

@@ -10,7 +10,7 @@ import type {
   Schema,
   Target,
 } from "@featurevisor/types";
-import type { ZodError } from "zod";
+import { ZodError as ZodErrorClass, type ZodError } from "zod";
 
 import { getAttributeZodSchema } from "./attributeSchema";
 import { getConditionsZodSchema } from "./conditionSchema";
@@ -20,7 +20,12 @@ import { getConditionKindIssues } from "./conditionKinds";
 import { getSegmentZodSchema } from "./segmentSchema";
 import { getFeatureZodSchema } from "./featureSchema";
 import { assertNoLegacyDatasourceGroups } from "../config/removedGroups";
-import { getSchemaZodSchema } from "./schema";
+import { getSchemaPatterns, getSchemaZodSchema } from "./schema";
+import { getMessageWarnings } from "./messageWarnings";
+import { getSchemaAnnotationFindings } from "./schemaAnnotations";
+import { getSchemaMutationFindings } from "./schemaMutations";
+import { getBacktrackingError, getPortableRegexError } from "./regexSafety";
+import { getTargetSchemaKeys, matchesFeaturePatterns } from "../targeting";
 import { getScenariosZodSchema, getTestsZodSchema } from "./testSchema";
 import { getTargetZodSchema } from "./targetSchema";
 import { describeSchemaV2TargetIssue, findSchemaV2TargetIssues } from "./schemaV2Targets";
@@ -1032,7 +1037,7 @@ export async function lintProject(
     }
   }
   async function reportConditionKinds(
-    entityType: "segment" | "feature" | "variable",
+    entityType: "segment" | "feature" | "variable" | "schema",
     key: string,
     fullPath: string,
     definition: unknown,
@@ -1371,6 +1376,16 @@ export async function lintProject(
 
   // lint schemas (schemas and schemasByKey already loaded above for feature linting)
   const schemaZodSchema = getSchemaZodSchema(schemas, schemasByKey, projectConfig);
+  // Conditions as features take them, with `input` leaves over the value a schema validates.
+  const schemaConditionsZodSchema = getConditionsZodSchema(
+    projectConfig,
+    attributesByKey,
+    schemasByKey,
+    featuresByKey,
+    variablesByKey,
+    segments,
+    { input: true },
+  );
 
   if (!options.entityType || options.entityType === "schema") {
     await lintReservedNamespaceCharacterInEntityPaths("schema");
@@ -1397,15 +1412,73 @@ export async function lintProject(
 
       try {
         const parsed = await datasource.readSchema(key);
+        // A mutation's conditions can be expressions, so issues inside them point at their text.
+        expressionContext = { fullPath, records: getConditionExpressions(parsed) };
+        await reportConditionExpressions(
+          "schema",
+          key,
+          fullPath,
+          expressionContext.records,
+          parsed,
+        );
 
         const result = schemaZodSchema.safeParse(parsed, diagnosticParseOptions);
 
         if (!result.success && "error" in result) {
           await reportZodValidationError("schema", key, fullPath, result.error);
+        } else {
+          // Annotations against the file's vocabularies, which reads values with lint's own value checks.
+          // Changes per environment and under conditions, checked with lint's own schema rules.
+          const mutationFindings = getSchemaMutationFindings(parsed, {
+            projectConfig,
+            schemasByKey,
+            schemaZodSchema,
+            conditionsZodSchema: schemaConditionsZodSchema,
+          });
+          const annotationFindings = getSchemaAnnotationFindings(parsed, schemasByKey);
+          annotationFindings.errors.push(...mutationFindings);
+          if (annotationFindings.errors.length > 0) {
+            await reportZodValidationError(
+              "schema",
+              key,
+              fullPath,
+              new ZodErrorClass(
+                annotationFindings.errors.map(({ path: at, message }) => ({
+                  code: "custom" as const,
+                  path: at,
+                  message,
+                  input: undefined,
+                })),
+              ),
+            );
+          }
+          for (const warning of annotationFindings.warnings) {
+            await reportWarning({
+              filePath: path.relative(process.cwd(), fullPath),
+              entityType: "schema",
+              key,
+              path: warning.path,
+              code: "option_without_title",
+              message: warning.message,
+            });
+          }
+          for (const warning of getMessageWarnings(parsed, schemasByKey)) {
+            await reportWarning({
+              filePath: path.relative(process.cwd(), fullPath),
+              entityType: "schema",
+              key,
+              path: warning.path,
+              code: warning.code,
+              message: warning.message,
+            });
+          }
         }
         await reportDeadlines("schema", key, fullPath, parsed);
+        await reportConditionKinds("schema", key, fullPath, parsed);
       } catch (error) {
         await reportThrownError("schema", key, fullPath, error);
+      } finally {
+        expressionContext = undefined;
       }
     }
   }
@@ -1499,6 +1572,89 @@ export async function lintProject(
     }
   }
 
+  // Schemas that targets deliver to applications: patterns in `includeSchemas` and
+  // `excludeSchemas` must match a schema, schema "2" targets deliver none, and every
+  // `pattern` they deliver is portable and cannot backtrack exponentially, since
+  // applications test untrusted input against it.
+  if (!options.entityType || options.entityType === "target" || options.entityType === "schema") {
+    const deliveringTargets = new Map<string, string[]>();
+    for (const targetKey of targets) {
+      let target = parsedTargets.get(targetKey);
+      if (!target) {
+        try {
+          const parsed = await datasource.readTarget(targetKey);
+          if (targetZodSchema.safeParse(parsed, diagnosticParseOptions).success) target = parsed;
+        } catch {
+          // Linting targets reports this.
+        }
+      }
+      if (!target) continue;
+      const reportsTarget =
+        (!options.entityType || options.entityType === "target") &&
+        (!keyPattern || keyPattern.test(targetKey));
+
+      if (reportsTarget) {
+        for (const field of ["includeSchemas", "excludeSchemas"] as const) {
+          const patterns = target[field];
+          if (!Array.isArray(patterns)) continue;
+          for (const [index, pattern] of patterns.entries()) {
+            if (schemas.some((schemaKey) => matchesFeaturePatterns(schemaKey, [pattern]))) continue;
+            await reportSimpleError({
+              entityType: "target",
+              key: targetKey,
+              fullPath: getFullPathFromKey("target", targetKey),
+              message: `"${pattern}" in \`${field}\` matches no schema.`,
+              pathParts: [field, index],
+              code: "unknown_schema",
+            });
+          }
+        }
+      }
+
+      const delivered = getTargetSchemaKeys(target, schemas, schemasByKey);
+      if (delivered.length === 0) continue;
+      if (target.schemaVersion === "2") {
+        if (reportsTarget) {
+          await reportSimpleError({
+            entityType: "target",
+            key: targetKey,
+            fullPath: getFullPathFromKey("target", targetKey),
+            message: `A target with \`schemaVersion: "2"\` cannot deliver schemas, since its datafiles are for the v3 SDK. It selects ${delivered.map((schemaKey) => `"${schemaKey}"`).join(", ")}.`,
+            detail:
+              'Leave the schemas out with `excludeSchemas`, or deliver them from a target with schema "4".',
+            pathParts: ["schemaVersion"],
+            code: "schema_v2_unsupported",
+          });
+        }
+        continue;
+      }
+      for (const schemaKey of delivered) {
+        deliveringTargets.set(schemaKey, [...(deliveringTargets.get(schemaKey) || []), targetKey]);
+      }
+    }
+
+    if (!options.entityType || options.entityType === "schema") {
+      for (const [schemaKey, targetKeys] of deliveringTargets) {
+        if (keyPattern && !keyPattern.test(schemaKey)) continue;
+        for (const { pattern, path: patternPath } of getSchemaPatterns(schemasByKey[schemaKey])) {
+          const portableError = getPortableRegexError(pattern);
+          const backtrackingError = !portableError && getBacktrackingError(pattern);
+          if (!portableError && !backtrackingError) continue;
+          await reportSimpleError({
+            entityType: "schema",
+            key: schemaKey,
+            fullPath: getFullPathFromKey("schema", schemaKey),
+            message: portableError
+              ? `\`pattern\` ${portableError} in the cross-SDK regex subset, since target ${targetKeys.map((targetKey) => `"${targetKey}"`).join(", ")} delivers this schema to applications.`
+              : `\`pattern\` ${backtrackingError}. Target ${targetKeys.map((targetKey) => `"${targetKey}"`).join(", ")} delivers this schema to applications, which test untrusted input against it.`,
+            pathParts: patternPath,
+            code: portableError ? "unportable_regex" : "regex_backtracking",
+          });
+        }
+      }
+    }
+  }
+
   // Spec files that share a test key stop tests and scenarios from being listed, so lint
   // reports every collision as an issue of its own and checks the specs once they are fixed
   let testKeyCollisionsReported = false;
@@ -1552,6 +1708,7 @@ export async function lintProject(
     variables as [string, ...string[]],
     featuresByKey,
     segmentsByKey,
+    schemas,
   );
 
   if (!options.entityType || options.entityType === "test") {

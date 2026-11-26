@@ -2,7 +2,7 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 
 import { getEntityRoute } from "../entityTypes";
-import { Badge, EntityKey, OverviewChip, OverviewMetaPanel, OverviewMetaRow } from "./ui";
+import { Badge, EntityKey } from "./ui";
 
 export type SchemaLike = Record<string, unknown>;
 
@@ -54,6 +54,20 @@ export function hasSchemaTableRows(schema: SchemaLike) {
   }
 
   return rows.length > 0;
+}
+
+/** A node's annotations, or undefined when it has none. Only schema files carry them. */
+export function getSchemaAnnotations(schema: unknown): Record<string, unknown> | undefined {
+  const annotations =
+    schema && typeof schema === "object" && !Array.isArray(schema)
+      ? (schema as SchemaLike).annotations
+      : undefined;
+  return annotations &&
+    typeof annotations === "object" &&
+    !Array.isArray(annotations) &&
+    Object.keys(annotations).length > 0
+    ? (annotations as Record<string, unknown>)
+    : undefined;
 }
 
 function getSchemaDescription(schema: SchemaLike) {
@@ -184,7 +198,7 @@ function appendAdditionalPropertyRows(schema: SchemaLike, prefix: string, rows: 
 }
 
 /** Types read as code, matching the type chips on the variables list. */
-function TypeBadge(props: { children: React.ReactNode }) {
+export function TypeBadge(props: { children: React.ReactNode }) {
   return (
     <code className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] leading-none text-slate-700">
       {props.children}
@@ -192,7 +206,7 @@ function TypeBadge(props: { children: React.ReactNode }) {
   );
 }
 
-function SchemaRefLink(props: { name: string; setKey?: string }) {
+export function SchemaRefLink(props: { name: string; setKey?: string }) {
   return (
     <Link
       to={getEntityRoute("schema", props.name, props.setKey)}
@@ -387,180 +401,6 @@ export function SchemaTable(props: { schema: SchemaLike; setKey?: string }) {
       </table>
     </div>
   );
-}
-
-type SchemaProperty = {
-  label: string;
-  value: React.ReactNode;
-};
-
-function SchemaPropertyValue(props: { children: React.ReactNode }) {
-  return <OverviewChip className="font-mono">{props.children}</OverviewChip>;
-}
-
-function getSchemaProperties(
-  schema: SchemaLike,
-  setKey?: string,
-  options: { includeType?: boolean } = {},
-): SchemaProperty[] {
-  const properties: SchemaProperty[] = [];
-
-  if (isSchemaRef(schema)) {
-    properties.push({
-      label: "Schema",
-      value: <SchemaRefLink name={schema.schema} setKey={setKey} />,
-    });
-    return properties;
-  }
-
-  if (options.includeType && typeof schema.type === "string") {
-    properties.push({
-      label: "Type",
-      value: <TypeBadge>{schema.type}</TypeBadge>,
-    });
-  }
-
-  if (Array.isArray(schema.enum) && schema.enum.length > 0) {
-    properties.push({
-      label: "Enum",
-      value: (
-        <span className="flex flex-wrap gap-1.5">
-          {schema.enum.map((value, index) => (
-            <SchemaPropertyValue key={index}>{formatConstraintValue(value)}</SchemaPropertyValue>
-          ))}
-        </span>
-      ),
-    });
-  }
-
-  if ("const" in schema && schema.const !== undefined) {
-    properties.push({
-      label: "Const",
-      value: <SchemaPropertyValue>{formatConstraintValue(schema.const)}</SchemaPropertyValue>,
-    });
-  }
-
-  if (typeof schema.minimum === "number") {
-    properties.push({
-      label: "Minimum",
-      value: <SchemaPropertyValue>{schema.minimum}</SchemaPropertyValue>,
-    });
-  }
-
-  if (typeof schema.maximum === "number") {
-    properties.push({
-      label: "Maximum",
-      value: <SchemaPropertyValue>{schema.maximum}</SchemaPropertyValue>,
-    });
-  }
-
-  if (typeof schema.minLength === "number") {
-    properties.push({
-      label: "Min length",
-      value: <SchemaPropertyValue>{schema.minLength}</SchemaPropertyValue>,
-    });
-  }
-
-  if (typeof schema.maxLength === "number") {
-    properties.push({
-      label: "Max length",
-      value: <SchemaPropertyValue>{schema.maxLength}</SchemaPropertyValue>,
-    });
-  }
-
-  if (typeof schema.pattern === "string") {
-    properties.push({
-      label: "Pattern",
-      value: <SchemaPropertyValue>{schema.pattern}</SchemaPropertyValue>,
-    });
-  }
-
-  if (typeof schema.format === "string") {
-    properties.push({
-      label: "Format",
-      value: <SchemaPropertyValue>{schema.format}</SchemaPropertyValue>,
-    });
-  }
-
-  if (typeof schema.minItems === "number") {
-    properties.push({
-      label: "Min items",
-      value: <SchemaPropertyValue>{schema.minItems}</SchemaPropertyValue>,
-    });
-  }
-
-  if (typeof schema.maxItems === "number") {
-    properties.push({
-      label: "Max items",
-      value: <SchemaPropertyValue>{schema.maxItems}</SchemaPropertyValue>,
-    });
-  }
-
-  if (schema.uniqueItems === true) {
-    properties.push({
-      label: "Unique items",
-      value: <SchemaPropertyValue>true</SchemaPropertyValue>,
-    });
-  }
-
-  return properties;
-}
-
-function hasSchemaProperties(schema: SchemaLike) {
-  if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
-    return true;
-  }
-
-  return getSchemaProperties(schema).length > 0;
-}
-
-function SchemaPropertiesPanel(props: {
-  schema: SchemaLike;
-  setKey?: string;
-  includeType?: boolean;
-}) {
-  const properties = getSchemaProperties(props.schema, props.setKey, {
-    includeType: props.includeType,
-  });
-
-  if (properties.length === 0) {
-    return null;
-  }
-
-  return (
-    <OverviewMetaPanel>
-      {properties.map((property) => (
-        <OverviewMetaRow key={property.label} label={property.label}>
-          {property.value}
-        </OverviewMetaRow>
-      ))}
-    </OverviewMetaPanel>
-  );
-}
-
-export function SchemaPropertiesOverview(props: { schema: SchemaLike; setKey?: string }) {
-  const schema = props.schema;
-
-  if (!hasSchemaProperties(schema)) {
-    return null;
-  }
-
-  if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
-    return (
-      <div className="space-y-4">
-        {(schema.oneOf as SchemaLike[]).map((option, index) => (
-          <section key={index}>
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-faint">
-              Option {index + 1}
-            </h3>
-            <SchemaPropertiesPanel schema={option} setKey={props.setKey} includeType />
-          </section>
-        ))}
-      </div>
-    );
-  }
-
-  return <SchemaPropertiesPanel schema={schema} setKey={props.setKey} />;
 }
 
 function DefaultValueCodeBlock(props: { children: React.ReactNode; nested?: boolean }) {

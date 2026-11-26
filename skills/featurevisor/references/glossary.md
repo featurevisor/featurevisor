@@ -6,24 +6,25 @@ Many "weird behaviour" reports come from mismatched vocabulary. Ground the user 
 
 ## Definitions
 
-| Term                | Meaning                                                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| **Project**         | A Git repository with `featurevisor.config.js` and definition directories.                                                     |
-| **Attribute**       | A declared, typed context key, such as `userId` or `country`. `attributes/<key>.yml`. Not in datafiles.                        |
-| **Segment**         | A named audience defined by `conditions`. `segments/<key>.yml`.                                                                |
-| **Feature**         | A flag, optional variations and feature variables, with rollout rules. `features/<key>.yml`.                                   |
-| **Global variable** | A typed value with ordered overrides, not owned by a feature and never bucketed. `variables/<key>.yml`.                        |
-| **Composition**     | A global variable built with `compose` from other evaluated values: an alias, or an object of flags, variations and variables. |
-| **Schema**          | A reusable variable shape. `schemas/<key>.yml`.                                                                                |
-| **Target**          | A datafile definition: which features and global variables it includes, and optional known context. `targets/<key>.yml`.       |
-| **Tag**             | A label on features and global variables that targets select.                                                                  |
-| **Metadata**        | What a team records about a definition for people, such as `owner` and `deadlines`. Never in datafiles.                        |
-| **Deadline**        | A moment in metadata by which something should happen, such as a review or removal. Nothing happens when it passes.            |
-| **Namespace**       | A key prefix from a subdirectory, such as `checkout.promo`. Organization only.                                                 |
-| **Spec**            | A `.spec.yml` file of assertions for a feature, segment or global variable.                                                    |
-| **Scenario**        | A spec with root `checks` and no owner, checking several definitions together.                                                 |
-| **Set**             | An independent definition tree under `sets/<set>/`, such as a release lane or a separate surface.                              |
-| **Promotion**       | Copying definitions and their dependencies from one set to another with `promote`.                                             |
+| Term                | Meaning                                                                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Project**         | A Git repository with `featurevisor.config.js` and definition directories.                                                        |
+| **Attribute**       | A declared, typed context key, such as `userId` or `country`. `attributes/<key>.yml`. Not in datafiles.                           |
+| **Segment**         | A named audience defined by `conditions`. `segments/<key>.yml`.                                                                   |
+| **Feature**         | A flag, optional variations and feature variables, with rollout rules. `features/<key>.yml`.                                      |
+| **Global variable** | A typed value with ordered overrides, not owned by a feature and never bucketed. `variables/<key>.yml`.                           |
+| **Composition**     | A global variable built with `compose` from other evaluated values: an alias, or an object of flags, variations and variables.    |
+| **Schema**          | A reusable variable shape, or rules applications validate their data against. `schemas/<key>.yml`.                                |
+| **Target**          | A datafile definition: which features, global variables and schemas it includes, and optional known context. `targets/<key>.yml`. |
+| **Tag**             | A label on features, global variables and schemas that targets select.                                                            |
+| **Annotation**      | What a schema says beside its rules for forms, such as a field's `title` or `order`. Validation never reads it.                   |
+| **Metadata**        | What a team records about a definition for people, such as `owner` and `deadlines`. Never in datafiles.                           |
+| **Deadline**        | A moment in metadata by which something should happen, such as a review or removal. Nothing happens when it passes.               |
+| **Namespace**       | A key prefix from a subdirectory, such as `checkout.promo`. Organization only.                                                    |
+| **Spec**            | A `.spec.yml` file of assertions for a feature, segment or global variable.                                                       |
+| **Scenario**        | A spec with root `checks` and no owner, checking several definitions together.                                                    |
+| **Set**             | An independent definition tree under `sets/<set>/`, such as a release lane or a separate surface.                                 |
+| **Promotion**       | Copying definitions and their dependencies from one set to another with `promote`.                                                |
 
 ## Targeting and rollout
 

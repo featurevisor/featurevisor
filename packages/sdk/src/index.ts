@@ -18,7 +18,12 @@ export type {
   SpawnOptions,
 } from "./instance.js";
 export type { FeaturevisorChildInstance } from "./child.js";
-export type { Evaluation, EvaluationOptions, EvaluationReason } from "./evaluate.js";
+export type {
+  ConditionReaders,
+  Evaluation,
+  EvaluationOptions,
+  EvaluationReason,
+} from "./evaluate.js";
 export type { DependencyOf } from "./session.js";
 export type { EvaluationReads, TrackResult } from "./reads.js";
 export type {

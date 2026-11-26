@@ -37,7 +37,13 @@ type ListValue = Extract<ExpressionValue, { type: "list" }>;
 
 /** The list a condition compares with, as `country in [...]` does */
 function listOf(node: ExpressionNode): ListValue | undefined {
-  if (node.kind !== "attribute" && node.kind !== "feature" && node.kind !== "variable") return;
+  if (
+    node.kind !== "attribute" &&
+    node.kind !== "feature" &&
+    node.kind !== "variable" &&
+    node.kind !== "input"
+  )
+    return;
   const value = node.comparison?.value;
   return value?.type === "list" ? value : undefined;
 }

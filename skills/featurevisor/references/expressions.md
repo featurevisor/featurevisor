@@ -44,6 +44,8 @@ conditions: |
 | Global variable         | `variable('maintenanceMode') == false`                   |
 | Variable path           | `variable('checkoutSettings').currency == 'EUR'`         |
 | Key with odd characters | `variable('checkoutSettings')['limits.v2'][0].quota > 5` |
+| Input, schemas only     | `input('accountType') == 'business'`                     |
+| Two inputs              | `input('password') == input('confirmPassword')`          |
 
 - `==`, `!=`, `>`, `>=`, `<` and `<=` compare. Every other operator keeps its own name between the subject and the value: `plan in ['paid', 'enterprise']`, `email endsWith '@example.com'`, `permissions includesAny ['write', 'admin']`. Presence and emptiness operators follow the subject with no value: `userId exists`, `permissions notEmpty`.
 - Strings use single quotes, with `\'`, `\\`, `\n`, `\t` and `\uXXXX` escapes. Numbers are written as in JSON. A list holds one type, with `null` allowed beside it, and lint warns about a mix with `mixed_list`.
@@ -53,6 +55,7 @@ conditions: |
 - `and`, `or` and `not` are lowercase. `not` binds tightest, then `and`, then `or`. Use parentheses when mixing `and` and `or`, since lint warns without them.
 - A comment is a whole line starting with `#`. Inside a list, a comment may also end a line, beside an item: `'nl', # the Netherlands`.
 - A variable always needs a comparison. `variable('maintenanceMode')` alone is a lint error.
+- `input('...')` reads the value a schema validates, so it goes only in a schema's `mutations` and `issues` ([conditions.md](conditions.md#input-leaves)). Its path goes inside the quotes, `input('address.country')`. After the operator it compiles to `valueFrom`, for comparing two fields, and then the subject must be `input(...)` too. It never goes inside a list or after `matches`.
 
 ## Missing values
 
@@ -62,7 +65,9 @@ An expression matches a missing value exactly as its tree does. `not` turns any 
 
 - A disabled feature's variation, `{ feature: pricing, enabled: false, variation: control }`, has no expression form. Keep it as a tree item beside expressions.
 - `and`, `or`, `not`, `true`, `false` and `null` are words of the language, so an attribute or segment with one of those keys must be written as a tree.
-- Expressions say only what a tree can: no arithmetic, and no comparison between two attributes.
+- Expressions say only what a tree can: no arithmetic, and no comparison between two attributes. Two inputs compare, as `valueFrom` does in a tree.
+- Versions read from two inputs have no expression form, since `semver(...)` takes a literal. Write such a mutation's conditions as a tree.
+- Conditions inside an environment's `mutate`, such as a mutation added with `mutations:append`, are written as trees.
 
 ## Common mistakes
 

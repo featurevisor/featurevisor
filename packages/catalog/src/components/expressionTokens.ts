@@ -27,7 +27,7 @@ export interface ExpressionToken {
 
 const LOGIC = ["and", "or", "not"];
 const CONSTANTS = ["true", "false", "null"];
-const CALLS = ["feature", "variable", "semver"];
+const CALLS = ["feature", "variable", "semver", "input"];
 const WORD_OPERATORS = [
   "contains",
   "notContains",

@@ -15,8 +15,12 @@ export interface GenerateCodeCLIOptions {
   tag?: string | string[];
   target?: string | string[];
   react?: boolean;
+  schemas?: boolean;
+  /** The environment schema types come from, for schemas that vary by environment. */
+  environment?: string;
   importSdkPath?: string;
   importReactPath?: string;
+  importSchemasPath?: string;
 }
 
 export async function generateCodeForProject(
@@ -56,8 +60,11 @@ export async function generateCodeForProject(
       tag: cliOptions.tag,
       target: cliOptions.target,
       react: cliOptions.react,
+      schemas: cliOptions.schemas,
+      environment: cliOptions.environment,
       importSdkPath: cliOptions.importSdkPath,
       importReactPath: cliOptions.importReactPath,
+      importSchemasPath: cliOptions.importSchemasPath,
     });
   }
 
@@ -89,8 +96,11 @@ export const generateCodePlugin: Plugin = {
           tag: parsed.tag,
           target: parsed.target,
           react: parsed.react,
+          schemas: parsed.schemas,
+          environment: parsed.environment,
           importSdkPath: parsed.importSdkPath,
           importReactPath: parsed.importReactPath,
+          importSchemasPath: parsed.importSchemasPath,
         },
       );
     }
@@ -107,6 +117,12 @@ export const generateCodePlugin: Plugin = {
     {
       command: "generate-code --language typescript --out-dir src/generated --target web",
       description: "Generate TypeScript code for definitions selected by a target",
+    },
+    {
+      command:
+        "generate-code --language typescript --out-dir src/generated --target web --schemas --react",
+      description:
+        "Also generate a typed createSchemas and typed schema hooks for @featurevisor/schemas",
     },
   ],
 };

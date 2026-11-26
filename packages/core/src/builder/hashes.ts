@@ -24,7 +24,7 @@ interface HashComputation {
   memo: Map<string, string>;
 }
 
-function generateHashFromString(str: string, length = 10): string {
+export function generateHashFromString(str: string, length = 10): string {
   const hashBuffer = crypto.createHash("sha256").update(str).digest();
 
   // Convert buffer to base62 (alphanumeric)
@@ -157,11 +157,18 @@ export function generateHashForDatafile(datafileContent: DatafileContent): strin
   const featureHashes = Object.fromEntries(
     Object.entries(datafileContent.features).map(([key, feature]) => [key, feature.hash || ""]),
   );
+  const schemaHashes = datafileContent.schemas
+    ? Object.fromEntries(
+        Object.entries(datafileContent.schemas).map(([key, schema]) => [key, schema.hash || ""]),
+      )
+    : undefined;
   return generateHashFromString(
     JSON.stringify({
       schemaVersion: datafileContent.schemaVersion,
       featureHashes,
       variables: datafileContent.variables,
+      // Only datafiles with schemas hash them, so every other revision stays as it was.
+      ...(schemaHashes ? { schemaHashes } : {}),
     }),
   );
 }

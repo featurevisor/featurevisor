@@ -258,7 +258,7 @@ describe("Datasource with expressions", () => {
       description: "Paid",
       conditions: "# paying accounts\nplan == 'paid'\n",
     });
-    expect(datasource.getExpressionOptions()).toEqual({ namespaceCharacter: "." });
+    expect(datasource.getExpressionOptions()).toEqual({ namespaceCharacter: ".", input: true });
   });
 
   it("fails a read whose expression does not compile", async () => {

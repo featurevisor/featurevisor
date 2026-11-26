@@ -7,6 +7,7 @@ export * from "./FeaturevisorScope.js";
 
 // hooks
 export * from "./useSdk.js";
+export * from "./useScopeContext.js";
 export { useFeaturevisor } from "./useFeaturevisor.js";
 export * from "./useVariable.js";
 export * from "./useVariation.js";

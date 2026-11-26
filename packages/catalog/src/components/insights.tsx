@@ -164,6 +164,9 @@ export function generateSchemaExample(
 
   const node = schema as SchemaNode;
 
+  // A schema file's own examples pass the field's rules, which lint checks, so the first is a real value.
+  const examples = (node.annotations as { examples?: unknown } | undefined)?.examples;
+  if (Array.isArray(examples) && examples.length > 0) return examples[0];
   if ("const" in node) return node.const;
   if (Array.isArray(node.enum) && node.enum.length > 0) return node.enum[0];
   if (typeof node.schema === "string") {
@@ -259,7 +262,8 @@ export function SchemaExample(props: { schema: unknown; setKey?: string; title?:
     <OverviewSection title={props.title || "Example value"}>
       <CodeBlock value={example} />
       <p className="mt-1.5 text-xs text-faint">
-        Generated from the schema: first enum options, minimum bounds and one item per array.
+        Generated from the schema: its examples, first enum options, minimum bounds and one item per
+        array.
       </p>
     </OverviewSection>
   );

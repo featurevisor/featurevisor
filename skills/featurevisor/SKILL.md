@@ -71,7 +71,7 @@ npx featurevisor info
 Four values change the **shape of everything you write**:
 
 - `sets`: when `true`, every definition lives under `sets/<set>/` and commands take `--set`. Read [sets-promotions.md](references/sets-promotions.md) first.
-- `environments`: when declared, feature `rules`, `force` and `expose`, and global variable `overrides`, are maps keyed by environment. Without it they are direct lists, and `expose` is a boolean or tag list. With `inheritEnvironments`, an environment left out of a map uses another environment's entry, so check it before saying an environment is off, and before writing entries into definitions that do not need them ([configuration.md](references/configuration.md#add-another-environment-later)).
+- `environments`: when declared, feature `rules`, `force` and `expose`, global variable `overrides`, and a schema's root `mutations` are maps keyed by environment. Without it they are direct lists, and `expose` is a boolean or tag list. With `inheritEnvironments`, an environment left out of a map uses another environment's entry, so check it before saying an environment is off, and before writing entries into definitions that do not need them ([configuration.md](references/configuration.md#add-another-environment-later)).
 - `parser`: author JSON for `"json"`, YAML for `"yml"` (default), or the configured custom format ([custom-parsers.md](references/custom-parsers.md)).
 - `namespaceCharacter`: separator for keys from subdirectories. Default `.`, so `features/checkout/promo.yml` is `checkout.promo`. Some projects use `/`. Every reference must use the project's separator. Confirm against real keys with `npx featurevisor list --segments --json`.
 
@@ -85,11 +85,11 @@ Also note `metadataSchema` and `requireMetadataIn` (the owner names and deadline
 | Segment         | `segments/<key>.yml`   | Names an audience through `conditions`.                                               |
 | Feature         | `features/<key>.yml`   | A flag, optional variations and feature variables, with rollout rules. Bucketed.      |
 | Global variable | `variables/<key>.yml`  | A typed value with ordered overrides, or a `compose` of other values. Never bucketed. |
-| Schema          | `schemas/<key>.yml`    | A reusable variable shape.                                                            |
+| Schema          | `schemas/<key>.yml`    | A reusable variable shape, or rules applications validate their data against.         |
 | Target          | `targets/<key>.yml`    | Which definitions go into a datafile.                                                 |
 | Test spec       | `tests/**/*.spec.yml`  | Feature, segment and variable assertions, and standalone scenarios.                   |
 
-**Conditions** are one grammar used everywhere a definition selects or gates: segments, rules, force entries, root gates and overrides. A leaf compares an attribute, names a segment with a bare string, requires a feature, or compares a variable's value. A list means AND, and `and`, `or` and `not` groups nest. `'*'` matches everyone, but only as the whole value. A project with `conditionExpressions: true` may also write conditions as text, such as `country == 'nl' and payingAccounts` ([expressions.md](references/expressions.md)). Match what the project does.
+**Conditions** are one grammar used everywhere a definition selects or gates: segments, rules, force entries, root gates and overrides. A leaf compares an attribute, names a segment with a bare string, requires a feature, or compares a variable's value. A list means AND, and `and`, `or` and `not` groups nest. `'*'` matches everyone, but only as the whole value. A project with `conditionExpressions: true` may also write conditions as text, such as `country == 'nl' and payingAccounts` ([expressions.md](references/expressions.md)). Match what the project does. A schema's mutations and issues also read `input`, the value an application validates, and only they do ([conditions.md](references/conditions.md#input-leaves)).
 
 ```yaml
 conditions:
@@ -203,6 +203,7 @@ Read the matching file in full **before** authoring or debugging in that area. D
 | Write or change a segment                                                                                   | [segments.md](references/segments.md)                                                                         |
 | Declare an attribute, its type, format and constraints                                                      | [attributes.md](references/attributes.md)                                                                     |
 | Feature variables, types, reusable schemas and mutations                                                    | [variables-schemas.md](references/variables-schemas.md)                                                       |
+| Validate application data against delivered schemas: forms, APIs, `@featurevisor/schemas`                   | [schemas-runtime.md](references/schemas-runtime.md)                                                           |
 | Global variables: overrides, nesting, accumulation, `compose`                                               | [global-variables.md](references/global-variables.md)                                                         |
 | Mutually exclusive experiments and priority exclusion                                                       | [mutual-exclusion.md](references/mutual-exclusion.md)                                                         |
 | Bucketing, `bucketBy`, state files, sticky values                                                           | [bucketing.md](references/bucketing.md)                                                                       |
@@ -244,6 +245,7 @@ Starting files without environments. Replace placeholder keys, and create anythi
 | Feature gated on other definitions | [feature-with-conditions.yml](templates/feature-with-conditions.yml)                                                                                                                                                             |
 | Global variable                    | [variable.yml](templates/variable.yml), [variable-structured.yml](templates/variable-structured.yml)                                                                                                                             |
 | Composition                        | [variable-composition.yml](templates/variable-composition.yml)                                                                                                                                                                   |
+| Schema applications validate with  | [schema-form.yml](templates/schema-form.yml)                                                                                                                                                                                     |
 | Specs                              | [test-feature.spec.yml](templates/test-feature.spec.yml), [test-segment.spec.yml](templates/test-segment.spec.yml), [test-variable.spec.yml](templates/test-variable.spec.yml), [scenario.spec.yml](templates/scenario.spec.yml) |
 | A whole project                    | [example-project/](templates/example-project/)                                                                                                                                                                                   |
 
@@ -276,6 +278,10 @@ For variations read [features.md](references/features.md#variations) and start f
 Ask whether a configurable value belongs to a feature or stands on its own. A support address, a retry limit or a CDN base URL belongs to no single flag, so it goes in `variables/<key>.yml` as a **global variable** ([templates/variable.yml](templates/variable.yml)). Feature variables suit values that follow a variation or need a percentage rollout. Global variables are never bucketed: the first matching override wins for everyone it matches.
 
 `compose` builds a global variable from other evaluated values. `compose: supportEmail` is an alias, useful for renaming. A `compose` map assembles an object from flags, variations, feature variables and global variables, so an application reads one value instead of several ([templates/variable-composition.yml](templates/variable-composition.yml)). Read [global-variables.md](references/global-variables.md) before writing either. Applications read global variables with `getVariable(variableKey, context)`. Go, Rust and Elixir use `GetGlobalVariable` or `get_global_variable` ([sdk-other-languages.md](references/sdk-other-languages.md#global-variables)).
+
+### Validating forms and API bodies
+
+When rules for data users or clients send should change without a deploy, such as a display name's length or the countries checkout accepts, write a schema with `tags` ([templates/schema-form.yml](templates/schema-form.yml)), have a target deliver it, and validate with `@featurevisor/schemas` in the application. Rules that change go under `mutations`, at the root listed by environment in a project with environments, with `conditions: "*"` for a change one environment always has and other conditions for one such as a tax ID only businesses give, and rules between fields, such as a password typed twice, under `issues`. Cover it with a schema spec in `tests/schemas/` ([testing.md](references/testing.md#schema-specs)). The package is experimental. Read [schemas-runtime.md](references/schemas-runtime.md) first.
 
 ### Dependencies between definitions
 
@@ -324,6 +330,7 @@ Nothing takes effect until it travels the pipeline: **edit, review, merge, CI (l
 - **JavaScript or TypeScript** in Node.js, browsers, edge runtimes or React Native: read [sdk-javascript.md](references/sdk-javascript.md) in full.
 - **React**: [sdk-react.md](references/sdk-react.md). **Vue**: [sdk-vue.md](references/sdk-vue.md).
 - **Typed keys and values**: [code-generation.md](references/code-generation.md).
+- **Validating application data** against delivered schemas, with forms, server actions and React: [schemas-runtime.md](references/schemas-runtime.md).
 - **Other languages**: [sdk-other-languages.md](references/sdk-other-languages.md). Every SDK reads the same datafile and buckets identically, and each ships a CLI that runs the project's specs through that language.
 - **OpenFeature**: [openfeature.md](references/openfeature.md).
 - **Frameworks**: [Next.js](https://featurevisor.com/docs/frameworks/nextjs/), [Express](https://featurevisor.com/docs/frameworks/express/), [Fastify](https://featurevisor.com/docs/frameworks/fastify/), [Astro](https://featurevisor.com/docs/frameworks/astro/), [Nuxt](https://featurevisor.com/docs/frameworks/nuxt/).

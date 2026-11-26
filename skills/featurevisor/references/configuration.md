@@ -28,12 +28,12 @@ No environments, and a `targets/all.yml` without selectors.
 
 The same request ("add a feature at 10%") produces different files depending on these. Classify the project before writing anything.
 
-| Value                | Effect                                                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sets`               | `true` puts every definition under `sets/<set>/` and commands take `--set` ([sets-promotions.md](sets-promotions.md))                             |
-| `environments`       | when present, feature `rules`, `force` and `expose`, and global variable `overrides`, are maps keyed by environment, and tests need `environment` |
-| `parser`             | `'yml'` (default), `'json'`, or a custom parser ([custom-parsers.md](custom-parsers.md))                                                          |
-| `namespaceCharacter` | separator for keys from subdirectories, default `.` ([namespaces.md](namespaces.md))                                                              |
+| Value                | Effect                                                                                                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sets`               | `true` puts every definition under `sets/<set>/` and commands take `--set` ([sets-promotions.md](sets-promotions.md))                                                         |
+| `environments`       | when present, feature `rules`, `force` and `expose`, global variable `overrides`, and a schema's root `mutations` are maps keyed by environment, and tests need `environment` |
+| `parser`             | `'yml'` (default), `'json'`, or a custom parser ([custom-parsers.md](custom-parsers.md))                                                                                      |
+| `namespaceCharacter` | separator for keys from subdirectories, default `.` ([namespaces.md](namespaces.md))                                                                                          |
 
 `environments`, when present, is a nonempty list of unique names, such as `['staging', 'production']`. Sets and environments are independent: a Sets project may or may not have environments.
 

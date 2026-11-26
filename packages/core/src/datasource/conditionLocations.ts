@@ -18,7 +18,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * for authored condition locations, so every check and expression expansion see the same places.
  */
 export function visitConditionLocations(
-  entityType: "segment" | "feature" | "variable",
+  entityType: "segment" | "feature" | "variable" | "schema",
   definition: unknown,
   visit: ConditionLocationVisitor,
 ) {
@@ -90,5 +90,29 @@ export function visitConditionLocations(
   if (entityType === "variable") {
     visit("variables", definition.conditions, ["conditions"]);
     visitGlobalOverrides(definition.overrides, ["overrides"]);
+  }
+
+  // A schema's mutations and issues, at any node a value is validated against.
+  if (entityType === "schema") {
+    // Entries nest: a mutation holds its own `mutations`, and an issue its own `issues`.
+    const visitEntries = (list: unknown, path: ConditionPath, nested: string) =>
+      visitList(list, path, (entry, at) => {
+        visit("schemas", entry.conditions, [...at, "conditions"]);
+        if (entry[nested] !== undefined) visitEntries(entry[nested], [...at, nested], nested);
+      });
+    const walk = (node: unknown, path: ConditionPath) => {
+      if (!isObject(node)) return;
+      // Mutations are a list, or at the root a list per environment.
+      for (const list of ["mutations", "issues"]) visitEntries(node[list], [...path, list], list);
+      if (isObject(node.properties))
+        for (const [key, property] of Object.entries(node.properties))
+          walk(property, [...path, "properties", key]);
+      if (isObject(node.items)) walk(node.items, [...path, "items"]);
+      if (isObject(node.additionalProperties))
+        walk(node.additionalProperties, [...path, "additionalProperties"]);
+      if (Array.isArray(node.oneOf))
+        node.oneOf.forEach((branch, i) => walk(branch, [...path, "oneOf", i]));
+    };
+    walk(definition, []);
   }
 }
